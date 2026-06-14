@@ -34,7 +34,11 @@ const TS_COL = { PRODUCING: 'confirmado_em', READY_TO_DELIVER: 'pronto_em', DISP
 
 function calcItem(it) {
   let total = 0;
-  if (it.tipo === 'pizza') {
+  if (it.tipo === 'montavel') {
+    // modelo novo: SOMA dos preços de todas as seleções (estilo, sabores, recheios, adicionais, extras)
+    for (const s of (it.selecoes || [])) total += Number(s.preco || 0);
+    total += Number(it.preco_base || 0);
+  } else if (it.tipo === 'pizza') {
     const s = it.sabores || [];
     for (const x of s) total += Number(x.preco_meia || x.preco || 0);
     if (s.length === 1) total = Number(s[0].preco_meia) * 2;
@@ -258,6 +262,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/') { res.writeHead(302, { Location: '/loja' }); return res.end(); }
     if (p.startsWith('/api/')) return await api(req, res, url);
     if (p === '/loja' || p === '/loja/') return serveStatic(res, path.join(ROOT, 'public/loja/index.html'));
+    if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);
