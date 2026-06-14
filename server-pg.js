@@ -296,6 +296,31 @@ async function api(req, res, url) {
     return json(res, 201, { ok: true, contagem_id: cid, total: itens.length, abaixo_minimo: abaixo, zerados });
   }
 
+  // importar a lista mestre de itens (de uma fonte externa: planilha/n8n) -> estoque_itens_definicao (upsert)
+  if (sub === 'estoque' && seg[2] === 'importar-definicao' && req.method === 'POST') {
+    const b = await readBody(req);
+    const itens = Array.isArray(b.itens) ? b.itens : [];
+    if (!itens.length) return json(res, 400, { erro: 'sem itens' });
+    const cli = await db.pool.connect();
+    let n = 0;
+    try {
+      await cli.query('BEGIN');
+      await cli.query('SET search_path TO khardela, public');
+      for (const it of itens) {
+        const id = it.item_id || it.id; if (!id) continue;
+        await cli.query(`INSERT INTO estoque_itens_definicao (id, tenant_id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal, exige_contagem, ordem, ativo, origem, observacao)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10,TRUE,$11,$12)
+          ON CONFLICT (id) DO UPDATE SET setor_id=EXCLUDED.setor_id, setor_nome=EXCLUDED.setor_nome, categoria=EXCLUDED.categoria, nome=EXCLUDED.nome, unidade=EXCLUDED.unidade, estoque_minimo=EXCLUDED.estoque_minimo, estoque_ideal=EXCLUDED.estoque_ideal, ordem=EXCLUDED.ordem, ativo=TRUE, updated_at=NOW()`,
+          [id, TENANT, it.setor_id || 'SET000', it.setor_nome || it.sn || 'Geral', it.categoria || it.c || null, it.nome_item || it.nome || it.n || '', it.unidade || it.u || 'un', Number(it.estoque_minimo ?? it.mn) || 0, (it.estoque_ideal ?? it.id2) != null ? Number(it.estoque_ideal ?? it.id2) : null, Number(it.ordem ?? it.o) || 999, b.origem || 'import', it.observacao || null]);
+        n++;
+      }
+      await cli.query('COMMIT');
+    } catch (e) { await cli.query('ROLLBACK'); cli.release(); return json(res, 500, { erro: e.code || e.message }); }
+    cli.release();
+    const tot = await db.q('SELECT count(*)::int n FROM estoque_itens_definicao WHERE tenant_id=$1', [TENANT]);
+    return json(res, 200, { ok: true, importados: n, total_definicao: tot.rows[0].n });
+  }
+
   if (sub === 'estoque' && seg[2] === 'contagens' && req.method === 'GET') {
     const r = await db.q('SELECT id, colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 50', [TENANT]);
     return json(res, 200, { contagens: r.rows });
