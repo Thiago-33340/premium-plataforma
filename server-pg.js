@@ -236,6 +236,20 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, pedido: orderToFront(r.rows[0]) });
   }
 
+  // disponibilidade fonte-unica: grava status em opcoes/produtos (a verdade no Postgres)
+  if (sub === 'disponibilidade' && req.method === 'POST') {
+    const b = await readBody(req);
+    const st = String(b.status || '').toUpperCase();
+    if (!['ATIVO', 'EM_FALTA', 'OCULTO'].includes(st)) return json(res, 400, { erro: 'status invalido' });
+    const quem = (b.por || 'operador').slice(0, 20);
+    const tabela = b.tipo === 'produto' ? 'produtos' : 'opcoes';
+    try {
+      const r = await db.q(`UPDATE ${tabela} SET status=$3, status_ts=NOW(), status_by=$4, status_motivo=$5 WHERE tenant_id=$1 AND id=$2 RETURNING id, nome, status`, [TENANT, b.id, st, quem, b.motivo || null]);
+      if (!r.rows[0]) return json(res, 404, { erro: 'nao encontrado' });
+      return json(res, 200, { ok: true, item: r.rows[0] });
+    } catch (e) { return json(res, 500, { erro: e.code || e.message }); }
+  }
+
   if (sub === 'config' && req.method === 'GET') {
     const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const cfg = (r.rows[0] && r.rows[0].config) || {};
@@ -263,6 +277,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/')) return await api(req, res, url);
     if (p === '/loja' || p === '/loja/') return serveStatic(res, path.join(ROOT, 'public/loja/index.html'));
     if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
+    if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);
