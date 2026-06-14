@@ -239,6 +239,68 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, pedido: orderToFront(r.rows[0]) });
   }
 
+  // ===================== ESTOQUE (contagem de fim de turno, Postgres fonte unica) =====================
+  if (sub === 'estoque' && seg[2] === 'login' && req.method === 'POST') {
+    const b = await readBody(req);
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const alvo = norm(b.login);
+    if (!alvo) return json(res, 400, { erro: 'informe o login' });
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, setores_permitidos FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome) === alvo || norm(x.nome).split(' ')[0] === alvo);
+    if (!col) return json(res, 404, { ok: false, erro: 'Colaborador nao encontrado ou inativo.' });
+    const setoresPerm = col.setores_permitidos || [];
+    const veTudo = col.perfil_principal === 'GESTOR' || setoresPerm.map(s => String(s).toUpperCase()).includes('TUDO');
+    let setores;
+    if (veTudo) {
+      const s = await db.q('SELECT setor_id, setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem GROUP BY setor_id, setor_nome ORDER BY setor_nome', [TENANT]);
+      setores = s.rows;
+    } else {
+      const s = await db.q('SELECT setor_id, setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem AND setor_id = ANY($2) GROUP BY setor_id, setor_nome ORDER BY setor_nome', [TENANT, setoresPerm]);
+      setores = s.rows;
+    }
+    return json(res, 200, { ok: true, colaborador: { id: col.id, nome: col.nome, perfil: col.perfil_principal, ve_tudo: veTudo }, setores });
+  }
+
+  if (sub === 'estoque' && seg[2] === 'itens' && req.method === 'GET') {
+    const setor = url.searchParams.get('setor');
+    const r = setor
+      ? await db.q('SELECT id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem AND setor_id=$2 ORDER BY ordem, nome', [TENANT, setor])
+      : await db.q('SELECT id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem ORDER BY setor_nome, ordem, nome', [TENANT]);
+    return json(res, 200, { itens: r.rows });
+  }
+
+  if (sub === 'estoque' && seg[2] === 'contagem' && req.method === 'POST') {
+    const b = await readBody(req);
+    const itens = Array.isArray(b.itens) ? b.itens : [];
+    if (!b.colaborador_id || !b.setor_id || !itens.length) return json(res, 400, { erro: 'dados incompletos' });
+    const situ = (q, min) => { const qn = Number(q); if (qn <= 0) return 'Zerado'; if (min != null && qn < Number(min)) return 'Abaixo do minimo'; return 'Ok'; };
+    let abaixo = 0, zerados = 0;
+    for (const it of itens) { const s = situ(it.quantidade_contada, it.estoque_minimo); if (s === 'Abaixo do minimo') abaixo++; if (s === 'Zerado') zerados++; it._situacao = s; }
+    const now = new Date();
+    const cid = 'CTG' + now.toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+    const cliente = await db.pool.connect();
+    try {
+      await cliente.query('BEGIN');
+      await cliente.query('SET search_path TO khardela, public');
+      await cliente.query(`INSERT INTO estoque_contagens (id, tenant_id, colaborador_id, colaborador_nome, setor_id, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, iniciada_em, finalizada_em, observacao)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),$12)`,
+        [cid, TENANT, b.colaborador_id, b.colaborador_nome || '', b.setor_id, b.setor_nome || '', b.turno || 'Fechamento', itens.length, abaixo, zerados, b.iniciada_em || now.toISOString(), b.observacao || null]);
+      for (const it of itens) {
+        await cliente.query(`INSERT INTO estoque_itens (tenant_id, contagem_id, item_id, nome_item, categoria, setor_id, unidade, quantidade_contada, estoque_minimo, estoque_ideal, situacao, observacao)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [TENANT, cid, it.item_id, it.nome_item || '', it.categoria || null, b.setor_id, it.unidade || null, Number(it.quantidade_contada) || 0, Number(it.estoque_minimo) || 0, it.estoque_ideal != null ? Number(it.estoque_ideal) : null, it._situacao, it.observacao || null]);
+      }
+      await cliente.query('COMMIT');
+    } catch (e) { await cliente.query('ROLLBACK'); cliente.release(); return json(res, 500, { erro: e.code || e.message }); }
+    cliente.release();
+    return json(res, 201, { ok: true, contagem_id: cid, total: itens.length, abaixo_minimo: abaixo, zerados });
+  }
+
+  if (sub === 'estoque' && seg[2] === 'contagens' && req.method === 'GET') {
+    const r = await db.q('SELECT id, colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 50', [TENANT]);
+    return json(res, 200, { contagens: r.rows });
+  }
+
   // disponibilidade fonte-unica: grava status em opcoes/produtos (a verdade no Postgres)
   if (sub === 'disponibilidade' && req.method === 'POST') {
     const b = await readBody(req);
@@ -282,6 +344,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/loja-antiga' || p === '/loja-antiga/') return serveStatic(res, path.join(ROOT, 'public/loja/index.html'));
     if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
     if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
+    if (p === '/estoque' || p === '/estoque/') return serveStatic(res, path.join(ROOT, 'public/estoque.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);
