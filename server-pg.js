@@ -121,6 +121,9 @@ async function api(req, res, url) {
     await q1('preparo_itens', 'SELECT count(*) n FROM preparo_itens WHERE tenant_id=$1', [TENANT]);
     await q1('insumo_custos', 'SELECT count(*) n FROM insumo_custos WHERE tenant_id=$1', [TENANT]);
     await q1('ficha_itens', 'SELECT count(*) n FROM ficha_itens WHERE tenant_id=$1', [TENANT]);
+    await q1('estoque_def', 'SELECT count(*) n FROM estoque_itens_definicao WHERE tenant_id=$1', [TENANT]);
+    await q1('estoque_contagens', 'SELECT count(*) n FROM estoque_contagens WHERE tenant_id=$1', [TENANT]);
+    try { const r = await db.q('SELECT setor_id, setor_nome, count(*)::int n FROM estoque_itens_definicao WHERE tenant_id=$1 GROUP BY setor_id, setor_nome ORDER BY setor_nome', [TENANT]); out.setores = r.rows; } catch (e) { out.setores = 'ERRO: ' + (e.code || e.message); }
     // introspeccao das tabelas legadas (p/ popular fichas tecnicas com seguranca)
     out.colunas = {};
     for (const t of ['manual_montagem', 'estoque_itens_definicao']) {
@@ -275,7 +278,8 @@ const server = http.createServer(async (req, res) => {
     let p = url.pathname;
     if (p === '/') { res.writeHead(302, { Location: '/loja' }); return res.end(); }
     if (p.startsWith('/api/')) return await api(req, res, url);
-    if (p === '/loja' || p === '/loja/') return serveStatic(res, path.join(ROOT, 'public/loja/index.html'));
+    if (p === '/loja' || p === '/loja/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
+    if (p === '/loja-antiga' || p === '/loja-antiga/') return serveStatic(res, path.join(ROOT, 'public/loja/index.html'));
     if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
     if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
