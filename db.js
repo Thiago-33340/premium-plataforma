@@ -1,67 +1,94 @@
-/* Camada Postgres — pool + schema + helpers.
-   Conexão via DATABASE_URL (Easypanel injeta) ou variáveis PG*. */
+/* ============================================================
+   Camada Postgres CONVERGIDA com o Khardela.
+   Conecta no banco titan_khardela, schema khardela (fonte unica).
+   So adiciona senha_hash em rbac_contacts e cria tabelas novas
+   (mesas, comandas, caixa, entregadores) + sequence de numero web.
+   Tudo multi-tenant por tenant_id. Nao recria tabelas existentes.
+   ============================================================ */
 'use strict';
 const { Pool } = require('pg');
 
+const TENANT = process.env.TENANT_ID || 'khardela:premiumpizzas:sjrp';
+
 const pool = new Pool(
   process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL, max: 10, idleTimeoutMillis: 30000 }
+    ? { connectionString: process.env.DATABASE_URL, max: 12, idleTimeoutMillis: 30000 }
     : {
-        host: process.env.PGHOST || 'localhost',
+        host: process.env.PGHOST || 'titan-postgres',
         port: +(process.env.PGPORT || 5432),
         user: process.env.PGUSER || 'postgres',
         password: process.env.PGPASSWORD || '',
-        database: process.env.PGDATABASE || 'premium',
-        max: 10, idleTimeoutMillis: 30000
+        database: process.env.PGDATABASE || 'titan_khardela',
+        max: 12, idleTimeoutMillis: 30000
       }
 );
 
-const SCHEMA = `
-CREATE SCHEMA IF NOT EXISTS premium;
-CREATE TABLE IF NOT EXISTS premium.clientes (
-  telefone   VARCHAR(15) PRIMARY KEY,
-  nome       TEXT,
-  criado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  enderecos  JSONB NOT NULL DEFAULT '[]'
-);
-CREATE TABLE IF NOT EXISTS premium.pedidos (
-  id            UUID PRIMARY KEY,
-  numero        BIGINT GENERATED ALWAYS AS IDENTITY,
-  criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  status        VARCHAR(20) NOT NULL DEFAULT 'RECEBIDO',
-  canal         VARCHAR(20) NOT NULL DEFAULT 'web',
-  origem_whatsapp BOOLEAN NOT NULL DEFAULT FALSE,
-  cliente       JSONB NOT NULL,
-  tipo          VARCHAR(12) NOT NULL,
-  endereco      JSONB,
-  pagamento     JSONB NOT NULL DEFAULT '{}',
-  itens         JSONB NOT NULL,
-  subtotal      NUMERIC(10,2) NOT NULL DEFAULT 0,
-  taxa_entrega  NUMERIC(10,2) NOT NULL DEFAULT 0,
-  total         NUMERIC(10,2) NOT NULL DEFAULT 0,
-  observacao    TEXT DEFAULT '',
-  obs_cozinha   TEXT DEFAULT '',
-  historico     JSONB NOT NULL DEFAULT '[]',
-  impresso      BOOLEAN NOT NULL DEFAULT FALSE
-);
-CREATE INDEX IF NOT EXISTS idx_pedidos_status ON premium.pedidos(status);
-CREATE INDEX IF NOT EXISTS idx_pedidos_criado ON premium.pedidos(criado_em DESC);
-CREATE INDEX IF NOT EXISTS idx_pedidos_cliente ON premium.pedidos((cliente->>'telefone'));
-CREATE TABLE IF NOT EXISTS premium.config (
-  id   INT PRIMARY KEY DEFAULT 1,
-  data JSONB NOT NULL DEFAULT '{}'
-);
-INSERT INTO premium.config (id, data)
-  VALUES (1, '{"printer_ip":"","printer_porta":"8008","taxa_entrega_padrao":8,"raio_km":7}')
-  ON CONFLICT (id) DO NOTHING;
-`;
+pool.on('connect', function (c) { c.query('SET search_path TO khardela, public').catch(function () {}); });
 
-async function init(retries = 10) {
+const MIGRATIONS = [
+  "SET search_path TO khardela, public",
+  "ALTER TABLE rbac_contacts ADD COLUMN IF NOT EXISTS senha_hash TEXT",
+  `CREATE TABLE IF NOT EXISTS mesas (
+     id SERIAL PRIMARY KEY,
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     numero INT NOT NULL,
+     ativa BOOLEAN NOT NULL DEFAULT TRUE,
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     UNIQUE (tenant_id, numero)
+   )`,
+  `CREATE TABLE IF NOT EXISTS comandas (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     mesa_numero INT NOT NULL,
+     nome_cliente TEXT NOT NULL,
+     status VARCHAR(20) NOT NULL DEFAULT 'ABERTA',
+     aberta_por VARCHAR(20),
+     aberta_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     fechada_em TIMESTAMPTZ
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_comandas_aberta ON comandas(tenant_id, status, mesa_numero)",
+  `CREATE TABLE IF NOT EXISTS caixa (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     aberto_por VARCHAR(20),
+     aberto_por_nome TEXT,
+     valor_abertura NUMERIC(10,2) NOT NULL DEFAULT 0,
+     status VARCHAR(20) NOT NULL DEFAULT 'ABERTO',
+     aberto_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     fechado_em TIMESTAMPTZ,
+     valor_fechamento NUMERIC(10,2)
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_caixa_aberto ON caixa(tenant_id, status)",
+  `CREATE TABLE IF NOT EXISTS entregadores (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     nome TEXT NOT NULL,
+     telefone VARCHAR(20),
+     ativo BOOLEAN NOT NULL DEFAULT TRUE,
+     ultima_lat NUMERIC(10,6),
+     ultima_lng NUMERIC(10,6),
+     ultima_atualizacao TIMESTAMPTZ
+   )`,
+  "CREATE SEQUENCE IF NOT EXISTS web_pedido_seq START 1"
+];
+
+const state = { migrationsOk: false, ultimoErro: null };
+
+async function init(retries) {
+  retries = retries || 8;
   for (let i = 0; i < retries; i++) {
-    try { await pool.query(SCHEMA); console.log('[db] schema pronto'); return; }
-    catch (e) { console.log(`[db] aguardando Postgres (${i + 1}/${retries}): ${e.code || e.message}`); await new Promise(r => setTimeout(r, 3000)); }
+    try {
+      for (const sql of MIGRATIONS) await pool.query(sql);
+      state.migrationsOk = true;
+      console.log('[db] convergido com schema khardela - migracoes ok');
+      return;
+    } catch (e) {
+      state.ultimoErro = e.code || e.message;
+      console.log('[db] tentando migracoes (' + (i + 1) + '/' + retries + '): ' + state.ultimoErro);
+      await new Promise(function (r) { setTimeout(r, 3000); });
+    }
   }
-  throw new Error('Postgres indisponível após retries');
+  console.error('[db] ATENCAO: migracoes falharam. App sobe em modo degradado. Ultimo erro:', state.ultimoErro);
 }
 
-module.exports = { pool, init, q: (text, params) => pool.query(text, params) };
+module.exports = { pool: pool, init: init, q: function (t, p) { return pool.query(t, p); }, TENANT: TENANT, state: state };
