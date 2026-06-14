@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disponibilidade — Premium Pizzas</title>
+<style>
+  :root{ --preto:#0D0D0D; --laranja:#F97316; --cinza:#1c1c1e; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
+  header{ position:sticky; top:0; z-index:10; background:#0d0d0dee; backdrop-filter:blur(8px); border-bottom:1px solid var(--linha); padding:14px 16px; }
+  header b{ color:var(--laranja); }
+  header .sub{ font-size:12px; color:var(--mut); margin-top:2px; }
+  .wrap{ max-width:780px; margin:0 auto; padding:14px; }
+  .filtros{ display:flex; gap:8px; margin-bottom:12px; }
+  .filtros input{ flex:1; background:var(--cinza); border:1px solid var(--linha); color:#fff; border-radius:10px; padding:10px; }
+  h2{ font-size:13px; color:var(--laranja); text-transform:uppercase; letter-spacing:1px; margin:20px 0 8px; }
+  .item{ display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--cinza); border:1px solid var(--linha); border-radius:11px; margin-bottom:8px; }
+  .item .nm{ flex:1; min-width:0; font-weight:600; font-size:14px; }
+  .item .grp{ font-size:11px; color:var(--mut); font-weight:400; }
+  .toggle{ display:flex; gap:4px; flex:0 0 auto; }
+  .toggle button{ border:1px solid var(--linha); background:#16161a; color:var(--mut); border-radius:8px; padding:6px 9px; font-size:11px; font-weight:700; }
+  .toggle button.on[data-s="ATIVO"]{ background:var(--verde); color:#000; border-color:var(--verde); }
+  .toggle button.on[data-s="EM_FALTA"]{ background:var(--amar); color:#000; border-color:var(--amar); }
+  .toggle button.on[data-s="OCULTO"]{ background:var(--verm); color:#fff; border-color:var(--verm); }
+  .prod{ border-left:3px solid var(--laranja); }
+  .muted{ color:var(--mut); font-size:13px; }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--laranja); padding:9px 16px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; }
+  .toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div><b>Disponibilidade</b> — Premium Pizzas</div>
+  <div class="sub">Pausar/liberar reflete na hora no site. Fonte única: Postgres (a verdade).</div>
+</header>
+<div class="wrap">
+  <div class="filtros"><input id="busca" placeholder="Buscar sabor, bebida, item…" oninput="render()"></div>
+  <div id="lista"><p class="muted">Carregando…</p></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API=location.origin; let CAT=[];
+async function carregar(){ try{ const r=await fetch(API+'/api/catalogo'); CAT=(await r.json()).categorias||[]; render(); }catch(e){ document.getElementById('lista').innerHTML='<p class="muted">Erro ao carregar.</p>'; } }
+function badge(cur,s){ return cur===s?'on':''; }
+async function setStatus(tipo,id,status,el){
+  const btns=el.parentElement.querySelectorAll('button'); btns.forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  try{ const r=await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,id,status,por:'operador'})});
+    const d=await r.json(); if(d.ok) toast((d.item.nome||'Item')+' → '+rotulo(status)); else toast(d.erro||'Erro'); }
+  catch(e){ toast('Falha de conexão'); }
+}
+function rotulo(s){ return s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Em falta':'Oculto'; }
+function toggleHTML(tipo,id,cur){ return `<div class="toggle">
+  ${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-s="${s}" class="${badge(cur,s)}">${rotulo(s)}</button>`).join('')}</div>`; }
+function render(){
+  const q=(document.getElementById('busca').value||'').toLowerCase();
+  const el=document.getElementById('lista'); el.innerHTML='';
+  CAT.forEach(c=>{
+    const linhas=[];
+    c.produtos.forEach(p=>{
+      // produto (toggle do produto inteiro)
+      if(!q || p.nome.toLowerCase().includes(q)){
+        linhas.push({tipo:'produto',id:p.id,nome:p.nome,grupo:'produto inteiro',status:p.status,prod:true});
+      }
+      // opcoes (sabores, bordas, etc.)
+      (p.grupos||[]).forEach(g=> g.opcoes.forEach(o=>{
+        if(!q || o.nome.toLowerCase().includes(q) || g.nome.toLowerCase().includes(q))
+          linhas.push({tipo:'opcao',id:o.id,nome:o.nome,grupo:p.nome+' · '+g.nome,status:o.status});
+      }));
+    });
+    if(!linhas.length) return;
+    const h=document.createElement('h2'); h.textContent=c.nome; el.appendChild(h);
+    linhas.forEach(l=>{
+      const d=document.createElement('div'); d.className='item'+(l.prod?' prod':'');
+      d.innerHTML=`<div class="nm">${l.nome}<div class="grp">${l.grupo}</div></div>`+toggleHTML(l.tipo,l.id,l.status);
+      d.querySelectorAll('.toggle button').forEach(b=> b.onclick=()=>setStatus(l.tipo,l.id,b.dataset.s,b));
+      el.appendChild(d);
+    });
+  });
+}
+let tt; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2400); }
+carregar();
+</script>
+</body>
+</html>
