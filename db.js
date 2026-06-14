@@ -96,6 +96,16 @@ async function init(retries) {
           console.log('[db] produtos ja populados (' + r.rows[0].n + ') - seed ignorado');
         }
       } catch (es) { console.log('[db] seed-cardapio aviso:', es.code || es.message); }
+      try {
+        const rp = await pool.query('SELECT COUNT(*)::int AS n FROM preparos WHERE tenant_id=$1', [TENANT]);
+        if (rp.rows[0].n === 0) {
+          const seed2 = fs.readFileSync(path.join(__dirname, 'seed-fase2.sql'), 'utf8');
+          await pool.query(seed2);
+          console.log('[db] seed fase2 (pizza pequena + preparos + insumos) aplicado');
+        } else {
+          console.log('[db] preparos ja populados (' + rp.rows[0].n + ') - seed fase2 ignorado');
+        }
+      } catch (es2) { console.log('[db] seed-fase2 aviso:', es2.code || es2.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');
       return;

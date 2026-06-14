@@ -113,6 +113,15 @@ async function api(req, res, url) {
     await q1('produtos', 'SELECT count(*) n FROM produtos WHERE tenant_id=$1', [TENANT]);
     await q1('opcao_grupos', 'SELECT count(*) n FROM opcao_grupos WHERE tenant_id=$1', [TENANT]);
     await q1('opcoes', 'SELECT count(*) n FROM opcoes WHERE tenant_id=$1', [TENANT]);
+    await q1('preparos', 'SELECT count(*) n FROM preparos WHERE tenant_id=$1', [TENANT]);
+    await q1('preparo_itens', 'SELECT count(*) n FROM preparo_itens WHERE tenant_id=$1', [TENANT]);
+    await q1('insumo_custos', 'SELECT count(*) n FROM insumo_custos WHERE tenant_id=$1', [TENANT]);
+    // introspeccao das tabelas legadas (p/ popular fichas tecnicas com seguranca)
+    out.colunas = {};
+    for (const t of ['manual_montagem', 'estoque_itens_definicao']) {
+      try { const r = await db.q('SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 ORDER BY ordinal_position', ['khardela', t]); out.colunas[t] = r.rows.map(x => x.column_name); }
+      catch (e) { out.colunas[t] = 'ERRO: ' + (e.code || e.message); }
+    }
     return json(res, 200, out);
   }
 
