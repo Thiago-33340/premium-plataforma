@@ -110,10 +110,28 @@ async function api(req, res, url) {
     await q1('customers', 'SELECT count(*) n FROM customers WHERE tenant_id=$1', [TENANT]);
     await q1('orders', 'SELECT count(*) n FROM orders WHERE tenant_id=$1', [TENANT]);
     await q1('mesas', 'SELECT count(*) n FROM mesas WHERE tenant_id=$1', [TENANT]);
+    await q1('produtos', 'SELECT count(*) n FROM produtos WHERE tenant_id=$1', [TENANT]);
+    await q1('opcao_grupos', 'SELECT count(*) n FROM opcao_grupos WHERE tenant_id=$1', [TENANT]);
+    await q1('opcoes', 'SELECT count(*) n FROM opcoes WHERE tenant_id=$1', [TENANT]);
     return json(res, 200, out);
   }
 
   if (sub === 'cardapio' && req.method === 'GET') return json(res, 200, await montarCardapio());
+
+  // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
+  if (sub === 'catalogo' && req.method === 'GET') {
+    try {
+      const cats = await db.q('SELECT id, codigo, nome, ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa IS NOT FALSE ORDER BY ordem, nome', [TENANT]);
+      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, gratuito, status, codigo_externo, ordem FROM produtos WHERE tenant_id=$1 AND status<>$2 ORDER BY ordem, nome', [TENANT, 'OCULTO']);
+      const grupos = await db.q('SELECT id, produto_id, nome, ordem, min_escolhas, max_escolhas, permite_repeticao, regra_preco, condicao FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
+      const opcoes = await db.q('SELECT id, grupo_id, nome, descricao, preco, status, ingredientes, codigo_externo, ordem FROM opcoes WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
+      const opByGrupo = {}; for (const o of opcoes.rows) (opByGrupo[o.grupo_id] = opByGrupo[o.grupo_id] || []).push({ id: o.id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, ingredientes: o.ingredientes || [], codigo: o.codigo_externo || null, ordem: o.ordem });
+      const grByProd = {}; for (const g of grupos.rows) (grByProd[g.produto_id] = grByProd[g.produto_id] || []).push({ id: g.id, nome: g.nome, min: g.min_escolhas, max: g.max_escolhas, repete: g.permite_repeticao, regra: g.regra_preco, condicao: g.condicao || {}, opcoes: opByGrupo[g.id] || [] });
+      const prodByCat = {}; for (const p of prods.rows) (prodByCat[p.categoria_id] = prodByCat[p.categoria_id] || []).push({ id: p.id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, gratuito: p.gratuito, status: p.status, codigo: p.codigo_externo || null, grupos: grByProd[p.id] || [] });
+      const categorias = cats.rows.map(c => ({ id: c.id, codigo: c.codigo, nome: c.nome, produtos: prodByCat[c.id] || [] })).filter(c => c.produtos.length);
+      return json(res, 200, { tenant: TENANT, categorias });
+    } catch (e) { return json(res, 200, { tenant: TENANT, categorias: [], aviso: 'modelo novo ainda nao populado: ' + (e.code || e.message) }); }
+  }
 
   if (sub === 'auth' && req.method === 'POST') {
     const b = await readBody(req);

@@ -85,6 +85,17 @@ async function init(retries) {
         await pool.query(modelo);
         console.log('[db] modelo completo de restaurante aplicado');
       } catch (em) { console.log('[db] modelo-completo aviso:', em.code || em.message); }
+      try {
+        const r = await pool.query('SELECT COUNT(*)::int AS n FROM produtos WHERE tenant_id=$1', [TENANT]);
+        if (r.rows[0].n === 0) {
+          const seed = fs.readFileSync(path.join(__dirname, 'seed-cardapio.sql'), 'utf8');
+          await pool.query(seed);
+          const r2 = await pool.query('SELECT COUNT(*)::int AS n FROM produtos WHERE tenant_id=$1', [TENANT]);
+          console.log('[db] seed do cardapio (modelo novo) aplicado - produtos: ' + r2.rows[0].n);
+        } else {
+          console.log('[db] produtos ja populados (' + r.rows[0].n + ') - seed ignorado');
+        }
+      } catch (es) { console.log('[db] seed-cardapio aviso:', es.code || es.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');
       return;
