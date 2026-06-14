@@ -55,9 +55,16 @@
   <!-- LOGIN -->
   <div class="scr on" id="s1">
     <h1>Contagem de estoque</h1>
-    <div class="sub">Entre com seu nome ou apelido pra começar a contagem do turno.</div>
-    <input class="field" id="login" placeholder="Seu nome (ex: Dany)" autocomplete="off">
-    <button class="btn" onclick="entrar()">Entrar</button>
+    <div class="sub" id="loginSub">Entre com seu nome ou apelido pra começar a contagem do turno.</div>
+    <div id="passoNome">
+      <input class="field" id="login" placeholder="Seu nome (ex: Dany)" autocomplete="off" autocapitalize="off">
+      <button class="btn" onclick="passo1()">Continuar</button>
+    </div>
+    <div id="passoPin" style="display:none">
+      <input class="field" id="pin" placeholder="PIN de 6 dígitos" inputmode="numeric" maxlength="6" autocomplete="off" style="text-align:center;letter-spacing:8px;font-size:22px">
+      <button class="btn" onclick="entrar()">Entrar</button>
+      <button class="btn ghost" onclick="voltarNome()">Voltar</button>
+    </div>
     <p class="muted" id="loginErr" style="color:var(--verm)"></p>
   </div>
 
@@ -112,19 +119,36 @@ const $=id=>document.getElementById(id);
 function show(n){ document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on')); $('s'+n).classList.add('on'); $('prog').style.display = n===3?'block':'none'; }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2400); }
 
-async function entrar(){
+async function passo1(){
   const login=$('login').value.trim(); if(!login){ return; }
   $('loginErr').textContent='';
   try{
     const r=await fetch(API+'/api/estoque/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})});
     const d=await r.json();
-    if(!d.ok){ $('loginErr').textContent=d.erro||'Não encontrado'; return; }
-    col=d.colaborador; setores=d.setores||[];
-    $('who').textContent=col.nome; $('nome2').textContent=col.nome.split(' ')[0];
-    renderSetores(); show(2);
+    if(d.precisa_pin){ $('loginSub').textContent='Olá, '+(d.nome||login).split(' ')[0]+'. Digite seu PIN.'; $('passoNome').style.display='none'; $('passoPin').style.display='block'; setTimeout(()=>$('pin').focus(),100); return; }
+    if(d.ok){ aposLogin(d); return; }
+    $('loginErr').textContent=d.erro||'Não encontrado';
   }catch(e){ $('loginErr').textContent='Falha de conexão'; }
 }
-$('login') && ($('login').addEventListener('keydown',e=>{ if(e.key==='Enter') entrar(); }));
+async function entrar(){
+  const login=$('login').value.trim(); const pin=$('pin').value.trim();
+  if(pin.length<4){ $('loginErr').textContent='Digite o PIN'; return; }
+  $('loginErr').textContent='';
+  try{
+    const r=await fetch(API+'/api/estoque/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})});
+    const d=await r.json();
+    if(d.ok){ aposLogin(d); return; }
+    $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; $('pin').focus();
+  }catch(e){ $('loginErr').textContent='Falha de conexão'; }
+}
+function aposLogin(d){
+  col=d.colaborador; setores=d.setores||[];
+  $('who').textContent=col.nome; $('nome2').textContent=col.nome.split(' ')[0];
+  renderSetores(); show(2);
+}
+function voltarNome(){ $('passoPin').style.display='none'; $('passoNome').style.display='block'; $('pin').value=''; $('loginErr').textContent=''; $('loginSub').textContent='Entre com seu nome ou apelido pra começar a contagem do turno.'; }
+$('login') && ($('login').addEventListener('keydown',e=>{ if(e.key==='Enter') passo1(); }));
+$('pin') && ($('pin').addEventListener('keydown',e=>{ if(e.key==='Enter') entrar(); }));
 $('turnos').querySelectorAll('button').forEach(b=>b.onclick=()=>{ turno=b.dataset.t; $('turnos').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
 
 function renderSetores(){
@@ -189,7 +213,7 @@ async function finalizar(){
   }catch(e){ toast('Falha de conexão'); btn.disabled=false; btn.textContent='Finalizar contagem'; }
 }
 function outroSetor(){ renderSetores(); show(2); }
-function sair(){ col=null; $('login').value=''; $('who').textContent=''; show(1); }
+function sair(){ col=null; $('login').value=''; $('who').textContent=''; voltarNome(); show(1); }
 </script>
 </body>
 </html>
