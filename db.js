@@ -106,6 +106,16 @@ async function init(retries) {
           console.log('[db] preparos ja populados (' + rp.rows[0].n + ') - seed fase2 ignorado');
         }
       } catch (es2) { console.log('[db] seed-fase2 aviso:', es2.code || es2.message); }
+      try {
+        const rf = await pool.query('SELECT COUNT(*)::int AS n FROM ficha_itens WHERE tenant_id=$1', [TENANT]);
+        if (rf.rows[0].n === 0) {
+          const seed3 = fs.readFileSync(path.join(__dirname, 'seed-fase3.sql'), 'utf8');
+          await pool.query(seed3);
+          console.log('[db] seed fase3 (fichas tecnicas) aplicado');
+        } else {
+          console.log('[db] fichas ja populadas (' + rf.rows[0].n + ') - seed fase3 ignorado');
+        }
+      } catch (es3) { console.log('[db] seed-fase3 aviso:', es3.code || es3.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');
       return;

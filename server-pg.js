@@ -116,6 +116,7 @@ async function api(req, res, url) {
     await q1('preparos', 'SELECT count(*) n FROM preparos WHERE tenant_id=$1', [TENANT]);
     await q1('preparo_itens', 'SELECT count(*) n FROM preparo_itens WHERE tenant_id=$1', [TENANT]);
     await q1('insumo_custos', 'SELECT count(*) n FROM insumo_custos WHERE tenant_id=$1', [TENANT]);
+    await q1('ficha_itens', 'SELECT count(*) n FROM ficha_itens WHERE tenant_id=$1', [TENANT]);
     // introspeccao das tabelas legadas (p/ popular fichas tecnicas com seguranca)
     out.colunas = {};
     for (const t of ['manual_montagem', 'estoque_itens_definicao']) {

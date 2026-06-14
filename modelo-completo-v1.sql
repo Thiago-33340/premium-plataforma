@@ -146,6 +146,27 @@ ALTER TABLE manual_montagem ADD COLUMN IF NOT EXISTS preparo_id UUID;
 ALTER TABLE manual_montagem ADD COLUMN IF NOT EXISTS custo_linha NUMERIC(12,4);
 CREATE INDEX IF NOT EXISTS idx_manual_opcao ON manual_montagem(tenant_id, opcao_id);
 
+-- B.4 FICHA TÉCNICA GENÉRICA — receita de uma opção/produto em insumos.
+--   Genérica (qualquer restaurante): liga opcao_id (ex: sabor) -> insumo + quantidade.
+--   É a fonte do CMV junto com insumo_custos. manual_montagem (legada, pizza)
+--   permanece pra compatibilidade; o modelo novo usa ficha_itens.
+CREATE TABLE IF NOT EXISTS ficha_itens (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  opcao_id     UUID REFERENCES opcoes(id) ON DELETE CASCADE,
+  produto_id   UUID REFERENCES produtos(id) ON DELETE CASCADE,
+  insumo_nome  TEXT NOT NULL,
+  insumo_id    VARCHAR(40),
+  quantidade   NUMERIC(12,4),
+  unidade      VARCHAR(20),
+  base_medida  TEXT,
+  custo_linha  NUMERIC(12,4),
+  fonte        TEXT,
+  meta         JSONB NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_ficha_opcao ON ficha_itens(tenant_id, opcao_id);
+CREATE INDEX IF NOT EXISTS idx_ficha_produto ON ficha_itens(tenant_id, produto_id);
+
 -- ============================================================
 -- BLOCO C — COMPRAS / FORNECEDORES / CUSTO (CMV)
 -- ============================================================
@@ -183,6 +204,23 @@ JOIN menu_categorias c ON c.id = p.categoria_id
 WHERE p.status <> 'OCULTO' AND c.ativa
 ORDER BY c.ordem, p.ordem;
 
+-- D.2 CMV por opção: ficha_itens x custo mais recente do insumo.
+--   Soma quantidade x custo_por_uso. Enquanto custos não preenchidos, custo=0.
+CREATE OR REPLACE VIEW v_cmv_opcao AS
+SELECT f.tenant_id, f.opcao_id, o.nome AS opcao_nome,
+       SUM(f.quantidade * COALESCE(ic.custo, 0)) AS custo_total,
+       COUNT(*) AS itens
+FROM ficha_itens f
+LEFT JOIN opcoes o ON o.id = f.opcao_id
+LEFT JOIN LATERAL (
+  SELECT custo FROM insumo_custos c
+  WHERE c.tenant_id = f.tenant_id AND lower(c.insumo_nome) = lower(f.insumo_nome)
+  ORDER BY c.data DESC LIMIT 1
+) ic ON TRUE
+WHERE f.opcao_id IS NOT NULL
+GROUP BY f.tenant_id, f.opcao_id, o.nome;
+
 -- ============================================================
--- FIM. Próximo passo: popular (seed) a partir da planilha v4 real.
+-- FIM. Seed da planilha v4: seed-cardapio.sql (Fase1), seed-fase2.sql,
+-- seed-fase3.sql (fichas técnicas). Todos idempotentes, aplicados no boot.
 -- ============================================================
