@@ -245,9 +245,16 @@ async function api(req, res, url) {
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     const alvo = norm(b.login);
     if (!alvo) return json(res, 400, { erro: 'informe o login' });
-    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, setores_permitidos FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, setores_permitidos, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome) === alvo || norm(x.nome).split(' ')[0] === alvo);
     if (!col) return json(res, 404, { ok: false, erro: 'Colaborador nao encontrado ou inativo.' });
+    // validacao de PIN (6 digitos). Se o colaborador tem pin_hash, exige e valida via bcrypt.
+    const pin = String(b.pin || '').replace(/\D/g, '');
+    if (col.pin_hash) {
+      if (!pin) return json(res, 200, { ok: false, precisa_pin: true, nome: col.nome });
+      const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
+      if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
+    }
     const setoresPerm = col.setores_permitidos || [];
     const veTudo = col.perfil_principal === 'GESTOR' || setoresPerm.map(s => String(s).toUpperCase()).includes('TUDO');
     let setores;
@@ -340,6 +347,78 @@ async function api(req, res, url) {
     } catch (e) { return json(res, 500, { erro: e.code || e.message }); }
   }
 
+  // ===================== STAFF LOGIN (mesas/gestor) por apelido + PIN =====================
+  if (sub === 'staff' && seg[2] === 'login' && req.method === 'POST') {
+    const b = await readBody(req);
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const alvo = norm(b.login);
+    if (!alvo) return json(res, 400, { erro: 'informe o login' });
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);
+    if (!col) return json(res, 404, { ok: false, erro: 'Usuario nao encontrado.' });
+    const pin = String(b.pin || '').replace(/\D/g, '');
+    if (col.pin_hash) {
+      if (!pin) return json(res, 200, { ok: false, precisa_pin: true, nome: col.nome });
+      const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
+      if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
+    }
+    const perfis = [col.perfil_principal].concat(col.perfis_adicionais || []);
+    const ehGarcom = perfis.includes('GARCOM');
+    const ehGestor = perfis.some(p => ['GESTOR', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
+    return json(res, 200, { ok: true, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal,
+      pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfis.includes('GESTOR') } });
+  }
+
+  // ===================== MESAS / COMANDAS =====================
+  if (sub === 'mesas' && !seg[2] && req.method === 'GET') {
+    const r = await db.q(`
+      SELECT m.numero, m.ativa, c.id AS comanda_id, c.nome_cliente, c.aberta_em, c.aberta_por,
+        COALESCE((SELECT SUM(ci.preco_unit*ci.quantidade) FROM comanda_itens ci WHERE ci.comanda_id=c.id AND ci.status='PEDIDO'),0) AS total,
+        (SELECT COUNT(*) FROM comanda_itens ci WHERE ci.comanda_id=c.id AND ci.status='PEDIDO') AS qtd_itens
+      FROM mesas m
+      LEFT JOIN comandas c ON c.mesa_numero=m.numero AND c.tenant_id=m.tenant_id AND c.status='ABERTA'
+      WHERE m.tenant_id=$1 AND m.ativa ORDER BY m.numero`, [TENANT]);
+    return json(res, 200, { mesas: r.rows.map(m => ({ numero: m.numero, ocupada: !!m.comanda_id, comanda_id: m.comanda_id,
+      nome_cliente: m.nome_cliente, aberta_em: m.aberta_em, total: Number(m.total), qtd_itens: Number(m.qtd_itens) })) });
+  }
+  if (sub === 'mesas' && seg[2] && seg[3] === 'abrir' && req.method === 'POST') {
+    const b = await readBody(req); const numero = parseInt(seg[2], 10);
+    const ex = await db.q(`SELECT id FROM comandas WHERE tenant_id=$1 AND mesa_numero=$2 AND status='ABERTA'`, [TENANT, numero]);
+    if (ex.rows[0]) return json(res, 200, { ok: true, comanda_id: ex.rows[0].id, ja_aberta: true });
+    const r = await db.q(`INSERT INTO comandas (tenant_id, mesa_numero, nome_cliente, status, aberta_por) VALUES ($1,$2,$3,'ABERTA',$4) RETURNING id`,
+      [TENANT, numero, b.nome_cliente || ('Mesa ' + numero), (b.por_nome || b.por || 'equipe').slice(0, 20)]);
+    return json(res, 201, { ok: true, comanda_id: r.rows[0].id });
+  }
+  if (sub === 'mesas' && seg[2] && !seg[3] && req.method === 'GET') {
+    const numero = parseInt(seg[2], 10);
+    const c = await db.q(`SELECT * FROM comandas WHERE tenant_id=$1 AND mesa_numero=$2 AND status='ABERTA'`, [TENANT, numero]);
+    if (!c.rows[0]) return json(res, 200, { aberta: false, numero });
+    const itens = await db.q(`SELECT id, nome, resumo, quantidade, preco_unit, criado_por_nome, criado_em FROM comanda_itens WHERE comanda_id=$1 AND status='PEDIDO' ORDER BY criado_em`, [c.rows[0].id]);
+    const total = itens.rows.reduce((s, it) => s + Number(it.preco_unit) * it.quantidade, 0);
+    return json(res, 200, { aberta: true, numero, comanda: c.rows[0], itens: itens.rows, total: money(total) });
+  }
+  if (sub === 'mesas' && seg[2] && seg[3] === 'item' && req.method === 'POST') {
+    const b = await readBody(req); const numero = parseInt(seg[2], 10);
+    const c = await db.q(`SELECT id FROM comandas WHERE tenant_id=$1 AND mesa_numero=$2 AND status='ABERTA'`, [TENANT, numero]);
+    if (!c.rows[0]) return json(res, 400, { erro: 'mesa sem comanda aberta' });
+    const r = await db.q(`INSERT INTO comanda_itens (tenant_id, comanda_id, nome, resumo, item, quantidade, preco_unit, criado_por, criado_por_nome)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [TENANT, c.rows[0].id, b.nome || 'Item', b.resumo || '', JSON.stringify(b.item || {}), b.quantidade || 1, money(b.preco_unit || 0), (b.por || '').slice(0, 40), b.por_nome || '']);
+    return json(res, 201, { ok: true, item_id: r.rows[0].id });
+  }
+  if (sub === 'mesas' && seg[2] && seg[3] === 'item' && seg[4] && req.method === 'DELETE') {
+    await db.q(`UPDATE comanda_itens SET status='CANCELADO' WHERE id=$1 AND tenant_id=$2`, [seg[4], TENANT]);
+    return json(res, 200, { ok: true });
+  }
+  if (sub === 'mesas' && seg[2] && seg[3] === 'fechar' && req.method === 'POST') {
+    const b = await readBody(req); const numero = parseInt(seg[2], 10);
+    const c = await db.q(`SELECT id FROM comandas WHERE tenant_id=$1 AND mesa_numero=$2 AND status='ABERTA'`, [TENANT, numero]);
+    if (!c.rows[0]) return json(res, 400, { erro: 'mesa sem comanda aberta' });
+    const tot = await db.q(`SELECT COALESCE(SUM(preco_unit*quantidade),0) t FROM comanda_itens WHERE comanda_id=$1 AND status='PEDIDO'`, [c.rows[0].id]);
+    await db.q(`UPDATE comandas SET status='FECHADA', fechada_em=NOW(), forma_pagamento=$2, total=$3 WHERE id=$1`, [c.rows[0].id, b.forma_pagamento || 'DIN', money(Number(tot.rows[0].t))]);
+    return json(res, 200, { ok: true, total: money(Number(tot.rows[0].t)) });
+  }
+
   if (sub === 'config' && req.method === 'GET') {
     const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const cfg = (r.rows[0] && r.rows[0].config) || {};
@@ -370,6 +449,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
     if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
     if (p === '/estoque' || p === '/estoque/') return serveStatic(res, path.join(ROOT, 'public/estoque.html'));
+    if (p === '/mesas' || p === '/mesas/') return serveStatic(res, path.join(ROOT, 'public/mesas.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);

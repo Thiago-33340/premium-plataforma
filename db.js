@@ -70,7 +70,25 @@ const MIGRATIONS = [
      ultima_lng NUMERIC(10,6),
      ultima_atualizacao TIMESTAMPTZ
    )`,
-  "CREATE SEQUENCE IF NOT EXISTS web_pedido_seq START 1"
+  "CREATE SEQUENCE IF NOT EXISTS web_pedido_seq START 1",
+  `CREATE TABLE IF NOT EXISTS comanda_itens (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     comanda_id UUID NOT NULL REFERENCES comandas(id) ON DELETE CASCADE,
+     nome TEXT NOT NULL,
+     resumo TEXT,
+     item JSONB NOT NULL DEFAULT '{}',
+     quantidade INT NOT NULL DEFAULT 1,
+     preco_unit NUMERIC(10,2) NOT NULL DEFAULT 0,
+     criado_por VARCHAR(40),
+     criado_por_nome TEXT,
+     status VARCHAR(20) NOT NULL DEFAULT 'PEDIDO',
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_comanda_itens ON comanda_itens(comanda_id, status)",
+  "ALTER TABLE comandas ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(20)",
+  "ALTER TABLE comandas ADD COLUMN IF NOT EXISTS total NUMERIC(10,2)",
+  `INSERT INTO mesas (tenant_id, numero) SELECT '${TENANT}', g FROM generate_series(1,12) g ON CONFLICT (tenant_id, numero) DO NOTHING`
 ];
 
 const state = { migrationsOk: false, ultimoErro: null };
@@ -116,6 +134,11 @@ async function init(retries) {
           console.log('[db] fichas ja populadas (' + rf.rows[0].n + ') - seed fase3 ignorado');
         }
       } catch (es3) { console.log('[db] seed-fase3 aviso:', es3.code || es3.message); }
+      try {
+        const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
+        await pool.query(seedp);
+        console.log('[db] seed de PINs (idempotente) aplicado');
+      } catch (esp) { console.log('[db] seed-pins aviso:', esp.code || esp.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');
       return;
