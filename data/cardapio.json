@@ -1,0 +1,872 @@
+{
+  "marca": "Premium Pizzas",
+  "slogan": "COM AMOR",
+  "tenant": "khardela:premiumpizzas:sjrp",
+  "cores": {
+    "preto": "#0D0D0D",
+    "laranja": "#F97316",
+    "branco": "#FFFFFF"
+  },
+  "sabores": [
+    {
+      "codigo": "6005397.4907255",
+      "nome": "Calabresa",
+      "descricao": "Molho Premium, Mussarela, Calabresa, Cebola Roxa, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "calabresa",
+        "cebola roxa",
+        "oregano"
+      ],
+      "ordem": 1,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907256",
+      "nome": "Calabacon",
+      "descricao": "Molho Premium, Calabresa, Bacon, Mussarela, Cebola Roxa, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "calabresa",
+        "bacon",
+        "mussarela",
+        "cebola roxa",
+        "oregano"
+      ],
+      "ordem": 2,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907253",
+      "nome": "Bacon com Batata Palha",
+      "descricao": "Molho Premium, Mussarela, Bacon, Batata Palha, Milho, Tomate, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "bacon",
+        "batata palha",
+        "milho",
+        "tomate",
+        "oregano"
+      ],
+      "ordem": 3,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907257",
+      "nome": "Frango com Bacon",
+      "descricao": "Molho Premium, Frango, Mussarela, Bacon, Milho, Azeitona, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "frango",
+        "mussarela",
+        "bacon",
+        "milho",
+        "azeitona",
+        "oregano"
+      ],
+      "ordem": 4,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907258",
+      "nome": "Frango com Catupiry",
+      "descricao": "Molho Premium, Frango, Mussarela, Catupiry, Milho, Azeitona, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "frango",
+        "mussarela",
+        "catupiry",
+        "milho",
+        "azeitona",
+        "oregano"
+      ],
+      "ordem": 5,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907259",
+      "nome": "Margherita",
+      "descricao": "Molho Premium, Mussarela, Tomate, Manjericão, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "tomate",
+        "manjericao",
+        "oregano"
+      ],
+      "ordem": 6,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907260",
+      "nome": "Mussarela",
+      "descricao": "Molho Premium, Mussarela, Tomate, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "tomate",
+        "oregano"
+      ],
+      "ordem": 7,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907261",
+      "nome": "Portuguesa",
+      "descricao": "Molho Premium, Mussarela, Calabresa, Presunto, Ovo, Cebola, Azeitona, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "calabresa",
+        "presunto",
+        "ovo",
+        "cebola",
+        "azeitona",
+        "oregano"
+      ],
+      "ordem": 8,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907262",
+      "nome": "Mussarela com Bacon",
+      "descricao": "Molho Premium, Mussarela, Tomate, Milho, Bacon, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "tomate",
+        "milho",
+        "bacon",
+        "oregano"
+      ],
+      "ordem": 9,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907263",
+      "nome": "Palmito Cremoso",
+      "descricao": "Molho Premium, Mussarela, Palmito, Milho, Catupiry, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "palmito",
+        "milho",
+        "catupiry",
+        "oregano"
+      ],
+      "ordem": 10,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907264",
+      "nome": "Sexta-Santa",
+      "descricao": "Molho Premium, Mussarela, Palmito, Tomate, Milho, Catupiry, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "palmito",
+        "tomate",
+        "milho",
+        "catupiry",
+        "oregano"
+      ],
+      "ordem": 11,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907266",
+      "nome": "Rúcula Premium",
+      "descricao": "Molho Premium, Mussarela, Palmito, Milho, Tomate Cereja, Rúcula, Azeitona, Azeite, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "palmito",
+        "milho",
+        "tomate cereja",
+        "rucula",
+        "azeitona",
+        "azeite",
+        "oregano"
+      ],
+      "ordem": 12,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907267",
+      "nome": "Quatro Queijos",
+      "descricao": "Molho Premium, Mussarela, Provolone, Catupiry, Parmesão, Orégano",
+      "preco_meia": 47.45,
+      "preco_inteira": 94.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "provolone",
+        "catupiry",
+        "parmesao",
+        "oregano"
+      ],
+      "ordem": 13,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907268",
+      "nome": "5 Queijos",
+      "descricao": "Molho Premium, Mussarela, Provolone, Catupiry, Cheddar, Parmesão, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "provolone",
+        "catupiry",
+        "cheddar",
+        "parmesao",
+        "oregano"
+      ],
+      "ordem": 14,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907269",
+      "nome": "Pepperoni",
+      "descricao": "Molho Premium, Mussarela, Pepperoni, Tomate Cereja, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "pepperoni",
+        "tomate cereja",
+        "oregano"
+      ],
+      "ordem": 15,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907270",
+      "nome": "Lombo",
+      "descricao": "Molho Premium, Mussarela, Lombo Canadense, Milho, Catupiry, Alho-Poró, Bacon, Orégano",
+      "preco_meia": 64.95,
+      "preco_inteira": 129.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "lombo",
+        "milho",
+        "catupiry",
+        "alho poro",
+        "bacon",
+        "oregano"
+      ],
+      "ordem": 16,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907271",
+      "nome": "Do Cheff",
+      "descricao": "Molho Premium, Mussarela, Palmito, Milho, Calabresa, Bacon, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "palmito",
+        "milho",
+        "calabresa",
+        "bacon",
+        "oregano"
+      ],
+      "ordem": 17,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907272",
+      "nome": "Frango Cremoso",
+      "descricao": "Molho Premium, Frango, Mussarela, Milho, Catupiry, Tomate, Bacon em Cubos, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "frango",
+        "mussarela",
+        "milho",
+        "catupiry",
+        "tomate",
+        "bacon em cubos",
+        "oregano"
+      ],
+      "ordem": 18,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907273",
+      "nome": "Premium",
+      "descricao": "Molho Premium, Frango, Mussarela, Calabresa, Bacon, Milho, Azeitona, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "frango",
+        "mussarela",
+        "calabresa",
+        "bacon",
+        "milho",
+        "azeitona",
+        "oregano"
+      ],
+      "ordem": 19,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907274",
+      "nome": "Mr. Pig",
+      "descricao": "Molho Premium, Mussarela, Calabresa, Catupiry, Milho, Tomate, Bacon em Cubos, Orégano",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "calabresa",
+        "catupiry",
+        "milho",
+        "tomate",
+        "bacon em cubos",
+        "oregano"
+      ],
+      "ordem": 20,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.4907276",
+      "nome": "Suprema",
+      "descricao": "Molho Premium, Mussarela, Presunto, Calabresa, Bacon, Milho, Catupiry, Orégano",
+      "preco_meia": 64.95,
+      "preco_inteira": 129.9,
+      "ingredientes": [
+        "molho premium",
+        "mussarela",
+        "presunto",
+        "calabresa",
+        "bacon",
+        "milho",
+        "catupiry",
+        "oregano"
+      ],
+      "ordem": 21,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.5074180",
+      "nome": "Mignon",
+      "descricao": "Molho Premium, Filé Mignon, Mussarela, Tomate Cereja, Parmesão, Orégano",
+      "preco_meia": 74.95,
+      "preco_inteira": 149.9,
+      "ingredientes": [
+        "molho premium",
+        "mignon",
+        "mussarela",
+        "tomate cereja",
+        "parmesao",
+        "oregano"
+      ],
+      "ordem": 22,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.5074182",
+      "nome": "Mignon Cremosa",
+      "descricao": "Molho Premium, Filé Mignon, Mussarela, Tomate Cereja, Catupiry, Orégano",
+      "preco_meia": 74.95,
+      "preco_inteira": 149.9,
+      "ingredientes": [
+        "molho premium",
+        "mignon",
+        "mussarela",
+        "tomate cereja",
+        "catupiry",
+        "oregano"
+      ],
+      "ordem": 23,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.12881556",
+      "nome": "Mignon com Fritas",
+      "descricao": "Molho Premium, Filé Mignon, Mussarela, Bacon em Cubos, Batata Frita, Orégano",
+      "preco_meia": 74.95,
+      "preco_inteira": 149.9,
+      "ingredientes": [
+        "molho premium",
+        "mignon",
+        "mussarela",
+        "bacon em cubos",
+        "batata frita",
+        "oregano"
+      ],
+      "ordem": 24,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.12881559",
+      "nome": "Camarão Rosa",
+      "descricao": "Molho Premium, Camarão Rosa, Mussarela, Catupiry, Pimentões, Tomate Cereja, Alho-Poró, Azeite, Limão, Sal, Orégano",
+      "preco_meia": 89.95,
+      "preco_inteira": 179.9,
+      "ingredientes": [
+        "molho premium",
+        "camarao",
+        "mussarela",
+        "catupiry",
+        "pimentao",
+        "tomate cereja",
+        "alho poro",
+        "azeite",
+        "limao",
+        "sal",
+        "oregano"
+      ],
+      "ordem": 25,
+      "doce": false
+    },
+    {
+      "codigo": "6005397.12881557",
+      "nome": "Branco Supremo",
+      "descricao": "Chocolate Branco, Morangos, Chips Branco",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate branco",
+        "morango",
+        "chips branco"
+      ],
+      "ordem": 26,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907277",
+      "nome": "Choco Premium",
+      "descricao": "Nutella, Ferrero Rocher, Avelã Triturada",
+      "preco_meia": 64.95,
+      "preco_inteira": 129.9,
+      "ingredientes": [
+        "nutella",
+        "ferrero rocher",
+        "avela"
+      ],
+      "ordem": 27,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907279",
+      "nome": "Diamante Negro",
+      "descricao": "Chocolate ao Leite, Diamante Negro, Chips ao Leite",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate ao leite",
+        "diamante negro",
+        "chips ao leite"
+      ],
+      "ordem": 28,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907280",
+      "nome": "Ouro Branco",
+      "descricao": "Chocolate Branco, Ouro Branco, Chips Branco",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate branco",
+        "ouro branco",
+        "chips branco"
+      ],
+      "ordem": 29,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907281",
+      "nome": "Prestigio",
+      "descricao": "Chocolate ao Leite, Coco Chips, Prestígio",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate ao leite",
+        "coco",
+        "prestigio"
+      ],
+      "ordem": 30,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907282",
+      "nome": "Sensação",
+      "descricao": "Chocolate ao Leite, Morangos, Chips ao Leite",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate ao leite",
+        "morango",
+        "chips ao leite"
+      ],
+      "ordem": 31,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907283",
+      "nome": "Sonho de Valsa",
+      "descricao": "Chocolate ao Leite, Sonho de Valsa, Chips ao Leite",
+      "preco_meia": 44.95,
+      "preco_inteira": 89.9,
+      "ingredientes": [
+        "chocolate ao leite",
+        "sonho de valsa",
+        "chips ao leite"
+      ],
+      "ordem": 32,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.12881558",
+      "nome": "Rafaello",
+      "descricao": "Chocolate Branco, Coco Chips, Morangos, Raffaello",
+      "preco_meia": 64.95,
+      "preco_inteira": 129.9,
+      "ingredientes": [
+        "chocolate branco",
+        "coco",
+        "morango",
+        "raffaello"
+      ],
+      "ordem": 33,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.4907278",
+      "nome": "Nutella com Morango",
+      "descricao": "Nutella, Morangos, Morango em Cubos",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "nutella",
+        "morango"
+      ],
+      "ordem": 34,
+      "doce": true
+    },
+    {
+      "codigo": "6005397.12881560",
+      "nome": "Ninho com Nutella",
+      "descricao": "Brigadeiro de Ninho, Nutella, Leite Ninho polvilhado, Uva, Morangos",
+      "preco_meia": 59.95,
+      "preco_inteira": 119.9,
+      "ingredientes": [
+        "brigadeiro de ninho",
+        "nutella",
+        "leite ninho",
+        "uva",
+        "morango"
+      ],
+      "ordem": 35,
+      "doce": true
+    }
+  ],
+  "bebidas": [
+    {
+      "codigo": "13071873",
+      "nome": "Sprite Zero 310ml",
+      "descricao": "Refrigerante Sprite Zero Açúcar 310ml",
+      "preco": 6.9,
+      "ordem": 1
+    },
+    {
+      "codigo": "36260474",
+      "nome": "Guaraná Antártica Zero 350ml",
+      "descricao": "Refrigerante Guaraná Antártica Zero 350ml",
+      "preco": 6.9,
+      "ordem": 2
+    },
+    {
+      "codigo": "36269254",
+      "nome": "Suco Morango Copo",
+      "descricao": "Suco de Copo - Morango",
+      "preco": 8.9,
+      "ordem": 3
+    },
+    {
+      "codigo": "36269257",
+      "nome": "Suco Laranja Copo",
+      "descricao": "Suco de Copo - Laranja",
+      "preco": 8.9,
+      "ordem": 4
+    },
+    {
+      "codigo": "36547101",
+      "nome": "Original 300ml",
+      "descricao": "Cerveja Original 300ml",
+      "preco": 8.9,
+      "ordem": 5
+    },
+    {
+      "codigo": "36547104",
+      "nome": "Heineken 330ml",
+      "descricao": "Cerveja Heineken 330ml",
+      "preco": 9.9,
+      "ordem": 6
+    },
+    {
+      "codigo": "36547819",
+      "nome": "Coca Cola 1L",
+      "descricao": "Refrigerante Coca-Cola 1L",
+      "preco": 12.9,
+      "ordem": 7
+    },
+    {
+      "codigo": "36547830",
+      "nome": "Coca Cola Zero 1L",
+      "descricao": "Refrigerante Coca-Cola Zero Açúcar 1L",
+      "preco": 12.9,
+      "ordem": 8
+    },
+    {
+      "codigo": "6005278",
+      "nome": "Coca-Cola Lata Zero 310ml",
+      "descricao": "Refrigerante Coca-Cola Lata Zero Açúcar 310ml",
+      "preco": 6.9,
+      "ordem": 9
+    },
+    {
+      "codigo": "6005280",
+      "nome": "Coca-Cola Lata 310ml",
+      "descricao": "Refrigerante Coca-Cola Lata 310ml",
+      "preco": 6.9,
+      "ordem": 10
+    },
+    {
+      "codigo": "6005282",
+      "nome": "Coca Cola 2L",
+      "descricao": "Refrigerante Coca-Cola 2L",
+      "preco": 17.9,
+      "ordem": 11
+    },
+    {
+      "codigo": "6005284",
+      "nome": "Coca Cola 2L Zero",
+      "descricao": "Refrigerante Coca-Cola Zero 2L",
+      "preco": 17.9,
+      "ordem": 12
+    },
+    {
+      "codigo": "6005286",
+      "nome": "Coca Cola 1.5L",
+      "descricao": "Refrigerante Coca-Cola 1,5L",
+      "preco": 14.9,
+      "ordem": 13
+    },
+    {
+      "codigo": "6005287",
+      "nome": "Coca Cola 1.5L Zero",
+      "descricao": "Refrigerante Coca-Cola Zero 1,5L",
+      "preco": 14.9,
+      "ordem": 14
+    },
+    {
+      "codigo": "6005294",
+      "nome": "Suco Del Valle Uva 1L",
+      "descricao": "Suco Del Valle Uva Sem Açúcar 1L",
+      "preco": 14.0,
+      "ordem": 15
+    },
+    {
+      "codigo": "6129266",
+      "nome": "Água sem Gás 500ml",
+      "descricao": "Água Mineral sem Gás 500ml",
+      "preco": 5.0,
+      "ordem": 16
+    },
+    {
+      "codigo": "6129268",
+      "nome": "Água com Gás 500ml",
+      "descricao": "Água Mineral com Gás 500ml",
+      "preco": 5.0,
+      "ordem": 17
+    }
+  ],
+  "adicionais": [
+    {
+      "codigo": "6005397.4907328",
+      "tipo": "adicional",
+      "nome": "Adicional - Bacon",
+      "descricao": "Bacon adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 1
+    },
+    {
+      "codigo": "6005397.4907053",
+      "tipo": "extra",
+      "nome": "Heinz Ketchup + Maionese 12un",
+      "descricao": "Sachês Heinz - Ketchup e Maionese - 12 unidades",
+      "preco": 3.99,
+      "ordem": 1
+    },
+    {
+      "codigo": "6005397.12881565",
+      "tipo": "adicional",
+      "nome": "Adicional - Batata Palha",
+      "descricao": "Batata Palha adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 2
+    },
+    {
+      "codigo": "6005397.4907329",
+      "tipo": "adicional",
+      "nome": "Adicional - Catupiry",
+      "descricao": "Catupiry adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 3
+    },
+    {
+      "codigo": "6005397.12881566",
+      "tipo": "adicional",
+      "nome": "Adicional - Cebola Roxa",
+      "descricao": "Cebola Roxa adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 4
+    },
+    {
+      "codigo": "6005397.4907330",
+      "tipo": "adicional",
+      "nome": "Adicional - Cheddar",
+      "descricao": "Cheddar adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 5
+    },
+    {
+      "codigo": "6005397.4907333",
+      "tipo": "adicional",
+      "nome": "Adicional - Milho",
+      "descricao": "Milho adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 6
+    },
+    {
+      "codigo": "6005397.4907332",
+      "tipo": "adicional",
+      "nome": "Adicional - Palmito",
+      "descricao": "Palmito adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 7
+    },
+    {
+      "codigo": "6005397.4907331",
+      "tipo": "adicional",
+      "nome": "Adicional - Parmesão",
+      "descricao": "Parmesão adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 8
+    },
+    {
+      "codigo": "6005397.12881567",
+      "tipo": "adicional",
+      "nome": "Adicional - Tomate",
+      "descricao": "Tomate adicional pra 1/2 pizza",
+      "preco": 9.9,
+      "ordem": 9
+    }
+  ],
+  "bordas": [
+    {
+      "nome": "Mussarela",
+      "ingredientes": [
+        "Mussarela"
+      ]
+    },
+    {
+      "nome": "Presunto e Mussarela",
+      "ingredientes": [
+        "Presunto",
+        "Mussarela"
+      ]
+    },
+    {
+      "nome": "Catupiry",
+      "ingredientes": [
+        "Catupiry"
+      ]
+    },
+    {
+      "nome": "Cheddar",
+      "ingredientes": [
+        "Cheddar"
+      ]
+    },
+    {
+      "nome": "Bacon",
+      "ingredientes": [
+        "Bacon"
+      ]
+    },
+    {
+      "nome": "Parmesão",
+      "ingredientes": [
+        "Parmesão"
+      ]
+    },
+    {
+      "nome": "Chocolate ao Leite",
+      "ingredientes": [
+        "Chocolate ao Leite"
+      ],
+      "tipo": "doce"
+    },
+    {
+      "nome": "Chocolate Branco",
+      "ingredientes": [
+        "Chocolate Branco"
+      ],
+      "tipo": "doce"
+    },
+    {
+      "nome": "Ninho com Morango",
+      "ingredientes": [
+        "Brigadeiro de Ninho",
+        "Morango"
+      ],
+      "tipo": "doce"
+    },
+    {
+      "nome": "Ninho com Uva",
+      "ingredientes": [
+        "Brigadeiro de Ninho",
+        "Uva"
+      ],
+      "tipo": "doce"
+    }
+  ]
+}

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0D0D0D" />
+<title>Premium Pizzas · Peça já</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--preto:#0D0D0D;--laranja:#F97316;--laranja2:#FB923C;--branco:#FFFFFF;--cinza:#1A1A1A;--cinza2:#262626;--borda:#333;--ok:#22C55E;--txt2:#A3A3A3}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--preto);color:var(--branco);font-family:Inter,system-ui,sans-serif;overscroll-behavior-y:none}
+body{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:90px}
+h1,h2,h3,.anton{font-family:Anton,sans-serif;font-weight:400;letter-spacing:.5px}
+.lar{color:var(--laranja)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.btn{background:var(--laranja);color:#1a1000;font-weight:800;padding:14px 18px;border-radius:14px;font-size:16px;width:100%;transition:.15s;box-shadow:0 6px 18px rgba(249,115,22,.3)}
+.btn:active{transform:scale(.98)}.btn:disabled{opacity:.45;box-shadow:none}
+.btn.sec{background:var(--cinza2);color:#fff;box-shadow:none}
+.hide{display:none!important}
+/* topo */
+header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--preto) 70%,rgba(13,13,13,.85));backdrop-filter:blur(6px);padding:14px 16px 8px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo .mark{font-family:Anton;font-size:24px;line-height:1}.logo .mark b{color:var(--laranja)}
+.slogan{font-size:10px;letter-spacing:3px;color:var(--txt2);margin-top:2px}
+.hello{font-size:12px;color:var(--txt2);text-align:right}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{white-space:nowrap;padding:8px 16px;border-radius:999px;background:var(--cinza);color:var(--txt2);font-weight:700;font-size:14px}
+.tab.on{background:var(--laranja);color:#1a1000}
+/* cards */
+.lista{padding:8px 16px 16px}
+.cat-tit{font-size:13px;letter-spacing:2px;color:var(--txt2);margin:18px 4px 8px;text-transform:uppercase}
+.card{background:var(--cinza);border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start}
+.card .ico{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--laranja),#c2410c);display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto}
+.card .nome{font-weight:800;font-size:16px}.card .desc{font-size:12px;color:var(--txt2);margin-top:3px;line-height:1.35}
+.card .pr{margin-top:8px;font-weight:800;color:var(--laranja2)}.card .pr small{color:var(--txt2);font-weight:600}
+.card .add{flex:0 0 auto;align-self:center;width:40px;height:40px;border-radius:12px;background:var(--laranja);color:#1a1000;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center}
+/* carrinho flutuante */
+.cartbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:528px;z-index:40}
+.cartbar .btn{display:flex;justify-content:space-between;align-items:center}
+.cartbar .qbadge{background:#1a1000;color:var(--laranja);border-radius:8px;padding:2px 8px;font-size:13px}
+/* sheets / modais */
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.sheet .panel{background:var(--cinza);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;border-top:2px solid var(--laranja);padding:18px 16px 24px;animation:up .22s ease}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.sheet h2{font-size:22px}.x{position:absolute;top:14px;right:16px;font-size:22px;color:var(--txt2)}
+.opt{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--borda);border-radius:14px;margin-top:8px;background:var(--cinza2)}
+.opt.on{border-color:var(--laranja);background:rgba(249,115,22,.12)}
+.opt .nome{font-weight:700;font-size:15px;flex:1}.opt .pr{color:var(--laranja2);font-weight:700;font-size:14px}
+.opt .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--borda);flex:0 0 auto}
+.opt.on .dot{border-color:var(--laranja);background:var(--laranja);box-shadow:inset 0 0 0 3px var(--cinza2)}
+.lbl{font-size:12px;letter-spacing:1.5px;color:var(--txt2);text-transform:uppercase;margin:18px 2px 2px;font-weight:700}
+.qty{display:flex;align-items:center;gap:16px;justify-content:center;margin:14px 0}
+.qty button{width:42px;height:42px;border-radius:12px;background:var(--cinza2);font-size:22px;font-weight:800}
+.qty b{font-size:20px;min-width:28px;text-align:center}
+input,select,textarea{width:100%;background:var(--cinza2);border:1px solid var(--borda);color:#fff;padding:13px;border-radius:12px;font-size:16px;font-family:inherit;margin-top:6px}
+textarea{min-height:64px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.sumline{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;color:var(--txt2)}
+.sumline.tot{color:#fff;font-weight:800;font-size:19px;border-top:1px solid var(--borda);margin-top:6px;padding-top:12px}
+.citem{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--borda)}
+.citem .info{flex:1}.citem .nome{font-weight:700}.citem .sub{font-size:12px;color:var(--txt2);margin-top:2px}
+.citem .pr{font-weight:800;color:var(--laranja2)}.citem .del{color:#ef4444;font-size:12px;margin-top:6px;font-weight:700}
+/* login */
+.login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px;text-align:center}
+.login .big{font-family:Anton;font-size:46px;line-height:.95;margin:10px 0}
+.login .big b{color:var(--laranja)}
+.login p{color:var(--txt2);font-size:14px;margin:6px 0 22px;line-height:1.5}
+.wabadge{display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,.14);color:#4ade80;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:14px}
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:12px 18px;border-radius:12px;font-weight:700;z-index:90;box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:14px}
+.ok-screen{text-align:center;padding:30px 22px}
+.ok-screen .check{width:80px;height:80px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 18px}
+.track{display:flex;flex-direction:column;gap:0;margin:20px 0;text-align:left}
+.track .step{display:flex;gap:12px;align-items:center;padding:10px 0;color:var(--txt2)}
+.track .step .b{width:14px;height:14px;border-radius:50%;background:var(--borda);flex:0 0 auto}
+.track .step.on{color:#fff}.track .step.on .b{background:var(--laranja)}
+.meiometa{display:flex;gap:8px;margin-top:8px}.meiometa .half{flex:1;border:1px dashed var(--borda);border-radius:12px;padding:10px;text-align:center;font-size:13px;background:var(--cinza2)}
+.meiometa .half.on{border-color:var(--laranja);border-style:solid}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="login" class="login">
+  <div class="logo" style="justify-content:center"><span class="mark">PREMIUM<b>•</b>PIZZAS</span></div>
+  <div class="slogan" style="text-align:center;margin-top:4px">C O M&nbsp;&nbsp;A M O R</div>
+  <div class="big">PEÇA A SUA<br><b>FAVORITA</b> 🍕</div>
+  <div id="waOk" class="wabadge hide">✓ Acesso confirmado pelo WhatsApp</div>
+  <p>Entre com seu número de <b>WhatsApp</b>. Ele é seu login <b>e</b> sua senha — simples assim.</p>
+  <input id="liTel" inputmode="numeric" placeholder="DDD + número (ex: 17999998888)" />
+  <input id="liNome" placeholder="Seu nome (primeira vez)" style="margin-top:10px" />
+  <button class="btn" style="margin-top:16px" onclick="entrar()">Entrar e ver o cardápio</button>
+  <p style="margin-top:16px;font-size:12px">Dica: o ideal é abrir este link pelo WhatsApp da Premium.</p>
+</section>
+
+<!-- APP -->
+<div id="app" class="hide">
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><div class="logo"><span class="mark">PREMIUM<b>•</b>PIZZAS</span></div><div class="slogan">C O M&nbsp;&nbsp;A M O R</div></div>
+      <div class="hello" id="hello"></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </header>
+  <div class="lista" id="lista"></div>
+</div>
+
+<div id="cartbar" class="cartbar hide">
+  <button class="btn" onclick="abrirCarrinho()">
+    <span><span class="qbadge" id="cartQ">0</span>&nbsp; Ver carrinho</span>
+    <span id="cartT">R$ 0,00</span>
+  </button>
+</div>
+
+<div id="sheet"></div>
+<div id="toast"></div>
+
+<script>
+const API = location.origin;
+let CARDAPIO=null, CART=[], USER=null, WA=false;
+const q=new URLSearchParams(location.search);
+const BRL=n=>'R$ '+Number(n||0).toFixed(2).replace('.',',');
+const el=h=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;};
+function toast(m){const t=document.getElementById('toast');t.innerHTML='<div class="toast">'+m+'</div>';setTimeout(()=>t.innerHTML='',1900);}
+function closeSheet(){document.getElementById('sheet').innerHTML='';}
+
+/* ---------- login ---------- */
+if(q.get('tel')) document.getElementById('liTel').value=q.get('tel');
+if(q.get('wa')) document.getElementById('waOk').classList.remove('hide');
+async function entrar(){
+  const tel=document.getElementById('liTel').value, nome=document.getElementById('liNome').value;
+  const r=await fetch(API+'/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telefone:tel,senha:tel,nome,wa:q.get('wa')||''})});
+  const d=await r.json();
+  if(!r.ok){return toast(d.erro||'Erro ao entrar');}
+  USER=d.cliente; WA=d.origem_whatsapp;
+  document.getElementById('login').classList.add('hide');
+  document.getElementById('app').classList.remove('hide');
+  document.getElementById('cartbar').classList.remove('hide');
+  document.getElementById('hello').innerHTML='Olá,<br><b>'+(USER.nome||'cliente')+'</b>'+(WA?' ✓':'');
+  carregarCardapio();
+}
+
+/* ---------- cardápio ---------- */
+let TAB='salgadas';
+async function carregarCardapio(){
+  CARDAPIO=await (await fetch(API+'/api/cardapio')).json();
+  const tabs=[['salgadas','🍕 Salgadas'],['doces','🍫 Doces'],['bebidas','🥤 Bebidas']];
+  document.getElementById('tabs').innerHTML=tabs.map(t=>`<button class="tab ${t[0]===TAB?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('');
+  render();
+}
+function setTab(t){TAB=t;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().includes(t)));render();}
+function render(){
+  const L=document.getElementById('lista');
+  if(TAB==='bebidas'){
+    L.innerHTML='<div class="cat-tit">Bebidas</div>'+CARDAPIO.bebidas.map(b=>cardHTML(b,'bebida')).join('');
+  }else{
+    const arr=CARDAPIO.sabores.filter(s=>TAB==='doces'?s.doce:!s.doce);
+    L.innerHTML=`<div class="cat-tit">${arr.length} sabores · pizza grande (8 fatias)</div>`+arr.map(s=>cardHTML(s,'pizza')).join('');
+  }
+}
+function cardHTML(item,tipo){
+  const ico=tipo==='bebida'?'🥤':(item.doce?'🍫':'🍕');
+  const preco=tipo==='bebida'?BRL(item.preco):('<small>a partir de</small> '+BRL(item.preco_inteira));
+  return `<div class="card" onclick='abrir(${JSON.stringify(JSON.stringify({tipo,codigo:item.codigo}))})'>
+    <div class="ico">${ico}</div>
+    <div style="flex:1"><div class="nome">${item.nome}</div><div class="desc">${item.descricao||''}</div><div class="pr">${preco}</div></div>
+    <div class="add">+</div></div>`;
+}
+
+/* ---------- builder de item ---------- */
+let B=null; // item em construção
+function abrir(j){const ref=JSON.parse(j);
+  if(ref.tipo==='bebida'){const b=CARDAPIO.bebidas.find(x=>x.codigo===ref.codigo);
+    addCart({tipo:'bebida',nome:b.nome,codigo:b.codigo,preco:b.preco,quantidade:1});toast('Adicionado 🥤');return;}
+  const s=CARDAPIO.sabores.find(x=>x.codigo===ref.codigo);
+  B={tipo:'pizza',tamanho:'Grande',inteiro:true,sabores:[s],borda:null,adicionais:[],quantidade:1};
+  sheetPizza();
+}
+function sheetPizza(){
+  const s1=B.sabores[0], s2=B.sabores[1];
+  const doce=s1.doce;
+  const bordas=CARDAPIO.bordas||[];
+  const outros=CARDAPIO.sabores.filter(x=>x.doce===doce);
+  const html=`<div class="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel">
+    <span class="x" onclick="closeSheet()">✕</span>
+    <h2>${s1.nome}</h2><div class="desc" style="color:var(--txt2);font-size:13px;margin-top:4px">${s1.descricao||''}</div>
+
+    <div class="lbl">Como você quer?</div>
+    <div class="meiometa">
+      <div class="half ${B.inteiro?'on':''}" onclick="setInteiro(true)"><b>Inteira</b><br><small>1 sabor</small><br>${BRL(s1.preco_inteira)}</div>
+      <div class="half ${!B.inteiro?'on':''}" onclick="setInteiro(false)"><b>Meio a meio</b><br><small>2 sabores</small></div>
+    </div>
+    ${!B.inteiro?`<div class="lbl">2ª metade</div>
+      <select onchange="setSegundo(this.value)"><option value="">Escolha o 2º sabor...</option>
+      ${outros.filter(x=>x.codigo!==s1.codigo).map(x=>`<option value="${x.codigo}" ${s2&&s2.codigo===x.codigo?'selected':''}>${x.nome} (${BRL(x.preco_meia)})</option>`).join('')}</select>`:''}
+
+    <div class="lbl">Borda recheada (opcional)</div>
+    <div class="opt ${!B.borda?'on':''}" onclick="setBorda(null)"><div class="dot"></div><div class="nome">Sem borda recheada</div></div>
+    ${bordas.map((b,i)=>`<div class="opt ${B.borda&&B.borda.nome===b.nome?'on':''}" onclick="setBorda(${i})"><div class="dot"></div><div class="nome">${b.nome}</div><div class="pr">+${BRL(b.preco||b.preco_meia||9.9)}</div></div>`).join('')}
+
+    ${!doce?`<div class="lbl">Adicionais (opcional)</div>
+      ${CARDAPIO.adicionais.filter(a=>a.tipo==='adicional').map(a=>`<div class="opt ${B.adicionais.find(x=>x.codigo===a.codigo)?'on':''}" onclick="toggleAdd('${a.codigo}')"><div class="dot"></div><div class="nome">${a.nome.replace('Adicional - ','')}</div><div class="pr">+${BRL(a.preco)}</div></div>`).join('')}`:''}
+
+    <div class="qty"><button onclick="setQ(-1)">−</button><b id="bq">${B.quantidade}</b><button onclick="setQ(1)">+</button></div>
+    <button class="btn" onclick="confirmaPizza()">Adicionar · <span id="bpr">${BRL(precoB())}</span></button>
+  </div></div>`;
+  document.getElementById('sheet').innerHTML=html;
+}
+function precoB(){let t=0;for(const s of B.sabores)t+=Number(s.preco_meia);if(B.inteiro)t=Number(B.sabores[0].preco_meia)*2;
+  if(B.borda)t+=Number(B.borda.preco||B.borda.preco_meia||9.9);for(const a of B.adicionais)t+=Number(a.preco);return t*B.quantidade;}
+function setInteiro(v){B.inteiro=v;if(v)B.sabores=[B.sabores[0]];sheetPizza();}
+function setSegundo(cod){const s=CARDAPIO.sabores.find(x=>x.codigo===cod);if(s){B.sabores[1]=s;}else{B.sabores=[B.sabores[0]];}sheetPizza();}
+function setBorda(i){B.borda=i===null?null:{nome:CARDAPIO.bordas[i].nome,preco:CARDAPIO.bordas[i].preco||CARDAPIO.bordas[i].preco_meia||9.9};sheetPizza();}
+function toggleAdd(cod){const a=CARDAPIO.adicionais.find(x=>x.codigo===cod);const i=B.adicionais.findIndex(x=>x.codigo===cod);if(i>=0)B.adicionais.splice(i,1);else B.adicionais.push({nome:a.nome,codigo:a.codigo,preco:a.preco});sheetPizza();}
+function setQ(d){B.quantidade=Math.max(1,B.quantidade+d);document.getElementById('bq').textContent=B.quantidade;document.getElementById('bpr').textContent=BRL(precoB());}
+function confirmaPizza(){
+  if(!B.inteiro && !B.sabores[1]){return toast('Escolha o 2º sabor');}
+  addCart(JSON.parse(JSON.stringify(B)));closeSheet();toast('Adicionado ao carrinho 🍕');
+}
+
+/* ---------- carrinho ---------- */
+function addCart(it){CART.push(it);updateBar();}
+function updateBar(){const q=CART.reduce((s,i)=>s+(i.quantidade||1),0);
+  document.getElementById('cartQ').textContent=q;
+  document.getElementById('cartT').textContent=BRL(CART.reduce((s,i)=>s+itemTotal(i),0));}
+function itemTotal(it){if(it.tipo==='bebida')return it.preco*(it.quantidade||1);
+  let t=0;for(const s of it.sabores)t+=Number(s.preco_meia);if(it.inteiro)t=Number(it.sabores[0].preco_meia)*2;
+  if(it.borda)t+=Number(it.borda.preco);for(const a of (it.adicionais||[]))t+=Number(a.preco);return t*(it.quantidade||1);}
+function nomeItem(it){if(it.tipo==='bebida')return it.nome;
+  let n='Pizza Grande '+(it.inteiro?it.sabores[0].nome:('½ '+it.sabores[0].nome+' / ½ '+it.sabores[1].nome));
+  if(it.borda)n+=' + Borda '+it.borda.nome;if(it.adicionais&&it.adicionais.length)n+=' + '+it.adicionais.map(a=>a.nome.replace('Adicional - ','')).join(', ');return n;}
+function abrirCarrinho(){
+  if(!CART.length)return toast('Seu carrinho está vazio');
+  const html=`<div class="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel">
+    <span class="x" onclick="closeSheet()">✕</span><h2>Seu carrinho</h2>
+    ${CART.map((it,i)=>`<div class="citem"><div class="info"><div class="nome">${it.quantidade||1}× ${it.tipo==='bebida'?it.nome:(it.inteiro?it.sabores[0].nome:('½ '+it.sabores[0].nome+' / ½ '+it.sabores[1].nome))}</div>
+      <div class="sub">${it.tipo==='pizza'?(it.borda?('Borda '+it.borda.nome):'Sem borda')+(it.adicionais&&it.adicionais.length?' · +'+it.adicionais.map(a=>a.nome.replace('Adicional - ','')).join(', '):''):'Bebida'}</div>
+      <div class="del" onclick="rmCart(${i})">remover</div></div>
+      <div class="pr">${BRL(itemTotal(it))}</div></div>`).join('')}
+    <button class="btn" style="margin-top:16px" onclick="checkout()">Finalizar pedido · ${BRL(CART.reduce((s,i)=>s+itemTotal(i),0))}</button>
+  </div></div>`;
+  document.getElementById('sheet').innerHTML=html;
+}
+function rmCart(i){CART.splice(i,1);updateBar();if(CART.length)abrirCarrinho();else closeSheet();}
+
+/* ---------- checkout ---------- */
+let CO={tipo:'DELIVERY',pagamento:'DIN'};
+function checkout(){
+  const sub=CART.reduce((s,i)=>s+itemTotal(i),0);
+  const taxa=CO.tipo==='DELIVERY'?8:0;
+  const html=`<div class="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel">
+    <span class="x" onclick="closeSheet()">✕</span><h2>Finalizar</h2>
+    <div class="lbl">Entrega ou retirada?</div>
+    <div class="row" style="margin-top:8px">
+      <div class="opt ${CO.tipo==='DELIVERY'?'on':''}" onclick="setTipo('DELIVERY')" style="justify-content:center"><div class="nome" style="flex:none">🛵 Entrega</div></div>
+      <div class="opt ${CO.tipo==='TAKEOUT'?'on':''}" onclick="setTipo('TAKEOUT')" style="justify-content:center"><div class="nome" style="flex:none">🏠 Retirada</div></div>
+    </div>
+    <div id="ender" class="${CO.tipo!=='DELIVERY'?'hide':''}">
+      <div class="lbl">Endereço de entrega</div>
+      <input id="eRua" placeholder="Rua e número"><div class="row"><input id="eBairro" placeholder="Bairro"><input id="eRef" placeholder="Referência"></div>
+    </div>
+    <div class="lbl">Pagamento</div>
+    ${[['DIN','💵 Dinheiro'],['CRE','💳 Cartão (na entrega)'],['PIX','⚡ PIX']].map(p=>`<div class="opt ${CO.pagamento===p[0]?'on':''}" onclick="setPag('${p[0]}')"><div class="dot"></div><div class="nome">${p[1]}</div></div>`).join('')}
+    <div id="troco" class="${CO.pagamento!=='DIN'?'hide':''}"><input id="eTroco" inputmode="numeric" placeholder="Troco para quanto? (opcional)"></div>
+    <div class="lbl">Observação</div>
+    <textarea id="eObs" placeholder="Ex: sem cebola, capricha na borda..."></textarea>
+    <div style="margin-top:16px">
+      <div class="sumline"><span>Subtotal</span><span>${BRL(sub)}</span></div>
+      <div class="sumline" id="lTaxa"><span>Taxa de entrega</span><span>${BRL(taxa)}</span></div>
+      <div class="sumline tot"><span>Total</span><span id="coTot">${BRL(sub+taxa)}</span></div>
+    </div>
+    <button class="btn" style="margin-top:14px" onclick="enviarPedido()">Confirmar pedido 🍕</button>
+  </div></div>`;
+  document.getElementById('sheet').innerHTML=html;
+}
+function setTipo(t){CO.tipo=t;checkout();}
+function setPag(p){CO.pagamento=p;checkout();}
+async function enviarPedido(){
+  const sub=CART.reduce((s,i)=>s+itemTotal(i),0);
+  const body={tipo:CO.tipo,wa:q.get('wa')||'',
+    cliente:{telefone:USER.telefone,nome:USER.nome},
+    pagamento:{forma:CO.pagamento,troco_para:document.getElementById('eTroco')?soPhoneNum(document.getElementById('eTroco').value):0},
+    endereco:CO.tipo==='DELIVERY'?{rua:val('eRua'),bairro:val('eBairro'),referencia:val('eRef')}:null,
+    taxa_entrega:CO.tipo==='DELIVERY'?8:0,
+    observacao:val('eObs'),
+    itens:CART.map(it=>({tipo:it.tipo,nome:nomeItem(it),codigo:it.tipo==='bebida'?it.codigo:it.sabores[0].codigo,
+      tamanho:it.tipo==='pizza'?'Grande':null,meio_a_meio:it.tipo==='pizza'&&!it.inteiro,
+      sabores:it.sabores?it.sabores.map(s=>({nome:s.nome,codigo:s.codigo,preco_meia:s.preco_meia})):[],
+      borda:it.borda||null,adicionais:it.adicionais||[],preco:it.preco||0,quantidade:it.quantidade||1}))};
+  if(CO.tipo==='DELIVERY'&&!val('eRua'))return toast('Informe o endereço');
+  const r=await fetch(API+'/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok)return toast(d.erro||'Erro ao enviar');
+  CART=[];updateBar();telaSucesso(d.pedido);
+}
+function val(id){const e=document.getElementById(id);return e?e.value:'';}
+function soPhoneNum(s){return Number(String(s).replace(/[^\d,\.]/g,'').replace(',','.'))||0;}
+
+function telaSucesso(p){
+  const steps=[['RECEBIDO','Pedido recebido'],['EM_PREPARO','Em preparo'],['PRONTO','Pronto'],['EM_ROTA','Saiu para entrega'],['ENTREGUE','Entregue']];
+  const html=`<div class="sheet"><div class="panel"><div class="ok-screen">
+    <div class="check">✓</div>
+    <h2>Pedido confirmado!</h2>
+    <p style="color:var(--txt2);margin-top:6px">Pedido <b style="color:var(--laranja)">#${p.numero}</b> · ${BRL(p.total)}</p>
+    <div class="track">${steps.map((s,i)=>`<div class="step ${i===0?'on':''}"><div class="b"></div><div>${s[1]}</div></div>`).join('')}</div>
+    <p style="font-size:13px">Acompanhe o preparo. A Premium já recebeu seu pedido! 🍕</p>
+    <button class="btn" style="margin-top:18px" onclick="closeSheet()">Voltar ao cardápio</button>
+  </div></div></div>`;
+  document.getElementById('sheet').innerHTML=html;
+}
+</script>
+</body>
+</html>

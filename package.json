@@ -1,0 +1,15 @@
+{
+  "name": "premium-plataforma",
+  "version": "1.0.0",
+  "description": "Plataforma de pedidos Premium Pizzas (cliente + estabelecimento)",
+  "type": "commonjs",
+  "main": "server-pg.js",
+  "scripts": {
+    "start": "node server-pg.js",
+    "start:local": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

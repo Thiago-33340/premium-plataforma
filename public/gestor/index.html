@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0D0D0D" />
+<title>Premium Pizzas · Painel de Pedidos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--preto:#0D0D0D;--laranja:#F97316;--branco:#FFF;--cinza:#161616;--cinza2:#202020;--borda:#2e2e2e;--txt2:#9a9a9a;
+--azul:#3B82F6;--verde:#22C55E;--amarelo:#EAB308;--roxo:#A855F7;--vermelho:#EF4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#fff;font-family:Inter,system-ui,sans-serif}
+.anton{font-family:Anton,sans-serif;letter-spacing:.5px}
+button{font-family:inherit;cursor:pointer;border:none}
+/* topo */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 18px;background:linear-gradient(90deg,#0d0d0d,#161616);border-bottom:2px solid var(--laranja)}
+.bar .mark{font-family:Anton;font-size:22px}.bar .mark b{color:var(--laranja)}
+.bar .sub{font-size:11px;color:var(--txt2);letter-spacing:2px}
+.bar .spacer{flex:1}
+.pill{display:flex;align-items:center;gap:6px;background:var(--cinza2);padding:7px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.dotlive{width:8px;height:8px;border-radius:50%;background:var(--verde);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.iconbtn{background:var(--cinza2);width:38px;height:38px;border-radius:10px;font-size:18px;color:#fff;display:flex;align-items:center;justify-content:center}
+/* board */
+.board{display:flex;gap:14px;padding:16px;overflow-x:auto;align-items:flex-start;min-height:calc(100vh - 64px)}
+.col{flex:0 0 300px;background:var(--cinza);border:1px solid var(--borda);border-radius:16px;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
+.col h3{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;padding:14px 14px 10px;display:flex;justify-content:space-between;align-items:center}
+.col h3 .c{background:var(--cinza2);border-radius:8px;padding:1px 9px;font-size:13px}
+.col .body{overflow-y:auto;padding:0 10px 10px;display:flex;flex-direction:column;gap:10px}
+.col.recebido{border-top:3px solid var(--azul)} .col.recebido h3 .bar-c{color:var(--azul)}
+.col.em_preparo{border-top:3px solid var(--amarelo)}
+.col.pronto{border-top:3px solid var(--verde)}
+.col.em_rota{border-top:3px solid var(--roxo)}
+.col.entregue{border-top:3px solid var(--txt2)}
+/* card */
+.ped{background:var(--cinza2);border:1px solid var(--borda);border-radius:14px;padding:12px;animation:in .2s}
+.ped.novo{border-color:var(--laranja);box-shadow:0 0 0 2px rgba(249,115,22,.35)}
+@keyframes in{from{transform:translateY(-6px);opacity:0}to{opacity:1}}
+.ped .top{display:flex;justify-content:space-between;align-items:center}
+.ped .num{font-family:Anton;font-size:20px}.ped .num b{color:var(--laranja)}
+.ped .tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.tag.del{background:rgba(168,85,247,.18);color:#c084fc}.tag.tak{background:rgba(34,197,94,.18);color:#4ade80}
+.ped .cli{font-weight:700;margin-top:8px;font-size:14px}
+.ped .meta{font-size:11px;color:var(--txt2);margin-top:1px}
+.ped .itens{margin-top:8px;font-size:13px;line-height:1.45;border-top:1px dashed var(--borda);padding-top:8px}
+.ped .itens .it b{color:#fff}.ped .itens .sub{color:var(--txt2);font-size:11px}
+.ped .tot{display:flex;justify-content:space-between;margin-top:8px;font-weight:800}
+.ped .tot .v{color:var(--laranja)}
+.ped .pay{font-size:11px;color:var(--txt2);margin-top:2px}
+.ped .obs{font-size:12px;background:rgba(234,179,8,.12);color:#fde047;padding:6px 8px;border-radius:8px;margin-top:8px}
+.ped .acts{display:flex;gap:6px;margin-top:10px}
+.ped .acts button{flex:1;padding:9px;border-radius:9px;font-weight:700;font-size:12px}
+.b-next{background:var(--laranja);color:#1a1000}
+.b-print{background:var(--cinza);color:#fff;border:1px solid var(--borda);flex:0 0 auto!important;width:40px}
+.b-mini{background:var(--cinza);color:var(--txt2);border:1px solid var(--borda);flex:0 0 auto!important;width:40px}
+.waicon{color:#4ade80;font-size:11px}
+.empty{color:var(--txt2);font-size:12px;text-align:center;padding:18px 8px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal .box{background:var(--cinza);border:1px solid var(--borda);border-top:3px solid var(--laranja);border-radius:16px;max-width:420px;width:100%;padding:20px}
+.modal h2{font-family:Anton;font-size:24px;margin-bottom:4px}
+.modal label{font-size:12px;color:var(--txt2);display:block;margin-top:12px}
+.modal input{width:100%;background:var(--cinza2);border:1px solid var(--borda);color:#fff;padding:11px;border-radius:10px;margin-top:5px;font-size:15px}
+.modal .btn{background:var(--laranja);color:#1a1000;font-weight:800;padding:12px;border-radius:10px;width:100%;margin-top:16px}
+.modal .btn.sec{background:var(--cinza2);color:#fff;margin-top:8px}
+/* impressão térmica 80mm */
+#printArea{display:none}
+@media print{
+  body *{visibility:hidden}
+  #printArea,#printArea *{visibility:visible}
+  #printArea{display:block;position:absolute;left:0;top:0;width:76mm;color:#000;background:#fff;font-family:'Courier New',monospace}
+  .cupom{width:76mm;padding:2mm;font-size:12px;line-height:1.35}
+  .cupom .h{text-align:center;font-weight:800;font-size:16px}
+  .cupom .hr{border-top:1px dashed #000;margin:4px 0}
+  .cupom .big{font-size:20px;font-weight:800;text-align:center}
+  .cupom .row{display:flex;justify-content:space-between}
+  .cupom .it{margin:3px 0}.cupom .it b{font-size:13px}
+  .cupom .obs{border:1px solid #000;padding:3px;margin-top:4px;font-weight:700}
+  .cupom .center{text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div><div class="mark">PREMIUM<b>•</b>PIZZAS</div><div class="sub">PAINEL DE PEDIDOS</div></div>
+  <div class="spacer"></div>
+  <div class="pill"><span class="dotlive"></span> <span id="liveTxt">ao vivo</span></div>
+  <div class="pill" id="hojePill">Hoje: 0 · R$ 0,00</div>
+  <button class="iconbtn" title="Som" onclick="toggleSom()" id="somBtn">🔔</button>
+  <button class="iconbtn" title="Impressora" onclick="abrirConfig()">⚙️</button>
+</div>
+
+<div class="board" id="board"></div>
+
+<div id="modal"></div>
+<div id="printArea"></div>
+
+<script>
+const API=location.origin;
+const COLS=[['RECEBIDO','Novos','recebido'],['EM_PREPARO','Em preparo','em_preparo'],['PRONTO','Prontos','pronto'],['EM_ROTA','Em rota','em_rota'],['ENTREGUE','Entregues','entregue']];
+const NEXT={RECEBIDO:'EM_PREPARO',EM_PREPARO:'PRONTO',PRONTO:'EM_ROTA',EM_ROTA:'ENTREGUE'};
+const NEXTLBL={RECEBIDO:'▶ Aceitar / Preparar',EM_PREPARO:'▶ Pronto',PRONTO:'▶ Saiu p/ entrega',EM_ROTA:'▶ Entregue'};
+const NEXTLBL_TAK={PRONTO:'▶ Retirado'};
+const BRL=n=>'R$ '+Number(n||0).toFixed(2).replace('.',',');
+let PEDIDOS=[], CONFIG={printer_ip:'',printer_porta:'8008'}, SOM=true, vistos=new Set(), primeira=true;
+
+function tempo(iso){const s=(Date.now()-new Date(iso))/1000;if(s<60)return'agora';if(s<3600)return Math.floor(s/60)+'min';return Math.floor(s/3600)+'h'+Math.floor((s%3600)/60)+'min';}
+
+async function load(){
+  try{
+    const d=await (await fetch(API+'/api/pedidos')).json();
+    PEDIDOS=d.pedidos||[];
+    const novos=PEDIDOS.filter(p=>p.status==='RECEBIDO'&&!vistos.has(p.id));
+    if(!primeira && novos.length){ if(SOM)beep(); flashNovos=new Set(novos.map(p=>p.id)); }
+    PEDIDOS.forEach(p=>vistos.add(p.id));
+    primeira=false;
+    render();
+  }catch(e){document.getElementById('liveTxt').textContent='offline';}
+}
+let flashNovos=new Set();
+function render(){
+  const hoje=PEDIDOS.filter(p=>p.status!=='CANCELADO');
+  document.getElementById('hojePill').textContent='Hoje: '+hoje.length+' · '+BRL(hoje.reduce((s,p)=>s+p.total,0));
+  const board=document.getElementById('board');
+  board.innerHTML=COLS.map(c=>{
+    let arr=PEDIDOS.filter(p=>p.status===c[0]);
+    if(c[0]==='ENTREGUE')arr=arr.slice(0,8);
+    return `<div class="col ${c[2]}"><h3>${c[1]} <span class="c">${arr.length}</span></h3>
+      <div class="body">${arr.length?arr.map(cardHTML).join(''):'<div class="empty">—</div>'}</div></div>`;
+  }).join('');
+}
+function cardHTML(p){
+  const tak=p.tipo==='TAKEOUT';
+  const nlbl=tak&&NEXTLBL_TAK[p.status]?NEXTLBL_TAK[p.status]:NEXTLBL[p.status];
+  return `<div class="ped ${flashNovos.has(p.id)?'novo':''}">
+    <div class="top"><div class="num">#<b>${p.numero}</b></div>
+      <span class="tag ${tak?'tak':'del'}">${tak?'🏠 Retirada':'🛵 Entrega'}</span></div>
+    <div class="cli">${p.cliente.nome} ${p.origem_whatsapp?'<span class="waicon">✓ WA</span>':''}</div>
+    <div class="meta">${p.cliente.telefone} · ${tempo(p.criado_em)}${p.endereco&&p.endereco.rua?' · '+p.endereco.rua+(p.endereco.bairro?', '+p.endereco.bairro:''):''}</div>
+    <div class="itens">${p.itens.map(it=>`<div class="it">• <b>${it.quantidade>1?it.quantidade+'× ':''}${it.nome}</b></div>`).join('')}</div>
+    ${p.observacao?`<div class="obs">📝 ${p.observacao}</div>`:''}
+    <div class="tot"><span>${pagLabel(p.pagamento)}</span><span class="v">${BRL(p.total)}</span></div>
+    <div class="acts">
+      <button class="b-mini" title="Comanda cozinha" onclick="imprimir('${p.id}','cozinha')">👨‍🍳</button>
+      <button class="b-print" title="Comanda entrega/balcão" onclick="imprimir('${p.id}','entrega')">🧾</button>
+      ${NEXT[p.status]?`<button class="b-next" onclick="avancar('${p.id}','${NEXT[p.status]}')">${nlbl}</button>`:'<button class="b-mini" style="flex:1!important;width:auto" onclick="avancar(\''+p.id+'\',\'RECEBIDO\')">↩ reabrir</button>'}
+    </div></div>`;
+}
+function pagLabel(p){const m={DIN:'💵 Dinheiro',CRE:'💳 Cartão',PIX:'⚡ PIX',PARTNER_PAYMENT:'Online'};let s=m[p&&p.forma]||'—';if(p&&p.forma==='DIN'&&p.troco_para)s+=' (troco p/ '+BRL(p.troco_para)+')';return s;}
+
+async function avancar(id,status){
+  await fetch(API+'/api/pedidos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  flashNovos.delete(id); load();
+}
+
+/* ---------- impressão ---------- */
+function cupomHTML(p,tipo){
+  const tak=p.tipo==='TAKEOUT';
+  const itens=p.itens.map(it=>{
+    let linhas='<div class="it"><b>'+(it.quantidade>1?it.quantidade+'x ':'')+it.nome+'</b>';
+    if(tipo==='entrega') linhas+='<div class="row"><span></span><span>'+BRL(it.total)+'</span></div>';
+    linhas+='</div>';return linhas;}).join('');
+  const cab=`<div class="h">PREMIUM PIZZAS</div><div class="center">${tipo==='cozinha'?'*** COZINHA ***':'ENTREGA / BALCÃO'}</div><div class="hr"></div>`;
+  const ped=`<div class="big">#${p.numero}</div><div class="center">${tak?'RETIRADA':'ENTREGA'} · ${new Date(p.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div class="hr"></div>`;
+  let info='';
+  if(tipo==='entrega'){
+    info=`<div><b>${p.cliente.nome}</b></div><div>${p.cliente.telefone} ${p.origem_whatsapp?'(WhatsApp)':''}</div>`;
+    if(tak){info+='<div>** RETIRADA NO BALCÃO **</div>';}
+    else{info+=`<div>${p.endereco?.rua||''}</div><div>${p.endereco?.bairro||''}</div>`+(p.endereco?.referencia?`<div>Ref: ${p.endereco.referencia}</div>`:'');}
+    info+='<div class="hr"></div>';
+  }
+  let rod='';
+  if(tipo==='entrega'){
+    rod=`<div class="hr"></div><div class="row"><span>Subtotal</span><span>${BRL(p.subtotal)}</span></div>`
+      +(p.taxa_entrega?`<div class="row"><span>Entrega</span><span>${BRL(p.taxa_entrega)}</span></div>`:'')
+      +`<div class="row" style="font-size:16px;font-weight:800"><span>TOTAL</span><span>${BRL(p.total)}</span></div>`
+      +`<div>Pagamento: ${pagLabel(p.pagamento).replace(/[💵💳⚡]/g,'')}</div>`;
+  }
+  const obs=p.observacao?`<div class="obs">OBS: ${p.observacao}</div>`:'';
+  return `<div class="cupom">${cab}${ped}${info}${itens}${obs}${rod}<div class="hr"></div><div class="center">Premium Pizzas · COM AMOR</div></div>`;
+}
+async function imprimir(id,tipo){
+  const p=PEDIDOS.find(x=>x.id===id);if(!p)return;
+  const html=cupomHTML(p,tipo);
+  // 1) tenta Epson ePOS-Print (se IP configurado)
+  if(CONFIG.printer_ip){ try{ await eposPrint(p,tipo); marcarImpresso(id); return; }catch(e){ console.warn('ePOS falhou, usando janela',e);} }
+  // 2) fallback universal: janela de impressão (escolha a Epson no diálogo)
+  document.getElementById('printArea').innerHTML=html;
+  window.print();
+  marcarImpresso(id);
+}
+function marcarImpresso(id){fetch(API+'/api/pedidos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({impresso:true})});}
+
+/* Epson ePOS-Print (TM-T20/T88 em rede) — monta XML e envia pro IP da impressora */
+function eposPrint(p,tipo){
+  const ip=CONFIG.printer_ip, porta=CONFIG.printer_porta||'8008';
+  const url=`http://${ip}:${porta}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+  const L=[];const add=(t,o={})=>L.push({t,o});
+  add('PREMIUM PIZZAS\n',{align:'center',w:2,h:2});
+  add((tipo==='cozinha'?'*** COZINHA ***':'ENTREGA / BALCAO')+'\n',{align:'center'});
+  add('------------------------------\n');
+  add('#'+p.numero+'\n',{align:'center',w:3,h:3});
+  add((p.tipo==='TAKEOUT'?'RETIRADA':'ENTREGA')+'  '+new Date(p.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'\n',{align:'center'});
+  add('------------------------------\n');
+  if(tipo==='entrega'){add(p.cliente.nome+'\n',{b:true});add(p.cliente.telefone+'\n');
+    if(p.tipo==='TAKEOUT')add('** RETIRADA NO BALCAO **\n',{b:true});
+    else{add((p.endereco?.rua||'')+'\n');add((p.endereco?.bairro||'')+'\n');if(p.endereco?.referencia)add('Ref: '+p.endereco.referencia+'\n');}
+    add('------------------------------\n');}
+  p.itens.forEach(it=>add('• '+(it.quantidade>1?it.quantidade+'x ':'')+it.nome+'\n',{b:true}));
+  if(p.observacao)add('OBS: '+p.observacao+'\n',{b:true});
+  if(tipo==='entrega'){add('------------------------------\n');add('TOTAL  '+BRL(p.total)+'\n',{w:2,h:2});add('Pagto: '+pagLabel(p.pagamento)+'\n');}
+  add('\nPremium Pizzas - COM AMOR\n',{align:'center'});
+  // monta ePOS XML
+  let body='<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">';
+  let curAlign='left';
+  for(const {t,o} of L){
+    if(o.align&&o.align!==curAlign){body+=`<text align="${o.align}"/>`;curAlign=o.align;}
+    const w=o.w||1,h=o.h||1;
+    body+=`<text${o.b?' em="true"':''} width="${w}" height="${h}">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>`;
+    if(o.b)body+='<text em="false"/>'; if(w>1||h>1)body+='<text width="1" height="1"/>';
+  }
+  body+='<cut type="feed"/></epos-print>';
+  const soap=`<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>${body}</s:Body></s:Envelope>`;
+  return fetch(url,{method:'POST',headers:{'Content-Type':'text/xml; charset=utf-8','SOAPAction':'""'},body:soap})
+    .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.text();});
+}
+
+/* ---------- config impressora ---------- */
+async function carregarConfig(){try{CONFIG=await (await fetch(API+'/api/config')).json();}catch{}}
+function abrirConfig(){
+  document.getElementById('modal').innerHTML=`<div class="modal" onclick="if(event.target===this)fecharModal()"><div class="box">
+    <h2>Impressora Epson</h2>
+    <p style="color:var(--txt2);font-size:13px">Impressão direta na térmica Epson (TM-T20/T88) pela rede. Deixe em branco para usar o diálogo de impressão do navegador.</p>
+    <label>IP da impressora</label><input id="cfgIp" value="${CONFIG.printer_ip||''}" placeholder="ex: 192.168.0.50">
+    <label>Porta ePOS</label><input id="cfgPorta" value="${CONFIG.printer_porta||'8008'}" placeholder="8008">
+    <button class="btn" onclick="salvarConfig()">Salvar</button>
+    <button class="btn sec" onclick="testePrint()">🧾 Imprimir teste</button>
+    <button class="btn sec" onclick="fecharModal()">Fechar</button>
+  </div></div>`;
+}
+async function salvarConfig(){
+  CONFIG=await (await fetch(API+'/api/config',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({printer_ip:document.getElementById('cfgIp').value.trim(),printer_porta:document.getElementById('cfgPorta').value.trim()})})).json();
+  fecharModal();
+}
+function testePrint(){const p={numero:'TESTE',tipo:'TAKEOUT',criado_em:new Date().toISOString(),cliente:{nome:'Teste Premium',telefone:'5517999999999'},itens:[{nome:'Pizza Grande Calabresa',quantidade:1,total:94.9}],subtotal:94.9,taxa_entrega:0,total:94.9,pagamento:{forma:'DIN'},observacao:'Impressão de teste'};
+  if(CONFIG.printer_ip){eposPrint(p,'entrega').then(()=>alert('Enviado para a Epson!')).catch(e=>alert('Falhou: '+e.message+'\nVerifique IP/porta e rede.'));}
+  else{document.getElementById('printArea').innerHTML=cupomHTML(p,'entrega');window.print();}
+}
+function fecharModal(){document.getElementById('modal').innerHTML='';}
+
+/* ---------- som ---------- */
+function toggleSom(){SOM=!SOM;document.getElementById('somBtn').style.opacity=SOM?1:.4;}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='square';o.frequency.value=880;g.gain.value=.15;o.start();o.frequency.setValueAtTime(660,c.currentTime+.12);o.stop(c.currentTime+.32);}catch(e){}}
+
+carregarConfig();load();setInterval(load,5000);
+</script>
+</body>
+</html>
