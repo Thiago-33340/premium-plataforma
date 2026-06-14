@@ -1,12 +1,13 @@
 /* ============================================================
-   Camada Postgres CONVERGIDA com o Khardela.
+   Camada Postgres CONVERGIDA com o Khardela + modelo completo.
    Conecta no banco titan_khardela, schema khardela (fonte unica).
-   So adiciona senha_hash em rbac_contacts e cria tabelas novas
-   (mesas, comandas, caixa, entregadores) + sequence de numero web.
+   Roda migracoes base + aplica modelo-completo-v1.sql no boot.
    Tudo multi-tenant por tenant_id. Nao recria tabelas existentes.
    ============================================================ */
 'use strict';
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 const TENANT = process.env.TENANT_ID || 'khardela:premiumpizzas:sjrp';
 
@@ -79,6 +80,11 @@ async function init(retries) {
   for (let i = 0; i < retries; i++) {
     try {
       for (const sql of MIGRATIONS) await pool.query(sql);
+      try {
+        const modelo = fs.readFileSync(path.join(__dirname, 'modelo-completo-v1.sql'), 'utf8');
+        await pool.query(modelo);
+        console.log('[db] modelo completo de restaurante aplicado');
+      } catch (em) { console.log('[db] modelo-completo aviso:', em.code || em.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');
       return;
