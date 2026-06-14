@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Estoque — Premium Pizzas</title>
+<style>
+  :root{ --preto:#0D0D0D; --laranja:#F97316; --cinza:#1c1c1e; --cinza2:#2a2a2d; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
+  .wrap{ max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+  header{ padding:16px; border-bottom:1px solid var(--linha); display:flex; align-items:center; gap:10px; position:sticky; top:0; background:#0d0d0dee; backdrop-filter:blur(8px); z-index:10; }
+  header .logo{ font-weight:800; font-size:16px; } header .logo b{ color:var(--laranja); }
+  header .who{ margin-left:auto; font-size:12px; color:var(--mut); text-align:right; }
+  .scr{ display:none; padding:16px; flex:1; }
+  .scr.on{ display:block; }
+  h1{ font-size:18px; margin:6px 0 4px; } .sub{ color:var(--mut); font-size:13px; margin-bottom:16px; }
+  .field{ width:100%; background:var(--cinza); border:1px solid var(--linha); color:#fff; border-radius:12px; padding:14px; font-size:16px; margin-top:10px; }
+  .btn{ width:100%; background:var(--laranja); color:#000; border:none; border-radius:12px; padding:15px; font-weight:800; font-size:16px; margin-top:14px; }
+  .btn:disabled{ opacity:.4; }
+  .btn.ghost{ background:transparent; color:var(--txt); border:1px solid var(--linha); }
+  .card{ background:var(--cinza); border:1px solid var(--linha); border-radius:14px; padding:16px; margin-bottom:10px; display:flex; align-items:center; gap:12px; }
+  .card .nm{ flex:1; font-weight:700; } .card .ct{ font-size:12px; color:var(--mut); font-weight:400; margin-top:2px; }
+  .card .arrow{ color:var(--laranja); font-size:22px; }
+  .seg{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .seg button{ flex:1; min-width:80px; background:var(--cinza); border:1px solid var(--linha); color:#fff; border-radius:10px; padding:11px; font-weight:600; }
+  .seg button.on{ background:var(--laranja); color:#000; border-color:var(--laranja); }
+  .item{ background:var(--cinza); border:1px solid var(--linha); border-radius:12px; padding:12px; margin-bottom:9px; }
+  .item .top{ display:flex; align-items:center; gap:10px; }
+  .item .nm{ flex:1; font-weight:600; font-size:15px; }
+  .item .un{ font-size:11px; color:var(--mut); }
+  .qty{ display:flex; align-items:center; gap:8px; }
+  .qty button{ width:38px; height:38px; border-radius:10px; border:1px solid var(--linha); background:var(--cinza2); color:#fff; font-size:20px; font-weight:700; }
+  .qty input{ width:64px; text-align:center; background:#101012; border:1px solid var(--linha); color:#fff; border-radius:10px; padding:10px; font-size:16px; font-weight:700; }
+  .prog{ position:sticky; bottom:0; background:#0d0d0dee; backdrop-filter:blur(8px); border-top:1px solid var(--linha); padding:12px 16px; }
+  .barOut{ height:6px; background:var(--cinza2); border-radius:4px; overflow:hidden; } .barIn{ height:100%; background:var(--laranja); width:0; transition:.2s; }
+  .muted{ color:var(--mut); font-size:13px; } .center{ text-align:center; }
+  .big{ font-size:54px; margin:18px 0 6px; }
+  .resumo{ display:flex; gap:10px; margin:14px 0; }
+  .resumo div{ flex:1; background:var(--cinza); border:1px solid var(--linha); border-radius:12px; padding:12px; text-align:center; }
+  .resumo b{ display:block; font-size:22px; }
+  .toast{ position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--laranja); padding:10px 16px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; z-index:50; }
+  .toast.on{ opacity:1; }
+  .tagm{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; }
+  .tagm.b{ background:#3a2a10; color:var(--amar); } .tagm.z{ background:#3a1414; color:var(--verm); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">PREMIUM <b>PIZZAS</b> · Estoque</div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <!-- LOGIN -->
+  <div class="scr on" id="s1">
+    <h1>Contagem de estoque</h1>
+    <div class="sub">Entre com seu nome ou apelido pra começar a contagem do turno.</div>
+    <input class="field" id="login" placeholder="Seu nome (ex: Dany)" autocomplete="off">
+    <button class="btn" onclick="entrar()">Entrar</button>
+    <p class="muted" id="loginErr" style="color:var(--verm)"></p>
+  </div>
+
+  <!-- SETOR + TURNO -->
+  <div class="scr" id="s2">
+    <h1>Olá, <span id="nome2"></span></h1>
+    <div class="sub">Escolha o turno e o setor que você vai contar.</div>
+    <div class="muted">Turno</div>
+    <div class="seg" id="turnos">
+      <button data-t="Manhã">Manhã</button><button data-t="Tarde">Tarde</button>
+      <button data-t="Noite">Noite</button><button data-t="Fechamento" class="on">Fechamento</button>
+    </div>
+    <div class="muted" style="margin-top:16px">Setor</div>
+    <div id="setores"></div>
+  </div>
+
+  <!-- CONTAGEM -->
+  <div class="scr" id="s3">
+    <h1 id="setorTit"></h1>
+    <div class="sub" id="setorSub"></div>
+    <div id="itens"></div>
+    <div style="height:90px"></div>
+  </div>
+  <div class="prog" id="prog" style="display:none">
+    <div class="barOut"><div class="barIn" id="barIn"></div></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+      <span class="muted" id="progTxt">0 / 0</span>
+      <button class="btn" style="margin:0;flex:1;width:auto" id="btnFinalizar" onclick="finalizar()">Finalizar contagem</button>
+    </div>
+  </div>
+
+  <!-- CONFIRMAÇÃO -->
+  <div class="scr center" id="s4">
+    <div class="big">✅</div>
+    <h1>Contagem registrada!</h1>
+    <div class="sub" id="confSub"></div>
+    <div class="resumo">
+      <div><b id="rTotal">0</b><span class="muted">itens</span></div>
+      <div><b id="rAbaixo" style="color:var(--amar)">0</b><span class="muted">abaixo</span></div>
+      <div><b id="rZero" style="color:var(--verm)">0</b><span class="muted">zerados</span></div>
+    </div>
+    <button class="btn" onclick="outroSetor()">Contar outro setor</button>
+    <button class="btn ghost" onclick="sair()">Sair</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API=location.origin;
+let col=null, setores=[], turno='Fechamento', setorAtual=null, itens=[], iniciada=null;
+const $=id=>document.getElementById(id);
+function show(n){ document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on')); $('s'+n).classList.add('on'); $('prog').style.display = n===3?'block':'none'; }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2400); }
+
+async function entrar(){
+  const login=$('login').value.trim(); if(!login){ return; }
+  $('loginErr').textContent='';
+  try{
+    const r=await fetch(API+'/api/estoque/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})});
+    const d=await r.json();
+    if(!d.ok){ $('loginErr').textContent=d.erro||'Não encontrado'; return; }
+    col=d.colaborador; setores=d.setores||[];
+    $('who').textContent=col.nome; $('nome2').textContent=col.nome.split(' ')[0];
+    renderSetores(); show(2);
+  }catch(e){ $('loginErr').textContent='Falha de conexão'; }
+}
+$('login') && ($('login').addEventListener('keydown',e=>{ if(e.key==='Enter') entrar(); }));
+$('turnos').querySelectorAll('button').forEach(b=>b.onclick=()=>{ turno=b.dataset.t; $('turnos').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+
+function renderSetores(){
+  const el=$('setores'); el.innerHTML='';
+  if(!setores.length){ el.innerHTML='<p class="muted">Nenhum setor liberado pra você. Fale com o gestor.</p>'; return; }
+  setores.forEach(s=>{ const d=document.createElement('div'); d.className='card';
+    d.innerHTML=`<div class="nm">${s.setor_nome}<div class="ct">${s.itens} itens pra contar</div></div><div class="arrow">›</div>`;
+    d.onclick=()=>abrirSetor(s); el.appendChild(d); });
+}
+async function abrirSetor(s){
+  setorAtual=s; iniciada=new Date().toISOString();
+  $('setorTit').textContent=s.setor_nome; $('setorSub').textContent='Conte a quantidade atual de cada item.';
+  const r=await fetch(API+'/api/estoque/itens?setor='+encodeURIComponent(s.setor_id)); itens=(await r.json()).itens||[];
+  itens.forEach(it=>it._q='');
+  renderItens(); show(3); atualizaProg();
+}
+function renderItens(){
+  const el=$('itens'); el.innerHTML='';
+  itens.forEach((it,i)=>{
+    const d=document.createElement('div'); d.className='item';
+    d.innerHTML=`<div class="top">
+        <div class="nm">${it.nome}<div class="ct">${it.categoria?it.categoria+' · ':''}mín ${Number(it.estoque_minimo)||0} ${it.unidade||''}</div></div>
+        <div class="un">${it.unidade||''}</div>
+      </div>
+      <div class="qty" style="margin-top:10px">
+        <button>−</button>
+        <input inputmode="decimal" placeholder="0" value="${it._q}">
+        <button>+</button>
+        <span class="tagm" style="margin-left:auto"></span>
+      </div>`;
+    const [minus,plus]=d.querySelectorAll('.qty button'); const inp=d.querySelector('input'); const tag=d.querySelector('.tagm');
+    const upd=()=>{ it._q=inp.value; const q=parseFloat(inp.value); tag.className='tagm'; tag.textContent='';
+      if(inp.value!==''){ if(q<=0){ tag.classList.add('z'); tag.textContent='zerado'; } else if(q<(Number(it.estoque_minimo)||0)){ tag.classList.add('b'); tag.textContent='abaixo'; } }
+      atualizaProg(); };
+    minus.onclick=()=>{ let q=parseFloat(inp.value)||0; q=Math.max(0,q-1); inp.value=q; upd(); };
+    plus.onclick=()=>{ let q=parseFloat(inp.value)||0; q=q+1; inp.value=q; upd(); };
+    inp.oninput=upd;
+    el.appendChild(d);
+  });
+}
+function atualizaProg(){
+  const feitos=itens.filter(it=>it._q!=='' && it._q!=null).length;
+  $('progTxt').textContent=feitos+' / '+itens.length;
+  $('barIn').style.width=(itens.length?Math.round(feitos/itens.length*100):0)+'%';
+  $('btnFinalizar').disabled = feitos===0;
+}
+async function finalizar(){
+  const preenchidos=itens.filter(it=>it._q!=='' && it._q!=null);
+  if(!preenchidos.length){ toast('Conte ao menos 1 item'); return; }
+  const faltam=itens.length-preenchidos.length;
+  if(faltam>0 && !confirm(faltam+' item(ns) sem contagem serão ignorados. Finalizar mesmo assim?')) return;
+  const btn=$('btnFinalizar'); btn.disabled=true; btn.textContent='Enviando…';
+  const payload={ colaborador_id:col.id, colaborador_nome:col.nome, setor_id:setorAtual.setor_id, setor_nome:setorAtual.setor_nome,
+    turno, iniciada_em:iniciada, itens:preenchidos.map(it=>({ item_id:it.id, nome_item:it.nome, categoria:it.categoria, unidade:it.unidade,
+      quantidade_contada:parseFloat(it._q)||0, estoque_minimo:it.estoque_minimo, estoque_ideal:it.estoque_ideal })) };
+  try{
+    const r=await fetch(API+'/api/estoque/contagem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok){ $('confSub').textContent=`${setorAtual.setor_nome} · turno ${turno} · por ${col.nome}`;
+      $('rTotal').textContent=d.total; $('rAbaixo').textContent=d.abaixo_minimo; $('rZero').textContent=d.zerados; show(4); }
+    else { toast(d.erro||'Erro ao salvar'); btn.disabled=false; btn.textContent='Finalizar contagem'; }
+  }catch(e){ toast('Falha de conexão'); btn.disabled=false; btn.textContent='Finalizar contagem'; }
+}
+function outroSetor(){ renderSetores(); show(2); }
+function sair(){ col=null; $('login').value=''; $('who').textContent=''; show(1); }
+</script>
+</body>
+</html>
