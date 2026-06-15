@@ -153,6 +153,11 @@ async function init(retries) {
         }
       } catch (es3) { console.log('[db] seed-fase3 aviso:', es3.code || es3.message); }
       try {
+        const seed4 = fs.readFileSync(path.join(__dirname, 'seed-fase4-pizzagrande.sql'), 'utf8');
+        await pool.query(seed4);
+        console.log('[db] seed fase4 (pizza grande 4 bordas) aplicado/verificado');
+      } catch (es4) { console.log('[db] seed-fase4 aviso:', es4.code || es4.message); }
+      try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
         console.log('[db] seed de PINs (idempotente) aplicado');
