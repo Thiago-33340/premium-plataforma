@@ -195,8 +195,17 @@ async function api(req, res, url) {
       out.mesas = { total: ms.length, ocupadas: ms.filter(x => x.ocupada).length };
     }
     if (area === 'resumo' || area === 'pedidos') {
-      out.pedidos = { hoje: await num(`SELECT count(*)::int n FROM orders WHERE tenant_id=$1 AND DATE(criado_em)=$2`, [TENANT, hoje]),
-        total: await num('SELECT count(*)::int n FROM orders WHERE tenant_id=$1', [TENANT]) };
+      const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const rh = await one(`SELECT count(*)::int n, COALESCE(SUM(total),0)::numeric s FROM orders WHERE tenant_id=$1 AND DATE(criado_em)=$2`, [TENANT, hoje]);
+      const nHoje = rh[0] ? Number(rh[0].n) : 0, sHoje = rh[0] ? Number(rh[0].s) : 0;
+      out.pedidos = {
+        hoje: nHoje,
+        receita_hoje: sHoje,
+        ticket_medio: nHoje > 0 ? sHoje / nHoje : 0,
+        ontem: await num(`SELECT count(*)::int n FROM orders WHERE tenant_id=$1 AND DATE(criado_em)=$2`, [TENANT, ontem]),
+        em_aberto: await num(`SELECT count(*)::int n FROM orders WHERE tenant_id=$1 AND status_atual NOT IN ('CONCLUDED','CANCELLED')`, [TENANT]),
+        total: await num('SELECT count(*)::int n FROM orders WHERE tenant_id=$1', [TENANT])
+      };
     }
     if (area === 'resumo' || area === 'cardapio') {
       out.cardapio = { produtos: await num('SELECT count(*)::int n FROM produtos WHERE tenant_id=$1', [TENANT]),
@@ -628,6 +637,21 @@ async function api(req, res, url) {
       if (body.webhook_contagem != null) upd.webhook_contagem = body.webhook_contagem;
       await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(upd)]);
       return json(res, 200, { ok: true, config: { destino_pedido: upd.destino_pedido, baixa_estoque_auto: !!upd.baixa_estoque_auto } });
+    }
+    if (seg[2] === 'setores' && req.method === 'GET') {
+      const r = await db.q(`SELECT d.setor_id, d.setor_nome, count(*)::int itens,
+          (SELECT c.colaborador_nome FROM estoque_contagens c WHERE c.tenant_id=d.tenant_id AND c.setor_nome=d.setor_nome ORDER BY c.finalizada_em DESC LIMIT 1) AS ultimo_responsavel,
+          (SELECT c.finalizada_em FROM estoque_contagens c WHERE c.tenant_id=d.tenant_id AND c.setor_nome=d.setor_nome ORDER BY c.finalizada_em DESC LIMIT 1) AS ultima_contagem
+        FROM estoque_itens_definicao d WHERE d.tenant_id=$1 AND d.ativo
+        GROUP BY d.setor_id, d.setor_nome ORDER BY d.setor_nome`, [TENANT]);
+      return json(res, 200, { setores: r.rows });
+    }
+    if (seg[2] === 'setor' && seg[3] === 'rename' && req.method === 'POST') {
+      const novo = String(body.novo_nome || '').trim();
+      if (!body.setor_id || !novo) return json(res, 400, { erro: 'informe setor_id e novo_nome' });
+      await db.q(`UPDATE estoque_itens_definicao SET setor_nome=$2, updated_at=NOW() WHERE setor_id=$1 AND tenant_id=$3`, [body.setor_id, novo, TENANT]);
+      await db.q(`UPDATE estoque_contagens SET setor_nome=$2 WHERE setor_id=$1 AND tenant_id=$3`, [body.setor_id, novo, TENANT]).catch(() => {});
+      return json(res, 200, { ok: true, setor_id: body.setor_id, novo_nome: novo });
     }
     return json(res, 404, { erro: 'rota admin nao encontrada' });
   }

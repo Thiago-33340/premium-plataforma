@@ -3,224 +3,401 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin — Premium Pizzas</title>
+<title>Premium Pizzas — Painel Administrativo</title>
 <style>
-  :root{ --preto:#000000; --laranja:#F97316; --cinza:#1c1c1e; --cinza2:#2a2a2d; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; }
+  :root{
+    --bg:#0b0b0c; --panel:#121214; --card:#17171a; --card2:#1c1c20; --linha:#27272c; --linha2:#34343b;
+    --txt:#f4f4f5; --mut:#9a9aa2; --mut2:#6c6c74;
+    --laranja:#F97316; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; --azul:#3b82f6; --roxo:#8b5cf6;
+  }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
-  header{ position:sticky; top:0; z-index:20; background:#0d0d0dee; backdrop-filter:blur(8px); border-bottom:1px solid var(--linha); padding:10px 16px; display:flex; align-items:center; gap:14px; }
-  header .logo{ font-weight:800; font-size:15px; } header .logo b{ color:var(--laranja); }
-  header .who{ margin-left:auto; font-size:12px; color:var(--mut); }
-  .tabs{ display:flex; gap:6px; overflow-x:auto; padding:8px 12px; border-bottom:1px solid var(--linha); position:sticky; top:49px; background:#0d0d0d; z-index:15; }
-  .tabs button{ flex:0 0 auto; background:transparent; color:var(--mut); border:none; border-radius:8px; padding:9px 14px; font-weight:700; font-size:14px; }
-  .tabs button.on{ background:var(--laranja); color:#000; }
-  .wrap{ max-width:1000px; margin:0 auto; padding:16px; }
-  .scr{ display:none; } .scr.on{ display:block; }
-  h2{ font-size:15px; color:var(--laranja); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.5px; }
-  .field{ width:100%; background:var(--cinza); border:1px solid var(--linha); color:#fff; border-radius:10px; padding:12px; font-size:15px; }
-  .btn{ background:var(--laranja); color:#000; border:none; border-radius:10px; padding:11px 14px; font-weight:800; font-size:14px; } .btn:disabled{ opacity:.4; }
-  .btn.sm{ padding:7px 10px; font-size:12px; } .btn.ghost{ background:transparent; color:var(--txt); border:1px solid var(--linha); } .btn.red{ background:var(--verm); color:#fff; }
-  .center{ max-width:360px; margin:9vh auto 0; }
-  .cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
-  .kpi{ background:var(--cinza); border:1px solid var(--linha); border-radius:14px; padding:16px; } .kpi b{ font-size:30px; display:block; } .kpi span{ color:var(--mut); font-size:13px; }
-  .row{ display:flex; align-items:center; gap:10px; padding:11px 12px; background:var(--cinza); border:1px solid var(--linha); border-radius:11px; margin-bottom:7px; flex-wrap:wrap; }
-  .row .nm{ flex:1; min-width:120px; font-weight:600; } .row .sb{ font-size:11px; color:var(--mut); font-weight:400; display:block; }
-  .row input.pz{ width:90px; text-align:right; } .row input.mn{ width:64px; text-align:center; }
-  .pill{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; }
-  .pill.a{ background:#10331c; color:var(--verde); } .pill.f{ background:#3a2a10; color:var(--amar); } .pill.o{ background:#3a1414; color:var(--verm); }
-  select.field{ padding:9px; } .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .muted{ color:var(--mut); font-size:13px; } .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--laranja); padding:9px 16px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; z-index:60; } .toast.on{ opacity:1; }
-  .seg{ display:flex; gap:4px; } .seg button{ border:1px solid var(--linha); background:#16161a; color:var(--mut); border-radius:7px; padding:5px 8px; font-size:11px; font-weight:700; }
-  .seg button.on{ background:var(--laranja); color:#000; border-color:var(--laranja); }
-  .seg button.on[data-s="ATIVO"]{ background:var(--verde); color:#000; } .seg button.on[data-s="EM_FALTA"]{ background:var(--amar); color:#000; } .seg button.on[data-s="OCULTO"]{ background:var(--verm); color:#fff; }
-  details{ background:var(--cinza); border:1px solid var(--linha); border-radius:11px; margin-bottom:8px; } summary{ padding:12px; font-weight:700; cursor:pointer; } details .in{ padding:0 12px 12px; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif; background:var(--bg); color:var(--txt); font-size:14px; }
+  button{ font-family:inherit; cursor:pointer; } input,select{ font-family:inherit; }
+  .mut{ color:var(--mut); } .sm{ font-size:12px; } .xs{ font-size:11px; }
+  .btn{ background:var(--laranja); color:#0b0b0c; border:none; border-radius:10px; padding:11px 16px; font-weight:700; font-size:14px; }
+  .btn:disabled{ opacity:.45; cursor:default; } .btn.full{ width:100%; }
+  .btn.ghost{ background:transparent; color:var(--txt); border:1px solid var(--linha2); }
+  .btn.sm{ padding:7px 11px; font-size:12px; border-radius:8px; } .btn.red{ background:var(--verm); color:#fff; }
+  .field{ width:100%; background:var(--card); border:1px solid var(--linha2); color:#fff; border-radius:10px; padding:12px 13px; font-size:15px; outline:none; }
+  .field:focus{ border-color:var(--laranja); }
+
+  /* ===== LOGIN ===== */
+  #loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; background:radial-gradient(1200px 600px at 50% -10%, #1a1206 0%, #0b0b0c 55%); }
+  .loginbox{ width:100%; max-width:380px; }
+  .loginbox img.logo{ height:54px; display:block; margin:0 auto 22px; }
+  .loginbox .cardlogin{ background:var(--panel); border:1px solid var(--linha); border-radius:18px; padding:26px 24px; box-shadow:0 20px 60px #0008; }
+  .loginbox h1{ font-size:17px; margin:0 0 4px; } .loginbox p.sub{ margin:0 0 18px; color:var(--mut); font-size:13px; }
+  .loginbox .field{ margin-bottom:10px; }
+  .pinbox{ text-align:center; letter-spacing:10px; font-size:24px; font-weight:700; }
+  .titanmark{ text-align:center; margin-top:18px; color:var(--mut2); font-size:11px; letter-spacing:.5px; }
+
+  /* ===== APP LAYOUT ===== */
+  #app{ display:none; }
+  .shell{ display:flex; min-height:100vh; }
+  .side{ width:230px; flex:0 0 230px; background:var(--panel); border-right:1px solid var(--linha); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .side .brand{ padding:18px 18px 14px; border-bottom:1px solid var(--linha); }
+  .side .brand img{ height:30px; }
+  .side nav{ padding:10px; flex:1; overflow-y:auto; }
+  .side nav a{ display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px; color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; margin-bottom:2px; }
+  .side nav a .ic{ width:18px; text-align:center; font-size:15px; }
+  .side nav a.on{ background:#231807; color:var(--laranja); }
+  .side nav a:hover:not(.on){ background:var(--card); color:var(--txt); }
+  .side .foot{ padding:12px; border-top:1px solid var(--linha); }
+  .side .who{ font-weight:700; font-size:13px; } .side .who small{ display:block; color:var(--mut); font-weight:400; }
+  .side .ext{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .side .ext a{ font-size:11px; color:var(--mut); border:1px solid var(--linha2); border-radius:7px; padding:4px 8px; text-decoration:none; }
+  .main{ flex:1; min-width:0; }
+  .topbar{ display:none; }
+  .content{ padding:22px 26px; max-width:1180px; }
+  .pagehead{ display:flex; align-items:center; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
+  .pagehead h2{ font-size:20px; margin:0; font-weight:700; }
+  .pagehead .per{ color:var(--mut); font-size:13px; }
+  .chip{ font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+  .chip .dot{ width:8px; height:8px; border-radius:50%; }
+  .chip.aberta{ background:#0f2a18; color:var(--verde); } .chip.fechada{ background:#2a1414; color:var(--verm); }
+  .chip .dot.g{ background:var(--verde); } .chip .dot.r{ background:var(--verm); }
+
+  .scr2{ display:none; } .scr2.on{ display:block; }
+
+  /* KPI cards */
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; margin:16px 0 6px; }
+  .kpi{ background:var(--card); border:1px solid var(--linha); border-radius:16px; padding:16px 17px; position:relative; overflow:hidden; }
+  .kpi .top{ display:flex; align-items:center; justify-content:space-between; }
+  .kpi .lbl{ color:var(--mut); font-size:12.5px; font-weight:600; }
+  .kpi .ic{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .kpi .val{ font-size:30px; font-weight:800; margin-top:10px; letter-spacing:-.5px; }
+  .kpi .var{ font-size:12px; margin-top:3px; color:var(--mut); } .kpi .var b.up{ color:var(--verde); } .kpi .var b.down{ color:var(--verm); }
+  .kpi .meta{ font-size:11px; color:var(--mut2); margin-top:8px; }
+  .ic.lar{ background:#241807; color:var(--laranja); } .ic.azu{ background:#0e1f3a; color:var(--azul); } .ic.rox{ background:#1d1238; color:var(--roxo); } .ic.ver{ background:#0f2a18; color:var(--verde); } .ic.verm{ background:#2a1414; color:var(--verm); } .ic.am{ background:#2a2410; color:var(--amar); }
+
+  .alerts{ margin:14px 0; display:flex; flex-direction:column; gap:8px; }
+  .alert{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; font-size:13px; border:1px solid; }
+  .alert.warn{ background:#1f1a08; border-color:#473a12; color:#f5d98b; }
+  .alert.bad{ background:#1f0d0d; border-color:#4a1d1d; color:#f3a9a9; }
+  .alert.ok{ background:#0d1f14; border-color:#1d4a30; color:#a7e8c2; }
+
+  h3.sec{ font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--mut); margin:24px 0 10px; font-weight:700; }
+  .panel{ background:var(--card); border:1px solid var(--linha); border-radius:14px; overflow:hidden; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media(max-width:760px){ .grid2{ grid-template-columns:1fr; } }
+  .litem{ display:flex; align-items:center; gap:12px; padding:12px 15px; border-bottom:1px solid var(--linha); }
+  .litem:last-child{ border-bottom:none; } .litem .nm{ flex:1; min-width:0; font-weight:600; } .litem .nm small{ display:block; color:var(--mut); font-weight:400; font-size:12px; }
+
+  /* tabelas / linhas editáveis */
+  .row{ display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--linha); flex-wrap:wrap; }
+  .row:last-child{ border-bottom:none; } .row .nm{ flex:1; min-width:130px; font-weight:600; } .row .nm small{ display:block; color:var(--mut); font-weight:400; font-size:11.5px; }
+  .seg{ display:flex; gap:4px; } .seg button{ border:1px solid var(--linha2); background:#141417; color:var(--mut); border-radius:8px; padding:6px 9px; font-size:11px; font-weight:700; }
+  .seg button.on[data-s="ATIVO"]{ background:var(--verde); color:#06140c; border-color:var(--verde); } .seg button.on[data-s="EM_FALTA"]{ background:var(--amar); color:#1a1606; border-color:var(--amar); } .seg button.on[data-s="OCULTO"]{ background:var(--verm); color:#fff; border-color:var(--verm); }
+  input.pz{ width:96px; text-align:right; } input.mn{ width:66px; text-align:center; }
+  details{ background:var(--card); border:1px solid var(--linha); border-radius:13px; margin-bottom:10px; } summary{ padding:13px 15px; font-weight:700; cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; } summary::-webkit-details-marker{ display:none; } summary .cnt{ margin-left:auto; color:var(--mut); font-weight:400; font-size:12px; } details .in{ padding:0 8px 8px; }
+  .pill{ font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; } .pill.cat{ background:#231807; color:var(--laranja); }
+
+  .modal{ position:fixed; inset:0; z-index:80; background:#000b; display:none; align-items:center; justify-content:center; padding:18px; }
+  .modal.on{ display:flex; } .modal .box{ background:var(--panel); border:1px solid var(--linha); border-radius:18px; width:100%; max-width:400px; padding:24px; box-shadow:0 20px 60px #000a; }
+  .modal h3{ margin:0 0 4px; font-size:17px; } .modal p{ margin:0 0 16px; color:var(--mut); font-size:13px; }
+  .modal .field{ margin-bottom:10px; }
+  .toast{ position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#0e0e10; border:1px solid var(--laranja); color:#fff; padding:11px 18px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; z-index:90; pointer-events:none; }
+  .toast.on{ opacity:1; }
+  .empty{ padding:26px; text-align:center; color:var(--mut); font-size:13px; }
+
+  @media(max-width:820px){
+    .shell{ flex-direction:column; } .side{ display:none; }
+    .topbar{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--linha); background:var(--panel); position:sticky; top:0; z-index:20; }
+    .topbar img{ height:26px; } .topbar .who{ margin-left:auto; font-size:12px; color:var(--mut); }
+    .tabsm{ display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--linha); position:sticky; top:51px; background:var(--bg); z-index:19; scrollbar-width:none; } .tabsm::-webkit-scrollbar{ display:none; }
+    .tabsm button{ flex:0 0 auto; background:var(--card); border:1px solid var(--linha2); color:var(--mut); border-radius:9px; padding:8px 13px; font-weight:700; font-size:13px; } .tabsm button.on{ background:var(--laranja); color:#0b0b0c; border-color:var(--laranja); }
+    .content{ padding:16px 14px; }
+  }
+  @media(min-width:821px){ .tabsm{ display:none; } }
 </style>
 </head>
 <body>
-<!-- LOGIN -->
-<div class="scr on" id="sLogin"><div class="wrap center">
-  <img src="/logo.png" alt="Com Amor, Premium Pizzas" style="height:40px;width:auto;display:block;margin:0 auto 8px"><div class="muted" style="font-weight:700;letter-spacing:1px">ADMIN</div>
-  <div class="muted" id="loginSub">Acesso restrito (gestor). Entre com seu usuário.</div>
-  <div id="passoNome"><input class="field" id="login" placeholder="Usuário (ex: tassiano)" autocapitalize="off" style="margin-top:10px"><button class="btn" style="width:100%;margin-top:10px" onclick="passo1()">Continuar</button></div>
-  <div id="passoPin" style="display:none"><input class="field" id="pin" placeholder="PIN" inputmode="numeric" maxlength="6" style="margin-top:10px;text-align:center;letter-spacing:8px;font-size:22px"><button class="btn" style="width:100%;margin-top:10px" onclick="entrar()">Entrar</button></div>
-  <p class="muted" id="loginErr" style="color:var(--verm)"></p>
-</div></div>
 
-<!-- APP -->
-<div class="scr" id="sApp">
-  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Admin</span>
-    <nav style="display:flex;gap:6px;flex-wrap:wrap;margin-left:8px">
-      <a href="/gestor" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Pedidos</a>
-      <a href="/mesas" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Mesas</a>
-      <a href="/caixa" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Caixa</a>
-      <a href="/estoque" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Estoque</a>
-      <a href="/loja" target="_blank" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Loja</a>
-    </nav>
-    <div class="who" id="who" style="margin-left:auto"></div></header>
-  <div class="tabs">
-    <button class="on" onclick="tab('inicio',this)">Início</button>
-    <button onclick="tab('cardapio',this)">Cardápio</button>
-    <button onclick="tab('estoque',this)">Estoque</button>
-    <button onclick="tab('equipe',this)">Equipe</button>
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen">
+  <div class="loginbox">
+    <img class="logo" src="/logo.png" alt="Com Amor, Premium Pizzas">
+    <div class="cardlogin">
+      <h1 id="lgTit">Painel administrativo</h1>
+      <p class="sub" id="lgSub">Acesso exclusivo dos gestores.</p>
+      <div id="stepNome">
+        <input class="field" id="login" placeholder="Seu usuário" autocapitalize="off" autocomplete="username">
+        <button class="btn full" onclick="passo1()">Continuar</button>
+      </div>
+      <div id="stepPin" style="display:none">
+        <input class="field pinbox" id="pin" placeholder="• • • • • •" inputmode="numeric" maxlength="6" autocomplete="off">
+        <button class="btn full" onclick="entrar()">Entrar</button>
+        <button class="btn ghost full" style="margin-top:8px" onclick="voltarNome()">Voltar</button>
+      </div>
+      <p id="lgErr" class="sm" style="color:var(--verm); margin:12px 0 0; min-height:16px"></p>
+    </div>
+    <div class="titanmark">🔒 Powered by Titan Atende</div>
   </div>
-  <div class="wrap">
-    <div class="tabc" id="t_inicio">
-      <h2>Visão do dia</h2><div class="cards" id="kpis"><p class="muted">Carregando…</p></div>
-      <h2>Últimas contagens de estoque</h2><div id="ultContagens"></div>
-      <h2>Integrações & sistema</h2>
-      <div class="row"><div class="nm">Destino dos pedidos da Jéssica<span class="sb">Pra onde vai o pedido que a Jéssica fecha no WhatsApp</span></div>
-        <div class="seg" id="segDestino"><button data-d="SAIPOS">Saipos</button><button data-d="NOSSO">Nosso sistema</button></div></div>
-      <div class="row"><div class="nm">Baixa automática de estoque<span class="sb">Quando um pedido entra, dá saída nos insumos pela ficha técnica</span></div>
-        <div class="seg" id="segBaixa"><button data-b="1">Ligada</button><button data-b="0">Desligada</button></div></div>
-    </div>
-    <div class="tabc" id="t_cardapio" style="display:none">
-      <h2>Cardápio — preço e disponibilidade</h2>
-      <div class="muted">Edite o preço (Enter salva) e pause/libere itens. Reflete na hora no site.</div>
-      <div id="cardapioBox" style="margin-top:10px"></div>
-    </div>
-    <div class="tabc" id="t_estoque" style="display:none">
-      <h2>Itens de estoque (o que os colaboradores contam)</h2>
-      <div class="muted">Adicione, edite o mínimo/ideal e o setor, ou remova. Sem planilha — direto no banco.</div>
-      <details style="margin-top:10px"><summary>+ Novo item</summary><div class="in">
-        <div class="grid2"><input class="field" id="ni_nome" placeholder="Nome do item"><input class="field" id="ni_unidade" placeholder="Unidade (un, kg, g…)"></div>
-        <div class="grid2" style="margin-top:8px"><select class="field" id="ni_setor"></select><input class="field" id="ni_categoria" placeholder="Categoria (opcional)"></div>
-        <div class="grid2" style="margin-top:8px"><input class="field" id="ni_min" placeholder="Estoque mínimo" inputmode="numeric"><input class="field" id="ni_ideal" placeholder="Estoque ideal" inputmode="numeric"></div>
-        <button class="btn" style="margin-top:10px;width:100%" onclick="novoItem()">Adicionar item</button>
-      </div></details>
-      <div id="estoqueBox" style="margin-top:10px"></div>
-    </div>
-    <div class="tabc" id="t_equipe" style="display:none">
-      <h2>Equipe — perfis, setores e PIN</h2>
-      <details style="margin-top:6px"><summary>+ Novo usuário</summary><div class="in">
-        <div class="grid2"><input class="field" id="nu_nome" placeholder="Nome"><input class="field" id="nu_login" placeholder="Usuário (apelido)" autocapitalize="off"></div>
-        <div class="grid2" style="margin-top:8px"><select class="field" id="nu_perfil"></select><input class="field" id="nu_pin" placeholder="PIN inicial (6 dígitos)" inputmode="numeric"></div>
-        <button class="btn" style="margin-top:10px;width:100%" onclick="novoUsuario()">Criar usuário</button>
-      </div></details>
-      <div id="equipeBox" style="margin-top:10px"></div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><img src="/logo.png" alt="Premium Pizzas"></div>
+      <nav id="navd">
+        <a class="on" data-s="inicio" onclick="go('inicio')"><span class="ic">▾</span> Início</a>
+        <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
+        <a data-s="estoque" onclick="go('estoque')"><span class="ic">📦</span> Estoque</a>
+        <a data-s="equipe" onclick="go('equipe')"><span class="ic">👥</span> Equipe</a>
+        <a data-s="config" onclick="go('config')"><span class="ic">⚙️</span> Configurações</a>
+      </nav>
+      <div class="foot">
+        <div class="who" id="whoName">—</div>
+        <div class="ext">
+          <a href="/gestor" target="_blank">Pedidos</a><a href="/mesas" target="_blank">Mesas</a>
+          <a href="/caixa" target="_blank">Caixa</a><a href="/loja" target="_blank">Loja</a>
+        </div>
+        <button class="btn ghost sm full" style="margin-top:10px" onclick="sair()">Sair</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="topbar"><img src="/logo.png" alt="Premium Pizzas"><span style="color:var(--mut);font-size:12px">Admin</span><span class="who" id="whoNameM"></span></div>
+      <div class="tabsm" id="tabsm">
+        <button class="on" onclick="go('inicio',this)">Início</button>
+        <button onclick="go('cardapio',this)">Cardápio</button>
+        <button onclick="go('estoque',this)">Estoque</button>
+        <button onclick="go('equipe',this)">Equipe</button>
+        <button onclick="go('config',this)">Config</button>
+      </div>
+
+      <div class="content">
+        <!-- INÍCIO -->
+        <section class="scr2 on" id="s_inicio">
+          <div class="pagehead">
+            <h2>Premium Pizzas <span class="mut" style="font-weight:400">· SJRP</span></h2>
+            <span class="chip" id="lojaStatus"><span class="dot"></span> —</span>
+            <span class="per" id="periodo"></span>
+          </div>
+          <div class="kpis" id="kpis"></div>
+          <div class="alerts" id="alertas"></div>
+          <div class="grid2">
+            <div><h3 class="sec">Últimas contagens de estoque</h3><div class="panel" id="ultContagens"></div></div>
+            <div><h3 class="sec">Atividade recente</h3><div class="panel" id="atividade"></div></div>
+          </div>
+        </section>
+
+        <!-- CARDÁPIO -->
+        <section class="scr2" id="s_cardapio">
+          <div class="pagehead"><h2>Cardápio</h2></div>
+          <p class="mut sm" style="margin:0 0 12px">Estrutura: <b>Categoria → Item → Variações → Opções</b>. Ajuste preço (Enter salva) e disponibilidade — reflete na hora no site. <span style="color:var(--laranja)">Edição completa (criar/excluir item, variações) chega no próximo bloco.</span></p>
+          <div id="cardapioBox"></div>
+        </section>
+
+        <!-- ESTOQUE -->
+        <section class="scr2" id="s_estoque">
+          <div class="pagehead"><h2>Estoque</h2></div>
+          <h3 class="sec">Setores</h3><div class="panel" id="setoresBox" style="margin-bottom:18px"></div>
+          <h3 class="sec">Entradas recentes (incl. Jéssica)</h3><div class="panel" id="movBox" style="margin-bottom:18px"></div>
+          <h3 class="sec">Itens por setor</h3><div id="estItens"></div>
+        </section>
+
+        <!-- EQUIPE -->
+        <section class="scr2" id="s_equipe">
+          <div class="pagehead"><h2>Equipe</h2></div>
+          <div id="equipeBox"></div>
+        </section>
+
+        <!-- CONFIG -->
+        <section class="scr2" id="s_config">
+          <div class="pagehead"><h2>Configurações</h2></div>
+          <h3 class="sec">Integrações</h3>
+          <div class="panel" style="margin-bottom:18px">
+            <div class="row"><div class="nm">Destino dos pedidos da Jéssica<small>Pra onde vai o pedido que ela fecha no WhatsApp</small></div><div class="seg" id="segDestino"><button data-d="SAIPOS">Saipos</button><button data-d="NOSSO">Nosso sistema</button></div></div>
+            <div class="row"><div class="nm">Baixa automática de estoque<small>Dá saída nos insumos pela ficha técnica quando o pedido entra</small></div><div class="seg" id="segBaixa"><button data-b="1">Ligada</button><button data-b="0">Desligada</button></div></div>
+          </div>
+          <h3 class="sec">Identidade</h3>
+          <div class="panel"><div class="row"><div class="nm">Logo da loja<small>Aparece no site, mesas, caixa e admin</small></div><img src="/logo.png" style="height:34px;background:#000;border-radius:8px;padding:4px 8px"></div>
+          <div class="row"><div class="nm mut" style="font-weight:400">Edição de logo, fichas técnicas, manual de montagem e insumos entram no próximo bloco do cardápio.</div></div></div>
+        </section>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- MODAL PIN -->
+<div class="modal" id="mPin"><div class="box">
+  <h3>Defina seu PIN de acesso 🔒</h3>
+  <p id="mPinSub">Primeiro acesso: crie um PIN de 4 a 6 dígitos só seu.</p>
+  <input class="field pinbox" id="np1" placeholder="• • • • • •" inputmode="numeric" maxlength="6">
+  <input class="field pinbox" id="np2" placeholder="repita o PIN" inputmode="numeric" maxlength="6">
+  <button class="btn full" style="margin-top:6px" onclick="confirmaPin()">Salvar PIN</button>
+  <p id="mPinErr" class="sm" style="color:var(--verm);min-height:16px;margin:10px 0 0"></p>
+</div></div>
+
+<!-- MODAL TEXTO -->
+<div class="modal" id="mInput"><div class="box">
+  <h3 id="mInTit">Editar</h3><p id="mInSub"></p>
+  <input class="field" id="mInField" autocomplete="off">
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn ghost" id="mInCancel" style="flex:1">Cancelar</button><button class="btn" id="mInOk" style="flex:1">Salvar</button></div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API=location.origin, $=id=>document.getElementById(id);
-const BRL=v=>'R$ '+Number(v||0).toFixed(2).replace('.',',');
+const BRL=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const PERFIS=['GESTOR','CHEFE_COZINHA','OPERADOR_ATENDIMENTO','GARCOM','ENTREGADOR','COLABORADOR'];
-let user=null, SETORES=[];
-function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2500); }
-/* LOGIN */
-async function passo1(){ const login=$('login').value.trim(); if(!login)return; $('loginErr').textContent='';
-  const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})})).json();
-  if(d.precisa_pin){ $('passoNome').style.display='none'; $('passoPin').style.display='block'; $('loginSub').textContent='Olá, '+(d.nome||login).split(' ')[0]+'. Digite seu PIN.'; setTimeout(()=>$('pin').focus(),100); return; }
-  if(d.ok) checaAdmin(d); else $('loginErr').textContent=d.erro||'Não encontrado'; }
-async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4)return;
-  const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json();
-  if(d.ok){ if(d.must_change && !(await trocaObrigatoria(d.usuario.login||login, pin))) return; checaAdmin(d); } else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
-async function trocaObrigatoria(login, pinAtual){
-  let novo=prompt('Primeiro acesso 🔐 — defina seu PIN definitivo (4 a 6 dígitos):'); if(novo===null)return false; novo=(novo||'').replace(/\D/g,'');
-  if(novo.length<4){ alert('PIN inválido.'); return false; }
-  const c=prompt('Confirme o novo PIN:'); if((c||'').replace(/\D/g,'')!==novo){ alert('Os PINs não conferem.'); return false; }
-  const r=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin_atual:pinAtual,novo_pin:novo})})).json();
-  if(r.ok){ alert('PIN definido! Use ele nas próximas vezes.'); return true; } alert(r.erro||'Erro ao trocar PIN'); return false; }
-$('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); }); $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
-function checaAdmin(d){ if(!d.usuario.pode_admin){ $('loginErr').textContent='Acesso restrito ao gestor.'; return; }
-  user=d.usuario; $('who').textContent=user.nome+' · Gestor'; $('sLogin').classList.remove('on'); $('sApp').classList.add('on'); initApp(); }
-function tab(name,el){ document.querySelectorAll('.tabc').forEach(t=>t.style.display='none'); $('t_'+name).style.display='block'; document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on')); el.classList.add('on');
-  if(name==='cardapio')loadCardapio(); if(name==='estoque')loadEstoque(); if(name==='equipe')loadEquipe(); }
-async function initApp(){ loadInicio(); PERFIS.forEach(p=>{ $('nu_perfil').innerHTML+=`<option value="${p}">${p}</option>`; }); }
+const PERFIL_NOME={GESTOR:'Gestor',CHEFE_COZINHA:'Chefe de Cozinha',OPERADOR_ATENDIMENTO:'Operador',GARCOM:'Garçom',ENTREGADOR:'Entregador',COLABORADOR:'Colaborador'};
+let user=null, SETORES=[], _pinCtx=null;
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2600); }
 
-/* INICIO */
+/* ===== LOGIN ===== */
+async function passo1(){ const login=$('login').value.trim(); if(!login)return; $('lgErr').textContent='';
+  try{ const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})})).json();
+    if(d.precisa_pin){ $('lgTit').textContent='Olá, '+(d.nome||login).split(' ')[0]; $('lgSub').textContent='Digite seu PIN para entrar.'; $('stepNome').style.display='none'; $('stepPin').style.display='block'; setTimeout(()=>$('pin').focus(),80); return; }
+    if(d.ok) entraOk(d, login); else $('lgErr').textContent=d.erro||'Usuário não encontrado.';
+  }catch(e){ $('lgErr').textContent='Falha de conexão.'; } }
+async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4){ $('lgErr').textContent='Digite seu PIN.'; return; } $('lgErr').textContent='';
+  try{ const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json();
+    if(d.ok) entraOk(d, login); else { $('lgErr').textContent=d.erro||'PIN incorreto.'; $('pin').value=''; }
+  }catch(e){ $('lgErr').textContent='Falha de conexão.'; } }
+function voltarNome(){ $('stepPin').style.display='none'; $('stepNome').style.display='block'; $('pin').value=''; $('lgErr').textContent=''; $('lgTit').textContent='Painel administrativo'; $('lgSub').textContent='Acesso exclusivo dos gestores.'; }
+$('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); }); $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
+function entraOk(d, login){
+  if(!d.usuario.pode_admin){ $('lgErr').textContent='Acesso restrito aos gestores.'; return; }
+  if(d.must_change){ _pinCtx={ login:d.usuario.login||login, pinAtual:$('pin').value.trim() }; $('mPin').classList.add('on'); setTimeout(()=>$('np1').focus(),80); return; }
+  abrirApp(d.usuario);
+}
+async function confirmaPin(){ const a=$('np1').value.replace(/\D/g,''), b=$('np2').value.replace(/\D/g,''); $('mPinErr').textContent='';
+  if(a.length<4){ $('mPinErr').textContent='O PIN precisa ter 4 a 6 dígitos.'; return; }
+  if(a!==b){ $('mPinErr').textContent='Os PINs não conferem.'; return; }
+  try{ const r=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:_pinCtx.login,pin_atual:_pinCtx.pinAtual,novo_pin:a})})).json();
+    if(!r.ok){ $('mPinErr').textContent=r.erro||'Erro ao salvar.'; return; }
+    $('mPin').classList.remove('on'); toast('PIN definido com sucesso');
+    const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:_pinCtx.login,pin:a})})).json();
+    if(d.ok) abrirApp(d.usuario);
+  }catch(e){ $('mPinErr').textContent='Falha de conexão.'; } }
+$('np2').addEventListener('keydown',e=>{ if(e.key==='Enter')confirmaPin(); });
+function abrirApp(u){ user=u; $('whoName').innerHTML=u.nome+'<small>Gestor</small>'; $('whoNameM').textContent=u.nome.split(' ')[0];
+  $('loginScreen').style.display='none'; $('app').style.display='block'; initApp(); }
+
+/* ===== NAV ===== */
+function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.remove('on')); $('s_'+s).classList.add('on');
+  document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
+  if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
+  if(s==='inicio')loadInicio(); if(s==='cardapio')loadCardapio(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+async function initApp(){ const ag=user.id; loadInicio(); }
+function sair(){ location.reload(); }
+
+/* ===== INÍCIO (dashboard) ===== */
 async function loadInicio(){
-  const [ped,mes,cat,cont]=await Promise.all([
-    fetch(API+'/api/pedidos').then(r=>r.json()).catch(()=>({pedidos:[]})),
-    fetch(API+'/api/mesas').then(r=>r.json()).catch(()=>({mesas:[]})),
-    fetch(API+'/api/catalogo').then(r=>r.json()).catch(()=>({categorias:[]})),
-    fetch(API+'/api/estoque/contagens').then(r=>r.json()).catch(()=>({contagens:[]}))]);
-  const hoje=new Date().toISOString().slice(0,10);
-  const pedHoje=(ped.pedidos||[]).filter(p=>(p.criado_em||'').slice(0,10)===hoje).length;
-  const ocup=(mes.mesas||[]).filter(m=>m.ocupada).length;
-  let falta=0; (cat.categorias||[]).forEach(c=>c.produtos.forEach(p=>{ if(p.status==='EM_FALTA')falta++; (p.grupos||[]).forEach(g=>g.opcoes.forEach(o=>{ if(o.status==='EM_FALTA')falta++; })); }));
-  const contHoje=(cont.contagens||[]).filter(c=>(c.finalizada_em||'').slice(0,10)===hoje);
-  const abaixo=contHoje.reduce((s,c)=>s+(c.itens_abaixo_minimo||0),0);
-  $('kpis').innerHTML=`
-    <div class="kpi"><b>${pedHoje}</b><span>pedidos hoje</span></div>
-    <div class="kpi"><b>${ocup}</b><span>mesas ocupadas</span></div>
-    <div class="kpi"><b style="color:var(--amar)">${falta}</b><span>itens em falta</span></div>
-    <div class="kpi"><b>${contHoje.length}</b><span>contagens hoje</span></div>
-    <div class="kpi"><b style="color:var(--verm)">${abaixo}</b><span>abaixo do mínimo</span></div>`;
-  $('ultContagens').innerHTML=(cont.contagens||[]).slice(0,8).map(c=>`<div class="row"><div class="nm">${c.setor_nome} <span class="sb">${c.colaborador_nome} · ${c.turno} · ${new Date(c.finalizada_em).toLocaleString('pt-BR')}</span></div><div class="muted">${c.total_itens} itens · <span style="color:var(--amar)">${c.itens_abaixo_minimo} abaixo</span> · <span style="color:var(--verm)">${c.itens_zerados} zerados</span></div></div>`).join('')||'<p class="muted">Nenhuma contagem ainda.</p>';
-  loadConfig();
+  $('periodo').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  let s={}; try{ s=await (await fetch(API+'/api/sistema?area=resumo')).json(); }catch(e){}
+  let cfg={}; try{ cfg=await (await fetch(API+'/api/admin/config?admin_id='+user.id)).json(); }catch(e){}
+  const ped=s.pedidos||{}, est=s.estoque||{}, mes=s.mesas||{}, card=s.cardapio||{};
+  // status loja (heurística por horário 18h-23:30)
+  const h=new Date().getHours(); const aberta=h>=18||h<1;
+  $('lojaStatus').className='chip '+(aberta?'aberta':'fechada'); $('lojaStatus').innerHTML=`<span class="dot ${aberta?'g':'r'}"></span> Loja ${aberta?'aberta':'fechada'}`;
+  const varPed=(ped.hoje||0)-(ped.ontem||0);
+  const abaixo=(s.ultimas_contagens&&s.ultimas_contagens[0])?s.ultimas_contagens[0].itens_abaixo_minimo:0;
+  $('kpis').innerHTML=[
+    kpi('Pedidos hoje', ped.hoje||0, 'lar','🧾', varTxt(varPed,ped.ontem)),
+    kpi('Receita hoje', BRL(ped.receita_hoje||0), 'ver','💰', `Ticket médio ${BRL(ped.ticket_medio||0)}`),
+    kpi('Em andamento', ped.em_aberto||0, 'azu','⏱️', 'pedidos abertos agora'),
+    kpi('Mesas ocupadas', (mes.ocupadas||0)+'/'+(mes.total||0), 'rox','🍽️', 'salão'),
+    kpi('Itens em falta', card.em_falta||0, (card.em_falta>0?'am':'ver'),'🚫', 'no cardápio'),
+    kpi('Resolvidos pela Jéssica', '—', 'rox','🤖', 'após aprovação Meta')
+  ].join('');
+  // alertas
+  const al=[];
+  if((card.em_falta||0)>0) al.push(`<div class="alert warn">⚠️ <b>${card.em_falta} item(ns)</b> marcados como "em falta" no cardápio.</div>`);
+  if(abaixo>0) al.push(`<div class="alert warn">📦 Última contagem teve <b>${abaixo} item(ns)</b> abaixo do mínimo.</div>`);
+  if((est.contagens_hoje||0)===0) al.push(`<div class="alert bad">📋 Nenhuma contagem de estoque registrada hoje.</div>`);
+  if(!al.length) al.push(`<div class="alert ok">✅ Operação tranquila — nenhum alerta crítico no momento.</div>`);
+  $('alertas').innerHTML=al.join('');
+  // ultimas contagens
+  const uc=s.ultimas_contagens||[];
+  $('ultContagens').innerHTML = uc.length? uc.map(c=>`<div class="litem"><div class="nm">${c.setor_nome}<small>${c.colaborador_nome} · ${c.turno} · ${fmtData(c.finalizada_em)}</small></div><div class="sm"><b style="color:var(--amar)">${c.itens_abaixo_minimo}</b> abaixo · <b style="color:var(--verm)">${c.itens_zerados}</b> zerados</div></div>`).join('') : '<div class="empty">Nenhuma contagem ainda.</div>';
+  // atividade (movimentos)
+  const mv=(est.movimentos_recentes||[]);
+  $('atividade').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${m.insumo_nome}<small>${m.tipo==='ENTRADA'?'Entrada':m.tipo==='SAIDA'?'Saída':'Ajuste'} · ${m.origem||''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${m.tipo==='ENTRADA'?'var(--verde)':'var(--verm)'}">${m.tipo==='ENTRADA'?'+':'−'}${Number(m.quantidade)} ${m.unidade||''}</div></div>`).join('') : '<div class="empty">Sem movimentações recentes.</div>';
 }
-async function loadConfig(){ const c=await (await fetch(API+'/api/admin/config?admin_id='+user.id)).json();
-  document.querySelectorAll('#segDestino button').forEach(b=>b.classList.toggle('on', b.dataset.d===(c.destino_pedido||'SAIPOS')));
-  document.querySelectorAll('#segBaixa button').forEach(b=>b.classList.toggle('on', b.dataset.b===(c.baixa_estoque_auto?'1':'0')));
-  document.querySelectorAll('#segDestino button').forEach(b=> b.onclick=()=>saveConfig({destino_pedido:b.dataset.d}));
-  document.querySelectorAll('#segBaixa button').forEach(b=> b.onclick=()=>saveConfig({baixa_estoque_auto:b.dataset.b==='1'}));
-}
-async function saveConfig(campos){ await fetch(API+'/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...campos})}); toast('Configuração salva'); loadConfig(); }
-/* CARDAPIO */
+function kpi(lbl,val,ic,emoji,sub){ return `<div class="kpi"><div class="top"><div class="lbl">${lbl}</div><div class="ic ${ic}">${emoji}</div></div><div class="val">${val}</div><div class="meta">${sub||''}</div></div>`; }
+function varTxt(d,base){ if(base==null) return 'vs ontem'; if(d>0) return `<b class="up">▲ ${d}</b> vs ontem (${base})`; if(d<0) return `<b class="down">▼ ${Math.abs(d)}</b> vs ontem (${base})`; return `igual a ontem (${base})`; }
+function fmtData(s){ try{ return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+
+/* ===== CARDÁPIO (edição preço+status; CRUD completo no próximo bloco) ===== */
 async function loadCardapio(){ const cat=(await (await fetch(API+'/api/catalogo')).json()).categorias||[]; const box=$('cardapioBox'); box.innerHTML='';
-  cat.forEach(c=>{ const det=document.createElement('details'); let html=`<summary>${c.nome}</summary><div class="in">`;
-    c.produtos.forEach(p=>{ html+=linhaItem('produto',p.id,p.nome,p.preco_base,p.status,p.tipo==='MONTAVEL');
-      (p.grupos||[]).forEach(g=> g.opcoes.forEach(o=> html+=linhaItem('opcao',o.id,'· '+o.nome,o.preco,o.status,false,g.nome))); });
-    det.innerHTML=html+'</div>'; box.appendChild(det); });
-  box.querySelectorAll('[data-pz]').forEach(inp=> inp.addEventListener('keydown',e=>{ if(e.key==='Enter') salvarPreco(inp.dataset.tipo,inp.dataset.id,inp.value,inp); }));
-  box.querySelectorAll('.seg button').forEach(b=> b.onclick=()=>setStatus(b.dataset.tipo,b.dataset.id,b.dataset.s,b));
+  cat.forEach(c=>{ const det=document.createElement('details'); let h=`<summary><span class="pill cat">CATEGORIA</span> ${c.nome} <span class="cnt">${c.produtos.length} itens</span></summary><div class="in">`;
+    c.produtos.forEach(p=>{ h+=linha('produto',p.id,p.nome,p.preco_base,p.status,p.tipo==='MONTAVEL');
+      (p.grupos||[]).forEach(g=>{ h+=`<div class="row" style="background:#0f0f11"><div class="nm mut" style="font-weight:600">↳ Variação: ${g.nome} <small>${g.min}–${g.max} ${g.repete?'· repete':''}</small></div></div>`;
+        g.opcoes.forEach(o=> h+=linha('opcao',o.id,'· '+o.nome,o.preco,o.status,false)); }); });
+    det.innerHTML=h+'</div>'; box.appendChild(det); });
+  box.querySelectorAll('[data-pz]').forEach(i=> i.addEventListener('keydown',e=>{ if(e.key==='Enter')salvarPreco(i.dataset.tp,i.dataset.id,i.value,i); }));
+  box.querySelectorAll('.seg button').forEach(b=> b.onclick=()=>setStatus(b.dataset.tp,b.dataset.id,b.dataset.s,b));
 }
-function linhaItem(tipo,id,nome,preco,status,montavel,grupo){ const dis=montavel?'disabled title="preço vem das opções"':'';
-  return `<div class="row"><div class="nm">${nome}${grupo?` <span class="sb">${grupo}</span>`:''}</div>
-    <input class="field pz" data-pz data-tipo="${tipo}" data-id="${id}" value="${Number(preco).toFixed(2)}" ${dis}>
-    <div class="seg">${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tipo="${tipo}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('')}</div></div>`; }
-async function salvarPreco(tipo,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo,id,preco:parseFloat(String(preco).replace(',','.'))||0})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
-async function setStatus(tipo,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on');
-  await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
-/* ESTOQUE */
-async function loadEstoque(){ const d=await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json(); const itens=d.itens||[];
-  SETORES=[...new Map(itens.map(i=>[i.setor_id,i.setor_nome])).entries()].map(([id,nome])=>({id,nome}));
-  $('ni_setor').innerHTML=SETORES.map(s=>`<option value="${s.id}|${s.nome}">${s.nome}</option>`).join('')+'<option value="SET000|Geral">Geral</option>';
-  const box=$('estoqueBox'); box.innerHTML=''; const bySetor={}; itens.forEach(i=>{ (bySetor[i.setor_nome]=bySetor[i.setor_nome]||[]).push(i); });
-  Object.entries(bySetor).forEach(([sn,arr])=>{ const det=document.createElement('details'); let h=`<summary>${sn} · ${arr.length} itens</summary><div class="in">`;
-    arr.forEach(i=>{ h+=`<div class="row" data-id="${i.id}"><div class="nm">${i.nome}${i.ativo?'':' <span class="pill o">inativo</span>'}<span class="sb">${i.unidade}</span></div>
-      <label class="muted" style="font-size:11px">mín<input class="field mn" data-f="estoque_minimo" value="${Number(i.estoque_minimo)}"></label>
-      <label class="muted" style="font-size:11px">ideal<input class="field mn" data-f="estoque_ideal" value="${i.estoque_ideal!=null?Number(i.estoque_ideal):''}"></label>
-      <button class="btn sm" data-save>Salvar</button><button class="btn sm red" data-del>Remover</button></div>`; });
+function linha(tp,id,nome,preco,status,montavel){ const dis=montavel?'disabled title="o preço vem das variações"':'';
+  return `<div class="row"><div class="nm">${nome}</div><input class="field pz" data-pz data-tp="${tp}" data-id="${id}" value="${Number(preco).toFixed(2)}" ${dis}>
+    <div class="seg">${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('')}</div></div>`; }
+async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo:tp,id,preco:parseFloat(String(preco).replace(',','.'))||0})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
+async function setStatus(tp,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tp,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
+
+/* ===== ESTOQUE ===== */
+async function loadEstoque(){
+  const set=(await (await fetch(API+'/api/admin/setores?admin_id='+user.id)).json()).setores||[]; SETORES=set;
+  $('setoresBox').innerHTML = set.length? set.map(s=>`<div class="row"><div class="nm">${s.setor_nome}<small>${s.itens} itens · responsável: ${s.ultimo_responsavel||'—'} · última contagem: ${s.ultima_contagem?fmtData(s.ultima_contagem):'nunca'}</small></div><button class="btn sm ghost" onclick="renomearSetor('${s.setor_id}','${(s.setor_nome||'').replace(/'/g,"\\'")}')">Renomear</button></div>`).join('') : '<div class="empty">Sem setores.</div>';
+  const mv=(await (await fetch(API+'/api/estoque/movimentos')).json()).movimentos||[];
+  $('movBox').innerHTML = mv.length? mv.slice(0,12).map(m=>`<div class="litem"><div class="nm">${m.insumo_nome}<small>${m.tipo} · ${m.origem||''} ${m.por_nome?('· '+m.por_nome):''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${m.tipo==='ENTRADA'?'var(--verde)':'var(--verm)'}">${m.tipo==='ENTRADA'?'+':'−'}${Number(m.quantidade)} ${m.unidade||''}</div></div>`).join('') : '<div class="empty">Nenhuma entrada/saída registrada ainda.</div>';
+  const itens=(await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json()).itens||[];
+  const box=$('estItens'); box.innerHTML=''; const by={}; itens.forEach(i=>(by[i.setor_nome]=by[i.setor_nome]||[]).push(i));
+  Object.entries(by).forEach(([sn,arr])=>{ const det=document.createElement('details'); let h=`<summary>${sn} <span class="cnt">${arr.length} itens</span></summary><div class="in">`;
+    arr.forEach(i=>{ h+=`<div class="row" data-id="${i.id}"><div class="nm">${i.nome}<small>${i.unidade}</small></div>
+      <label class="xs mut">mín<input class="field mn" data-f="estoque_minimo" value="${Number(i.estoque_minimo)}"></label>
+      <label class="xs mut">ideal<input class="field mn" data-f="estoque_ideal" value="${i.estoque_ideal!=null?Number(i.estoque_ideal):''}"></label>
+      <button class="btn sm" data-save>Salvar</button></div>`; });
     det.innerHTML=h+'</div>'; box.appendChild(det); });
   box.querySelectorAll('[data-save]').forEach(b=> b.onclick=()=>salvarItem(b.closest('.row')));
-  box.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>removerItem(b.closest('.row')));
 }
-async function salvarItem(row){ const id=row.dataset.id, fs=row.querySelectorAll('[data-f]'); const it=(await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json()).itens.find(x=>x.id===id);
-  const body={admin_id:user.id, id, setor_id:it.setor_id, setor_nome:it.setor_nome, categoria:it.categoria, nome:it.nome, unidade:it.unidade, ordem:it.ordem};
-  fs.forEach(f=> body[f.dataset.f]= f.value===''?null:parseFloat(f.value));
+async function renomearSetor(id,atual){ const novo=await pedirTexto('Renomear setor','Nome do setor (ex: Borda, Montagem)',atual); if(novo===null)return; const v=novo.trim(); if(!v){ toast('Informe um nome'); return; }
+  await fetch(API+'/api/admin/setor/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,setor_id:id,novo_nome:v})}); toast('Setor renomeado'); SETORES=[]; loadEstoque(); }
+/* modal de texto reutilizável (substitui o prompt do navegador) */
+function pedirTexto(titulo,sub,valor){ return new Promise(resolve=>{ $('mInTit').textContent=titulo; $('mInSub').textContent=sub||''; const f=$('mInField'); f.value=valor||''; $('mInput').classList.add('on'); setTimeout(()=>f.focus(),80);
+  const fim=v=>{ $('mInput').classList.remove('on'); $('mInOk').onclick=null; $('mInCancel').onclick=null; f.onkeydown=null; resolve(v); };
+  $('mInOk').onclick=()=>fim(f.value); $('mInCancel').onclick=()=>fim(null); f.onkeydown=e=>{ if(e.key==='Enter')fim(f.value); if(e.key==='Escape')fim(null); }; }); }
+async function salvarItem(rowEl){ const id=rowEl.dataset.id; const all=(await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json()).itens; const it=all.find(x=>x.id===id);
+  const body={admin_id:user.id,id,setor_id:it.setor_id,setor_nome:it.setor_nome,categoria:it.categoria,nome:it.nome,unidade:it.unidade,ordem:it.ordem};
+  rowEl.querySelectorAll('[data-f]').forEach(f=> body[f.dataset.f]= f.value===''?null:parseFloat(f.value));
   await fetch(API+'/api/admin/estoque-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); toast('Item salvo'); }
-async function removerItem(row){ if(!confirm('Remover este item da contagem?'))return; await fetch(API+'/api/admin/estoque-item/'+row.dataset.id+'?admin_id='+user.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id})}); loadEstoque(); toast('Removido'); }
-async function novoItem(){ const [sid,sn]=($('ni_setor').value||'SET000|Geral').split('|');
-  const body={admin_id:user.id, setor_id:sid, setor_nome:sn, nome:$('ni_nome').value, unidade:$('ni_unidade').value||'un', categoria:$('ni_categoria').value, estoque_minimo:parseFloat($('ni_min').value)||0, estoque_ideal:$('ni_ideal').value?parseFloat($('ni_ideal').value):null};
-  if(!body.nome){ toast('Informe o nome'); return; }
-  await fetch(API+'/api/admin/estoque-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); $('ni_nome').value=''; loadEstoque(); toast('Item adicionado'); }
-/* EQUIPE */
-async function loadEquipe(){ const d=await (await fetch(API+'/api/admin/usuarios?admin_id='+user.id)).json(); const box=$('equipeBox'); box.innerHTML='';
-  (d.usuarios||[]).forEach(u=>{ const det=document.createElement('details'); det.innerHTML=`<summary>${u.nome} <span class="muted">· ${u.apelido_login||'—'} · ${u.perfil_principal}${u.ativo?'':' · INATIVO'}</span></summary><div class="in">
-    <div class="grid2"><label class="muted">Perfil<select class="field" data-f="perfil">${PERFIS.map(p=>`<option ${u.perfil_principal===p?'selected':''}>${p}</option>`).join('')}</select></label>
-    <label class="muted">Setores (vírgula: SET001,SET002 ou TUDO)<input class="field" data-f="setores" value="${(u.setores_permitidos||[]).join(',')}"></label></div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <button class="btn sm" data-salvar>Salvar</button>
-      <button class="btn sm ghost" data-ativar>${u.ativo?'Desativar':'Ativar'}</button>
-      <input class="field" data-novopin placeholder="Novo PIN" inputmode="numeric" style="width:120px;padding:7px">
-      <button class="btn sm" data-pin>Trocar PIN</button>
-      <span class="muted" style="align-self:center">${u.tem_pin?'PIN definido':'sem PIN'}</span>
-    </div></div>`;
-    det.querySelector('[data-salvar]').onclick=()=>salvarUsuario(u.id,det);
-    det.querySelector('[data-ativar]').onclick=()=>{ patchUser(u.id,{ativo:!u.ativo}); };
-    det.querySelector('[data-pin]').onclick=()=>resetPin(u.id,det.querySelector('[data-novopin]').value);
+
+/* ===== EQUIPE ===== */
+function setorNome(sid){ const s=SETORES.find(x=>x.setor_id===sid); return s?s.setor_nome:sid; }
+async function loadEquipe(){ if(!SETORES.length){ try{ SETORES=(await (await fetch(API+'/api/admin/setores?admin_id='+user.id)).json()).setores||[]; }catch(e){} }
+  const us=(await (await fetch(API+'/api/admin/usuarios?admin_id='+user.id)).json()).usuarios||[]; const box=$('equipeBox'); box.innerHTML='';
+  us.forEach(u=>{ const det=document.createElement('details');
+    const setoresNomes=(u.setores_permitidos||[]).map(s=> s==='TUDO'?'Todos os setores':setorNome(s)).join(', ')||'—';
+    det.innerHTML=`<summary>${u.nome} <span class="cnt">${PERFIL_NOME[u.perfil_principal]||u.perfil_principal}${u.ativo?'':' · inativo'}</span></summary><div class="in" style="padding:6px 14px 14px">
+      <div class="mut sm" style="margin-bottom:8px">Usuário: <b>${u.apelido_login||'—'}</b> · Setores: ${setoresNomes} · ${u.tem_pin?'PIN definido':'sem PIN'}</div>
+      <div class="grid2">
+        <label class="xs mut">Perfil<select class="field" data-f="perfil">${PERFIS.map(p=>`<option value="${p}" ${u.perfil_principal===p?'selected':''}>${PERFIL_NOME[p]}</option>`).join('')}</select></label>
+        <label class="xs mut">Setores (segure Ctrl)<select class="field" data-f="setores" multiple size="3"><option value="TUDO" ${(u.setores_permitidos||[]).includes('TUDO')?'selected':''}>Todos os setores</option>${SETORES.map(s=>`<option value="${s.setor_id}" ${(u.setores_permitidos||[]).includes(s.setor_id)?'selected':''}>${s.setor_nome}</option>`).join('')}</select></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn sm" data-salvar>Salvar</button>
+        <button class="btn sm ghost" data-ativar>${u.ativo?'Desativar':'Ativar'}</button>
+        <input class="field" data-pin placeholder="Novo PIN" inputmode="numeric" style="width:130px;padding:8px">
+        <button class="btn sm ghost" data-trocapin>Trocar PIN</button>
+      </div></div>`;
+    det.querySelector('[data-salvar]').onclick=()=>{ const perfil=det.querySelector('[data-f="perfil"]').value; const sel=[...det.querySelector('[data-f="setores"]').selectedOptions].map(o=>o.value); patchUser(u.id,{perfil_principal:perfil,setores_permitidos:sel}); };
+    det.querySelector('[data-ativar]').onclick=()=>patchUser(u.id,{ativo:!u.ativo});
+    det.querySelector('[data-trocapin]').onclick=()=>resetPin(u.id,det.querySelector('[data-pin]').value);
     box.appendChild(det); });
 }
-async function salvarUsuario(id,det){ const perfil=det.querySelector('[data-f="perfil"]').value; const setores=det.querySelector('[data-f="setores"]').value.split(',').map(s=>s.trim()).filter(Boolean);
-  await patchUser(id,{perfil_principal:perfil, setores_permitidos:setores}); }
-async function patchUser(id,campos){ await fetch(API+'/api/admin/usuario/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...campos})}); loadEquipe(); toast('Usuário atualizado'); }
+async function patchUser(id,campos){ await fetch(API+'/api/admin/usuario/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...campos})}); toast('Usuário atualizado'); loadEquipe(); }
 async function resetPin(id,pin){ pin=String(pin||'').replace(/\D/g,''); if(pin.length<4){ toast('PIN inválido'); return; } await fetch(API+'/api/admin/usuario/'+id+'/pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,pin})}); toast('PIN trocado'); }
-async function novoUsuario(){ const body={admin_id:user.id, nome:$('nu_nome').value, apelido_login:$('nu_login').value, perfil_principal:$('nu_perfil').value, pin:$('nu_pin').value};
-  if(!body.nome||!body.apelido_login){ toast('Nome e usuário obrigatórios'); return; }
-  await fetch(API+'/api/admin/usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); $('nu_nome').value='';$('nu_login').value='';$('nu_pin').value=''; loadEquipe(); toast('Usuário criado'); }
+
+/* ===== CONFIG ===== */
+async function loadConfig(){ const c=await (await fetch(API+'/api/admin/config?admin_id='+user.id)).json();
+  document.querySelectorAll('#segDestino button').forEach(b=>b.classList.toggle('on',b.dataset.d===(c.destino_pedido||'SAIPOS')));
+  document.querySelectorAll('#segBaixa button').forEach(b=>b.classList.toggle('on',b.dataset.b===(c.baixa_estoque_auto?'1':'0')));
+  document.querySelectorAll('#segDestino button').forEach(b=> b.onclick=()=>saveCfg({destino_pedido:b.dataset.d}));
+  document.querySelectorAll('#segBaixa button').forEach(b=> b.onclick=()=>saveCfg({baixa_estoque_auto:b.dataset.b==='1'})); }
+async function saveCfg(c){ await fetch(API+'/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...c})}); toast('Configuração salva'); loadConfig(); }
 </script>
 </body>
 </html>
