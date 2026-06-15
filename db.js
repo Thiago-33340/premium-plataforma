@@ -156,6 +156,13 @@ async function init(retries) {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
         console.log('[db] seed de PINs (idempotente) aplicado');
+        // Força troca de PIN no 1º login p/ gestores+Sophia — uma única vez (marcador em tenants.config).
+        const mk = await pool.query("SELECT (config->>'pin_reset_gestores_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+        if (!mk.rows[0] || !mk.rows[0].m) {
+          await pool.query("UPDATE rbac_contacts SET pin_must_change=TRUE WHERE tenant_id=$1 AND LOWER(apelido_login) IN ('thiago','tassiano','eva','sophia')", [TENANT]);
+          await pool.query("UPDATE tenants SET config = COALESCE(config,'{}'::jsonb) || '{\"pin_reset_gestores_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+          console.log('[db] troca de PIN forcada p/ gestores+sophia (uma vez)');
+        }
       } catch (esp) { console.log('[db] seed-pins aviso:', esp.code || esp.message); }
       state.migrationsOk = true;
       console.log('[db] convergido com schema khardela - migracoes ok');

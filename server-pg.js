@@ -285,7 +285,7 @@ async function api(req, res, url) {
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     const alvo = norm(b.login);
     if (!alvo) return json(res, 400, { erro: 'informe o login' });
-    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, setores_permitidos, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, setores_permitidos, pin_hash, pin_must_change FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome) === alvo || norm(x.nome).split(' ')[0] === alvo);
     if (!col) return json(res, 404, { ok: false, erro: 'Colaborador nao encontrado ou inativo.' });
     // validacao de PIN (6 digitos). Se o colaborador tem pin_hash, exige e valida via bcrypt.
@@ -305,7 +305,7 @@ async function api(req, res, url) {
       const s = await db.q('SELECT setor_id, setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem AND setor_id = ANY($2) GROUP BY setor_id, setor_nome ORDER BY setor_nome', [TENANT, setoresPerm]);
       setores = s.rows;
     }
-    return json(res, 200, { ok: true, colaborador: { id: col.id, nome: col.nome, perfil: col.perfil_principal, ve_tudo: veTudo }, setores });
+    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, colaborador: { id: col.id, nome: col.nome, login: col.apelido_login, perfil: col.perfil_principal, ve_tudo: veTudo }, setores });
   }
 
   if (sub === 'estoque' && seg[2] === 'itens' && req.method === 'GET') {
@@ -409,7 +409,7 @@ async function api(req, res, url) {
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     const alvo = norm(b.login);
     if (!alvo) return json(res, 400, { erro: 'informe o login' });
-    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, pin_hash, pin_must_change FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);
     if (!col) return json(res, 404, { ok: false, erro: 'Usuario nao encontrado.' });
     const pin = String(b.pin || '').replace(/\D/g, '');
@@ -421,8 +421,21 @@ async function api(req, res, url) {
     const perfis = [col.perfil_principal].concat(col.perfis_adicionais || []);
     const ehGarcom = perfis.includes('GARCOM');
     const ehGestor = perfis.some(p => ['GESTOR', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
-    return json(res, 200, { ok: true, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal,
+    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login,
       pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfis.includes('GESTOR') } });
+  }
+  // trocar o proprio PIN (primeiro login obrigatorio): valida o atual, grava o novo.
+  if (sub === 'staff' && seg[2] === 'trocar-pin' && req.method === 'POST') {
+    const b = await readBody(req);
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const alvo = norm(b.login); const atual = String(b.pin_atual || '').replace(/\D/g, ''); const novo = String(b.novo_pin || '').replace(/\D/g, '');
+    if (novo.length < 4) return json(res, 400, { erro: 'O novo PIN precisa ter ao menos 4 dígitos.' });
+    const r = await db.q('SELECT id, apelido_login, nome, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);
+    if (!col) return json(res, 404, { erro: 'usuario nao encontrado' });
+    if (col.pin_hash) { const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, atual]); if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { erro: 'PIN atual incorreto.' }); }
+    await db.q(`UPDATE rbac_contacts SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=FALSE WHERE id=$1`, [col.id, novo]);
+    return json(res, 200, { ok: true });
   }
 
   // ===================== MESAS / COMANDAS =====================
