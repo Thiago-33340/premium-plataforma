@@ -277,7 +277,8 @@ function renderCarrinho(){
 function irCheckout(){
   const b=document.getElementById('cBody');
   if(checkoutStep===0){ // dados
-    checkoutStep=1; b.innerHTML=`<div class="muted">Identifique-se (login pelo seu WhatsApp)</div>
+    checkoutStep=1; b.innerHTML=`<div style="font-weight:700;font-size:15px">Crie sua conta para finalizar</div>
+      <div class="muted" style="margin-top:4px">É rapidinho: com seu WhatsApp guardamos seus pedidos anteriores pra facilitar os próximos e te avisamos quando tiver promoção. 🍕</div>
       <input class="field" id="ckNome" placeholder="Seu nome" value="${cliente?cliente.nome||'':''}">
       <input class="field" id="ckTel" placeholder="WhatsApp com DDD (ex: 5517999999999)" inputmode="numeric" value="${cliente?cliente.telefone:''}">
       <div style="margin-top:14px" class="muted">Como quer receber?</div>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caixa & Entregadores — Premium Pizzas</title>
+<style>
+  :root{ --preto:#0D0D0D; --laranja:#F97316; --cinza:#1c1c1e; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --verm:#ef4444; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
+  header{ position:sticky; top:0; background:#0d0d0dee; backdrop-filter:blur(8px); border-bottom:1px solid var(--linha); padding:12px 16px; display:flex; gap:10px; align-items:center; }
+  header .logo{ font-weight:800; } header .logo b{ color:var(--laranja); } header .who{ margin-left:auto; font-size:12px; color:var(--mut); } header a.lnk{ font-size:12px;color:var(--laranja);border:1px solid var(--linha);border-radius:8px;padding:5px 9px;text-decoration:none; }
+  .wrap{ max-width:560px; margin:0 auto; padding:16px; } .center{ max-width:360px; margin:9vh auto 0; }
+  .scr{ display:none; } .scr.on{ display:block; }
+  h2{ font-size:15px; color:var(--laranja); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.5px; }
+  .field{ width:100%; background:var(--cinza); border:1px solid var(--linha); color:#fff; border-radius:10px; padding:12px; font-size:15px; margin-top:8px; }
+  .btn{ background:var(--laranja); color:#000; border:none; border-radius:10px; padding:12px 14px; font-weight:800; } .btn.full{ width:100%; } .btn.ghost{ background:transparent; color:#fff; border:1px solid var(--linha); } .btn.red{ background:var(--verm); color:#fff; } .btn.sm{ padding:7px 10px; font-size:12px; }
+  .card{ background:var(--cinza); border:1px solid var(--linha); border-radius:14px; padding:16px; margin-top:10px; }
+  .row{ display:flex; gap:10px; align-items:center; background:var(--cinza); border:1px solid var(--linha); border-radius:11px; padding:11px 12px; margin-bottom:7px; }
+  .row .nm{ flex:1; font-weight:600; } .row .nm small{ color:var(--mut); font-weight:400; display:block; }
+  .muted{ color:var(--mut); font-size:13px; } .ok{ color:var(--verde); } .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--laranja); padding:9px 16px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; } .toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<!-- LOGIN -->
+<div class="scr on" id="sLogin"><div class="wrap center">
+  <div class="logo" style="font-size:18px;margin-bottom:6px">PREMIUM <b>PIZZAS</b> · Caixa</div>
+  <div class="muted" id="loginSub">Entre com seu usuário.</div>
+  <div id="passoNome"><input class="field" id="login" placeholder="Usuário" autocapitalize="off"><button class="btn full" style="margin-top:10px" onclick="passo1()">Continuar</button></div>
+  <div id="passoPin" style="display:none"><input class="field" id="pin" placeholder="PIN" inputmode="numeric" maxlength="6" style="text-align:center;letter-spacing:8px;font-size:22px"><button class="btn full" style="margin-top:10px" onclick="entrar()">Entrar</button></div>
+  <p class="muted" id="loginErr" style="color:var(--verm)"></p>
+</div></div>
+<!-- APP -->
+<div class="scr" id="sApp">
+  <header><div class="logo">PREMIUM <b>PIZZAS</b> · Caixa</div><a class="lnk" href="/mesas">Mesas</a><a class="lnk" href="/gestor">Pedidos</a><div class="who" id="who"></div></header>
+  <div class="wrap">
+    <h2>Frente de caixa</h2>
+    <div id="caixaBox"></div>
+    <h2>Entregadores</h2>
+    <div class="muted">Cadastre os entregadores pra despachar o pedido com o nome certo.</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><input class="field" id="ent_nome" placeholder="Nome" style="margin:0"><input class="field" id="ent_tel" placeholder="Telefone (opcional)" style="margin:0;max-width:160px"><button class="btn" onclick="addEntregador()">+</button></div>
+    <div id="entBox" style="margin-top:10px"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API=location.origin, $=id=>document.getElementById(id); const BRL=v=>'R$ '+Number(v||0).toFixed(2).replace('.',',');
+let user=null; function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2400); }
+async function passo1(){ const login=$('login').value.trim(); if(!login)return; const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})})).json();
+  if(d.precisa_pin){ $('passoNome').style.display='none'; $('passoPin').style.display='block'; $('loginSub').textContent='Olá, '+(d.nome||login).split(' ')[0]+'. Digite seu PIN.'; setTimeout(()=>$('pin').focus(),100); return; } if(d.ok)ap(d); else $('loginErr').textContent=d.erro||'Não encontrado'; }
+async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4)return; const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json(); if(d.ok)ap(d); else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
+$('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); }); $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
+function ap(d){ if(!d.usuario.pode_gestor){ $('loginErr').textContent='Acesso restrito (operador/gestor).'; return; } user=d.usuario; $('who').textContent=user.nome; $('sLogin').classList.remove('on'); $('sApp').classList.add('on'); loadCaixa(); loadEntregadores(); }
+async function loadCaixa(){ const d=await (await fetch(API+'/api/caixa')).json(); const box=$('caixaBox');
+  if(d.aberto){ box.innerHTML=`<div class="card"><div class="ok" style="font-weight:700">● Caixa aberto</div><div class="muted">Aberto por ${d.caixa.aberto_por_nome||'—'} · ${new Date(d.caixa.aberto_em).toLocaleString('pt-BR')} · abertura ${BRL(d.caixa.valor_abertura)}</div>
+    <input class="field" id="vf" placeholder="Valor em dinheiro no fechamento" inputmode="numeric"><button class="btn red full" style="margin-top:10px" onclick="fecharCaixa()">Fechar caixa</button></div>`; }
+  else { box.innerHTML=`<div class="card"><div class="muted">Nenhum caixa aberto.</div>
+    <input class="field" id="va" placeholder="Valor em dinheiro (abertura)" inputmode="numeric"><input class="field" id="oa" placeholder="Observações (nome, horário…)"><button class="btn full" style="margin-top:10px" onclick="abrirCaixa()">Abrir frente de caixa</button></div>`; }
+}
+async function abrirCaixa(){ const v=parseFloat(($('va').value||'0').replace(',','.'))||0; await fetch(API+'/api/caixa/abrir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor_abertura:v,observacao:$('oa').value,por:user.id,por_nome:user.nome})}); toast('Caixa aberto'); loadCaixa(); }
+async function fecharCaixa(){ const v=parseFloat(($('vf').value||'0').replace(',','.'))||0; await fetch(API+'/api/caixa/fechar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor_fechamento:v})}); toast('Caixa fechado'); loadCaixa(); }
+async function loadEntregadores(){ const d=await (await fetch(API+'/api/entregadores')).json(); $('entBox').innerHTML=(d.entregadores||[]).map(e=>`<div class="row"><div class="nm">${e.nome}<small>${e.telefone||''} ${e.ativo?'':'· inativo'}</small></div><button class="btn sm ghost" onclick="toggleEnt('${e.id}',${!e.ativo})">${e.ativo?'Desativar':'Ativar'}</button></div>`).join('')||'<p class="muted">Nenhum entregador cadastrado.</p>'; }
+async function addEntregador(){ if(!$('ent_nome').value){ toast('Informe o nome'); return; } await fetch(API+'/api/entregadores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:$('ent_nome').value,telefone:$('ent_tel').value})}); $('ent_nome').value='';$('ent_tel').value=''; loadEntregadores(); toast('Entregador cadastrado'); }
+async function toggleEnt(id,ativo){ await fetch(API+'/api/entregadores/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ativo})}); loadEntregadores(); }
+</script>
+</body>
+</html>
