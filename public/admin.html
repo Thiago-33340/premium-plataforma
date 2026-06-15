@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin — Premium Pizzas</title>
 <style>
-  :root{ --preto:#0D0D0D; --laranja:#F97316; --cinza:#1c1c1e; --cinza2:#2a2a2d; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; }
+  :root{ --preto:#000000; --laranja:#F97316; --cinza:#1c1c1e; --cinza2:#2a2a2d; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --amar:#eab308; --verm:#ef4444; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
   header{ position:sticky; top:0; z-index:20; background:#0d0d0dee; backdrop-filter:blur(8px); border-bottom:1px solid var(--linha); padding:10px 16px; display:flex; align-items:center; gap:14px; }
@@ -31,6 +31,7 @@
   select.field{ padding:9px; } .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .muted{ color:var(--mut); font-size:13px; } .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--laranja); padding:9px 16px; border-radius:30px; opacity:0; transition:.25s; font-size:13px; font-weight:600; z-index:60; } .toast.on{ opacity:1; }
   .seg{ display:flex; gap:4px; } .seg button{ border:1px solid var(--linha); background:#16161a; color:var(--mut); border-radius:7px; padding:5px 8px; font-size:11px; font-weight:700; }
+  .seg button.on{ background:var(--laranja); color:#000; border-color:var(--laranja); }
   .seg button.on[data-s="ATIVO"]{ background:var(--verde); color:#000; } .seg button.on[data-s="EM_FALTA"]{ background:var(--amar); color:#000; } .seg button.on[data-s="OCULTO"]{ background:var(--verm); color:#fff; }
   details{ background:var(--cinza); border:1px solid var(--linha); border-radius:11px; margin-bottom:8px; } summary{ padding:12px; font-weight:700; cursor:pointer; } details .in{ padding:0 12px 12px; }
 </style>
@@ -38,7 +39,7 @@
 <body>
 <!-- LOGIN -->
 <div class="scr on" id="sLogin"><div class="wrap center">
-  <div class="logo" style="font-size:18px;margin-bottom:6px">PREMIUM <b>PIZZAS</b> · Admin</div>
+  <img src="/logo.png" alt="Com Amor, Premium Pizzas" style="height:40px;width:auto;display:block;margin:0 auto 8px"><div class="muted" style="font-weight:700;letter-spacing:1px">ADMIN</div>
   <div class="muted" id="loginSub">Acesso restrito (gestor). Entre com seu usuário.</div>
   <div id="passoNome"><input class="field" id="login" placeholder="Usuário (ex: tassiano)" autocapitalize="off" style="margin-top:10px"><button class="btn" style="width:100%;margin-top:10px" onclick="passo1()">Continuar</button></div>
   <div id="passoPin" style="display:none"><input class="field" id="pin" placeholder="PIN" inputmode="numeric" maxlength="6" style="margin-top:10px;text-align:center;letter-spacing:8px;font-size:22px"><button class="btn" style="width:100%;margin-top:10px" onclick="entrar()">Entrar</button></div>
@@ -47,7 +48,7 @@
 
 <!-- APP -->
 <div class="scr" id="sApp">
-  <header><div class="logo">PREMIUM <b>PIZZAS</b> · Admin</div><div class="who" id="who"></div></header>
+  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Admin</span><div class="who" id="who"></div></header>
   <div class="tabs">
     <button class="on" onclick="tab('inicio',this)">Início</button>
     <button onclick="tab('cardapio',this)">Cardápio</button>
@@ -58,6 +59,11 @@
     <div class="tabc" id="t_inicio">
       <h2>Visão do dia</h2><div class="cards" id="kpis"><p class="muted">Carregando…</p></div>
       <h2>Últimas contagens de estoque</h2><div id="ultContagens"></div>
+      <h2>Integrações & sistema</h2>
+      <div class="row"><div class="nm">Destino dos pedidos da Jéssica<span class="sb">Pra onde vai o pedido que a Jéssica fecha no WhatsApp</span></div>
+        <div class="seg" id="segDestino"><button data-d="SAIPOS">Saipos</button><button data-d="NOSSO">Nosso sistema</button></div></div>
+      <div class="row"><div class="nm">Baixa automática de estoque<span class="sb">Quando um pedido entra, dá saída nos insumos pela ficha técnica</span></div>
+        <div class="seg" id="segBaixa"><button data-b="1">Ligada</button><button data-b="0">Desligada</button></div></div>
     </div>
     <div class="tabc" id="t_cardapio" style="display:none">
       <h2>Cardápio — preço e disponibilidade</h2>
@@ -129,7 +135,15 @@ async function loadInicio(){
     <div class="kpi"><b>${contHoje.length}</b><span>contagens hoje</span></div>
     <div class="kpi"><b style="color:var(--verm)">${abaixo}</b><span>abaixo do mínimo</span></div>`;
   $('ultContagens').innerHTML=(cont.contagens||[]).slice(0,8).map(c=>`<div class="row"><div class="nm">${c.setor_nome} <span class="sb">${c.colaborador_nome} · ${c.turno} · ${new Date(c.finalizada_em).toLocaleString('pt-BR')}</span></div><div class="muted">${c.total_itens} itens · <span style="color:var(--amar)">${c.itens_abaixo_minimo} abaixo</span> · <span style="color:var(--verm)">${c.itens_zerados} zerados</span></div></div>`).join('')||'<p class="muted">Nenhuma contagem ainda.</p>';
+  loadConfig();
 }
+async function loadConfig(){ const c=await (await fetch(API+'/api/admin/config?admin_id='+user.id)).json();
+  document.querySelectorAll('#segDestino button').forEach(b=>b.classList.toggle('on', b.dataset.d===(c.destino_pedido||'SAIPOS')));
+  document.querySelectorAll('#segBaixa button').forEach(b=>b.classList.toggle('on', b.dataset.b===(c.baixa_estoque_auto?'1':'0')));
+  document.querySelectorAll('#segDestino button').forEach(b=> b.onclick=()=>saveConfig({destino_pedido:b.dataset.d}));
+  document.querySelectorAll('#segBaixa button').forEach(b=> b.onclick=()=>saveConfig({baixa_estoque_auto:b.dataset.b==='1'}));
+}
+async function saveConfig(campos){ await fetch(API+'/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...campos})}); toast('Configuração salva'); loadConfig(); }
 /* CARDAPIO */
 async function loadCardapio(){ const cat=(await (await fetch(API+'/api/catalogo')).json()).categorias||[]; const box=$('cardapioBox'); box.innerHTML='';
   cat.forEach(c=>{ const det=document.createElement('details'); let html=`<summary>${c.nome}</summary><div class="in">`;

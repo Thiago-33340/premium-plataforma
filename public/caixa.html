@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Caixa & Entregadores — Premium Pizzas</title>
 <style>
-  :root{ --preto:#0D0D0D; --laranja:#F97316; --cinza:#1c1c1e; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --verm:#ef4444; }
+  :root{ --preto:#000000; --laranja:#F97316; --cinza:#1c1c1e; --linha:#3a3a3d; --txt:#f5f5f5; --mut:#a1a1aa; --verde:#22c55e; --verm:#ef4444; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--preto); color:var(--txt); }
   header{ position:sticky; top:0; background:#0d0d0dee; backdrop-filter:blur(8px); border-bottom:1px solid var(--linha); padding:12px 16px; display:flex; gap:10px; align-items:center; }
@@ -24,7 +24,7 @@
 <body>
 <!-- LOGIN -->
 <div class="scr on" id="sLogin"><div class="wrap center">
-  <div class="logo" style="font-size:18px;margin-bottom:6px">PREMIUM <b>PIZZAS</b> · Caixa</div>
+  <img src="/logo.png" alt="Com Amor, Premium Pizzas" style="height:38px;width:auto;display:block;margin:0 auto 8px"><div class="muted" style="font-weight:700;letter-spacing:1px">CAIXA</div>
   <div class="muted" id="loginSub">Entre com seu usuário.</div>
   <div id="passoNome"><input class="field" id="login" placeholder="Usuário" autocapitalize="off"><button class="btn full" style="margin-top:10px" onclick="passo1()">Continuar</button></div>
   <div id="passoPin" style="display:none"><input class="field" id="pin" placeholder="PIN" inputmode="numeric" maxlength="6" style="text-align:center;letter-spacing:8px;font-size:22px"><button class="btn full" style="margin-top:10px" onclick="entrar()">Entrar</button></div>
@@ -32,7 +32,7 @@
 </div></div>
 <!-- APP -->
 <div class="scr" id="sApp">
-  <header><div class="logo">PREMIUM <b>PIZZAS</b> · Caixa</div><a class="lnk" href="/mesas">Mesas</a><a class="lnk" href="/gestor">Pedidos</a><div class="who" id="who"></div></header>
+  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Caixa</span><a class="lnk" href="/mesas">Mesas</a><a class="lnk" href="/gestor">Pedidos</a><div class="who" id="who"></div></header>
   <div class="wrap">
     <h2>Frente de caixa</h2>
     <div id="caixaBox"></div>

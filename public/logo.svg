@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 150" role="img" aria-label="Com Amor, Premium Pizzas!">
+  <rect width="660" height="150" fill="#000000"/>
+  <text x="96" y="46" font-family="Impact, 'Arial Narrow', Haettenschweiler, sans-serif" font-size="32" letter-spacing="7" fill="#FFFFFF">COM AMOR,</text>
+  <!-- pino/cone laranja no lugar do I -->
+  <g transform="translate(286,58)">
+    <circle cx="0" cy="6" r="20" fill="#F97316"/>
+    <path d="M -18 14 Q 0 30 18 14 L 0 74 Z" fill="#F97316"/>
+  </g>
+  <text x="20" y="128" font-family="Impact, 'Arial Narrow', Haettenschweiler, sans-serif" font-size="104" letter-spacing="1" fill="#FFFFFF">PREM</text>
+  <text x="312" y="128" font-family="Impact, 'Arial Narrow', Haettenschweiler, sans-serif" font-size="104" letter-spacing="1" fill="#FFFFFF">UM PIZZAS!</text>
+</svg>
