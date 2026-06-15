@@ -174,6 +174,44 @@ async function api(req, res, url) {
 
   if (sub === 'cardapio' && req.method === 'GET') return json(res, 200, await montarCardapio());
 
+  // retrato do sistema p/ a Jessica responder gestores sobre a operacao/infra.
+  if (sub === 'sistema' && req.method === 'GET') {
+    const area = (url.searchParams.get('area') || 'resumo').toLowerCase();
+    const out = { tenant: TENANT, gerado_em: new Date().toISOString() };
+    const one = async (sql, p) => { try { const r = await db.q(sql, p); return r.rows; } catch (e) { return []; } };
+    const num = async (sql, p) => { try { const r = await db.q(sql, p); return Number(r.rows[0].n); } catch (e) { return null; } };
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (area === 'resumo' || area === 'estoque') {
+      out.estoque = {
+        itens_cadastrados: await num('SELECT count(*)::int n FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo', [TENANT]),
+        setores: await one('SELECT setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo GROUP BY setor_nome ORDER BY setor_nome', [TENANT]),
+        contagens_hoje: await num(`SELECT count(*)::int n FROM estoque_contagens WHERE tenant_id=$1 AND DATE(finalizada_em)=$2`, [TENANT, hoje]),
+        movimentos_recentes: await one('SELECT insumo_nome, tipo, quantidade, unidade, origem, criado_em FROM estoque_movimentos WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT 5', [TENANT])
+      };
+    }
+    if (area === 'resumo' || area === 'contagens') out.ultimas_contagens = await one('SELECT colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 5', [TENANT]);
+    if (area === 'resumo' || area === 'mesas') {
+      const ms = await one(`SELECT m.numero, (c.id IS NOT NULL) AS ocupada FROM mesas m LEFT JOIN comandas c ON c.mesa_numero=m.numero AND c.tenant_id=m.tenant_id AND c.status='ABERTA' WHERE m.tenant_id=$1 AND m.ativa ORDER BY m.numero`, [TENANT]);
+      out.mesas = { total: ms.length, ocupadas: ms.filter(x => x.ocupada).length };
+    }
+    if (area === 'resumo' || area === 'pedidos') {
+      out.pedidos = { hoje: await num(`SELECT count(*)::int n FROM orders WHERE tenant_id=$1 AND DATE(criado_em)=$2`, [TENANT, hoje]),
+        total: await num('SELECT count(*)::int n FROM orders WHERE tenant_id=$1', [TENANT]) };
+    }
+    if (area === 'resumo' || area === 'cardapio') {
+      out.cardapio = { produtos: await num('SELECT count(*)::int n FROM produtos WHERE tenant_id=$1', [TENANT]),
+        opcoes: await num('SELECT count(*)::int n FROM opcoes WHERE tenant_id=$1', [TENANT]),
+        em_falta: await num(`SELECT count(*)::int n FROM opcoes WHERE tenant_id=$1 AND status='EM_FALTA'`, [TENANT]) };
+    }
+    if (area === 'resumo' || area === 'equipe') out.equipe = await one('SELECT perfil_principal, count(*)::int n FROM rbac_contacts WHERE tenant_id=$1 AND ativo GROUP BY perfil_principal', [TENANT]);
+    if (area === 'resumo' || area === 'config') {
+      const c = await one('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cfg = (c[0] && c[0].config) || {};
+      out.config = { destino_pedido: cfg.destino_pedido || 'SAIPOS', baixa_estoque_auto: !!cfg.baixa_estoque_auto };
+    }
+    return json(res, 200, out);
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
