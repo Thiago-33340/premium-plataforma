@@ -95,6 +95,24 @@ function orderToFront(o) {
   };
 }
 
+// Notifica supervisores (Thiago/Tassiano) no WhatsApp da Jessica ao fechar contagem. Best-effort.
+async function notificarContagem(resumo) {
+  try {
+    const cfgr = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const cfg = (cfgr.rows[0] && cfgr.rows[0].config) || {};
+    const url = process.env.WEBHOOK_CONTAGEM || cfg.webhook_contagem;
+    if (!url) { console.log('[estoque] webhook_contagem nao configurado - notificacao pulada'); return; }
+    const sup = await db.q(`SELECT nome, phone FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND LOWER(apelido_login) IN ('thiago','tassiano')`, [TENANT]);
+    const telefones = sup.rows.map(r => String(r.phone || '').replace(/\D/g, '')).filter(p => p.length >= 12);
+    const texto = `📦 *Contagem de estoque finalizada*\n👤 ${resumo.colaborador}\n🏷️ Setor: ${resumo.setor} · Turno: ${resumo.turno}\n📊 ${resumo.total} itens · ⚠️ ${resumo.abaixo} abaixo do mínimo · 🔴 ${resumo.zerados} zerados\n🆔 ${resumo.contagem_id}`;
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 6000);
+    await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ resumo, texto, telefones }) }).catch(() => {});
+    clearTimeout(t);
+    console.log('[estoque] notificacao de contagem enviada p/ ' + telefones.length + ' supervisor(es)');
+  } catch (e) { console.log('[estoque] notificacao aviso:', e.message); }
+}
+
 async function api(req, res, url) {
   const seg = url.pathname.split('/').filter(Boolean);
   const sub = seg[1];
@@ -300,6 +318,7 @@ async function api(req, res, url) {
       await cliente.query('COMMIT');
     } catch (e) { await cliente.query('ROLLBACK'); cliente.release(); return json(res, 500, { erro: e.code || e.message }); }
     cliente.release();
+    notificarContagem({ colaborador: b.colaborador_nome || '', setor: b.setor_nome || '', turno: b.turno || 'Fechamento', total: itens.length, abaixo, zerados, contagem_id: cid });
     return json(res, 201, { ok: true, contagem_id: cid, total: itens.length, abaixo_minimo: abaixo, zerados });
   }
 
@@ -419,6 +438,97 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, total: money(Number(tot.rows[0].t)) });
   }
 
+  // ===================== CAIXA (operador) =====================
+  if (sub === 'caixa' && !seg[2] && req.method === 'GET') {
+    const r = await db.q(`SELECT * FROM caixa WHERE tenant_id=$1 AND status='ABERTO' ORDER BY aberto_em DESC LIMIT 1`, [TENANT]);
+    return json(res, 200, { aberto: !!r.rows[0], caixa: r.rows[0] || null });
+  }
+  if (sub === 'caixa' && seg[2] === 'abrir' && req.method === 'POST') {
+    const b = await readBody(req);
+    const ex = await db.q(`SELECT id FROM caixa WHERE tenant_id=$1 AND status='ABERTO'`, [TENANT]);
+    if (ex.rows[0]) return json(res, 200, { ok: true, ja_aberto: true, id: ex.rows[0].id });
+    const r = await db.q(`INSERT INTO caixa (tenant_id, aberto_por, aberto_por_nome, valor_abertura, status) VALUES ($1,$2,$3,$4,'ABERTO') RETURNING id`,
+      [TENANT, (b.por || '').slice(0, 20), b.por_nome || '', money(b.valor_abertura || 0)]);
+    return json(res, 201, { ok: true, id: r.rows[0].id });
+  }
+  if (sub === 'caixa' && seg[2] === 'fechar' && req.method === 'POST') {
+    const b = await readBody(req);
+    const r = await db.q(`UPDATE caixa SET status='FECHADO', fechado_em=NOW(), valor_fechamento=$2 WHERE tenant_id=$1 AND status='ABERTO' RETURNING id`,
+      [TENANT, money(b.valor_fechamento || 0)]);
+    if (!r.rows[0]) return json(res, 400, { erro: 'nenhum caixa aberto' });
+    return json(res, 200, { ok: true });
+  }
+
+  // ===================== ENTREGADORES =====================
+  if (sub === 'entregadores' && !seg[2] && req.method === 'GET') {
+    const r = await db.q('SELECT id, nome, telefone, ativo FROM entregadores WHERE tenant_id=$1 ORDER BY ativo DESC, nome', [TENANT]);
+    return json(res, 200, { entregadores: r.rows });
+  }
+  if (sub === 'entregadores' && !seg[2] && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!b.nome) return json(res, 400, { erro: 'informe o nome' });
+    const r = await db.q('INSERT INTO entregadores (tenant_id, nome, telefone, ativo) VALUES ($1,$2,$3,TRUE) RETURNING id', [TENANT, b.nome, b.telefone || null]);
+    return json(res, 201, { ok: true, id: r.rows[0].id });
+  }
+  if (sub === 'entregadores' && seg[2] && req.method === 'PATCH') {
+    const b = await readBody(req);
+    await db.q('UPDATE entregadores SET nome=COALESCE($2,nome), telefone=COALESCE($3,telefone), ativo=COALESCE($4,ativo) WHERE id=$1 AND tenant_id=$5',
+      [seg[2], b.nome ?? null, b.telefone ?? null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+    return json(res, 200, { ok: true });
+  }
+
+  // ===================== ADMIN (so GESTOR) =====================
+  if (sub === 'admin') {
+    const body = (req.method !== 'GET') ? await readBody(req) : {};
+    const adminId = (req.method === 'GET') ? url.searchParams.get('admin_id') : body.admin_id;
+    const g = await db.q(`SELECT 1 FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')))`, [adminId, TENANT]);
+    if (!g.rows[0]) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+
+    if (seg[2] === 'usuarios' && req.method === 'GET') {
+      const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, ativo, (pin_hash IS NOT NULL) AS tem_pin FROM rbac_contacts WHERE tenant_id=$1 ORDER BY ativo DESC, nome`, [TENANT]);
+      return json(res, 200, { usuarios: r.rows });
+    }
+    if (seg[2] === 'usuario' && !seg[3] && req.method === 'POST') {
+      const ph = '+' + Date.now();
+      const r = await db.q(`INSERT INTO rbac_contacts (tenant_id, phone, nome, apelido_login, perfil_principal, setores_permitidos, ativo, pin_hash, pin_changed_at)
+        VALUES ($1,$2,$3,$4,$5,$6,TRUE, CASE WHEN $7<>'' THEN crypt($7, gen_salt('bf',8)) ELSE NULL END, NOW()) RETURNING id`,
+        [TENANT, body.phone || ph, body.nome || '', String(body.apelido_login || '').toLowerCase(), body.perfil_principal || 'COLABORADOR', body.setores_permitidos || [], String(body.pin || '').replace(/\D/g, '')]);
+      return json(res, 201, { ok: true, id: r.rows[0].id });
+    }
+    if (seg[2] === 'usuario' && seg[3] && seg[4] === 'pin' && req.method === 'POST') {
+      const pin = String(body.pin || '').replace(/\D/g, ''); if (pin.length < 4) return json(res, 400, { erro: 'PIN curto' });
+      await db.q(`UPDATE rbac_contacts SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=FALSE WHERE id=$1 AND tenant_id=$3`, [seg[3], pin, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'usuario' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE rbac_contacts SET perfil_principal=COALESCE($2,perfil_principal), setores_permitidos=COALESCE($3,setores_permitidos), apelido_login=COALESCE($4,apelido_login), ativo=COALESCE($5,ativo) WHERE id=$1 AND tenant_id=$6`,
+        [seg[3], body.perfil_principal ?? null, body.setores_permitidos ?? null, body.apelido_login ? String(body.apelido_login).toLowerCase() : null, typeof body.ativo === 'boolean' ? body.ativo : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'estoque-itens' && req.method === 'GET') {
+      const r = await db.q(`SELECT id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal, ordem, ativo, exige_contagem FROM estoque_itens_definicao WHERE tenant_id=$1 ORDER BY setor_nome, ordem, nome`, [TENANT]);
+      return json(res, 200, { itens: r.rows });
+    }
+    if (seg[2] === 'estoque-item' && !seg[3] && req.method === 'POST') {
+      const id = body.id || ('ITM' + Date.now());
+      await db.q(`INSERT INTO estoque_itens_definicao (id, tenant_id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal, exige_contagem, ordem, ativo, origem)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,TRUE),$11,TRUE,'admin')
+        ON CONFLICT (id) DO UPDATE SET setor_id=EXCLUDED.setor_id, setor_nome=EXCLUDED.setor_nome, categoria=EXCLUDED.categoria, nome=EXCLUDED.nome, unidade=EXCLUDED.unidade, estoque_minimo=EXCLUDED.estoque_minimo, estoque_ideal=EXCLUDED.estoque_ideal, exige_contagem=EXCLUDED.exige_contagem, ordem=EXCLUDED.ordem, updated_at=NOW()`,
+        [id, TENANT, body.setor_id || 'SET000', body.setor_nome || 'Geral', body.categoria || null, body.nome || '', body.unidade || 'un', Number(body.estoque_minimo) || 0, body.estoque_ideal != null ? Number(body.estoque_ideal) : null, typeof body.exige_contagem === 'boolean' ? body.exige_contagem : null, Number(body.ordem) || 999]);
+      return json(res, 200, { ok: true, id });
+    }
+    if (seg[2] === 'estoque-item' && seg[3] && req.method === 'DELETE') {
+      await db.q(`UPDATE estoque_itens_definicao SET ativo=FALSE WHERE id=$1 AND tenant_id=$2`, [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'preco' && req.method === 'POST') {
+      if (body.tipo === 'produto') await db.q('UPDATE produtos SET preco_base=$2 WHERE id=$1 AND tenant_id=$3', [body.id, money(body.preco), TENANT]);
+      else await db.q('UPDATE opcoes SET preco=$2 WHERE id=$1 AND tenant_id=$3', [body.id, money(body.preco), TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    return json(res, 404, { erro: 'rota admin nao encontrada' });
+  }
+
   if (sub === 'config' && req.method === 'GET') {
     const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const cfg = (r.rows[0] && r.rows[0].config) || {};
@@ -450,6 +560,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
     if (p === '/estoque' || p === '/estoque/') return serveStatic(res, path.join(ROOT, 'public/estoque.html'));
     if (p === '/mesas' || p === '/mesas/') return serveStatic(res, path.join(ROOT, 'public/mesas.html'));
+    if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
+    if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);

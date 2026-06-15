@@ -15,3 +15,9 @@ UPDATE rbac_contacts SET pin_hash=crypt('357816', gen_salt('bf',8)), pin_changed
 UPDATE rbac_contacts SET pin_hash=crypt('925148', gen_salt('bf',8)), pin_changed_at=NOW() WHERE tenant_id='khardela:premiumpizzas:sjrp' AND LOWER(apelido_login)='evandro' AND pin_hash IS NULL;
 UPDATE rbac_contacts SET pin_hash=crypt('408273', gen_salt('bf',8)), pin_changed_at=NOW() WHERE tenant_id='khardela:premiumpizzas:sjrp' AND LOWER(apelido_login)='maria' AND pin_hash IS NULL;
 UPDATE rbac_contacts SET pin_hash=crypt('561039', gen_salt('bf',8)), pin_changed_at=NOW() WHERE tenant_id='khardela:premiumpizzas:sjrp' AND LOWER(apelido_login)='geane' AND pin_hash IS NULL;
+
+-- Perfis (idempotente): Thiago = Chefe de Cozinha + Gestor; Eva = Gestora.
+UPDATE rbac_contacts SET perfis_adicionais = array_append(COALESCE(perfis_adicionais,'{}'),'GESTOR')
+  WHERE tenant_id='khardela:premiumpizzas:sjrp' AND LOWER(apelido_login)='thiago' AND NOT ('GESTOR' = ANY(COALESCE(perfis_adicionais,'{}')));
+UPDATE rbac_contacts SET perfil_principal='GESTOR'
+  WHERE tenant_id='khardela:premiumpizzas:sjrp' AND LOWER(apelido_login)='eva' AND perfil_principal <> 'GESTOR';
