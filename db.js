@@ -88,7 +88,25 @@ const MIGRATIONS = [
   "CREATE INDEX IF NOT EXISTS idx_comanda_itens ON comanda_itens(comanda_id, status)",
   "ALTER TABLE comandas ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(20)",
   "ALTER TABLE comandas ADD COLUMN IF NOT EXISTS total NUMERIC(10,2)",
-  `INSERT INTO mesas (tenant_id, numero) SELECT '${TENANT}', g FROM generate_series(1,12) g ON CONFLICT (tenant_id, numero) DO NOTHING`
+  `INSERT INTO mesas (tenant_id, numero) SELECT '${TENANT}', g FROM generate_series(1,12) g ON CONFLICT (tenant_id, numero) DO NOTHING`,
+  `CREATE TABLE IF NOT EXISTS estoque_movimentos (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     item_id VARCHAR(40),
+     insumo_nome TEXT NOT NULL,
+     setor_id VARCHAR(40),
+     tipo VARCHAR(12) NOT NULL,
+     quantidade NUMERIC(12,3) NOT NULL,
+     unidade VARCHAR(20),
+     motivo TEXT,
+     origem VARCHAR(30),
+     ref_pedido VARCHAR(80),
+     por VARCHAR(40),
+     por_nome TEXT,
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_estmov ON estoque_movimentos(tenant_id, criado_em DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_estmov_item ON estoque_movimentos(tenant_id, item_id, criado_em DESC)"
 ];
 
 const state = { migrationsOk: false, ultimoErro: null };

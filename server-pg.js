@@ -113,6 +113,27 @@ async function notificarContagem(resumo) {
   } catch (e) { console.log('[estoque] notificacao aviso:', e.message); }
 }
 
+// Baixa de estoque por pedido (via ficha tecnica dos sabores). Best-effort, gated por config.
+async function baixaEstoqueSeLigado(itens, ref) {
+  try {
+    const cfgr = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const cfg = (cfgr.rows[0] && cfgr.rows[0].config) || {};
+    if (!cfg.baixa_estoque_auto) return;
+    for (const it of (itens || [])) {
+      if (it.tipo !== 'montavel' || !Array.isArray(it.selecoes)) continue;
+      const qped = it.quantidade || 1;
+      for (const s of it.selecoes.filter(x => /sabor/i.test(x.grupo || ''))) {
+        const f = await db.q('SELECT fi.insumo_nome, fi.quantidade, fi.unidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)', [TENANT, s.nome]);
+        for (const row of f.rows) {
+          await db.q(`INSERT INTO estoque_movimentos (tenant_id, insumo_nome, tipo, quantidade, unidade, origem, ref_pedido) VALUES ($1,$2,'SAIDA',$3,$4,'pedido',$5)`,
+            [TENANT, row.insumo_nome, (Number(row.quantidade) || 0) * qped, row.unidade, ref]);
+        }
+      }
+    }
+    console.log('[estoque] baixa automatica aplicada p/ pedido ' + ref);
+  } catch (e) { console.log('[estoque] baixa aviso:', e.message); }
+}
+
 async function api(req, res, url) {
   const seg = url.pathname.split('/').filter(Boolean);
   const sub = seg[1];
@@ -216,6 +237,7 @@ async function api(req, res, url) {
       [id, TENANT, customerId, phone, numero, modeIn, subtotal, taxa, total,
        JSON.stringify(itens), modeIn === 'DELIVERY' ? JSON.stringify(b.endereco || {}) : null,
        JSON.stringify(b.pagamento || { forma: 'DIN' }), b.observacao || '', JSON.stringify(hist), JSON.stringify(meta)]);
+    baixaEstoqueSeLigado(itens, id);
     return json(res, 201, { ok: true, pedido: orderToFront(r.rows[0]) });
   }
 
@@ -350,6 +372,21 @@ async function api(req, res, url) {
   if (sub === 'estoque' && seg[2] === 'contagens' && req.method === 'GET') {
     const r = await db.q('SELECT id, colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 50', [TENANT]);
     return json(res, 200, { contagens: r.rows });
+  }
+  // movimentacao de estoque: ENTRADA (Jessica/nota), SAIDA (pedido), AJUSTE. Infra pronta p/ integrar.
+  if (sub === 'estoque' && seg[2] === 'movimento' && req.method === 'POST') {
+    const b = await readBody(req);
+    const tipo = String(b.tipo || 'ENTRADA').toUpperCase();
+    if (!['ENTRADA', 'SAIDA', 'AJUSTE'].includes(tipo)) return json(res, 400, { erro: 'tipo invalido' });
+    if (!b.insumo_nome && !b.item_id) return json(res, 400, { erro: 'informe item' });
+    const r = await db.q(`INSERT INTO estoque_movimentos (tenant_id, item_id, insumo_nome, setor_id, tipo, quantidade, unidade, motivo, origem, ref_pedido, por, por_nome)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [TENANT, b.item_id || null, b.insumo_nome || b.nome || '', b.setor_id || null, tipo, Number(b.quantidade) || 0, b.unidade || null, b.motivo || null, b.origem || 'manual', b.ref_pedido || null, (b.por || '').slice(0, 40), b.por_nome || null]);
+    return json(res, 201, { ok: true, id: r.rows[0].id });
+  }
+  if (sub === 'estoque' && seg[2] === 'movimentos' && req.method === 'GET') {
+    const r = await db.q('SELECT id, item_id, insumo_nome, tipo, quantidade, unidade, motivo, origem, ref_pedido, por_nome, criado_em FROM estoque_movimentos WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT 100', [TENANT]);
+    return json(res, 200, { movimentos: r.rows });
   }
 
   // disponibilidade fonte-unica: grava status em opcoes/produtos (a verdade no Postgres)
@@ -525,6 +562,21 @@ async function api(req, res, url) {
       if (body.tipo === 'produto') await db.q('UPDATE produtos SET preco_base=$2 WHERE id=$1 AND tenant_id=$3', [body.id, money(body.preco), TENANT]);
       else await db.q('UPDATE opcoes SET preco=$2 WHERE id=$1 AND tenant_id=$3', [body.id, money(body.preco), TENANT]);
       return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'config' && req.method === 'GET') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cfg = (r.rows[0] && r.rows[0].config) || {};
+      return json(res, 200, { destino_pedido: cfg.destino_pedido || 'SAIPOS', baixa_estoque_auto: !!cfg.baixa_estoque_auto, webhook_contagem: cfg.webhook_contagem || '', printer_ip: cfg.printer_ip || '' });
+    }
+    if (seg[2] === 'config' && req.method === 'POST') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cur = (r.rows[0] && r.rows[0].config) || {};
+      const upd = { ...cur };
+      if (body.destino_pedido) upd.destino_pedido = String(body.destino_pedido).toUpperCase() === 'NOSSO' ? 'NOSSO' : 'SAIPOS';
+      if (typeof body.baixa_estoque_auto === 'boolean') upd.baixa_estoque_auto = body.baixa_estoque_auto;
+      if (body.webhook_contagem != null) upd.webhook_contagem = body.webhook_contagem;
+      await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(upd)]);
+      return json(res, 200, { ok: true, config: { destino_pedido: upd.destino_pedido, baixa_estoque_auto: !!upd.baixa_estoque_auto } });
     }
     return json(res, 404, { erro: 'rota admin nao encontrada' });
   }
