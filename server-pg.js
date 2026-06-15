@@ -638,6 +638,107 @@ async function api(req, res, url) {
       await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(upd)]);
       return json(res, 200, { ok: true, config: { destino_pedido: upd.destino_pedido, baixa_estoque_auto: !!upd.baixa_estoque_auto } });
     }
+    // ===== CRUD CARDÁPIO (categorias -> itens -> variações -> opções) =====
+    const slugCod = (s) => (String(s || 'cat').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 36) || 'cat');
+
+    // catálogo completo p/ admin (mostra TODOS os itens, qualquer status)
+    if (seg[2] === 'catalogo' && req.method === 'GET') {
+      const cats = await db.q('SELECT id, codigo, nome, ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem, nome', [TENANT]);
+      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, status, ordem FROM produtos WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+      const grupos = await db.q('SELECT id, produto_id, nome, ordem, min_escolhas, max_escolhas, permite_repeticao, regra_preco, condicao FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
+      const opcoes = await db.q('SELECT id, grupo_id, nome, descricao, preco, status, ordem FROM opcoes WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
+      const opByG = {}; for (const o of opcoes.rows) (opByG[o.grupo_id] = opByG[o.grupo_id] || []).push({ id: o.id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, ordem: o.ordem });
+      const gByP = {}; for (const g of grupos.rows) (gByP[g.produto_id] = gByP[g.produto_id] || []).push({ id: g.id, nome: g.nome, min: g.min_escolhas, max: g.max_escolhas, repete: g.permite_repeticao, regra: g.regra_preco, condicao: g.condicao || {}, opcoes: opByG[g.id] || [] });
+      const pByC = {}; for (const p of prods.rows) (pByC[p.categoria_id] = pByC[p.categoria_id] || []).push({ id: p.id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, status: p.status, ordem: p.ordem, grupos: gByP[p.id] || [] });
+      const categorias = cats.rows.map(c => ({ id: c.id, codigo: c.codigo, nome: c.nome, ordem: c.ordem, produtos: pByC[c.id] || [] }));
+      return json(res, 200, { categorias });
+    }
+
+    // CATEGORIA
+    if (seg[2] === 'categoria' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      const cod = slugCod(nome) + '_' + Date.now().toString(36).slice(-4);
+      const r = await db.q('INSERT INTO menu_categorias (tenant_id, codigo, nome, ordem, ativa) VALUES ($1,$2,$3,$4,TRUE) RETURNING id', [TENANT, cod, nome, Number(body.ordem) || 50]);
+      return json(res, 201, { ok: true, id: r.rows[0].id });
+    }
+    if (seg[2] === 'categoria' && seg[3] && req.method === 'PATCH') {
+      await db.q('UPDATE menu_categorias SET nome=COALESCE($2,nome), ordem=COALESCE($3,ordem), ativa=COALESCE($4,ativa) WHERE id=$1 AND tenant_id=$5',
+        [seg[3], body.nome ?? null, body.ordem != null ? Number(body.ordem) : null, typeof body.ativa === 'boolean' ? body.ativa : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'categoria' && seg[3] && req.method === 'DELETE') {
+      await db.q('UPDATE menu_categorias SET ativa=FALSE WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // PRODUTO (item)
+    if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      const tipo = (body.tipo_montagem === 'MONTAVEL') ? 'MONTAVEL' : 'SIMPLES';
+      const r = await db.q(`INSERT INTO produtos (id,tenant_id,categoria_id,nome,descricao,tipo_montagem,preco_base,regra_preco,gratuito,status,ordem)
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,'ATIVO',$9) RETURNING id`,
+        [TENANT, body.categoria_id ? Number(body.categoria_id) : null, nome, body.descricao || '', tipo, money(body.preco_base || 0),
+         body.regra_preco || (tipo === 'SIMPLES' ? 'FIXO' : 'SOMA'), !!body.gratuito, Number(body.ordem) || 999]);
+      return json(res, 201, { ok: true, id: r.rows[0].id });
+    }
+    if (seg[2] === 'produto' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE produtos SET nome=COALESCE($2,nome), descricao=COALESCE($3,descricao), preco_base=COALESCE($4,preco_base),
+        tipo_montagem=COALESCE($5,tipo_montagem), status=COALESCE($6,status), ordem=COALESCE($7,ordem), categoria_id=COALESCE($8,categoria_id),
+        regra_preco=COALESCE($9,regra_preco), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$10`,
+        [seg[3], body.nome ?? null, body.descricao ?? null, body.preco_base != null ? money(body.preco_base) : null,
+         body.tipo_montagem ?? null, body.status ?? null, body.ordem != null ? Number(body.ordem) : null,
+         body.categoria_id != null ? Number(body.categoria_id) : null, body.regra_preco ?? null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM produtos WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // GRUPO (variação)
+    if (seg[2] === 'grupo' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.nome || '').trim(); if (!nome || !body.produto_id) return json(res, 400, { erro: 'informe produto_id e nome' });
+      const r = await db.q(`INSERT INTO opcao_grupos (id,tenant_id,produto_id,nome,ordem,min_escolhas,max_escolhas,permite_repeticao,regra_preco,condicao)
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+        [TENANT, body.produto_id, nome, Number(body.ordem) || 1, Number(body.min) || 0, Number(body.max) || 1,
+         !!body.repete, body.regra_preco || 'SOMA', JSON.stringify(body.condicao || {})]);
+      await db.q("UPDATE produtos SET tipo_montagem='MONTAVEL' WHERE id=$1 AND tenant_id=$2", [body.produto_id, TENANT]);
+      return json(res, 201, { ok: true, id: r.rows[0].id });
+    }
+    if (seg[2] === 'grupo' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE opcao_grupos SET nome=COALESCE($2,nome), min_escolhas=COALESCE($3,min_escolhas), max_escolhas=COALESCE($4,max_escolhas),
+        permite_repeticao=COALESCE($5,permite_repeticao), ordem=COALESCE($6,ordem), regra_preco=COALESCE($7,regra_preco),
+        condicao=COALESCE($8,condicao), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$9`,
+        [seg[3], body.nome ?? null, body.min != null ? Number(body.min) : null, body.max != null ? Number(body.max) : null,
+         typeof body.repete === 'boolean' ? body.repete : null, body.ordem != null ? Number(body.ordem) : null,
+         body.regra_preco ?? null, body.condicao != null ? JSON.stringify(body.condicao) : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'grupo' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM opcao_grupos WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // OPÇÃO (escolha dentro de uma variação)
+    if (seg[2] === 'opcao' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.nome || '').trim(); if (!nome || !body.grupo_id) return json(res, 400, { erro: 'informe grupo_id e nome' });
+      const r = await db.q(`INSERT INTO opcoes (id,tenant_id,grupo_id,nome,descricao,preco,status,ordem)
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [TENANT, body.grupo_id, nome, body.descricao || '', money(body.preco || 0), body.status || 'ATIVO', Number(body.ordem) || 999]);
+      return json(res, 201, { ok: true, id: r.rows[0].id });
+    }
+    if (seg[2] === 'opcao' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE opcoes SET nome=COALESCE($2,nome), preco=COALESCE($3,preco), status=COALESCE($4,status),
+        descricao=COALESCE($5,descricao), ordem=COALESCE($6,ordem), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$7`,
+        [seg[3], body.nome ?? null, body.preco != null ? money(body.preco) : null, body.status ?? null,
+         body.descricao ?? null, body.ordem != null ? Number(body.ordem) : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'opcao' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM opcoes WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
     if (seg[2] === 'setores' && req.method === 'GET') {
       const r = await db.q(`SELECT d.setor_id, d.setor_nome, count(*)::int itens,
           (SELECT c.colaborador_nome FROM estoque_contagens c WHERE c.tenant_id=d.tenant_id AND c.setor_nome=d.setor_nome ORDER BY c.finalizada_em DESC LIMIT 1) AS ultimo_responsavel,

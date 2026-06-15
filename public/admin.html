@@ -182,10 +182,41 @@
           </div>
         </section>
 
+        <style>
+        #s_cardapio .catwrap{border:1px solid #1d1d20;border-radius:12px;margin-bottom:12px;background:#0e0e10;overflow:hidden}
+        #s_cardapio .catsum{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;cursor:pointer;list-style:none}
+        #s_cardapio .catsum::-webkit-details-marker{display:none}
+        #s_cardapio .catwrap[open] .catsum{border-bottom:1px solid #1d1d20}
+        #s_cardapio .csL{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        #s_cardapio .catwrap .in{padding:10px 14px}
+        #s_cardapio .itemrow{border:1px solid #18181b;border-radius:10px;padding:10px;margin-bottom:10px;background:#121214}
+        #s_cardapio .ihead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        #s_cardapio .inm{flex:1;min-width:160px;font-weight:600;display:flex;flex-direction:column;gap:2px}
+        #s_cardapio .inm small{font-weight:400;color:#8a8a93}
+        #s_cardapio .varrow{margin:8px 0 0;padding:8px 10px;border-left:2px solid #2a2a30;background:#0f0f11;border-radius:0 8px 8px 0}
+        #s_cardapio .vhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+        #s_cardapio .vnm{font-weight:600;font-size:13px}
+        #s_cardapio .vnm small{font-weight:400;color:#8a8a93}
+        #s_cardapio .opcrow{display:flex;align-items:center;gap:8px;padding:6px 0 6px 14px;flex-wrap:wrap}
+        #s_cardapio .onm{flex:1;min-width:120px;font-size:13px}
+        #s_cardapio .acts{display:flex;gap:4px;flex-shrink:0}
+        #s_cardapio .ic{background:#1a1a1e;border:1px solid #2a2a30;color:#cfcfd6;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:14px;line-height:1}
+        #s_cardapio .ic:hover{background:#26262c}
+        #s_cardapio .tag{font-size:10px;padding:1px 6px;border-radius:6px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+        #s_cardapio .tag.mont{background:#15233a;color:#6db0ff}
+        #s_cardapio .tag.simp{background:#1c2417;color:#9bd67a}
+        #s_cardapio .addvar,#s_cardapio .additem{margin-top:8px}
+        #s_cardapio .pz{width:84px;text-align:right}
+        .modal .fgrid{display:flex;flex-direction:column;gap:10px}
+        .modal .flabel{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#cfcfd6}
+        .modal .fcheck{display:flex;align-items:center;gap:8px;font-size:14px;color:#cfcfd6;cursor:pointer}
+        .modal .mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+        .btn.danger{background:var(--verm,#e5484d);color:#fff;border:none}
+        </style>
         <!-- CARDÁPIO -->
         <section class="scr2" id="s_cardapio">
-          <div class="pagehead"><h2>Cardápio</h2></div>
-          <p class="mut sm" style="margin:0 0 12px">Estrutura: <b>Categoria → Item → Variações → Opções</b>. Ajuste preço (Enter salva) e disponibilidade — reflete na hora no site. <span style="color:var(--laranja)">Edição completa (criar/excluir item, variações) chega no próximo bloco.</span></p>
+          <div class="pagehead"><h2>Cardápio</h2><button class="btn primary" onclick="novaCategoria()">+ Nova categoria</button></div>
+          <p class="mut sm" style="margin:0 0 12px">Estrutura: <b>Categoria → Item → Variações → Opções</b>. Crie, edite e exclua tudo; preço e disponibilidade refletem na hora no site. Um item sem variações (ex.: Coca-Cola) é vendido direto; um item com variações (ex.: uma borda de pizza) monta o pedido.</p>
           <div id="cardapioBox"></div>
         </section>
 
@@ -322,20 +353,103 @@ function kpi(lbl,val,ic,emoji,sub){ return `<div class="kpi"><div class="top"><d
 function varTxt(d,base){ if(base==null) return 'vs ontem'; if(d>0) return `<b class="up">▲ ${d}</b> vs ontem (${base})`; if(d<0) return `<b class="down">▼ ${Math.abs(d)}</b> vs ontem (${base})`; return `igual a ontem (${base})`; }
 function fmtData(s){ try{ return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
 
-/* ===== CARDÁPIO (edição preço+status; CRUD completo no próximo bloco) ===== */
-async function loadCardapio(){ const cat=(await (await fetch(API+'/api/catalogo')).json()).categorias||[]; const box=$('cardapioBox'); box.innerHTML='';
-  cat.forEach(c=>{ const det=document.createElement('details'); let h=`<summary><span class="pill cat">CATEGORIA</span> ${c.nome} <span class="cnt">${c.produtos.length} itens</span></summary><div class="in">`;
-    c.produtos.forEach(p=>{ h+=linha('produto',p.id,p.nome,p.preco_base,p.status,p.tipo==='MONTAVEL');
-      (p.grupos||[]).forEach(g=>{ h+=`<div class="row" style="background:#0f0f11"><div class="nm mut" style="font-weight:600">↳ Variação: ${g.nome} <small>${g.min}–${g.max} ${g.repete?'· repete':''}</small></div></div>`;
-        g.opcoes.forEach(o=> h+=linha('opcao',o.id,'· '+o.nome,o.preco,o.status,false)); }); });
-    det.innerHTML=h+'</div>'; box.appendChild(det); });
+/* ===== CARDÁPIO — CRUD completo (Categoria → Item → Variação → Opção) ===== */
+let _cat={categoria:{},prod:{},grupo:{},opc:{}};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function segBtns(tp,id,status){return ['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('');}
+
+async function loadCardapio(){
+  const box=$('cardapioBox'); box.innerHTML='<div class="mut sm">Carregando cardápio…</div>';
+  let data; try{ data=await (await fetch(API+'/api/admin/catalogo?admin_id='+user.id)).json(); }catch(e){ box.innerHTML='<div class="empty">Erro ao carregar.</div>'; return; }
+  const cats=data.categorias||[]; _cat={categoria:{},prod:{},grupo:{},opc:{}}; box.innerHTML='';
+  if(!cats.length){ box.innerHTML='<div class="empty">Sem categorias ainda. Clique em “+ Nova categoria” para começar.</div>'; return; }
+  cats.forEach(c=>{
+    _cat.categoria[c.id]=c;
+    const det=document.createElement('details'); det.className='catwrap'; det.open=cats.length<=3;
+    let h=`<summary class="catsum"><span class="csL"><span class="pill cat">CATEGORIA</span> <b>${esc(c.nome)}</b> <span class="cnt">${c.produtos.length} ${c.produtos.length===1?'item':'itens'}</span></span>
+      <span class="acts"><button class="ic" title="Renomear categoria" data-act="ecat" data-id="${c.id}">✎</button><button class="ic" title="Excluir categoria" data-act="xcat" data-id="${c.id}" data-nome="${esc(c.nome)}">🗑</button></span></summary><div class="in">`;
+    c.produtos.forEach(p=>{
+      _cat.prod[p.id]=p; const montavel=p.tipo==='MONTAVEL';
+      h+=`<div class="itemrow"><div class="ihead">
+          <div class="inm">${esc(p.nome)} ${montavel?'<span class="tag mont">montável</span>':'<span class="tag simp">simples</span>'}${p.descricao?`<small>${esc(p.descricao)}</small>`:''}</div>
+          <input class="field pz" data-pz data-tp="produto" data-id="${p.id}" value="${Number(p.preco_base).toFixed(2)}" title="${montavel?'use 0 se o preço vem das variações':'preço do item'}">
+          <div class="seg">${segBtns('produto',p.id,p.status)}</div>
+          <span class="acts"><button class="ic" title="Editar item" data-act="eitem" data-id="${p.id}">✎</button><button class="ic" title="Excluir item" data-act="xitem" data-id="${p.id}" data-nome="${esc(p.nome)}">🗑</button></span>
+        </div>`;
+      (p.grupos||[]).forEach(g=>{
+        _cat.grupo[g.id]=g;
+        h+=`<div class="varrow"><div class="vhead"><span class="vnm">↳ ${esc(g.nome)} <small>escolhe ${g.min}–${g.max}${g.repete?' · repete':''} · ${g.opcoes.length} opções</small></span>
+          <span class="acts"><button class="ic" title="Nova opção" data-act="nopc" data-id="${g.id}">＋</button><button class="ic" title="Editar variação" data-act="evar" data-id="${g.id}">✎</button><button class="ic" title="Excluir variação" data-act="xvar" data-id="${g.id}" data-nome="${esc(g.nome)}">🗑</button></span></div>`;
+        g.opcoes.forEach(o=>{ _cat.opc[o.id]=o;
+          h+=`<div class="opcrow"><span class="onm">${esc(o.nome)}</span>
+            <input class="field pz" data-pz data-tp="opcao" data-id="${o.id}" value="${Number(o.preco).toFixed(2)}">
+            <div class="seg">${segBtns('opcao',o.id,o.status)}</div>
+            <span class="acts"><button class="ic" title="Editar opção" data-act="eopc" data-id="${o.id}">✎</button><button class="ic" title="Excluir opção" data-act="xopc" data-id="${o.id}" data-nome="${esc(o.nome)}">🗑</button></span></div>`; });
+        h+=`</div>`;
+      });
+      h+=`<div class="addvar"><button class="btn sm ghost" data-act="nvar" data-id="${p.id}">+ Variação</button></div></div>`;
+    });
+    h+=`<div class="additem"><button class="btn sm primary" data-act="nitem" data-id="${c.id}">+ Item nesta categoria</button></div>`;
+    det.innerHTML=h+'</div>'; box.appendChild(det);
+  });
   box.querySelectorAll('[data-pz]').forEach(i=> i.addEventListener('keydown',e=>{ if(e.key==='Enter')salvarPreco(i.dataset.tp,i.dataset.id,i.value,i); }));
   box.querySelectorAll('.seg button').forEach(b=> b.onclick=()=>setStatus(b.dataset.tp,b.dataset.id,b.dataset.s,b));
+  box.querySelectorAll('[data-act]').forEach(b=> b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); onAct(b.dataset.act,b.dataset); });
 }
-function linha(tp,id,nome,preco,status,montavel){ const dis=montavel?'disabled title="o preço vem das variações"':'';
-  return `<div class="row"><div class="nm">${nome}</div><input class="field pz" data-pz data-tp="${tp}" data-id="${id}" value="${Number(preco).toFixed(2)}" ${dis}>
-    <div class="seg">${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('')}</div></div>`; }
-async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo:tp,id,preco:parseFloat(String(preco).replace(',','.'))||0})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
+function onAct(act,ds){
+  if(act==='ecat'){const c=_cat.categoria[ds.id];editarCategoria(ds.id,c.nome,c.ordem);}
+  else if(act==='xcat')excluirCategoria(ds.id,ds.nome);
+  else if(act==='nitem')novoItem(ds.id);
+  else if(act==='eitem')editarItem(ds.id,_cat.prod[ds.id]);
+  else if(act==='xitem')excluirItem(ds.id,ds.nome);
+  else if(act==='nvar')novaVariacao(ds.id);
+  else if(act==='evar')editarVariacao(ds.id,_cat.grupo[ds.id]);
+  else if(act==='xvar')excluirVariacao(ds.id,ds.nome);
+  else if(act==='nopc')novaOpcao(ds.id);
+  else if(act==='eopc')editarOpcao(ds.id,_cat.opc[ds.id]);
+  else if(act==='xopc')excluirOpcao(ds.id,ds.nome);
+}
+async function adminFetch(path,method,body){ const opt={method,headers:{'Content-Type':'application/json'}}; opt.body=JSON.stringify(Object.assign({admin_id:user.id},body||{})); const r=await fetch(API+path,opt); if(!r.ok){ const j=await r.json().catch(()=>({})); toast(j.erro||'Erro ('+r.status+')'); throw new Error(j.erro||r.status); } return r.json().catch(()=>({})); }
+const reais=v=>parseFloat(String(v).replace(',','.'))||0;
+
+async function novaCategoria(){ const v=await pedirForm('Nova categoria',[{key:'nome',label:'Nome da categoria'},{key:'ordem',label:'Ordem (menor aparece antes)',type:'number',value:50}]); if(!v||!v.nome.trim())return; await adminFetch('/api/admin/categoria','POST',{nome:v.nome.trim(),ordem:+v.ordem||50}); toast('Categoria criada'); loadCardapio(); }
+async function editarCategoria(id,nome,ordem){ const v=await pedirForm('Editar categoria',[{key:'nome',label:'Nome',value:nome},{key:'ordem',label:'Ordem',type:'number',value:ordem}]); if(!v)return; await adminFetch('/api/admin/categoria/'+id,'PATCH',{nome:v.nome.trim(),ordem:+v.ordem}); toast('Categoria salva'); loadCardapio(); }
+async function excluirCategoria(id,nome){ if(!await pedirConfirm('Excluir categoria','Remover “'+nome+'”? Os itens dela deixam de aparecer no cardápio.'))return; await adminFetch('/api/admin/categoria/'+id,'DELETE'); toast('Categoria removida'); loadCardapio(); }
+async function novoItem(catId){ const v=await pedirForm('Novo item',[{key:'nome',label:'Nome do item'},{key:'descricao',label:'Descrição (opcional)',type:'textarea'},{key:'tipo_montagem',label:'Tipo',type:'select',value:'SIMPLES',opts:[{v:'SIMPLES',t:'Simples — vende direto (ex.: Coca-Cola)'},{v:'MONTAVEL',t:'Montável — terá variações (ex.: borda de pizza)'}]},{key:'preco_base',label:'Preço R$ (0 se vier das variações)',type:'number',value:0}]); if(!v||!v.nome.trim())return; await adminFetch('/api/admin/produto','POST',{categoria_id:+catId,nome:v.nome.trim(),descricao:v.descricao,tipo_montagem:v.tipo_montagem,preco_base:reais(v.preco_base)}); toast('Item criado'); loadCardapio(); }
+async function editarItem(id,p){ const v=await pedirForm('Editar item',[{key:'nome',label:'Nome',value:p.nome},{key:'descricao',label:'Descrição',type:'textarea',value:p.descricao},{key:'tipo_montagem',label:'Tipo',type:'select',value:p.tipo,opts:[{v:'SIMPLES',t:'Simples'},{v:'MONTAVEL',t:'Montável'}]},{key:'preco_base',label:'Preço R$',type:'number',value:p.preco_base}]); if(!v)return; await adminFetch('/api/admin/produto/'+id,'PATCH',{nome:v.nome.trim(),descricao:v.descricao,tipo_montagem:v.tipo_montagem,preco_base:reais(v.preco_base)}); toast('Item salvo'); loadCardapio(); }
+async function excluirItem(id,nome){ if(!await pedirConfirm('Excluir item','Remover “'+nome+'” e todas as variações dele? Não dá pra desfazer.'))return; await adminFetch('/api/admin/produto/'+id,'DELETE'); toast('Item removido'); loadCardapio(); }
+async function novaVariacao(prodId){ const v=await pedirForm('Nova variação',[{key:'nome',label:'Nome (ex.: Sabores, Recheio da borda)'},{key:'min',label:'Mínimo de escolhas',type:'number',value:1},{key:'max',label:'Máximo de escolhas',type:'number',value:1},{key:'repete',label:'Pode repetir a mesma opção',type:'check',value:false}]); if(!v||!v.nome.trim())return; await adminFetch('/api/admin/grupo','POST',{produto_id:prodId,nome:v.nome.trim(),min:+v.min||0,max:+v.max||1,repete:!!v.repete}); toast('Variação criada'); loadCardapio(); }
+async function editarVariacao(id,g){ const v=await pedirForm('Editar variação',[{key:'nome',label:'Nome',value:g.nome},{key:'min',label:'Mínimo',type:'number',value:g.min},{key:'max',label:'Máximo',type:'number',value:g.max},{key:'repete',label:'Pode repetir',type:'check',value:g.repete}]); if(!v)return; await adminFetch('/api/admin/grupo/'+id,'PATCH',{nome:v.nome.trim(),min:+v.min,max:+v.max,repete:!!v.repete}); toast('Variação salva'); loadCardapio(); }
+async function excluirVariacao(id,nome){ if(!await pedirConfirm('Excluir variação','Remover “'+nome+'” e suas opções?'))return; await adminFetch('/api/admin/grupo/'+id,'DELETE'); toast('Variação removida'); loadCardapio(); }
+async function novaOpcao(grupoId){ const v=await pedirForm('Nova opção',[{key:'nome',label:'Nome (ex.: Calabresa, Borda Vulcão)'},{key:'preco',label:'Preço adicional R$',type:'number',value:0}]); if(!v||!v.nome.trim())return; await adminFetch('/api/admin/opcao','POST',{grupo_id:grupoId,nome:v.nome.trim(),preco:reais(v.preco)}); toast('Opção criada'); loadCardapio(); }
+async function editarOpcao(id,o){ const v=await pedirForm('Editar opção',[{key:'nome',label:'Nome',value:o.nome},{key:'preco',label:'Preço adicional R$',type:'number',value:o.preco}]); if(!v)return; await adminFetch('/api/admin/opcao/'+id,'PATCH',{nome:v.nome.trim(),preco:reais(v.preco)}); toast('Opção salva'); loadCardapio(); }
+async function excluirOpcao(id,nome){ if(!await pedirConfirm('Excluir opção','Remover “'+nome+'”?'))return; await adminFetch('/api/admin/opcao/'+id,'DELETE'); toast('Opção removida'); loadCardapio(); }
+
+/* modais dinâmicos (form + confirmação) */
+function pedirForm(titulo,campos,okLabel='Salvar'){ return new Promise(resolve=>{
+  const ov=document.createElement('div'); ov.className='modal on';
+  const fields=campos.map(c=>{
+    if(c.type==='select')return `<label class="flabel">${c.label}<select data-k="${c.key}" class="field">${c.opts.map(o=>`<option value="${o.v}" ${String(c.value)===String(o.v)?'selected':''}>${o.t}</option>`).join('')}</select></label>`;
+    if(c.type==='check')return `<label class="fcheck"><input type="checkbox" data-k="${c.key}" ${c.value?'checked':''}> ${c.label}</label>`;
+    if(c.type==='textarea')return `<label class="flabel">${c.label}<textarea data-k="${c.key}" class="field" rows="2">${esc(c.value)}</textarea></label>`;
+    return `<label class="flabel">${c.label}<input data-k="${c.key}" class="field" type="${c.type||'text'}" value="${c.value!=null?esc(c.value):''}"></label>`;
+  }).join('');
+  ov.innerHTML=`<div class="box"><h3 style="margin:0 0 12px">${titulo}</h3><div class="fgrid">${fields}</div><div class="mfoot"></div></div>`;
+  const foot=ov.querySelector('.mfoot');
+  const cancel=document.createElement('button'); cancel.className='btn ghost'; cancel.textContent='Cancelar'; cancel.onclick=()=>{document.body.removeChild(ov);resolve(null);};
+  const ok=document.createElement('button'); ok.className='btn primary'; ok.textContent=okLabel; ok.onclick=()=>{ const out={}; ov.querySelectorAll('[data-k]').forEach(el=>{ out[el.dataset.k]= el.type==='checkbox'?el.checked:el.value; }); document.body.removeChild(ov); resolve(out); };
+  foot.appendChild(cancel); foot.appendChild(ok); document.body.appendChild(ov);
+  const f=ov.querySelector('input,select,textarea'); if(f)setTimeout(()=>f.focus(),60);
+}); }
+function pedirConfirm(titulo,msg){ return new Promise(resolve=>{
+  const ov=document.createElement('div'); ov.className='modal on';
+  ov.innerHTML=`<div class="box"><h3 style="margin:0 0 8px">${titulo}</h3><p class="mut sm" style="margin:0 0 14px">${msg}</p><div class="mfoot"></div></div>`;
+  const foot=ov.querySelector('.mfoot');
+  const c=document.createElement('button'); c.className='btn ghost'; c.textContent='Cancelar'; c.onclick=()=>{document.body.removeChild(ov);resolve(false);};
+  const d=document.createElement('button'); d.className='btn danger'; d.textContent='Excluir'; d.onclick=()=>{document.body.removeChild(ov);resolve(true);};
+  foot.appendChild(c); foot.appendChild(d); document.body.appendChild(ov);
+}); }
+async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo:tp,id,preco:reais(preco)})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
 async function setStatus(tp,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tp,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
 
 /* ===== ESTOQUE ===== */
