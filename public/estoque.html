@@ -137,10 +137,11 @@ async function entrar(){
   try{
     const r=await fetch(API+'/api/estoque/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})});
     const d=await r.json();
-    if(d.ok){ aposLogin(d); return; }
+    if(d.ok){ if(d.must_change && !(await trocaObrigatoria((d.colaborador&&d.colaborador.login)||login, pin))) return; aposLogin(d); return; }
     $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; $('pin').focus();
   }catch(e){ $('loginErr').textContent='Falha de conexão'; }
 }
+async function trocaObrigatoria(login, pinAtual){ let novo=prompt('Primeiro acesso 🔐 — defina seu PIN definitivo:'); if(novo===null)return false; novo=(novo||'').replace(/\D/g,''); if(novo.length<4){alert('PIN inválido.');return false;} const c=prompt('Confirme o novo PIN:'); if((c||'').replace(/\D/g,'')!==novo){alert('Não conferem.');return false;} const res=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin_atual:pinAtual,novo_pin:novo})})).json(); if(res.ok){alert('PIN definido!');return true;} alert(res.erro||'Erro');return false; }
 function aposLogin(d){
   col=d.colaborador; setores=d.setores||[];
   $('who').textContent=col.nome; $('nome2').textContent=col.nome.split(' ')[0];

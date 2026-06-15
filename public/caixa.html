@@ -32,7 +32,7 @@
 </div></div>
 <!-- APP -->
 <div class="scr" id="sApp">
-  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Caixa</span><a class="lnk" href="/mesas">Mesas</a><a class="lnk" href="/gestor">Pedidos</a><div class="who" id="who"></div></header>
+  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Caixa</span><a class="lnk" href="/mesas">Mesas</a><a class="lnk" href="/gestor">Pedidos</a><a class="lnk" href="/estoque">Estoque</a><a class="lnk" href="/admin" id="lnkAdmin" style="display:none">Admin</a><div class="who" id="who" style="margin-left:auto"></div></header>
   <div class="wrap">
     <h2>Frente de caixa</h2>
     <div id="caixaBox"></div>
@@ -48,9 +48,10 @@ const API=location.origin, $=id=>document.getElementById(id); const BRL=v=>'R$ '
 let user=null; function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2400); }
 async function passo1(){ const login=$('login').value.trim(); if(!login)return; const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login})})).json();
   if(d.precisa_pin){ $('passoNome').style.display='none'; $('passoPin').style.display='block'; $('loginSub').textContent='Olá, '+(d.nome||login).split(' ')[0]+'. Digite seu PIN.'; setTimeout(()=>$('pin').focus(),100); return; } if(d.ok)ap(d); else $('loginErr').textContent=d.erro||'Não encontrado'; }
-async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4)return; const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json(); if(d.ok)ap(d); else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
+async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4)return; const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json(); if(d.ok){ if(d.must_change && !(await trocaObrigatoria(d.usuario.login||login, pin))) return; ap(d); } else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
+async function trocaObrigatoria(login, pinAtual){ let novo=prompt('Primeiro acesso 🔐 — defina seu PIN definitivo:'); if(novo===null)return false; novo=(novo||'').replace(/\D/g,''); if(novo.length<4){alert('PIN inválido.');return false;} const c=prompt('Confirme o novo PIN:'); if((c||'').replace(/\D/g,'')!==novo){alert('Não conferem.');return false;} const r=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin_atual:pinAtual,novo_pin:novo})})).json(); if(r.ok){alert('PIN definido!');return true;} alert(r.erro||'Erro');return false; }
 $('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); }); $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
-function ap(d){ if(!d.usuario.pode_gestor){ $('loginErr').textContent='Acesso restrito (operador/gestor).'; return; } user=d.usuario; $('who').textContent=user.nome; $('sLogin').classList.remove('on'); $('sApp').classList.add('on'); loadCaixa(); loadEntregadores(); }
+function ap(d){ if(!d.usuario.pode_gestor){ $('loginErr').textContent='Acesso restrito (operador/gestor).'; return; } user=d.usuario; $('who').textContent=user.nome; if(user.pode_admin)$('lnkAdmin').style.display='inline-block'; $('sLogin').classList.remove('on'); $('sApp').classList.add('on'); loadCaixa(); loadEntregadores(); }
 async function loadCaixa(){ const d=await (await fetch(API+'/api/caixa')).json(); const box=$('caixaBox');
   if(d.aberto){ box.innerHTML=`<div class="card"><div class="ok" style="font-weight:700">● Caixa aberto</div><div class="muted">Aberto por ${d.caixa.aberto_por_nome||'—'} · ${new Date(d.caixa.aberto_em).toLocaleString('pt-BR')} · abertura ${BRL(d.caixa.valor_abertura)}</div>
     <input class="field" id="vf" placeholder="Valor em dinheiro no fechamento" inputmode="numeric"><button class="btn red full" style="margin-top:10px" onclick="fecharCaixa()">Fechar caixa</button></div>`; }

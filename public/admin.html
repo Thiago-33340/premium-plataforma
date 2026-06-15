@@ -48,7 +48,15 @@
 
 <!-- APP -->
 <div class="scr" id="sApp">
-  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Admin</span><div class="who" id="who"></div></header>
+  <header><img src="/logo.png" alt="Premium Pizzas" style="height:26px;width:auto"><span style="color:var(--mut);font-size:12px">Admin</span>
+    <nav style="display:flex;gap:6px;flex-wrap:wrap;margin-left:8px">
+      <a href="/gestor" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Pedidos</a>
+      <a href="/mesas" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Mesas</a>
+      <a href="/caixa" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Caixa</a>
+      <a href="/estoque" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Estoque</a>
+      <a href="/loja" target="_blank" style="font-size:11px;color:var(--laranja);text-decoration:none;border:1px solid var(--linha);border-radius:7px;padding:4px 8px">Loja</a>
+    </nav>
+    <div class="who" id="who" style="margin-left:auto"></div></header>
   <div class="tabs">
     <button class="on" onclick="tab('inicio',this)">Início</button>
     <button onclick="tab('cardapio',this)">Cardápio</button>
@@ -107,7 +115,13 @@ async function passo1(){ const login=$('login').value.trim(); if(!login)return; 
   if(d.ok) checaAdmin(d); else $('loginErr').textContent=d.erro||'Não encontrado'; }
 async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4)return;
   const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json();
-  if(d.ok) checaAdmin(d); else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
+  if(d.ok){ if(d.must_change && !(await trocaObrigatoria(d.usuario.login||login, pin))) return; checaAdmin(d); } else { $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; } }
+async function trocaObrigatoria(login, pinAtual){
+  let novo=prompt('Primeiro acesso 🔐 — defina seu PIN definitivo (4 a 6 dígitos):'); if(novo===null)return false; novo=(novo||'').replace(/\D/g,'');
+  if(novo.length<4){ alert('PIN inválido.'); return false; }
+  const c=prompt('Confirme o novo PIN:'); if((c||'').replace(/\D/g,'')!==novo){ alert('Os PINs não conferem.'); return false; }
+  const r=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin_atual:pinAtual,novo_pin:novo})})).json();
+  if(r.ok){ alert('PIN definido! Use ele nas próximas vezes.'); return true; } alert(r.erro||'Erro ao trocar PIN'); return false; }
 $('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); }); $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
 function checaAdmin(d){ if(!d.usuario.pode_admin){ $('loginErr').textContent='Acesso restrito ao gestor.'; return; }
   user=d.usuario; $('who').textContent=user.nome+' · Gestor'; $('sLogin').classList.remove('on'); $('sApp').classList.add('on'); initApp(); }

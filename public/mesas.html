@@ -119,8 +119,9 @@ async function passo1(){ const login=$('login').value.trim(); if(!login)return; 
   }catch(e){ $('loginErr').textContent='Falha de conexão'; } }
 async function entrar(){ const login=$('login').value.trim(), pin=$('pin').value.trim(); if(pin.length<4){ $('loginErr').textContent='Digite o PIN'; return; } $('loginErr').textContent='';
   try{ const d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json();
-    if(d.ok){ aposLogin(d); return; } $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; $('pin').focus();
+    if(d.ok){ if(d.must_change && !(await trocaObrigatoria(d.usuario.login||login, pin))) return; aposLogin(d); return; } $('loginErr').textContent=d.erro||'PIN incorreto'; $('pin').value=''; $('pin').focus();
   }catch(e){ $('loginErr').textContent='Falha de conexão'; } }
+async function trocaObrigatoria(login, pinAtual){ let novo=prompt('Primeiro acesso 🔐 — defina seu PIN definitivo:'); if(novo===null)return false; novo=(novo||'').replace(/\D/g,''); if(novo.length<4){alert('PIN inválido.');return false;} const c=prompt('Confirme o novo PIN:'); if((c||'').replace(/\D/g,'')!==novo){alert('Não conferem.');return false;} const r=await (await fetch(API+'/api/staff/trocar-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin_atual:pinAtual,novo_pin:novo})})).json(); if(r.ok){alert('PIN definido!');return true;} alert(r.erro||'Erro');return false; }
 function voltarNome(){ $('passoPin').style.display='none'; $('passoNome').style.display='block'; $('pin').value=''; $('loginErr').textContent=''; $('loginSub').textContent='Entre com seu usuário.'; }
 $('login').addEventListener('keydown',e=>{ if(e.key==='Enter')passo1(); });
 $('pin').addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); });
