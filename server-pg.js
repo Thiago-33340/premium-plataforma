@@ -27,6 +27,22 @@ const money = n => Math.round(Number(n) * 100) / 100;
 function json(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(b); }
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
 
+/* ===== Permissões do Estoque (configuráveis por usuário) ===== */
+const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
+const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_producao_interna', 'acessar_lancamentos', 'ver_valores', 'fazer_contagem', 'registrar_compra', 'registrar_visita'];
+async function estPermsEfetivas(uid) {
+  if (!uid) return { user: null, perms: [], gestor: false };
+  let u; try { u = (await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT])).rows[0]; } catch (e) { return { user: null, perms: [], gestor: false }; }
+  if (!u) return { user: null, perms: [], gestor: false };
+  const perfis = [u.perfil_principal].concat(u.perfis_adicionais || []).map(x => String(x || '').toUpperCase());
+  const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+  if (gestor) return { user: u, perms: EST_PERMS.slice(), gestor: true };
+  let ex = []; try { ex = (await db.q(`SELECT permissao FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, uid])).rows; } catch (e) {}
+  if (ex.some(r => r.permissao === '__configured__')) return { user: u, perms: ex.map(r => r.permissao).filter(p => p !== '__configured__'), gestor: false };
+  return { user: u, perms: EST_PERMS_COLAB.slice(), gestor: false };
+}
+async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
+
 /* status canônico (orders.status_atual) <-> rótulos do painel atual */
 const CANON_TO_UI = { CONFIRMED: 'RECEBIDO', PRODUCING: 'EM_PREPARO', READY_TO_DELIVER: 'PRONTO', DISPATCHED: 'EM_ROTA', CONCLUDED: 'ENTREGUE', CANCELLED: 'CANCELADO' };
 const UI_TO_CANON = { RECEBIDO: 'CONFIRMED', EM_PREPARO: 'PRODUCING', PRONTO: 'READY_TO_DELIVER', EM_ROTA: 'DISPATCHED', ENTREGUE: 'CONCLUDED', CANCELADO: 'CANCELLED' };
@@ -282,8 +298,8 @@ async function api(req, res, url) {
   // estoque v2 — escritas (CRUD) com checagem de gestor/gerente
   if (sub === 'est' && ['produto', 'fornecedor', 'categoria'].includes(seg[2]) && req.method !== 'GET') {
     const b = await readBody(req);
-    const podeEditar = await (async (uid) => { if (!uid) return false; try { const r = await db.q(`SELECT 1 FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]); return !!r.rows[0]; } catch (e) { return false; } })(b.usuario_id);
-    if (!podeEditar) return json(res, 403, { erro: 'Apenas gestor ou gerente pode editar.' });
+    const permNeeded = seg[2] === 'categoria' ? 'editar_categorias' : 'editar_produtos';
+    if (!(await estPode(b.usuario_id, permNeeded))) return json(res, 403, { erro: 'Sem permissão para editar.' });
 
     // PRODUTO
     if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
@@ -403,8 +419,8 @@ async function api(req, res, url) {
   }
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'auditar' && req.method === 'POST') {
     const b = await readBody(req); const cid = seg[3];
-    const g = await estGestor(b.usuario_id);
-    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente audita.' });
+    if (!(await estPode(b.usuario_id, 'auditar_contagem'))) return json(res, 403, { erro: 'Sem permissão para auditar.' });
+    const g = await estPermsEfetivas(b.usuario_id).then(e => e.user);
     const acao = b.acao;
     if (acao === 'aprovar') {
       const its = await db.q('SELECT produto_id, quantidade FROM est_contagem_item WHERE contagem_id=$1 AND quantidade IS NOT NULL AND produto_id IS NOT NULL', [cid]);
@@ -460,7 +476,7 @@ async function api(req, res, url) {
   // ===== COMPRAS (foto-nota OCR + confirmação) =====
   if (sub === 'est' && seg[2] === 'compra' && seg[3] === 'foto' && req.method === 'POST') {
     const b = await readBody(req);
-    if (!(await estGestor(b.usuario_id))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    if (!(await estPode(b.usuario_id, 'registrar_compra'))) return json(res, 403, { erro: 'Sem permissão para registrar compra.' });
     const key = process.env.OPENAI_API_KEY;
     if (!key) return json(res, 400, { erro: 'OCR não configurado (defina OPENAI_API_KEY no Easypanel).' });
     if (!b.image) return json(res, 400, { erro: 'envie a imagem' });
@@ -483,8 +499,8 @@ async function api(req, res, url) {
     } catch (e) { return json(res, 502, { erro: 'Erro no OCR: ' + (e.message || e) }); }
   }
   if (sub === 'est' && seg[2] === 'compra' && !seg[3] && req.method === 'POST') {
-    const b = await readBody(req); const g = await estGestor(b.usuario_id);
-    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'registrar_compra'))) return json(res, 403, { erro: 'Sem permissão para registrar compra.' });
     const itens = (Array.isArray(b.itens) ? b.itens : []).filter(it => it.produto_id);
     if (!itens.length) return json(res, 400, { erro: 'Selecione ao menos um produto.' });
     let total = 0;
@@ -525,8 +541,8 @@ async function api(req, res, url) {
 
   // ===== VISITA A FORNECEDOR + MAPA COMPARATIVO =====
   if (sub === 'est' && seg[2] === 'visita' && seg[3] === 'iniciar' && req.method === 'POST') {
-    const b = await readBody(req); const g = await estGestor(b.usuario_id);
-    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const b = await readBody(req); const g = (await estPermsEfetivas(b.usuario_id)).user;
+    if (!(await estPode(b.usuario_id, 'registrar_visita')) || !g) return json(res, 403, { erro: 'Sem permissão para registrar visita.' });
     if (!b.fornecedor_id) return json(res, 400, { erro: 'informe o fornecedor' });
     const f = await db.q('SELECT id, nome FROM est_fornecedor WHERE id=$1 AND tenant_id=$2', [b.fornecedor_id, TENANT]);
     if (!f.rows[0]) return json(res, 400, { erro: 'fornecedor inválido' });
@@ -537,8 +553,8 @@ async function api(req, res, url) {
     return json(res, 201, { visita: { id: v.rows[0].id, fornecedor_nome: f.rows[0].nome }, itens: prods.rows });
   }
   if (sub === 'est' && seg[2] === 'visita' && seg[3] && seg[4] === 'finalizar' && req.method === 'POST') {
-    const b = await readBody(req); const g = await estGestor(b.usuario_id);
-    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'registrar_visita'))) return json(res, 403, { erro: 'Sem permissão para registrar visita.' });
     const vid = seg[3];
     const v = await db.q('SELECT fornecedor_id FROM est_visita WHERE id=$1 AND tenant_id=$2', [vid, TENANT]);
     if (!v.rows[0]) return json(res, 404, { erro: 'visita não encontrada' });
@@ -761,6 +777,29 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'producoes' && req.method === 'GET') {
     const r = await db.q(`SELECT pr.id, pr.quantidade, pr.usuario_nome, pr.observacao, pr.criado_em, p.nome AS produto, p.unidade FROM est_producao_run pr JOIN est_produto p ON p.id=pr.produto_id WHERE pr.tenant_id=$1 ORDER BY pr.criado_em DESC LIMIT 30`, [TENANT]);
     return json(res, 200, { producoes: r.rows });
+  }
+
+  // ---- Permissões (configuráveis por usuário) ----
+  if (sub === 'est' && seg[2] === 'usuarios' && req.method === 'GET') {
+    if (!(await estPode(url.searchParams.get('usuario_id'), 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal FROM rbac_contacts WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
+    return json(res, 200, { usuarios: r.rows, catalogo: EST_PERMS });
+  }
+  if (sub === 'est' && seg[2] === 'permissoes' && req.method === 'GET') {
+    const alvo = url.searchParams.get('alvo_id') || url.searchParams.get('usuario_id');
+    const e = await estPermsEfetivas(alvo);
+    return json(res, 200, { perms: e.perms, gestor: !!e.gestor, catalogo: EST_PERMS });
+  }
+  if (sub === 'est' && seg[2] === 'permissoes' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    if (!b.alvo_id) return json(res, 400, { erro: 'alvo_id obrigatório' });
+    const alvoEh = await estPermsEfetivas(b.alvo_id);
+    if (alvoEh.gestor) return json(res, 400, { erro: 'Gestores/gerentes já têm acesso total.' });
+    const sel = Array.isArray(b.permissoes) ? b.permissoes.filter(p => EST_PERMS.includes(p)) : [];
+    await db.q(`DELETE FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, b.alvo_id]);
+    for (const p of sel.concat(['__configured__'])) await db.q(`INSERT INTO est_permissao (tenant_id, usuario_id, permissao) VALUES ($1,$2,$3) ON CONFLICT (tenant_id, usuario_id, permissao) DO NOTHING`, [TENANT, b.alvo_id, p]);
+    return json(res, 200, { ok: true, perms: sel });
   }
 
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.

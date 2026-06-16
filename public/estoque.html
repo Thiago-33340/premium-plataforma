@@ -225,10 +225,17 @@ async function confirmaPin(){ const a=$('np1').value.replace(/\D/g,''), b=$('np2
 function abrirApp(u){ user=u; try{ localStorage.setItem('est_u', JSON.stringify(u)); }catch(e){}
   $('login').classList.add('hide'); $('app').classList.remove('hide');
   $('hNome').textContent=u.nome||u.login||'—'; $('hPerfil').textContent=(u.perfil||'').toString().toLowerCase();
-  nav('inicio'); }
+  carregarPerms(); nav('inicio'); }
 function sair(){ try{ localStorage.removeItem('est_u'); }catch(e){} user=null; location.reload(); }
+function temPerm(p){ if(!user) return false; if(ehGestor()) return true; return (user.perms||[]).includes(p); }
+async function carregarPerms(){ if(ehGestor()){ aplicaNavPerms(); return; }
+  try{ const d=await (await fetch(API+'/api/est/permissoes?usuario_id='+encodeURIComponent(user.id))).json(); user.perms=d.perms||[]; }catch(e){ user.perms=[]; }
+  aplicaNavPerms(); }
+const NAV_PERM={ produtos:'acessar_produtos', contagem:'acessar_contagem', fornecedores:'acessar_fornecedores' };
+function aplicaNavPerms(){ document.querySelectorAll('#nav button').forEach(b=>{ const v=b.dataset.v; const need=NAV_PERM[v]; b.style.display=(need&&!temPerm(need))?'none':''; }); }
 
-function nav(v){ ['inicio','produtos','contagem','fornecedores','mais'].forEach(x=> $('v-'+x).classList.toggle('hide', x!==v));
+function nav(v){ const need=NAV_PERM[v]; if(need&&!temPerm(need)){ v='inicio'; }
+  ['inicio','produtos','contagem','fornecedores','mais'].forEach(x=> $('v-'+x).classList.toggle('hide', x!==v));
   document.querySelectorAll('#nav button').forEach(b=> b.classList.toggle('on', b.dataset.v===v));
   window.scrollTo(0,0);
   if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); if(v==='contagem') loadContagem(); if(v==='mais') loadMais(); }
@@ -342,7 +349,7 @@ async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem()
   let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
   let aud=0; try{ aud=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens||[]).length; }catch(e){}
   let h='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div>';
-  h+=`<div class="audit-banner" onclick="abrirAuditorias()"><span>⏳ ${aud} aguardando auditoria</span><span>Auditar ›</span></div>`;
+  if(temPerm('acessar_auditoria')) h+=`<div class="audit-banner" onclick="abrirAuditorias()"><span>⏳ ${aud} aguardando auditoria</span><span>Auditar ›</span></div>`;
   h+='<p class="mut sm" style="margin:0 0 10px">Escolha o setor. O valor <b>0</b> é válido (item contado e zerado).</p>';
   h+=setores.map(s=>`<button class="setor-btn" onclick="iniciarContagem(${s.id})"><span>${esc(s.nome)}</span><span>Contar ›</span></button>`).join('')||'<div class="empty">Sem setores.</div>';
   w.innerHTML=h; }
@@ -384,14 +391,16 @@ function modalHTML(titulo, body){ const ov=document.createElement('div'); ov.cla
 function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.remove()); }
 
 /* ===== MAIS / CONFIGURAR SETORES ===== */
-function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>
-  <button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>
-  <button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>
-  <button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>
-  <button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>
-  <button class="setor-btn" onclick="producaoTela()"><span>🏭 Produção interna</span><span>Lançar ›</span></button>
-  <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
-  <div class="panel" style="margin-top:6px"><div class="empty">Permissões granulares e automações WhatsApp chegam nas próximas fases.</div></div>`; }
+function loadMais(){ const b=[];
+  if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>`);
+  if(temPerm('acessar_lancamentos')||temPerm('registrar_compra')) b.push(`<button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>`);
+  if(temPerm('acessar_visitas')||temPerm('registrar_visita')) b.push(`<button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>`);
+  if(temPerm('acessar_mapa_comparativo_fornecedores')) b.push(`<button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>`);
+  if(temPerm('acessar_producao_interna')) b.push(`<button class="setor-btn" onclick="producaoTela()"><span>🏭 Produção interna</span><span>Lançar ›</span></button>`);
+  if(temPerm('acessar_configuracoes')) b.push(`<button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>`);
+  if(temPerm('editar_permissoes')) b.push(`<button class="setor-btn" onclick="permTela()"><span>🔐 Permissões da equipe</span><span>Configurar ›</span></button>`);
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>`+(b.join('')||'<div class="empty">Sem itens disponíveis no seu perfil.</div>')
+    +`<div class="panel" style="margin-top:6px"><div class="empty">Automações WhatsApp chegam nas próximas fases.</div></div>`; }
 
 let _cfgSetor=null, _cfgItens=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
@@ -598,6 +607,23 @@ async function delFicha(id){ if(!await pedirConfirm('Remover insumo','Tirar este
 async function lancarProducao(){ const q=(($('prodQtd')&&$('prodQtd').value)||'').replace(',','.'); const obs=($('prodObs')&&$('prodObs').value)||'';
   if(!(parseFloat(q)>0)){ toast('Informe a quantidade'); return; }
   try{ const d=await estFetch('/api/est/producao/run','POST',{produto_id:_prod.sel.id,quantidade:q,observacao:obs}); toast('Produção lançada — estoque atualizado'); if(d.avisos&&d.avisos.length) setTimeout(()=>toast('Atenção: '+d.avisos[0]),1700); producaoTela(); }catch(e){} }
+
+/* ===== PERMISSÕES DA EQUIPE ===== */
+const PERM_LABEL={ acessar_estoque_premium_rp:'Acessar o estoque', acessar_produtos:'Ver produtos', acessar_categorias:'Ver categorias', acessar_fornecedores:'Ver fornecedores', acessar_visitas:'Acessar visitas', acessar_mapa_comparativo_fornecedores:'Ver mapa de fornecedores', acessar_lista_compras_inteligente:'Lista de compras inteligente', acessar_contagem:'Acessar contagem', acessar_auditoria:'Acessar auditoria', acessar_producao_interna:'Acessar produção interna', acessar_lancamentos:'Acessar lançamentos', acessar_configuracoes:'Acessar configurações', ver_valores:'Ver valores/preços', ver_maior_valor_pago:'Ver maior valor já pago', editar_produtos:'Editar produtos', editar_categorias:'Editar categorias', registrar_compra:'Registrar compra', registrar_visita:'Registrar visita', fazer_contagem:'Lançar contagem', auditar_contagem:'Auditar contagem', aprovar_contagem:'Aprovar contagem', reprovar_contagem:'Reprovar contagem', exportar_dados:'Exportar dados', criar_usuarios:'Criar usuários', editar_permissoes:'Editar permissões' };
+let _permCat=[], _permUsers=[];
+async function permTela(){ const w=$('maisWrap'); w.innerHTML=`<div class="vhead"><h2 class="tit">Permissões da equipe</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div><p class="mut sm" style="margin:0 0 8px">Gestores e gerentes têm acesso total. Configure abaixo o que cada colaborador pode fazer.</p><div id="permUsers"><div class="empty">Carregando…</div></div>`;
+  let d; try{ d=await (await fetch(API+'/api/est/usuarios?usuario_id='+encodeURIComponent(user.id))).json(); }catch(e){ d={}; }
+  _permCat=d.catalogo||[]; _permUsers=d.usuarios||[];
+  $('permUsers').innerHTML=_permUsers.length? _permUsers.map(u=>{ const g=/GESTOR|GERENTE/i.test(u.perfil_principal||''); return `<button class="setor-btn" ${g?'disabled style="opacity:.55"':`onclick="permEditar('${u.id}')"`}><span>${esc(u.nome||u.apelido_login)} <small class="mut">${esc((u.perfil_principal||'').toLowerCase())}</small></span><span>${g?'acesso total':'Configurar ›'}</span></button>`; }).join('') : '<div class="empty">Sem usuários.</div>'; }
+async function permEditar(uid){ const u=_permUsers.find(x=>String(x.id)===String(uid)); if(!u) return;
+  let d; try{ d=await (await fetch(API+'/api/est/permissoes?alvo_id='+encodeURIComponent(uid))).json(); }catch(e){ d={}; }
+  const have=new Set(d.perms||[]);
+  const rows=_permCat.map(p=>`<label class="fcheck"><input type="checkbox" data-p="${p}" ${have.has(p)?'checked':''}> ${esc(PERM_LABEL[p]||p)}</label>`).join('');
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(u.nome||u.apelido_login)}</h2><button class="btn ghost sm" onclick="permTela()">Voltar</button></div>
+   <div style="padding-bottom:96px">${rows}</div>
+   <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="permSalvar('${uid}')">Salvar permissões</button></div>`; }
+async function permSalvar(uid){ const sel=[]; document.querySelectorAll('[data-p]').forEach(el=>{ if(el.checked) sel.push(el.dataset.p); });
+  try{ await estFetch('/api/est/permissoes','POST',{alvo_id:uid,permissoes:sel}); toast('Permissões salvas'); permTela(); }catch(e){} }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
