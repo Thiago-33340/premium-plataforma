@@ -587,6 +587,110 @@ async function api(req, res, url) {
     return json(res, 200, { grupos });
   }
 
+  // ---- Lista de Compras Inteligente (função central) ----
+  if (sub === 'est' && seg[2] === 'lista' && seg[3] === 'interpretar' && req.method === 'POST') {
+    const b = await readBody(req);
+    const texto = String(b.texto || '');
+    const prods = await db.q('SELECT id, nome, unidade, estoque_atual, estoque_minimo, estoque_ideal FROM est_produto WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const UNI = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|kilo|kilos|quilo|quilos|g|gr|grs|gramas?|l|lt|lts|litros?|ml|un|und|unid|unidades?|cx|caixas?|pct|pacotes?|dz|duzias?|latas?|garrafas?|sacos?|fardos?|pc|pcs|pecas?|bdj|bandejas?|potes?)?\b/i;
+    const cand = prods.rows.map(p => { const n = norm(p.nome); return { id: p.id, nome: p.nome, unidade: p.unidade, atual: Number(p.estoque_atual), ideal: p.estoque_ideal != null ? Number(p.estoque_ideal) : null, n, toks: n.split(' ').filter(Boolean) }; });
+    const linhas = texto.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
+    const itens = linhas.map(raw => {
+      let qtd = null, uni = null;
+      const m = raw.match(UNI);
+      if (m && m[1]) { qtd = Number(m[1].replace(',', '.')); uni = m[2] ? m[2].toLowerCase() : null; }
+      let txt = raw.replace(/^[-*••\d\).\s]+/, ' ');
+      if (m) txt = txt.replace(m[0], ' ');
+      txt = txt.replace(/r\$\s*\d+[.,]?\d*/ig, ' ');
+      const nin = norm(txt);
+      const inToks = nin.split(' ').filter(Boolean);
+      let best = null, bestS = 0;
+      for (const c of cand) {
+        let s = 0;
+        if (c.n && c.n === nin) s = 1;
+        else if (nin && c.n && (c.n.includes(nin) || nin.includes(c.n))) s = 0.9;
+        else {
+          const inter = inToks.filter(t => t.length > 2 && c.toks.includes(t)).length;
+          const denom = Math.max(c.toks.length, inToks.length) || 1;
+          s = inter / denom;
+          if (s === 0) { const pf = inToks.filter(t => t.length > 3 && c.toks.some(ct => ct.startsWith(t) || t.startsWith(ct))).length; if (pf) s = 0.5 * pf / denom; }
+        }
+        if (s > bestS) { bestS = s; best = c; }
+      }
+      const matched = best && bestS >= 0.34;
+      let qSug = qtd;
+      if (qSug == null && matched && best.ideal != null) { const d = best.ideal - best.atual; qSug = d > 0 ? Number(d.toFixed(3)) : 0; }
+      return { texto_original: raw, produto_id: matched ? best.id : null, produto: matched ? best.nome : null, quantidade: qSug, unidade: uni || (matched ? best.unidade : null), confianca: matched ? Math.round(bestS * 100) : 0 };
+    });
+    return json(res, 200, { itens });
+  }
+  if (sub === 'est' && seg[2] === 'lista' && seg[3] === 'gerar' && req.method === 'POST') {
+    const b = await readBody(req);
+    const inItens = Array.isArray(b.itens) ? b.itens.filter(x => x && x.produto_id) : [];
+    if (!inItens.length) return json(res, 400, { erro: 'lista vazia' });
+    const ids = inItens.map(x => parseInt(x.produto_id, 10)).filter(Boolean);
+    const pr = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.marca_preferida, p.ultimo_valor, p.menor_valor, p.maior_valor, p.fornecedor_preferido_id, fp.nome AS fornecedor_preferido
+      FROM est_produto p LEFT JOIN est_fornecedor fp ON fp.id=p.fornecedor_preferido_id
+      WHERE p.tenant_id=$1 AND p.id = ANY($2)`, [TENANT, ids]);
+    const pmap = {}; for (const p of pr.rows) pmap[p.id] = p;
+    const pf = await db.q(`SELECT pf.produto_id, pf.fornecedor_id, f.nome AS fornecedor, pf.preferencial, pf.marca, pf.marca_parecida, pf.status, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.frequencia
+      FROM est_produto_fornecedor pf JOIN est_fornecedor f ON f.id=pf.fornecedor_id
+      WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2)`, [TENANT, ids]);
+    const pfByProd = {}; for (const r of pf.rows) (pfByProd[r.produto_id] = pfByProd[r.produto_id] || []).push(r);
+    const itens = [], naoEncontrados = [], confirmar = [], substitutos = [];
+    for (const inp of inItens) {
+      const p = pmap[inp.produto_id]; if (!p) continue;
+      const qtd = inp.quantidade != null && inp.quantidade !== '' ? Number(inp.quantidade) : null;
+      const forns = (pfByProd[p.id] || []).slice();
+      let escolhido = null;
+      if (forns.length) {
+        const comValor = forns.filter(f => f.ultimo_valor != null);
+        escolhido = forns.find(f => f.preferencial)
+          || (comValor.length ? comValor.reduce((a, bb) => Number(bb.ultimo_valor) < Number(a.ultimo_valor) ? bb : a) : null)
+          || forns.reduce((a, bb) => Number(bb.frequencia || 0) > Number(a.frequencia || 0) ? bb : a);
+      }
+      const preco = escolhido && escolhido.ultimo_valor != null ? Number(escolhido.ultimo_valor) : (p.ultimo_valor != null ? Number(p.ultimo_valor) : null);
+      const fornNome = escolhido ? escolhido.fornecedor : (p.fornecedor_preferido || null);
+      const fornId = escolhido ? escolhido.fornecedor_id : (p.fornecedor_preferido_id || null);
+      const estimativa = (preco != null && qtd != null) ? Number((preco * qtd).toFixed(2)) : null;
+      const item = {
+        produto_id: p.id, produto: p.nome, unidade: inp.unidade || p.unidade, quantidade: qtd,
+        estoque_atual: Number(p.estoque_atual), estoque_minimo: p.estoque_minimo != null ? Number(p.estoque_minimo) : null,
+        essencial: p.estoque_minimo != null && Number(p.estoque_atual) <= Number(p.estoque_minimo),
+        fornecedor_id: fornId, fornecedor: fornNome, marca: escolhido ? escolhido.marca : p.marca_preferida,
+        status_fornecedor: escolhido ? escolhido.status : null, preco_unit: preco, estimativa,
+        frequencia: escolhido ? Number(escolhido.frequencia || 0) : null
+      };
+      if (!fornNome) naoEncontrados.push(item); else itens.push(item);
+      if (escolhido && (/(confirm|parec|verific|incert)/i.test(escolhido.status || '') || (escolhido.marca_parecida && !escolhido.marca))) confirmar.push(item);
+      const outros = forns.filter(f => !escolhido || f.fornecedor_id !== escolhido.fornecedor_id);
+      if (outros.length) substitutos.push({ produto: p.nome, opcoes: outros.map(o => ({ fornecedor: o.fornecedor, preco: o.ultimo_valor != null ? Number(o.ultimo_valor) : null, marca: o.marca, marca_parecida: o.marca_parecida, status: o.status })) });
+    }
+    const porForn = {};
+    for (const it of itens) { const k = it.fornecedor || '(sem fornecedor)'; (porForn[k] = porForn[k] || { fornecedor: it.fornecedor, fornecedor_id: it.fornecedor_id, itens: [], total: 0 }); porForn[k].itens.push(it); if (it.estimativa != null) porForn[k].total += it.estimativa; }
+    const grupos = Object.values(porForn).map(g => { g.total = Number(g.total.toFixed(2)); return g; }).sort((a, b) => b.itens.length - a.itens.length || b.total - a.total);
+    const irPrimeiro = grupos.length ? grupos[0].fornecedor : null;
+    const estimativaTotal = Number(itens.reduce((s, it) => s + (it.estimativa || 0), 0).toFixed(2));
+    let alerta = null;
+    if (grupos.length > 1) {
+      const principal = grupos[0].fornecedor;
+      let custoTudoPrincipal = 0, possivel = true;
+      for (const it of itens) {
+        if (it.fornecedor === principal) { custoTudoPrincipal += it.estimativa || 0; continue; }
+        const sub = substitutos.find(s => s.produto === it.produto);
+        const noPrincipal = sub && sub.opcoes.find(o => o.fornecedor === principal && o.preco != null);
+        if (noPrincipal && it.quantidade != null) custoTudoPrincipal += noPrincipal.preco * it.quantidade;
+        else { possivel = false; break; }
+      }
+      if (possivel) {
+        const aMais = Number((custoTudoPrincipal - estimativaTotal).toFixed(2));
+        if (aMais <= Math.max(8, estimativaTotal * 0.05)) alerta = `Não compensa dividir: comprar tudo em ${principal} custa só R$ ${aMais.toFixed(2)} a mais. Vá num lugar só.`;
+      }
+    }
+    return json(res, 200, { ir_primeiro_em: irPrimeiro, comprar_por_fornecedor: grupos, confirmar_antes: confirmar, substitutos, nao_encontrados: naoEncontrados, estimativa_total: estimativaTotal, alerta });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {

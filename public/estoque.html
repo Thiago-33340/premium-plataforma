@@ -385,11 +385,12 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 
 /* ===== MAIS / CONFIGURAR SETORES ===== */
 function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>
+  <button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>
   <button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>
   <button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>
   <button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>
   <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
-  <div class="panel" style="margin-top:6px"><div class="empty">Lista de Compras Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
+  <div class="panel" style="margin-top:6px"><div class="empty">Produção Interna e Permissões chegam nas próximas fases.</div></div>`; }
 
 let _cfgSetor=null, _cfgItens=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
@@ -498,6 +499,61 @@ async function loadMapa(){ const q=encodeURIComponent(($('mapaBusca')&&$('mapaBu
   $('mapaList').innerHTML= gs.length? gs.map(g=>`<div class="cnt-item" style="margin-bottom:8px"><div class="pn">${esc(g.produto)} <span class="mut xs">${esc(g.categoria||'')}</span></div>
     ${g.fornecedores.map(f=>`<div class="cnt-row" style="justify-content:space-between;gap:8px"><span style="flex:1">${esc(f.fornecedor)} ${f.fornecedor===g.melhor_fornecedor?'<span class="tag ok">melhor</span>':''} <small class="mut">${esc(f.status||'')}</small></span><span class="big">${f.ultimo_valor!=null?'R$ '+Number(f.ultimo_valor).toFixed(2):'—'}</span></div>`).join('')}</div>`).join('')
     : '<div class="empty">Sem dados ainda. Faça visitas a fornecedores para preencher o mapa.</div>'; }
+
+/* ===== LISTA DE COMPRAS INTELIGENTE (função central) ===== */
+let _lista={ itens:[] };
+async function listaTela(){ await ensureAllProds();
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Lista de compras</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <p class="mut sm" style="margin:0 0 8px">Digite o produto ou cole a lista do WhatsApp. O app sugere quantidade, melhor fornecedor e a rota.</p>
+   <label class="flabel">Adicionar produto<input id="listaAuto" class="field" list="listaDL" placeholder="Comece a digitar…" onchange="listaAddProd()"></label>
+   <datalist id="listaDL">${_allProds.map(p=>`<option value="${esc(p.nome)}">`).join('')}</datalist>
+   <details style="margin:4px 0 12px"><summary class="mut sm" style="cursor:pointer;padding:6px 0">📋 Colar lista do WhatsApp</summary>
+     <textarea id="listaTxt" class="field" rows="4" placeholder="Ex:
+Mussarela 20kg
+coca 2l
+catupiry original"></textarea>
+     <button class="btn ghost sm" style="margin-top:6px" onclick="listaColar()">Interpretar lista</button></details>
+   <div class="sec">Itens (<span id="listaN">0</span>)</div>
+   <div id="listaItens" style="padding-bottom:96px"></div>
+   <div class="cnt-foot"><div class="prog" id="listaProg"></div><button class="btn primary sm" onclick="gerarRota()">Gerar rota ›</button></div>`;
+  listaRender(); }
+function listaAddProd(){ const el=$('listaAuto'); const nome=(el.value||'').trim(); if(!nome) return;
+  const lc=nome.toLowerCase(); const p=_allProds.find(x=>x.nome.toLowerCase()===lc)||_allProds.find(x=>x.nome.toLowerCase().includes(lc));
+  if(!p){ toast('Produto não encontrado'); return; }
+  if(_lista.itens.some(i=>i.produto_id===p.id)){ toast('Já está na lista'); el.value=''; return; }
+  const sug=(p.estoque_ideal!=null)?Math.max(Number(p.estoque_ideal)-Number(p.estoque_atual||0),0):'';
+  _lista.itens.push({produto_id:p.id,produto:p.nome,quantidade:sug!==''?fmt(sug):'',unidade:p.unidade||'',confianca:100}); el.value=''; listaRender(); }
+async function listaColar(){ const t=($('listaTxt')&&$('listaTxt').value)||''; if(!t.trim()){ toast('Cole a lista primeiro'); return; }
+  let d; try{ d=await estFetch('/api/est/lista/interpretar','POST',{texto:t}); }catch(e){ return; }
+  let add=0,nf=0; for(const it of (d.itens||[])){
+    if(it.produto_id){ if(!_lista.itens.some(x=>x.produto_id===it.produto_id)){ _lista.itens.push({produto_id:it.produto_id,produto:it.produto,quantidade:it.quantidade!=null?it.quantidade:'',unidade:it.unidade||'',confianca:it.confianca,_txt:it.texto_original}); add++; } }
+    else { _lista.itens.push({produto_id:null,produto:null,quantidade:'',unidade:'',confianca:0,_txt:it.texto_original}); nf++; } }
+  toast(add+' reconhecidos'+(nf?', '+nf+' p/ ajustar':'')); if($('listaTxt'))$('listaTxt').value=''; listaRender(); }
+function listaRender(){ const el=$('listaItens'); if(!el) return; if($('listaN'))$('listaN').textContent=_lista.itens.length;
+  el.innerHTML=_lista.itens.length? _lista.itens.map((it,i)=>listaRowHTML(it,i)).join('') : '<div class="empty">Nenhum item ainda.</div>'; listaProg(); }
+function listaRowHTML(it,i){ const opts=[{id:'',nome:'— escolher produto —'}].concat(_allProds);
+  const conf=it.produto_id?(it.confianca>=80?'<span class="tag ok">'+it.confianca+'%</span>':'<span class="tag low">'+it.confianca+'%</span>'):'<span class="tag zero">ajustar</span>';
+  const head=it._txt?`<div class="xs mut" style="margin-bottom:4px">“${esc(it._txt)}” ${conf}</div>`:`<div class="pn">${esc(it.produto||'')} ${conf}</div>`;
+  const sel=(!it.produto_id||it._txt)?`<select class="field" onchange="listaSet(${i},'produto_id',this.value)">${opts.map(p=>`<option value="${p.id}" ${String(it.produto_id)===String(p.id)?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`:'';
+  return `<div class="cnt-item" style="margin-bottom:8px">${head}${sel}
+   <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="qtd" value="${esc(it.quantidade)}" onchange="listaSet(${i},'quantidade',this.value)"><input class="field" style="flex:1" placeholder="unid" value="${esc(it.unidade)}" onchange="listaSet(${i},'unidade',this.value)"><button class="ig" onclick="listaDel(${i})">remover</button></div></div>`; }
+function listaSet(i,k,v){ if(k==='produto_id'){ const p=_allProds.find(x=>String(x.id)===String(v)); _lista.itens[i].produto_id=p?p.id:null; _lista.itens[i].produto=p?p.nome:null; if(p){ _lista.itens[i].confianca=100; if(!_lista.itens[i].unidade)_lista.itens[i].unidade=p.unidade||''; } listaRender(); return; } _lista.itens[i][k]=v; }
+function listaDel(i){ _lista.itens.splice(i,1); listaRender(); }
+function listaProg(){ const n=_lista.itens.filter(x=>x.produto_id).length; const el=$('listaProg'); if(el) el.textContent=n+' prontos'; }
+async function gerarRota(){ const itens=_lista.itens.filter(x=>x.produto_id).map(x=>({produto_id:x.produto_id,quantidade:String(x.quantidade).replace(',','.')||null,unidade:x.unidade}));
+  if(!itens.length){ toast('Adicione ao menos um produto'); return; }
+  let d; try{ d=await estFetch('/api/est/lista/gerar','POST',{itens}); }catch(e){ return; } renderRota(d); }
+function renderRota(d){ const money=v=>v!=null?'R$ '+Number(v).toFixed(2):'—';
+  let h=`<div class="vhead"><h2 class="tit">Rota de compras</h2><button class="btn ghost sm" onclick="listaTela()">‹ Editar</button></div>`;
+  if(d.alerta) h+=`<div style="background:#2a1a05;border:1px solid var(--lar);color:#ffcf99;border-radius:12px;padding:12px;margin-bottom:10px;font-weight:600;font-size:14px">⚠️ ${esc(d.alerta)}</div>`;
+  if(d.ir_primeiro_em) h+=`<div class="sec">Ir primeiro em</div><div class="cnt-item"><div class="pn" style="color:var(--lar)">📍 ${esc(d.ir_primeiro_em)}</div></div>`;
+  h+=`<div class="sec">Comprar por fornecedor</div>`+((d.comprar_por_fornecedor||[]).map(g=>`<div class="cnt-item" style="margin-bottom:8px"><div class="cnt-row" style="justify-content:space-between"><b>${esc(g.fornecedor||'—')}</b><span class="big">${g.total?money(g.total):''}</span></div>
+     ${g.itens.map(it=>`<div class="cnt-row" style="justify-content:space-between;gap:8px;align-items:flex-start"><span style="flex:1">${esc(it.produto)} ${it.essencial?'<span class="tag low">essencial</span>':''}<br><small class="mut">${it.quantidade!=null?fmt(it.quantidade):'?'} ${esc(it.unidade||'')}${it.marca?' · '+esc(it.marca):''}</small></span><span>${money(it.estimativa)}</span></div>`).join('')}</div>`).join('')||'<div class="empty">—</div>');
+  if(d.confirmar_antes&&d.confirmar_antes.length) h+=`<div class="sec">Confirmar antes de sair</div>`+d.confirmar_antes.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto)}</b><small>${esc(it.fornecedor||'')} · ${esc(it.status_fornecedor||'verificar marca')}</small></div></div>`).join('');
+  if(d.substitutos&&d.substitutos.length) h+=`<div class="sec">Substitutos possíveis</div>`+d.substitutos.map(s=>`<div class="cnt-item" style="margin-bottom:8px"><div class="pn">${esc(s.produto)}</div>${s.opcoes.map(o=>`<div class="cnt-row" style="justify-content:space-between"><span>${esc(o.fornecedor)} ${o.marca_parecida?'<small class="mut">~'+esc(o.marca_parecida)+'</small>':''}</span><span>${money(o.preco)}</span></div>`).join('')}</div>`).join('');
+  if(d.nao_encontrados&&d.nao_encontrados.length) h+=`<div class="sec">Sem histórico de fornecedor</div>`+d.nao_encontrados.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto)}</b><small>${it.quantidade!=null?fmt(it.quantidade):'?'} ${esc(it.unidade||'')} · defina onde comprar</small></div></div>`).join('');
+  h+=`<div class="cnt-foot"><div class="prog">Estimativa: <b>${money(d.estimativa_total)}</b></div><button class="btn primary sm" onclick="loadMais()">Concluir</button></div>`;
+  $('maisWrap').innerHTML=h; }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
