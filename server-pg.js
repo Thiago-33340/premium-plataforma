@@ -425,6 +425,38 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  // ===== CONFIGURAÇÃO DE SETORES (itens por setor + obrigatoriedade) =====
+  if (sub === 'est' && seg[2] === 'setor' && seg[3] && seg[4] === 'config' && req.method === 'GET') {
+    const r = await db.q(`SELECT p.id AS produto_id, p.nome, c.nome AS categoria,
+        (ps.id IS NOT NULL) AS no_setor, COALESCE(ps.obrigatorio,false) AS obrigatorio
+      FROM est_produto p
+      LEFT JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.setor_id=$2 AND ps.tenant_id=$1
+      LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar ORDER BY c.ordem, p.nome`, [TENANT, seg[3]]);
+    return json(res, 200, { itens: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'setor' && seg[3] && seg[4] === 'config' && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND setor_id=$2', [TENANT, seg[3]]);
+    for (const it of (Array.isArray(b.itens) ? b.itens : []))
+      await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,$4) ON CONFLICT (tenant_id, produto_id, setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio', [TENANT, it.produto_id, seg[3], !!it.obrigatorio]);
+    return json(res, 200, { ok: true, total: (b.itens || []).length });
+  }
+  if (sub === 'est' && seg[2] === 'setor' && !seg[3] && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+    try { const r = await db.q('INSERT INTO est_setor (tenant_id, nome, ordem) VALUES ($1,$2,$3) RETURNING id', [TENANT, nome, Number(b.ordem) || 50]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
+    catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Setor já existe.' : (e.code || e.message) }); }
+  }
+  if (sub === 'est' && seg[2] === 'setor' && seg[3] && !seg[4] && req.method === 'PATCH') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    await db.q('UPDATE est_setor SET nome=COALESCE($2,nome), ativo=COALESCE($3,ativo) WHERE id=$1 AND tenant_id=$4', [seg[3], b.nome ? String(b.nome).trim() : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+    return json(res, 200, { ok: true });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {

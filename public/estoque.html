@@ -168,8 +168,7 @@ nav button.on{ color:var(--lar); }
     </section>
 
     <section id="v-mais" class="hide">
-      <div class="vhead"><h2 class="tit">Mais</h2></div>
-      <div class="panel"><div class="empty">Compras (com foto-nota), Visitas, Mapa de Fornecedores, Lista Inteligente, Produção e Configurações chegam nas próximas fases.</div></div>
+      <div id="maisWrap"></div>
     </section>
   </main>
 
@@ -232,7 +231,7 @@ function sair(){ try{ localStorage.removeItem('est_u'); }catch(e){} user=null; l
 function nav(v){ ['inicio','produtos','contagem','fornecedores','mais'].forEach(x=> $('v-'+x).classList.toggle('hide', x!==v));
   document.querySelectorAll('#nav button').forEach(b=> b.classList.toggle('on', b.dataset.v===v));
   window.scrollTo(0,0);
-  if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); if(v==='contagem') loadContagem(); }
+  if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); if(v==='contagem') loadContagem(); if(v==='mais') loadMais(); }
 
 async function loadInicio(){ let d; try{ d=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){ return; }
   const k=(v,l,cls='')=>`<div class="kpi ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
@@ -383,6 +382,36 @@ function modalHTML(titulo, body){ const ov=document.createElement('div'); ov.cla
   ov.innerHTML=`<div class="box"><h3 style="margin:0 0 10px">${titulo}</h3>${body}<div style="margin-top:12px"><button class="btn ghost" onclick="this.closest('.est-modal').remove()">Fechar</button></div></div>`;
   document.body.appendChild(ov); }
 function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.remove()); }
+
+/* ===== MAIS / CONFIGURAR SETORES ===== */
+function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>
+  <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
+  <div class="panel" style="margin-top:6px"><div class="empty">Compras (foto-nota), Visitas, Mapa de Fornecedores, Lista Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
+
+let _cfgSetor=null, _cfgItens=[];
+async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
+  let h=`<div class="vhead"><h2 class="tit">Configurar setores</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+    <p class="mut sm" style="margin:0 0 10px">Defina quais produtos entram na contagem de cada setor e quais são obrigatórios.</p>`;
+  h+=setores.map(s=>`<button class="setor-btn" onclick="cfgAbrirSetor(${s.id},'${esc(s.nome).replace(/'/g,"\\'")}')"><span>${esc(s.nome)}</span><span>Configurar ›</span></button>`).join('')||'<div class="empty">Sem setores.</div>';
+  w.innerHTML=h; }
+async function cfgAbrirSetor(id,nome){ _cfgSetor={id,nome};
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(nome)}</h2><button class="btn ghost sm" onclick="cfgListaSetores()">Voltar</button></div><div class="empty">Carregando…</div>`;
+  let its=[]; try{ its=(await (await fetch(API+`/api/est/setor/${id}/config`)).json()).itens||[]; }catch(e){}
+  _cfgItens=its.map(x=>({produto_id:x.produto_id,nome:x.nome,categoria:x.categoria,no_setor:x.no_setor,obrigatorio:x.obrigatorio})); renderCfg(); }
+function renderCfg(){ let cur=null, body='';
+  _cfgItens.forEach(it=>{ if(it.categoria!==cur){ cur=it.categoria; body+=`<div class="sec">${esc(cur||'Sem categoria')}</div>`; }
+    body+=`<div class="cnt-item" style="margin-bottom:6px"><div class="cnt-row" style="margin-top:0">
+      <label class="fcheck" style="margin:0;flex:1"><input type="checkbox" ${it.no_setor?'checked':''} onchange="cfgTog(${it.produto_id})"> ${esc(it.nome)}</label>
+      <button class="ig ${it.obrigatorio?'on':''}" onclick="cfgObr(${it.produto_id})" ${it.no_setor?'':'disabled'}>obrig.</button></div></div>`; });
+  const sel=_cfgItens.filter(x=>x.no_setor).length;
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(_cfgSetor.nome)}</h2><button class="btn ghost sm" onclick="cfgListaSetores()">Voltar</button></div>
+    <div style="padding-bottom:90px">${body||'<div class="empty">Sem produtos.</div>'}</div>
+    <div class="cnt-foot"><div class="prog">${sel} produto(s) no setor</div><button class="btn primary sm" onclick="salvarCfg()">Salvar</button></div>`; }
+function cfgItem(id){ return _cfgItens.find(x=>x.produto_id===id); }
+function cfgTog(id){ const it=cfgItem(id); it.no_setor=!it.no_setor; if(!it.no_setor) it.obrigatorio=false; renderCfg(); }
+function cfgObr(id){ const it=cfgItem(id); if(!it.no_setor) return; it.obrigatorio=!it.obrigatorio; renderCfg(); }
+async function salvarCfg(){ const itens=_cfgItens.filter(x=>x.no_setor).map(x=>({produto_id:x.produto_id,obrigatorio:x.obrigatorio}));
+  try{ await estFetch(`/api/est/setor/${_cfgSetor.id}/config`,'POST',{itens}); toast('Setor configurado ('+itens.length+' itens)'); cfgListaSetores(); }catch(e){} }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
