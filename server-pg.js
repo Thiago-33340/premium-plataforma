@@ -43,6 +43,101 @@ async function estPermsEfetivas(uid) {
 }
 async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
 
+/* ===== Helpers compartilhados (matching, movimento, Jéssica) ===== */
+function estNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function estLev(a, b) { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; }
+function estSim(a, b) { if (!a || !b) return 0; return 1 - estLev(a, b) / Math.max(a.length, b.length); }
+async function estAchaProduto(texto, minScore) {
+  minScore = minScore == null ? 0.5 : minScore;
+  const prods = (await db.q(`SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
+  const nin = estNorm(texto); if (!nin) return null; const inToks = nin.split(' ').filter(Boolean);
+  let best = null, bestS = 0;
+  for (const p of prods) {
+    const n = estNorm(p.nome); const toks = n.split(' ').filter(Boolean); let s = 0;
+    if (n === nin) s = 1; else if (n.includes(nin) || nin.includes(n)) s = 0.9;
+    else {
+      const inter = inToks.filter(t => t.length > 2 && toks.includes(t)).length; const denom = Math.max(toks.length, inToks.length) || 1; s = inter / denom;
+      let fz = 0, fzLen = 0; { const sv = estSim(nin, n); if (sv > fz) { fz = sv; fzLen = Math.min(nin.length, n.length); } }
+      for (const t of inToks) { if (t.length < 4) continue; for (const ct of toks) { if (ct.length < 4) continue; const sv = estSim(t, ct); if (sv > fz) { fz = sv; fzLen = Math.min(t.length, ct.length); } } }
+      const gate = fzLen >= 6 ? 0.72 : 0.86; if (fz >= gate && fz * 0.95 > s) s = fz * 0.95;
+    }
+    if (s > bestS) { bestS = s; best = p; }
+  }
+  return bestS >= minScore ? best : null;
+}
+async function estLancaMov(tipo, user, produto, qtd, motivo, origem, observacao) {
+  const antes = Number(produto.estoque_atual); const depois = (tipo === 'ENTRADA') ? antes + qtd : antes - qtd;
+  await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [produto.id, depois]);
+  await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [TENANT, produto.id, produto.nome, tipo, antes, qtd, depois, origem || 'MANUAL', user.id, user.nome, motivo || null, observacao || null]);
+  return { antes, depois };
+}
+async function estJessica(uid, pergunta) {
+  const e = await estPermsEfetivas(uid);
+  if (!e.user) return { erro: 'usuário inválido' };
+  const verValores = e.gestor || e.perms.includes('ver_valores');
+  const snap = {};
+  const ag = await db.q(`SELECT
+    (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo) AS produtos_ativos,
+    (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_atual<=0) AS zerados,
+    (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo) AS abaixo_minimo,
+    (SELECT count(*)::int FROM est_contagem WHERE tenant_id=$1 AND status_auditoria='AGUARDANDO') AS contagens_aguardando_auditoria`, [TENANT]);
+  snap.totais = ag.rows[0];
+  snap.abaixo_minimo = (await db.q(`SELECT nome, estoque_atual, estoque_minimo, unidade FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo ORDER BY nome LIMIT 40`, [TENANT])).rows;
+  snap.atividade_hoje = (await db.q(`SELECT tipo, produto_nome, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, criado_em FROM est_movimento WHERE tenant_id=$1 AND criado_em::date=CURRENT_DATE ORDER BY criado_em DESC LIMIT 60`, [TENANT])).rows;
+  snap.compras_hoje = (await db.q(`SELECT c.usuario_nome, f.nome AS fornecedor, c.total, c.status, c.criado_em FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 AND c.criado_em::date=CURRENT_DATE ORDER BY c.criado_em DESC`, [TENANT])).rows;
+  snap.contagens_recentes = (await db.q(`SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY COALESCE(encerrada_em, iniciada_em) DESC LIMIT 15`, [TENANT])).rows;
+  snap.visitas_recentes = (await db.q(`SELECT v.usuario_nome, f.nome AS fornecedor, v.finalizada_em, v.tempo_seg FROM est_visita v LEFT JOIN est_fornecedor f ON f.id=v.fornecedor_id WHERE v.tenant_id=$1 ORDER BY v.iniciada_em DESC LIMIT 15`, [TENANT])).rows;
+  snap.perdas_semana = (await db.q(`SELECT produto_nome, qtd_movimentada, motivo, usuario_nome, criado_em FROM est_movimento WHERE tenant_id=$1 AND tipo IN ('PERDA','PERDA_LANCADA','CONSUMO') AND criado_em >= date_trunc('week', CURRENT_DATE) ORDER BY criado_em DESC LIMIT 40`, [TENANT])).rows;
+  const prodAll = (await db.q(`SELECT id, nome FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
+  const pl = estNorm(pergunta);
+  const mentioned = prodAll.filter(p => { const n = estNorm(p.nome); return pl.includes(n) || n.split(' ').some(t => t.length > 3 && pl.includes(t)); });
+  if (mentioned.length) {
+    const ids = mentioned.slice(0, 5).map(p => p.id);
+    snap.fornecedores_do_produto = (await db.q(`SELECT p.nome AS produto, f.nome AS fornecedor, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.status, pf.marca FROM est_produto_fornecedor pf JOIN est_produto p ON p.id=pf.produto_id JOIN est_fornecedor f ON f.id=pf.fornecedor_id WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2) ORDER BY p.nome, pf.ultimo_valor NULLS LAST`, [TENANT, ids])).rows;
+  }
+  if (!verValores) {
+    snap.compras_hoje = snap.compras_hoje.map(c => ({ usuario_nome: c.usuario_nome, fornecedor: c.fornecedor, status: c.status, criado_em: c.criado_em }));
+    if (snap.fornecedores_do_produto) snap.fornecedores_do_produto = snap.fornecedores_do_produto.map(r => ({ produto: r.produto, fornecedor: r.fornecedor, status: r.status, marca: r.marca }));
+  }
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return { resposta: null, dados: snap, aviso: 'IA não configurada; retornando dados brutos.' };
+  try {
+    const sys = `Você é a Jéssica, assistente operacional do estoque da Premium Pizzas (loja de Rio Preto). Responda em português do Brasil, curto e direto, à pergunta usando SOMENTE os dados do JSON (snapshot do banco oficial). Nunca invente: se não houver registro no snapshot, diga que não há registro. Hoje é ${new Date().toISOString().slice(0, 10)}. ${verValores ? '' : 'O usuário NÃO tem permissão de ver valores/preços — não revele valores monetários.'}`;
+    const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 500, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'PERGUNTA: ' + pergunta + '\n\nSNAPSHOT:\n' + JSON.stringify(snap) }] }) });
+    const j = await r.json();
+    if (!r.ok) return { resposta: null, dados: snap, aviso: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) };
+    return { resposta: j.choices[0].message.content, dados: snap };
+  } catch (er) { return { resposta: null, dados: snap, aviso: 'Erro IA: ' + (er.message || er) }; }
+}
+async function estInterpretaWA(texto) {
+  // Determinístico primeiro: "perda muçarela 500g motivo caiu no chão" / "consumo catupiry 3 un montagem"
+  const t = String(texto || '').trim();
+  const m = t.match(/^(perda|perca|consumo|consumi|entrada|baixa|gasto|quebra)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*([a-zA-ZçÇ]+)?\s*(?:motivo\s+(.+)|porque\s+(.+)|\((.+)\))?\s*$/i);
+  if (m) {
+    const acaoRaw = m[1].toLowerCase();
+    const acao = /entrada/.test(acaoRaw) ? 'entrada' : (/consum/.test(acaoRaw) ? 'consumo' : 'perda');
+    return { acao, produto: m[2].trim(), quantidade: Number(m[3].replace(',', '.')), unidade: m[4] || null, motivo: (m[5] || m[6] || m[7] || null), via: 'regex' };
+  }
+  // IA como fallback (intenção + entidades)
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return { acao: 'consulta', via: 'fallback' };
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', temperature: 0, max_tokens: 300, response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Classifique a mensagem de um colaborador de pizzaria sobre o ESTOQUE. Responda APENAS JSON {"acao":"perda"|"consumo"|"entrada"|"consulta"|"ajuda","produto":string|null,"quantidade":number|null,"unidade":string|null,"motivo":string|null,"setor":string|null}. "perda" = item perdido/estragado/quebrado; "consumo" = usado na produção/uso interno; "entrada" = chegou/recebeu; "consulta" = pergunta sobre o estoque; "ajuda" = não entendeu. Use ponto decimal.' },
+          { role: 'user', content: t }
+        ]
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) return { acao: 'consulta', via: 'fallback' };
+    const o = JSON.parse(j.choices[0].message.content); o.via = 'ia'; return o;
+  } catch (e) { return { acao: 'consulta', via: 'fallback' }; }
+}
+
 /* status canônico (orders.status_atual) <-> rótulos do painel atual */
 const CANON_TO_UI = { CONFIRMED: 'RECEBIDO', PRODUCING: 'EM_PREPARO', READY_TO_DELIVER: 'PRONTO', DISPATCHED: 'EM_ROTA', CONCLUDED: 'ENTREGUE', CANCELLED: 'CANCELADO' };
 const UI_TO_CANON = { RECEBIDO: 'CONFIRMED', EM_PREPARO: 'PRODUCING', PRONTO: 'READY_TO_DELIVER', EM_ROTA: 'DISPATCHED', ENTREGUE: 'CONCLUDED', CANCELADO: 'CANCELLED' };
@@ -805,45 +900,75 @@ async function api(req, res, url) {
   // ---- Jéssica: consulta direta ao banco do estoque (respeita permissões) ----
   if (sub === 'est' && seg[2] === 'jessica' && req.method === 'POST') {
     const b = await readBody(req);
-    const e = await estPermsEfetivas(b.usuario_id);
-    if (!e.user) return json(res, 403, { erro: 'usuário inválido' });
-    const verValores = e.gestor || e.perms.includes('ver_valores');
     const pergunta = String(b.pergunta || '').trim();
     if (!pergunta) return json(res, 400, { erro: 'envie a pergunta' });
-    const snap = {};
-    const ag = await db.q(`SELECT
-      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo) AS produtos_ativos,
-      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_atual<=0) AS zerados,
-      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo) AS abaixo_minimo,
-      (SELECT count(*)::int FROM est_contagem WHERE tenant_id=$1 AND status_auditoria='AGUARDANDO') AS contagens_aguardando_auditoria`, [TENANT]);
-    snap.totais = ag.rows[0];
-    snap.abaixo_minimo = (await db.q(`SELECT nome, estoque_atual, estoque_minimo, unidade FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo ORDER BY nome LIMIT 40`, [TENANT])).rows;
-    snap.atividade_hoje = (await db.q(`SELECT tipo, produto_nome, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, criado_em FROM est_movimento WHERE tenant_id=$1 AND criado_em::date=CURRENT_DATE ORDER BY criado_em DESC LIMIT 60`, [TENANT])).rows;
-    snap.compras_hoje = (await db.q(`SELECT c.usuario_nome, f.nome AS fornecedor, c.total, c.status, c.criado_em FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 AND c.criado_em::date=CURRENT_DATE ORDER BY c.criado_em DESC`, [TENANT])).rows;
-    snap.contagens_recentes = (await db.q(`SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY COALESCE(encerrada_em, iniciada_em) DESC LIMIT 15`, [TENANT])).rows;
-    snap.visitas_recentes = (await db.q(`SELECT v.usuario_nome, f.nome AS fornecedor, v.finalizada_em, v.tempo_seg FROM est_visita v LEFT JOIN est_fornecedor f ON f.id=v.fornecedor_id WHERE v.tenant_id=$1 ORDER BY v.iniciada_em DESC LIMIT 15`, [TENANT])).rows;
-    snap.perdas_semana = (await db.q(`SELECT produto_nome, qtd_movimentada, motivo, usuario_nome, criado_em FROM est_movimento WHERE tenant_id=$1 AND tipo IN ('PERDA','PERDA_LANCADA','CONSUMO') AND criado_em >= date_trunc('week', CURRENT_DATE) ORDER BY criado_em DESC LIMIT 40`, [TENANT])).rows;
-    const prodAll = (await db.q(`SELECT id, nome FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
-    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const pl = norm(pergunta);
-    const mentioned = prodAll.filter(p => { const n = norm(p.nome); return pl.includes(n) || n.split(' ').some(t => t.length > 3 && pl.includes(t)); });
-    if (mentioned.length) {
-      const ids = mentioned.slice(0, 5).map(p => p.id);
-      snap.fornecedores_do_produto = (await db.q(`SELECT p.nome AS produto, f.nome AS fornecedor, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.status, pf.marca FROM est_produto_fornecedor pf JOIN est_produto p ON p.id=pf.produto_id JOIN est_fornecedor f ON f.id=pf.fornecedor_id WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2) ORDER BY p.nome, pf.ultimo_valor NULLS LAST`, [TENANT, ids])).rows;
+    const out = await estJessica(b.usuario_id, pergunta);
+    if (out.erro) return json(res, 403, out);
+    return json(res, 200, out);
+  }
+
+  // ---- Lançar perda / consumo / entrada (in-app) ----
+  if (sub === 'est' && seg[2] === 'movimento' && req.method === 'POST') {
+    const b = await readBody(req);
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || !(e.gestor || e.perms.includes('acessar_lancamentos'))) return json(res, 403, { erro: 'Sem permissão para lançar movimento.' });
+    const tipo = String(b.tipo || '').toUpperCase();
+    if (!['PERDA', 'CONSUMO', 'ENTRADA'].includes(tipo)) return json(res, 400, { erro: 'tipo deve ser PERDA, CONSUMO ou ENTRADA' });
+    const qtd = Number(String(b.quantidade).replace(',', '.'));
+    if (!b.produto_id || !(qtd > 0)) return json(res, 400, { erro: 'informe produto e quantidade (>0)' });
+    const p = (await db.q('SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2', [b.produto_id, TENANT])).rows[0];
+    if (!p) return json(res, 404, { erro: 'produto não encontrado' });
+    const mv = await estLancaMov(tipo, e.user, p, qtd, b.motivo || null, 'MANUAL', b.observacao || null);
+    return json(res, 200, { ok: true, produto: p.nome, antes: mv.antes, depois: mv.depois, unidade: p.unidade });
+  }
+
+  // ---- WhatsApp: webhook de entrada (Jéssica recebe e lança) ----
+  if (sub === 'est' && seg[2] === 'whatsapp' && seg[3] === 'inbound' && req.method === 'POST') {
+    const b = await readBody(req);
+    const expected = process.env.WA_INBOUND_TOKEN || WA_SECRET;
+    const tok = b.token || req.headers['x-wa-token'];
+    if (expected && tok !== expected) return json(res, 401, { erro: 'token inválido' });
+    const telefone = soPhone(b.telefone || b.from || b.phone);
+    const texto = String(b.texto || b.text || b.message || '').trim();
+    if (!telefone || !texto) return json(res, 400, { erro: 'informe telefone e texto' });
+    // identifica usuário pelo telefone (tolerante a 55 / 9º dígito)
+    const cands = [telefone];
+    if (telefone.length >= 12) { const sempais = telefone.replace(/^55/, ''); cands.push('55' + sempais, sempais); }
+    const u = (await db.q(`SELECT id, nome FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND regexp_replace(COALESCE(phone,''),'\\D','','g') = ANY($2) LIMIT 1`, [TENANT, cands])).rows[0];
+    let resposta;
+    const interp = await estInterpretaWA(texto);
+    if (!u) {
+      resposta = 'Olá! Seu número não está cadastrado no estoque da Premium RP. Peça ao gestor para cadastrar seu telefone.';
+      await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto, interpretado) VALUES ($1,$2,'IN',$3,$4)`, [TENANT, telefone, texto, JSON.stringify({ erro: 'nao_cadastrado', interp })]).catch(() => {});
+      await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto) VALUES ($1,$2,'OUT',$3)`, [TENANT, telefone, resposta]).catch(() => {});
+      return json(res, 200, { resposta, usuario: null });
     }
-    if (!verValores) {
-      snap.compras_hoje = snap.compras_hoje.map(c => ({ usuario_nome: c.usuario_nome, fornecedor: c.fornecedor, status: c.status, criado_em: c.criado_em }));
-      if (snap.fornecedores_do_produto) snap.fornecedores_do_produto = snap.fornecedores_do_produto.map(r => ({ produto: r.produto, fornecedor: r.fornecedor, status: r.status, marca: r.marca }));
+    await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto, interpretado) VALUES ($1,$2,'IN',$3,$4)`, [TENANT, telefone, texto, JSON.stringify(interp)]).catch(() => {});
+    if (['perda', 'consumo', 'entrada'].includes(interp.acao)) {
+      if (!(await estPode(u.id, 'acessar_lancamentos'))) {
+        resposta = 'Você não tem permissão para lançar movimentações no estoque. Fale com o gestor.';
+      } else if (!interp.produto || !(Number(interp.quantidade) > 0)) {
+        resposta = 'Entendi que é um lançamento, mas faltou o produto ou a quantidade. Ex: "perda muçarela 2 peças motivo caiu no chão".';
+      } else {
+        const prod = await estAchaProduto(interp.produto, 0.5);
+        if (!prod) {
+          resposta = `Não encontrei o produto "${interp.produto}" no cadastro. Confira o nome e tente de novo.`;
+        } else {
+          const tipo = interp.acao.toUpperCase();
+          const obs = interp.unidade ? ('informado: ' + interp.quantidade + ' ' + interp.unidade) : null;
+          const mv = await estLancaMov(tipo, u, prod, Number(interp.quantidade), interp.motivo || null, 'WHATSAPP', obs);
+          const rotulo = tipo === 'PERDA' ? 'Perda' : (tipo === 'CONSUMO' ? 'Consumo' : 'Entrada');
+          resposta = `✅ ${rotulo} registrada: ${interp.quantidade} ${prod.unidade || ''} de ${prod.nome}.\nEstoque: ${mv.antes} → ${mv.depois}.${interp.motivo ? '\nMotivo: ' + interp.motivo : ''}\n(${u.nome})`;
+        }
+      }
+    } else if (interp.acao === 'ajuda') {
+      resposta = 'Sou a Jéssica do estoque. Você pode:\n• Lançar perda: "perda muçarela 2 peças motivo queimou"\n• Lançar consumo: "consumo catupiry 3 unidades montagem"\n• Perguntar: "quais produtos estão abaixo do mínimo?"';
+    } else {
+      const jr = await estJessica(u.id, texto);
+      resposta = jr.resposta || jr.aviso || 'Não consegui consultar agora.';
     }
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) return json(res, 200, { resposta: null, dados: snap, aviso: 'IA não configurada; retornando dados brutos.' });
-    try {
-      const sys = `Você é a Jéssica, assistente operacional do estoque da Premium Pizzas (loja de Rio Preto). Responda em português do Brasil, curto e direto, à pergunta usando SOMENTE os dados do JSON (snapshot do banco oficial). Nunca invente: se não houver registro no snapshot, diga que não há registro. Hoje é ${new Date().toISOString().slice(0, 10)}. ${verValores ? '' : 'O usuário NÃO tem permissão de ver valores/preços — não revele valores monetários.'}`;
-      const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 500, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'PERGUNTA: ' + pergunta + '\n\nSNAPSHOT:\n' + JSON.stringify(snap) }] }) });
-      const j = await r.json();
-      if (!r.ok) return json(res, 200, { resposta: null, dados: snap, aviso: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
-      return json(res, 200, { resposta: j.choices[0].message.content, dados: snap });
-    } catch (er) { return json(res, 200, { resposta: null, dados: snap, aviso: 'Erro IA: ' + (er.message || er) }); }
+    await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto) VALUES ($1,$2,'OUT',$3)`, [TENANT, telefone, resposta]).catch(() => {});
+    return json(res, 200, { resposta, usuario: u.nome });
   }
 
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
