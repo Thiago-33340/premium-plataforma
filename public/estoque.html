@@ -385,8 +385,9 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 
 /* ===== MAIS / CONFIGURAR SETORES ===== */
 function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>
+  <button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>
   <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
-  <div class="panel" style="margin-top:6px"><div class="empty">Compras (foto-nota), Visitas, Mapa de Fornecedores, Lista Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
+  <div class="panel" style="margin-top:6px"><div class="empty">Visitas, Mapa de Fornecedores, Lista Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
 
 let _cfgSetor=null, _cfgItens=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
@@ -412,6 +413,50 @@ function cfgTog(id){ const it=cfgItem(id); it.no_setor=!it.no_setor; if(!it.no_s
 function cfgObr(id){ const it=cfgItem(id); if(!it.no_setor) return; it.obrigatorio=!it.obrigatorio; renderCfg(); }
 async function salvarCfg(){ const itens=_cfgItens.filter(x=>x.no_setor).map(x=>({produto_id:x.produto_id,obrigatorio:x.obrigatorio}));
   try{ await estFetch(`/api/est/setor/${_cfgSetor.id}/config`,'POST',{itens}); toast('Setor configurado ('+itens.length+' itens)'); cfgListaSetores(); }catch(e){} }
+
+/* ===== COMPRAS (foto-nota) ===== */
+let _allProds=[], _conf=null;
+async function ensureAllProds(){ if(!_allProds.length){ try{ _allProds=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[]; }catch(e){} } }
+function matchProduto(txt){ if(!txt) return ''; const t=String(txt).toLowerCase(); let best=''; for(const p of _allProds){ const n=p.nome.toLowerCase(); if(n===t) return p.id; if(n.includes(t)||t.includes(n)){ best=best||p.id; } } return best; }
+function matchFornecedor(nome){ if(!nome) return ''; const t=String(nome).toLowerCase(); for(const f of _forns){ const n=f.nome.toLowerCase(); if(n.includes(t)||t.includes(n)) return f.id; } return ''; }
+async function comprasTela(){ const w=$('maisWrap');
+  w.innerHTML=`<div class="vhead"><h2 class="tit">Compras</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn primary" onclick="abrirCamera()">📷 Foto da nota</button><button class="btn ghost" onclick="novaCompraManual()">✏️ Manual</button></div>
+   <div class="sec">Últimas compras</div><div class="plist" id="compList"><div class="empty">Carregando…</div></div>`;
+  let cs=[]; try{ cs=((await (await fetch(API+'/api/est/compras')).json()).compras)||[]; }catch(e){}
+  $('compList').innerHTML=cs.length? cs.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.fornecedor||'—')}</b><small>${esc(c.usuario_nome||'')} · ${c.itens||0} itens${c.data_compra?' · '+esc(c.data_compra):''}</small></div><div class="qt"><span class="big">R$ ${Number(c.total||0).toFixed(2)}</span></div></div>`).join('') : '<div class="empty">Nenhuma compra ainda.</div>'; }
+function abrirCamera(){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.onchange=()=>{ if(inp.files&&inp.files[0]) onFotoNota(inp.files[0]); }; inp.click(); }
+function downscaleImg(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const max=1024; let w=img.width,h=img.height; if(w>h&&w>max){ h=Math.round(h*max/w); w=max; } else if(h>=w&&h>max){ w=Math.round(w*max/h); h=max; } const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); resolve(cv.toDataURL('image/jpeg',0.6)); }; img.onerror=reject; img.src=fr.result; }; fr.onerror=reject; fr.readAsDataURL(file); }); }
+async function onFotoNota(file){ toast('Lendo a nota… aguarde'); let dataUrl; try{ dataUrl=await downscaleImg(file); }catch(e){ toast('Erro ao abrir a imagem'); return; }
+  let d; try{ d=await estFetch('/api/est/compra/foto','POST',{image:dataUrl}); }catch(e){ return; }
+  await ensureAllProds(); await ensureForns();
+  if(!(d.itens&&d.itens.length)) toast('Nota lida, mas confira/adicione os itens');
+  conferenciaCompra(d.itens||[], d.fornecedor||'', d.data||''); }
+async function novaCompraManual(){ await ensureAllProds(); await ensureForns(); conferenciaCompra([],'',''); }
+function conferenciaCompra(itens, fornNome, data){
+  _conf={ fornecedor_id: matchFornecedor(fornNome)||'', data:data||'', linhas:(itens.length?itens:[{}]).map(it=>({ _txt:it.produto||'', produto_id:matchProduto(it.produto||''), marca:it.marca||'', quantidade:it.quantidade!=null?it.quantidade:'', unidade:it.unidade||'', valor_unitario:it.valor_unitario!=null?it.valor_unitario:'', valor_total:it.valor_total!=null?it.valor_total:'' })) };
+  renderConf(); }
+function renderConf(){ const rows=_conf.linhas.map((l,i)=>confRowHTML(l,i)).join('');
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Conferir compra</h2><button class="btn ghost sm" onclick="comprasTela()">Voltar</button></div>
+   <label class="flabel">Fornecedor<select class="field" onchange="_conf.fornecedor_id=this.value">${[{id:'',nome:'—'}].concat(_forns).map(f=>`<option value="${f.id}" ${String(_conf.fornecedor_id)===String(f.id)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></label>
+   <label class="flabel">Data<input type="date" class="field" value="${esc(_conf.data)}" onchange="_conf.data=this.value"></label>
+   <div class="sec">Itens</div><div style="padding-bottom:96px">${rows}<button class="btn ghost sm" onclick="confAddRow()">+ Adicionar item</button></div>
+   <div class="cnt-foot"><div class="prog" id="confProg"></div><button class="btn primary sm" onclick="confirmarCompra()">Confirmar</button></div>`;
+  confProg(); }
+function confRowHTML(l,i){ const opts=[{id:'',nome:'— escolher produto —'}].concat(_allProds);
+  return `<div class="cnt-item" style="margin-bottom:8px">${l._txt?`<div class="xs mut" style="margin-bottom:4px">Nota: “${esc(l._txt)}”</div>`:''}
+   <select class="field" onchange="confSet(${i},'produto_id',this.value)">${opts.map(p=>`<option value="${p.id}" ${String(l.produto_id)===String(p.id)?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>
+   <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="qtd" value="${esc(l.quantidade)}" onchange="confSet(${i},'quantidade',this.value)"><input class="field" style="flex:1" placeholder="unid" value="${esc(l.unidade)}" onchange="confSet(${i},'unidade',this.value)"></div>
+   <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="R$ unit" value="${esc(l.valor_unitario)}" onchange="confSet(${i},'valor_unitario',this.value)"><input class="field" style="flex:1" inputmode="decimal" placeholder="R$ total" value="${esc(l.valor_total)}" onchange="confSet(${i},'valor_total',this.value)"></div>
+   <div class="cnt-row"><input class="field" style="flex:1" placeholder="marca" value="${esc(l.marca)}" onchange="confSet(${i},'marca',this.value)"><button class="ig" onclick="confDel(${i})">remover</button></div></div>`; }
+function confSet(i,k,v){ _conf.linhas[i][k]=v; if(k!=='produto_id'&&k!=='unidade'&&k!=='marca') confProg(); }
+function confAddRow(){ _conf.linhas.push({}); renderConf(); }
+function confDel(i){ _conf.linhas.splice(i,1); renderConf(); }
+function confProg(){ const tot=_conf.linhas.reduce((s,l)=>{ const q=parseFloat(String(l.quantidade).replace(',','.'))||0; let vt=parseFloat(String(l.valor_total).replace(',','.')); if(isNaN(vt)){ const vu=parseFloat(String(l.valor_unitario).replace(',','.'))||0; vt=vu*q; } return s+(vt||0); },0);
+  const el=$('confProg'); if(el) el.innerHTML='Total: <b>R$ '+tot.toFixed(2)+'</b>'; }
+async function confirmarCompra(){ const linhas=_conf.linhas.filter(l=>l.produto_id).map(l=>({produto_id:Number(l.produto_id),marca:l.marca,quantidade:String(l.quantidade).replace(',','.'),unidade:l.unidade,valor_unitario:String(l.valor_unitario).replace(',','.'),valor_total:String(l.valor_total).replace(',','.')}));
+  if(!linhas.length){ toast('Escolha o produto de cada item'); return; }
+  try{ await estFetch('/api/est/compra','POST',{fornecedor_id:_conf.fornecedor_id||null,data_compra:_conf.data||null,itens:linhas}); toast('Compra lançada — estoque atualizado'); comprasTela(); }catch(e){} }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();

@@ -457,6 +457,72 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  // ===== COMPRAS (foto-nota OCR + confirmação) =====
+  if (sub === 'est' && seg[2] === 'compra' && seg[3] === 'foto' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estGestor(b.usuario_id))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) return json(res, 400, { erro: 'OCR não configurado (defina OPENAI_API_KEY no Easypanel).' });
+    if (!b.image) return json(res, 400, { erro: 'envie a imagem' });
+    const dataUrl = String(b.image).startsWith('data:') ? b.image : ('data:image/jpeg;base64,' + b.image);
+    try {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', temperature: 0, max_tokens: 2000, response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: 'Você lê uma nota ou cupom fiscal de compra de um restaurante e extrai os itens comprados. Responda APENAS um objeto JSON {"fornecedor": string|null, "data": "YYYY-MM-DD"|null, "itens": [{"produto": string, "marca": string|null, "quantidade": number, "unidade": string|null, "valor_unitario": number|null, "valor_total": number|null}]}. Use ponto como separador decimal. Não invente itens que não estejam na nota.' },
+            { role: 'user', content: [{ type: 'text', text: 'Extraia os itens desta nota de compra.' }, { type: 'image_url', image_url: { url: dataUrl } }] }
+          ]
+        })
+      });
+      const j = await r.json();
+      if (!r.ok) return json(res, 502, { erro: 'OCR falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
+      let p = {}; try { p = JSON.parse(j.choices[0].message.content); } catch (e) { p = {}; }
+      return json(res, 200, { fornecedor: p.fornecedor || null, data: p.data || null, itens: Array.isArray(p.itens) ? p.itens : [] });
+    } catch (e) { return json(res, 502, { erro: 'Erro no OCR: ' + (e.message || e) }); }
+  }
+  if (sub === 'est' && seg[2] === 'compra' && !seg[3] && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const itens = (Array.isArray(b.itens) ? b.itens : []).filter(it => it.produto_id);
+    if (!itens.length) return json(res, 400, { erro: 'Selecione ao menos um produto.' });
+    let total = 0;
+    const c = await db.q(`INSERT INTO est_compra (tenant_id, fornecedor_id, usuario_id, usuario_nome, origem, status, data_compra)
+      VALUES ($1,$2,$3,$4,$5,'CONFIRMADA',COALESCE($6,CURRENT_DATE)) RETURNING id`,
+      [TENANT, b.fornecedor_id || null, b.usuario_id, g.nome, b.origem || 'MANUAL', b.data_compra || null]);
+    const cid = c.rows[0].id;
+    for (const it of itens) {
+      const qtd = Number(it.quantidade) || 0;
+      let vu = it.valor_unitario != null && it.valor_unitario !== '' ? Number(it.valor_unitario) : null;
+      let vt = it.valor_total != null && it.valor_total !== '' ? Number(it.valor_total) : null;
+      if (vu == null && vt != null && qtd) vu = vt / qtd;
+      if (vt == null && vu != null) vt = vu * qtd;
+      total += vt || 0;
+      await db.q('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt]);
+      const cur = await db.q('SELECT estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2', [it.produto_id, TENANT]);
+      if (cur.rows[0]) {
+        const antes = Number(cur.rows[0].estoque_atual), depois = antes + qtd;
+        await db.q('UPDATE est_produto SET estoque_atual=$2, ultima_marca=COALESCE($3,ultima_marca), ultimo_fornecedor_id=COALESCE($4,ultimo_fornecedor_id), atualizado_em=NOW() WHERE id=$1', [it.produto_id, depois, it.marca || null, b.fornecedor_id || null]);
+        await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref, motivo)
+          VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtd, depois, b.usuario_id, g.nome, cid]);
+        if (vu != null && vu > 0) {
+          await db.q(`UPDATE est_produto SET ultimo_valor=$2, maior_valor=GREATEST(COALESCE(maior_valor,0),$2), menor_valor=LEAST(COALESCE(menor_valor,$2),$2) WHERE id=$1`, [it.produto_id, vu]);
+          await db.q(`UPDATE est_produto p SET medio_valor=(SELECT AVG(ci.valor_unitario) FROM est_compra_item ci JOIN est_compra cc ON cc.id=ci.compra_id WHERE ci.produto_id=p.id AND ci.valor_unitario IS NOT NULL AND cc.tenant_id=$1) WHERE p.id=$2`, [TENANT, it.produto_id]);
+        }
+      }
+    }
+    await db.q('UPDATE est_compra SET total=$2 WHERE id=$1', [cid, total]);
+    return json(res, 201, { ok: true, id: cid, total });
+  }
+  if (sub === 'est' && seg[2] === 'compras' && req.method === 'GET') {
+    const r = await db.q(`SELECT c.id, c.criado_em, c.data_compra, c.usuario_nome, c.total, f.nome AS fornecedor,
+        (SELECT count(*)::int FROM est_compra_item ci WHERE ci.compra_id=c.id) AS itens
+      FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 ORDER BY c.criado_em DESC LIMIT 30`, [TENANT]);
+    return json(res, 200, { compras: r.rows });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
