@@ -802,6 +802,50 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, perms: sel });
   }
 
+  // ---- Jéssica: consulta direta ao banco do estoque (respeita permissões) ----
+  if (sub === 'est' && seg[2] === 'jessica' && req.method === 'POST') {
+    const b = await readBody(req);
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user) return json(res, 403, { erro: 'usuário inválido' });
+    const verValores = e.gestor || e.perms.includes('ver_valores');
+    const pergunta = String(b.pergunta || '').trim();
+    if (!pergunta) return json(res, 400, { erro: 'envie a pergunta' });
+    const snap = {};
+    const ag = await db.q(`SELECT
+      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo) AS produtos_ativos,
+      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_atual<=0) AS zerados,
+      (SELECT count(*)::int FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo) AS abaixo_minimo,
+      (SELECT count(*)::int FROM est_contagem WHERE tenant_id=$1 AND status_auditoria='AGUARDANDO') AS contagens_aguardando_auditoria`, [TENANT]);
+    snap.totais = ag.rows[0];
+    snap.abaixo_minimo = (await db.q(`SELECT nome, estoque_atual, estoque_minimo, unidade FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo ORDER BY nome LIMIT 40`, [TENANT])).rows;
+    snap.atividade_hoje = (await db.q(`SELECT tipo, produto_nome, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, criado_em FROM est_movimento WHERE tenant_id=$1 AND criado_em::date=CURRENT_DATE ORDER BY criado_em DESC LIMIT 60`, [TENANT])).rows;
+    snap.compras_hoje = (await db.q(`SELECT c.usuario_nome, f.nome AS fornecedor, c.total, c.status, c.criado_em FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 AND c.criado_em::date=CURRENT_DATE ORDER BY c.criado_em DESC`, [TENANT])).rows;
+    snap.contagens_recentes = (await db.q(`SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY COALESCE(encerrada_em, iniciada_em) DESC LIMIT 15`, [TENANT])).rows;
+    snap.visitas_recentes = (await db.q(`SELECT v.usuario_nome, f.nome AS fornecedor, v.finalizada_em, v.tempo_seg FROM est_visita v LEFT JOIN est_fornecedor f ON f.id=v.fornecedor_id WHERE v.tenant_id=$1 ORDER BY v.iniciada_em DESC LIMIT 15`, [TENANT])).rows;
+    snap.perdas_semana = (await db.q(`SELECT produto_nome, qtd_movimentada, motivo, usuario_nome, criado_em FROM est_movimento WHERE tenant_id=$1 AND tipo IN ('PERDA','PERDA_LANCADA','CONSUMO') AND criado_em >= date_trunc('week', CURRENT_DATE) ORDER BY criado_em DESC LIMIT 40`, [TENANT])).rows;
+    const prodAll = (await db.q(`SELECT id, nome FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
+    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const pl = norm(pergunta);
+    const mentioned = prodAll.filter(p => { const n = norm(p.nome); return pl.includes(n) || n.split(' ').some(t => t.length > 3 && pl.includes(t)); });
+    if (mentioned.length) {
+      const ids = mentioned.slice(0, 5).map(p => p.id);
+      snap.fornecedores_do_produto = (await db.q(`SELECT p.nome AS produto, f.nome AS fornecedor, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.status, pf.marca FROM est_produto_fornecedor pf JOIN est_produto p ON p.id=pf.produto_id JOIN est_fornecedor f ON f.id=pf.fornecedor_id WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2) ORDER BY p.nome, pf.ultimo_valor NULLS LAST`, [TENANT, ids])).rows;
+    }
+    if (!verValores) {
+      snap.compras_hoje = snap.compras_hoje.map(c => ({ usuario_nome: c.usuario_nome, fornecedor: c.fornecedor, status: c.status, criado_em: c.criado_em }));
+      if (snap.fornecedores_do_produto) snap.fornecedores_do_produto = snap.fornecedores_do_produto.map(r => ({ produto: r.produto, fornecedor: r.fornecedor, status: r.status, marca: r.marca }));
+    }
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) return json(res, 200, { resposta: null, dados: snap, aviso: 'IA não configurada; retornando dados brutos.' });
+    try {
+      const sys = `Você é a Jéssica, assistente operacional do estoque da Premium Pizzas (loja de Rio Preto). Responda em português do Brasil, curto e direto, à pergunta usando SOMENTE os dados do JSON (snapshot do banco oficial). Nunca invente: se não houver registro no snapshot, diga que não há registro. Hoje é ${new Date().toISOString().slice(0, 10)}. ${verValores ? '' : 'O usuário NÃO tem permissão de ver valores/preços — não revele valores monetários.'}`;
+      const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 500, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'PERGUNTA: ' + pergunta + '\n\nSNAPSHOT:\n' + JSON.stringify(snap) }] }) });
+      const j = await r.json();
+      if (!r.ok) return json(res, 200, { resposta: null, dados: snap, aviso: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
+      return json(res, 200, { resposta: j.choices[0].message.content, dados: snap });
+    } catch (er) { return json(res, 200, { resposta: null, dados: snap, aviso: 'Erro IA: ' + (er.message || er) }); }
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {

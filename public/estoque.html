@@ -392,6 +392,7 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 
 /* ===== MAIS / CONFIGURAR SETORES ===== */
 function loadMais(){ const b=[];
+  b.push(`<button class="setor-btn" onclick="jessicaTela()"><span>💬 Perguntar à Jéssica</span><span>Consultar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>`);
   if(temPerm('acessar_lancamentos')||temPerm('registrar_compra')) b.push(`<button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>`);
   if(temPerm('acessar_visitas')||temPerm('registrar_visita')) b.push(`<button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>`);
@@ -624,6 +625,18 @@ async function permEditar(uid){ const u=_permUsers.find(x=>String(x.id)===String
    <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="permSalvar('${uid}')">Salvar permissões</button></div>`; }
 async function permSalvar(uid){ const sel=[]; document.querySelectorAll('[data-p]').forEach(el=>{ if(el.checked) sel.push(el.dataset.p); });
   try{ await estFetch('/api/est/permissoes','POST',{alvo_id:uid,permissoes:sel}); toast('Permissões salvas'); permTela(); }catch(e){} }
+
+/* ===== JÉSSICA (consulta ao banco do estoque) ===== */
+function jessicaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Jéssica · estoque</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+  <p class="mut sm" style="margin:0 0 8px">Pergunte sobre estoque, compras, contagens, visitas, fornecedores e produção. Ela responde com base no banco e respeita suas permissões.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${['O que foi feito hoje no estoque?','Quais produtos estão abaixo do mínimo?','Quais contagens estão aguardando auditoria?','Quais compras foram lançadas hoje?'].map(q=>`<button class="chip" onclick="jessAsk('${q.replace(/'/g,"\\'")}')">${esc(q)}</button>`).join('')}</div>
+  <textarea id="jessQ" class="field" rows="2" placeholder="Escreva sua pergunta…"></textarea>
+  <button class="btn primary sm" style="margin-top:6px" onclick="jessAsk()">Perguntar</button>
+  <div id="jessResp" style="margin-top:12px"></div>`; }
+async function jessAsk(q){ const pergunta=q||(($('jessQ')&&$('jessQ').value)||''); if(!pergunta.trim()){ toast('Escreva a pergunta'); return; }
+  $('jessResp').innerHTML='<div class="empty">Consultando o banco…</div>';
+  try{ const d=await estFetch('/api/est/jessica','POST',{pergunta}); $('jessResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">Jéssica</div><div style="white-space:pre-wrap;margin-top:4px">${esc(d.resposta||d.aviso||'Sem resposta.')}</div></div>`; }
+  catch(e){ $('jessResp').innerHTML='<div class="empty">Erro ao consultar.</div>'; } }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
