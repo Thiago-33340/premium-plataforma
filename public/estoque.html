@@ -386,8 +386,10 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 /* ===== MAIS / CONFIGURAR SETORES ===== */
 function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>
   <button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>
+  <button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>
+  <button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>
   <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
-  <div class="panel" style="margin-top:6px"><div class="empty">Visitas, Mapa de Fornecedores, Lista Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
+  <div class="panel" style="margin-top:6px"><div class="empty">Lista de Compras Inteligente, Produção e Permissões chegam nas próximas fases.</div></div>`; }
 
 let _cfgSetor=null, _cfgItens=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
@@ -457,6 +459,45 @@ function confProg(){ const tot=_conf.linhas.reduce((s,l)=>{ const q=parseFloat(S
 async function confirmarCompra(){ const linhas=_conf.linhas.filter(l=>l.produto_id).map(l=>({produto_id:Number(l.produto_id),marca:l.marca,quantidade:String(l.quantidade).replace(',','.'),unidade:l.unidade,valor_unitario:String(l.valor_unitario).replace(',','.'),valor_total:String(l.valor_total).replace(',','.')}));
   if(!linhas.length){ toast('Escolha o produto de cada item'); return; }
   try{ await estFetch('/api/est/compra','POST',{fornecedor_id:_conf.fornecedor_id||null,data_compra:_conf.data||null,itens:linhas}); toast('Compra lançada — estoque atualizado'); comprasTela(); }catch(e){} }
+
+/* ===== VISITA A FORNECEDOR ===== */
+let _visita=null;
+async function visitaTela(){ await ensureForns(); const w=$('maisWrap');
+  let h=`<div class="vhead"><h2 class="tit">Visita a fornecedor</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <p class="mut sm" style="margin:0 0 10px">Escolha o fornecedor (data, hora e tempo gasto são automáticos).</p>`;
+  h+=_forns.filter(f=>f.ativo!==false).map(f=>`<button class="setor-btn" onclick="iniciarVisita(${f.id})"><span>${esc(f.nome)}</span><span>Iniciar ›</span></button>`).join('')||'<div class="empty">Cadastre um fornecedor primeiro.</div>';
+  h+='<div class="sec">Últimas visitas</div><div class="plist" id="visList"><div class="empty">—</div></div>';
+  w.innerHTML=h;
+  let vs=[]; try{ vs=((await (await fetch(API+'/api/est/visitas')).json()).visitas)||[]; }catch(e){}
+  $('visList').innerHTML=vs.length? vs.map(v=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(v.fornecedor||'—')}</b><small>${esc(v.usuario_nome||'')} · ${v.itens||0} itens${v.tempo_seg?' · '+Math.round(v.tempo_seg/60)+' min':''}</small></div></div>`).join('') : '<div class="empty">Nenhuma visita ainda.</div>'; }
+async function iniciarVisita(fornId){ try{ const d=await estFetch('/api/est/visita/iniciar','POST',{fornecedor_id:fornId});
+  _visita={ id:d.visita.id, fornecedor_nome:d.visita.fornecedor_nome, itens:(d.itens||[]).map(p=>({produto_id:p.produto_id,nome:p.nome,unidade:p.unidade,status:'',valor_unitario:'',marca_encontrada:p.marca_preferida||'',comprou:false})) };
+  renderVisita(); }catch(e){} }
+function renderVisita(){ const st=['','Tem','Não tem','Costuma ter','Às vezes','Marca parecida','Não verificado'];
+  const rows=_visita.itens.map((it,i)=>`<div class="cnt-item" style="margin-bottom:8px"><div class="pn">${esc(it.nome)} <span class="mut xs">${esc(it.unidade||'')}</span></div>
+    <select class="field" onchange="visSet(${i},'status',this.value)">${st.map(s=>`<option value="${s}" ${it.status===s?'selected':''}>${s||'— status —'}</option>`).join('')}</select>
+    <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="R$ unit" value="${esc(it.valor_unitario)}" onchange="visSet(${i},'valor_unitario',this.value)"><input class="field" style="flex:1" placeholder="marca" value="${esc(it.marca_encontrada)}" onchange="visSet(${i},'marca_encontrada',this.value)"></div>
+    <label class="fcheck" style="margin-top:6px"><input type="checkbox" ${it.comprou?'checked':''} onchange="visSet(${i},'comprou',this.checked)"> Comprei aqui</label></div>`).join('');
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(_visita.fornecedor_nome)}</h2><button class="btn ghost sm" onclick="cancelVisita()">Sair</button></div>
+   <div style="padding-bottom:96px">${rows||'<div class="empty">Nenhum produto vinculado a este fornecedor. Defina o fornecedor preferido nos produtos.</div>'}</div>
+   <div class="cnt-foot"><div class="prog" id="visProg"></div><button class="btn primary sm" onclick="finalizarVisita()">Finalizar</button></div>`;
+  visProg(); }
+function visSet(i,k,v){ _visita.itens[i][k]=v; if(k==='status') visProg(); }
+function visProg(){ const v=_visita.itens.filter(x=>x.status).length; const el=$('visProg'); if(el) el.textContent=v+'/'+_visita.itens.length+' verificados'; }
+function cancelVisita(){ _visita=null; visitaTela(); }
+async function finalizarVisita(){ const itens=_visita.itens.filter(x=>x.status).map(x=>({produto_id:x.produto_id,status:x.status,valor_unitario:String(x.valor_unitario).replace(',','.'),marca_encontrada:x.marca_encontrada,comprou:x.comprou}));
+  try{ const d=await estFetch('/api/est/visita/'+_visita.id+'/finalizar','POST',{itens}); toast('Visita registrada'+(d.tempo_seg?' ('+Math.round(d.tempo_seg/60)+' min)':'')); _visita=null; visitaTela(); }catch(e){} }
+
+/* ===== MAPA COMPARATIVO ===== */
+let _mt=null;
+async function mapaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mapa de fornecedores</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <input id="mapaBusca" class="field" placeholder="Buscar produto…" oninput="mapaDeb()"><div id="mapaList" style="margin-top:8px"><div class="empty">Carregando…</div></div>`; loadMapa(); }
+function mapaDeb(){ clearTimeout(_mt); _mt=setTimeout(loadMapa,300); }
+async function loadMapa(){ const q=encodeURIComponent(($('mapaBusca')&&$('mapaBusca').value.trim())||'');
+  let gs=[]; try{ gs=((await (await fetch(API+'/api/est/mapa?produto='+q)).json()).grupos)||[]; }catch(e){}
+  $('mapaList').innerHTML= gs.length? gs.map(g=>`<div class="cnt-item" style="margin-bottom:8px"><div class="pn">${esc(g.produto)} <span class="mut xs">${esc(g.categoria||'')}</span></div>
+    ${g.fornecedores.map(f=>`<div class="cnt-row" style="justify-content:space-between;gap:8px"><span style="flex:1">${esc(f.fornecedor)} ${f.fornecedor===g.melhor_fornecedor?'<span class="tag ok">melhor</span>':''} <small class="mut">${esc(f.status||'')}</small></span><span class="big">${f.ultimo_valor!=null?'R$ '+Number(f.ultimo_valor).toFixed(2):'—'}</span></div>`).join('')}</div>`).join('')
+    : '<div class="empty">Sem dados ainda. Faça visitas a fornecedores para preencher o mapa.</div>'; }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();

@@ -523,6 +523,70 @@ async function api(req, res, url) {
     return json(res, 200, { compras: r.rows });
   }
 
+  // ===== VISITA A FORNECEDOR + MAPA COMPARATIVO =====
+  if (sub === 'est' && seg[2] === 'visita' && seg[3] === 'iniciar' && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    if (!b.fornecedor_id) return json(res, 400, { erro: 'informe o fornecedor' });
+    const f = await db.q('SELECT id, nome FROM est_fornecedor WHERE id=$1 AND tenant_id=$2', [b.fornecedor_id, TENANT]);
+    if (!f.rows[0]) return json(res, 400, { erro: 'fornecedor inválido' });
+    const v = await db.q('INSERT INTO est_visita (tenant_id, fornecedor_id, usuario_id, usuario_nome) VALUES ($1,$2,$3,$4) RETURNING id, iniciada_em', [TENANT, b.fornecedor_id, b.usuario_id, g.nome]);
+    const prods = await db.q(`SELECT DISTINCT p.id AS produto_id, p.nome, p.unidade, p.marca_preferida
+      FROM est_produto p WHERE p.tenant_id=$1 AND p.ativo AND (p.fornecedor_preferido_id=$2
+        OR p.id IN (SELECT produto_id FROM est_produto_fornecedor WHERE tenant_id=$1 AND fornecedor_id=$2)) ORDER BY p.nome`, [TENANT, b.fornecedor_id]);
+    return json(res, 201, { visita: { id: v.rows[0].id, fornecedor_nome: f.rows[0].nome }, itens: prods.rows });
+  }
+  if (sub === 'est' && seg[2] === 'visita' && seg[3] && seg[4] === 'finalizar' && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const vid = seg[3];
+    const v = await db.q('SELECT fornecedor_id FROM est_visita WHERE id=$1 AND tenant_id=$2', [vid, TENANT]);
+    if (!v.rows[0]) return json(res, 404, { erro: 'visita não encontrada' });
+    const fornId = v.rows[0].fornecedor_id;
+    for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
+      if (!it.produto_id || !it.status) continue;
+      const vu = it.valor_unitario != null && it.valor_unitario !== '' ? Number(it.valor_unitario) : null;
+      const qtd = it.quantidade != null && it.quantidade !== '' ? Number(it.quantidade) : null;
+      await db.q(`INSERT INTO est_visita_item (tenant_id, visita_id, produto_id, status, marca_encontrada, marca_parecida, valor_unitario, valor_total, quantidade, comprou, observacao)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [TENANT, vid, it.produto_id, it.status, it.marca_encontrada || null, it.marca_parecida || null, vu, (vu != null && qtd != null ? vu * qtd : null), qtd, !!it.comprou, it.observacao || null]);
+      await db.q(`INSERT INTO est_produto_fornecedor (tenant_id, produto_id, fornecedor_id, marca, marca_parecida, status, ultimo_valor, menor_valor, maior_valor, frequencia, ultima_visita_em)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$7,1,NOW())
+        ON CONFLICT (tenant_id, produto_id, fornecedor_id) DO UPDATE SET
+          marca=COALESCE(EXCLUDED.marca, est_produto_fornecedor.marca),
+          marca_parecida=COALESCE(EXCLUDED.marca_parecida, est_produto_fornecedor.marca_parecida),
+          status=COALESCE(EXCLUDED.status, est_produto_fornecedor.status),
+          ultimo_valor=COALESCE(EXCLUDED.ultimo_valor, est_produto_fornecedor.ultimo_valor),
+          menor_valor=LEAST(est_produto_fornecedor.menor_valor, EXCLUDED.ultimo_valor),
+          maior_valor=GREATEST(est_produto_fornecedor.maior_valor, EXCLUDED.ultimo_valor),
+          frequencia=COALESCE(est_produto_fornecedor.frequencia,0)+1,
+          ultima_visita_em=NOW()`,
+        [TENANT, it.produto_id, fornId, it.marca_encontrada || null, it.marca_parecida || null, it.status, vu]);
+    }
+    const fin = await db.q(`UPDATE est_visita SET finalizada_em=NOW(), status='FINALIZADA', observacoes=$2, tempo_seg=EXTRACT(EPOCH FROM (NOW()-iniciada_em))::int WHERE id=$1 AND tenant_id=$3 RETURNING tempo_seg`, [vid, b.observacoes || null, TENANT]);
+    return json(res, 200, { ok: true, tempo_seg: fin.rows[0] ? fin.rows[0].tempo_seg : null });
+  }
+  if (sub === 'est' && seg[2] === 'visitas' && req.method === 'GET') {
+    const r = await db.q(`SELECT v.id, v.iniciada_em, v.finalizada_em, v.tempo_seg, v.status, v.usuario_nome, f.nome AS fornecedor,
+      (SELECT count(*)::int FROM est_visita_item vi WHERE vi.visita_id=v.id) AS itens
+      FROM est_visita v LEFT JOIN est_fornecedor f ON f.id=v.fornecedor_id WHERE v.tenant_id=$1 ORDER BY v.iniciada_em DESC LIMIT 30`, [TENANT]);
+    return json(res, 200, { visitas: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'mapa' && req.method === 'GET') {
+    const prod = url.searchParams.get('produto') || '';
+    const r = await db.q(`SELECT p.id AS produto_id, p.nome AS produto, c.nome AS categoria,
+        f.nome AS fornecedor, pf.status, pf.marca, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.frequencia, pf.ultima_visita_em
+      FROM est_produto_fornecedor pf
+      JOIN est_produto p ON p.id=pf.produto_id JOIN est_fornecedor f ON f.id=pf.fornecedor_id
+      LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      WHERE pf.tenant_id=$1 AND ($2='' OR lower(p.nome) LIKE '%'||lower($2)||'%')
+      ORDER BY p.nome, pf.ultimo_valor NULLS LAST`, [TENANT, prod]);
+    const byP = {};
+    for (const row of r.rows) { (byP[row.produto_id] = byP[row.produto_id] || { produto: row.produto, categoria: row.categoria, fornecedores: [] }).fornecedores.push(row); }
+    const grupos = Object.values(byP).map(g => { const cv = g.fornecedores.filter(x => x.ultimo_valor != null); g.melhor_fornecedor = cv.length ? cv.reduce((a, b) => Number(b.ultimo_valor) < Number(a.ultimo_valor) ? b : a).fornecedor : null; return g; });
+    return json(res, 200, { grupos });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
