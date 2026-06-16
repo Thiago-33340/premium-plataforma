@@ -130,15 +130,18 @@ function render(){
   CAT.forEach((c,i)=>{ const b=document.createElement('button'); b.textContent=c.nome; if(i===0)b.className='on';
     b.onclick=()=>{ document.querySelectorAll('.cats button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); document.getElementById('cat_'+c.id).scrollIntoView({behavior:'smooth',block:'start'}); };
     cats.appendChild(b); });
+  const T=(LOJACFG&&LOJACFG.tema)||{};
   const el=document.getElementById('catalogo'); el.innerHTML='';
   CAT.forEach(c=>{
     const h=document.createElement('h2'); h.className='cat'; h.id='cat_'+c.id; h.textContent=c.nome; el.appendChild(h);
     c.produtos.forEach(p=>{
       const falta = p.status==='EM_FALTA';
       const card=document.createElement('div'); card.className='card'+(falta?' esgotado':'');
-      const precoTxt = p.tipo==='MONTAVEL' ? ('a partir de '+BRL(precoBaseMontavel(p))) : (p.gratuito?'Cortesia':BRL(p.preco_base));
+      const aPartir = T.mostrar_preco_a_partir!==false ? 'a partir de ' : '';
+      const precoTxt = p.tipo==='MONTAVEL' ? (aPartir+BRL(precoBaseMontavel(p))) : (p.gratuito?'Cortesia':BRL(p.preco_base));
+      const descHTML = (T.mostrar_descricao!==false && p.descricao) ? `<div class="desc">${p.descricao}</div>` : '';
       card.innerHTML = `<div class="info"><div class="nome">${p.nome}${falta?'<span class="badge">indisponível</span>':''}</div>
-        ${p.descricao?`<div class="desc">${p.descricao}</div>`:''}
+        ${descHTML}
         <div class="preco">${precoTxt}</div></div>`;
       const add=document.createElement('button'); add.className='btn add'; add.textContent='+'; add.disabled=falta;
       add.onclick=()=> p.tipo==='MONTAVEL' ? abrirBuilder(p) : addSimples(p);

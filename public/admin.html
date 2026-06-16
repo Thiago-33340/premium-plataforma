@@ -451,7 +451,8 @@ async function loadAparencia(){
    <h3 class="sec">Identidade</h3>
    <div class="panel" style="margin-bottom:16px">
      <div class="row"><div class="nm">Nome da loja<small>aparece no topo do site</small></div><input class="field" id="ap_marca" style="max-width:260px" value="${esc(_ap.marca||'')}"></div>
-     <div class="row"><div class="nm">Logo (URL)<small>imagem que aparece no cabeçalho</small></div><input class="field" id="ap_logo" style="max-width:260px" value="${esc(_ap.logo_url||'')}"></div>
+     <div class="row"><div class="nm">Logo da loja<small>aparece no cabeçalho do site</small></div><div style="display:flex;align-items:center;gap:10px"><img id="ap_logoprev" src="${esc(_ap.logo_url||'/logo.png')}" style="height:34px;max-width:120px;background:#000;border-radius:8px;padding:3px 6px;object-fit:contain"><button class="btn ghost" onclick="apUploadLogo()">Enviar imagem</button></div></div>
+     <input type="hidden" id="ap_logo" value="${esc(_ap.logo_url||'')}">
      <div class="row"><div class="nm">Domínio próprio<small>ex: pedir.minhaloja.com.br — apontamento via DNS</small></div><input class="field" id="ap_dom" style="max-width:260px" placeholder="opcional" value="${esc(_ap.dominio||'')}"></div>
      <div class="row"><div class="nm">Texto de funcionamento<small>ex: Aberto até 23:30 · entrega ~40 min</small></div><input class="field" id="ap_func" style="max-width:260px" value="${esc(_ap.texto_funcionamento||'')}"></div>
    </div>
@@ -477,6 +478,13 @@ async function loadAparencia(){
   $('apStatus').textContent='';
 }
 function apSeg(id,v){ const box=$(id); if(!box)return; box.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); box.dataset.val=v; }
+function apUploadLogo(){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; if(f.size>4*1024*1024){ toast('Imagem muito grande (máx 4MB)'); return; }
+    const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const max=320; let w=img.width,h=img.height; if(w>h&&w>max){h=Math.round(h*max/w);w=max;} else if(h>=w&&h>max){w=Math.round(w*max/h);h=max;}
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+      const url=cv.toDataURL('image/png'); $('ap_logo').value=url; const pv=$('ap_logoprev'); if(pv)pv.src=url; toast('Logo carregada — clique em Salvar'); };
+      img.onerror=()=>toast('Imagem inválida'); img.src=fr.result; }; fr.readAsDataURL(f); };
+  inp.click(); }
 function apSegVal(id,def){ const box=$(id); if(!box)return def; return box.dataset.val || (box.querySelector('button.on')?box.querySelector('button.on').dataset.v:def); }
 async function salvarAparencia(){
   const tema={

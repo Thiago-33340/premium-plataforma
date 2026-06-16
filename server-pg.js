@@ -56,7 +56,7 @@ function temaSanitize(input, base) {
   if (hex(input.cor_primaria)) t.cor_primaria = hex(input.cor_primaria);
   if (hex(input.cor_primaria_texto)) t.cor_primaria_texto = hex(input.cor_primaria_texto);
   if (FONTES_OK.includes(input.fonte)) t.fonte = input.fonte;
-  if (typeof input.logo_url === 'string') t.logo_url = input.logo_url.slice(0, 300);
+  if (typeof input.logo_url === 'string') { const mx = input.logo_url.startsWith('data:image/') ? 800000 : 300; t.logo_url = input.logo_url.slice(0, mx); }
   if (input.layout_card === 'grade' || input.layout_card === 'lista') t.layout_card = input.layout_card;
   for (const k of ['mostrar_busca', 'mostrar_descricao', 'mostrar_preco_a_partir', 'mostrar_destaques', 'mostrar_avaliacoes']) if (typeof input[k] === 'boolean') t[k] = input[k];
   if (typeof input.texto_funcionamento === 'string') t.texto_funcionamento = input.texto_funcionamento.slice(0, 80);
