@@ -158,6 +158,20 @@ async function init(retries) {
         console.log('[db] seed fase4 (pizza grande 4 bordas) aplicado/verificado');
       } catch (es4) { console.log('[db] seed-fase4 aviso:', es4.code || es4.message); }
       try {
+        const estv2 = fs.readFileSync(path.join(__dirname, 'estoque-v2.sql'), 'utf8');
+        await pool.query(estv2);
+        console.log('[db] estoque v2 (schema) aplicado/verificado');
+        const rep = await pool.query('SELECT COUNT(*)::int AS n FROM est_produto WHERE tenant_id=$1', [TENANT]);
+        if (rep.rows[0].n === 0) {
+          const seedE = fs.readFileSync(path.join(__dirname, 'seed-estoque-rp.sql'), 'utf8');
+          await pool.query(seedE);
+          const r2 = await pool.query('SELECT COUNT(*)::int AS n FROM est_produto WHERE tenant_id=$1', [TENANT]);
+          console.log('[db] seed estoque RP aplicado - produtos: ' + r2.rows[0].n);
+        } else {
+          console.log('[db] est_produto ja populado (' + rep.rows[0].n + ') - seed estoque ignorado');
+        }
+      } catch (ee) { console.log('[db] estoque-v2 aviso:', ee.code || ee.message); }
+      try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
         console.log('[db] seed de PINs (idempotente) aplicado');

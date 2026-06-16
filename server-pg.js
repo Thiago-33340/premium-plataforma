@@ -221,6 +221,19 @@ async function api(req, res, url) {
     return json(res, 200, out);
   }
 
+  // estoque v2 — verificação/resumo (Fase A)
+  if (sub === 'est' && seg[2] === 'resumo' && req.method === 'GET') {
+    const n = async (s) => { try { const r = await db.q(s, [TENANT]); return Number(r.rows[0].n); } catch (e) { return 'ERRO:' + (e.code || e.message); } };
+    const one = async (s) => { try { const r = await db.q(s, [TENANT]); return r.rows; } catch (e) { return []; } };
+    return json(res, 200, {
+      produtos: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1'),
+      categorias: await n('SELECT count(*)::int n FROM est_categoria WHERE tenant_id=$1'),
+      fornecedores: await n('SELECT count(*)::int n FROM est_fornecedor WHERE tenant_id=$1'),
+      setores: await n('SELECT count(*)::int n FROM est_setor WHERE tenant_id=$1'),
+      por_categoria: await one('SELECT c.nome, count(*)::int itens FROM est_produto p JOIN est_categoria c ON c.id=p.categoria_id WHERE p.tenant_id=$1 GROUP BY c.nome ORDER BY c.nome')
+    });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
