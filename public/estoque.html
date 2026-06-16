@@ -389,8 +389,9 @@ function loadMais(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit"
   <button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>
   <button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>
   <button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>
+  <button class="setor-btn" onclick="producaoTela()"><span>🏭 Produção interna</span><span>Lançar ›</span></button>
   <button class="setor-btn" onclick="cfgListaSetores()"><span>⚙️ Configurar setores</span><span>Itens por setor ›</span></button>
-  <div class="panel" style="margin-top:6px"><div class="empty">Produção Interna e Permissões chegam nas próximas fases.</div></div>`; }
+  <div class="panel" style="margin-top:6px"><div class="empty">Permissões granulares e automações WhatsApp chegam nas próximas fases.</div></div>`; }
 
 let _cfgSetor=null, _cfgItens=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
@@ -554,6 +555,49 @@ function renderRota(d){ const money=v=>v!=null?'R$ '+Number(v).toFixed(2):'—';
   if(d.nao_encontrados&&d.nao_encontrados.length) h+=`<div class="sec">Sem histórico de fornecedor</div>`+d.nao_encontrados.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto)}</b><small>${it.quantidade!=null?fmt(it.quantidade):'?'} ${esc(it.unidade||'')} · defina onde comprar</small></div></div>`).join('');
   h+=`<div class="cnt-foot"><div class="prog">Estimativa: <b>${money(d.estimativa_total)}</b></div><button class="btn primary sm" onclick="loadMais()">Concluir</button></div>`;
   $('maisWrap').innerHTML=h; }
+
+/* ===== PRODUÇÃO INTERNA ===== */
+let _prod={ produzidos:[], insumos:[], sel:null, ficha:[] };
+async function producaoTela(){ const w=$('maisWrap');
+  w.innerHTML=`<div class="vhead"><h2 class="tit">Produção interna</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <p class="mut sm" style="margin:0 0 10px">Escolha o produto produzido. Ao lançar, o app dá baixa nos insumos e entrada no produzido, com histórico.</p>
+   <div id="prodList"><div class="empty">Carregando…</div></div>
+   <div class="sec">Últimas produções</div><div class="plist" id="prodRuns"><div class="empty">—</div></div>`;
+  let d; try{ d=await (await fetch(API+'/api/est/producao/produzidos')).json(); }catch(e){ d={}; }
+  _prod.produzidos=d.produzidos||[]; _prod.insumos=d.insumos||[];
+  $('prodList').innerHTML=_prod.produzidos.length? _prod.produzidos.map(p=>`<button class="setor-btn" onclick="abreProducao(${p.id})"><span>${esc(p.nome)} <small class="mut">${fmt(p.estoque_atual)} ${esc(p.unidade||'')}</small></span><span>Produzir ›</span></button>`).join('') : '<div class="empty">Nenhum produto marcado como “Produzido internamente”. Marque a opção no cadastro do produto.</div>';
+  let rs=[]; try{ rs=((await (await fetch(API+'/api/est/producoes')).json()).producoes)||[]; }catch(e){}
+  $('prodRuns').innerHTML=rs.length? rs.map(r=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(r.produto)}</b><small>${esc(r.usuario_nome||'')}</small></div><div class="qt"><span class="big">${fmt(r.quantidade)} <span class="mut xs">${esc(r.unidade||'')}</span></span></div></div>`).join('') : '<div class="empty">Nenhuma produção ainda.</div>'; }
+async function abreProducao(pid){ _prod.sel=_prod.produzidos.find(p=>p.id===pid); if(!_prod.sel) return;
+  let d; try{ d=await (await fetch(API+'/api/est/producao/receita?produto_id='+pid)).json(); }catch(e){ d={}; }
+  _prod.ficha=d.itens||[]; renderProducao(); }
+function renderProducao(){ const p=_prod.sel; const isG=ehGestor();
+  const rows=_prod.ficha.length? _prod.ficha.map(it=>`<div class="cnt-row" style="justify-content:space-between;gap:8px;align-items:flex-start"><span style="flex:1">${esc(it.insumo)}<br><small class="mut">${it.quantidade_por_unidade!=null?fmt(it.quantidade_por_unidade):'?'} ${esc(it.unidade||'')} por unidade · estoque ${fmt(it.insumo_estoque)}</small></span>${isG?`<button class="ig" onclick="delFicha(${it.id})">remover</button>`:''}</div>`).join('') : '<div class="empty">Sem ficha técnica. '+(isG?'Adicione os insumos abaixo.':'Peça ao gestor para cadastrar.')+'</div>';
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(p.nome)}</h2><button class="btn ghost sm" onclick="producaoTela()">Voltar</button></div>
+   <div class="sec">Ficha técnica (consumo por unidade)</div><div class="cnt-item">${rows}</div>
+   ${isG?`<button class="btn ghost sm" style="margin-top:8px" onclick="addFicha()">+ Adicionar insumo</button>`:''}
+   <div class="sec">Lançar produção</div>
+   <label class="flabel">Quantidade produzida (${esc(p.unidade||'un')})<input id="prodQtd" class="field" inputmode="decimal" placeholder="ex: 10"></label>
+   <label class="flabel">Observação<input id="prodObs" class="field" placeholder="opcional"></label>
+   <div style="padding-bottom:90px"></div>
+   <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="lancarProducao()">Produzir e dar baixa</button></div>`; }
+function fichaModal(insOpts){ return new Promise(resolve=>{
+  const ov=document.createElement('div'); ov.className='modal on';
+  ov.innerHTML=`<div class="box"><h3 style="margin:0 0 6px">Adicionar insumo</h3><div class="fgrid">
+    <label class="flabel">Insumo<select data-k="insumo_produto_id" class="field"><option value="">—</option>${insOpts.map(i=>`<option value="${i.id}">${esc(i.nome)}</option>`).join('')}</select></label>
+    <label class="flabel">Consumo por unidade produzida<input data-k="quantidade_por_unidade" class="field" type="number" inputmode="decimal"></label>
+    <label class="flabel">Unidade (KG, G, UN…)<input data-k="unidade" class="field"></label>
+    <label class="flabel">Observação<input data-k="observacao" class="field"></label></div>
+    <div class="mfoot"><button class="btn ghost" data-act="cancel">Cancelar</button><button class="btn primary" data-act="ok">Adicionar</button></div></div>`;
+  ov.querySelector('[data-act="cancel"]').onclick=()=>{ document.body.removeChild(ov); resolve(null); };
+  ov.querySelector('[data-act="ok"]').onclick=()=>{ const o={}; ov.querySelectorAll('[data-k]').forEach(el=>o[el.dataset.k]=el.value); if(!o.insumo_produto_id){ toast('Escolha o insumo'); return; } document.body.removeChild(ov); resolve(o); };
+  document.body.appendChild(ov); const f=ov.querySelector('select'); if(f) setTimeout(()=>f.focus(),60); }); }
+async function addFicha(){ const insOpts=_prod.insumos.filter(i=>i.id!==_prod.sel.id); const v=await fichaModal(insOpts); if(!v) return;
+  try{ await estFetch('/api/est/producao/receita','POST',Object.assign({produto_id:_prod.sel.id},v)); toast('Insumo adicionado'); abreProducao(_prod.sel.id); }catch(e){} }
+async function delFicha(id){ if(!await pedirConfirm('Remover insumo','Tirar este insumo da ficha técnica?')) return; try{ await estFetch('/api/est/producao/receita/'+id,'DELETE'); toast('Removido'); abreProducao(_prod.sel.id); }catch(e){} }
+async function lancarProducao(){ const q=(($('prodQtd')&&$('prodQtd').value)||'').replace(',','.'); const obs=($('prodObs')&&$('prodObs').value)||'';
+  if(!(parseFloat(q)>0)){ toast('Informe a quantidade'); return; }
+  try{ const d=await estFetch('/api/est/producao/run','POST',{produto_id:_prod.sel.id,quantidade:q,observacao:obs}); toast('Produção lançada — estoque atualizado'); if(d.avisos&&d.avisos.length) setTimeout(()=>toast('Atenção: '+d.avisos[0]),1700); producaoTela(); }catch(e){} }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();

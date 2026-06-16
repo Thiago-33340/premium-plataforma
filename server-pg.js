@@ -700,6 +700,69 @@ async function api(req, res, url) {
     return json(res, 200, { ir_primeiro_em: irPrimeiro, comprar_por_fornecedor: grupos, confirmar_antes: confirmar, substitutos, nao_encontrados: naoEncontrados, estimativa_total: estimativaTotal, alerta });
   }
 
+  // ---- Produção Interna (ficha técnica + baixa de insumos) ----
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'produzidos' && req.method === 'GET') {
+    const prods = await db.q(`SELECT id, nome, unidade, estoque_atual, estoque_ideal FROM est_produto WHERE tenant_id=$1 AND ativo AND pode_produzir ORDER BY nome`, [TENANT]);
+    const insumos = await db.q(`SELECT id, nome, unidade FROM est_produto WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
+    return json(res, 200, { produzidos: prods.rows, insumos: insumos.rows });
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'receita' && req.method === 'GET') {
+    const pid = parseInt(url.searchParams.get('produto_id'), 10);
+    const r = await db.q(`SELECT r.id, r.insumo_produto_id, i.nome AS insumo, i.estoque_atual AS insumo_estoque, r.quantidade_por_unidade, r.unidade, r.rendimento, r.observacao
+      FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id
+      WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo ORDER BY i.nome`, [TENANT, pid]);
+    return json(res, 200, { itens: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'receita' && !seg[4] && req.method === 'POST') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    if (!b.produto_id || !b.insumo_produto_id) return json(res, 400, { erro: 'produto e insumo obrigatórios' });
+    if (Number(b.produto_id) === Number(b.insumo_produto_id)) return json(res, 400, { erro: 'o insumo não pode ser o próprio produto' });
+    const qpu = b.quantidade_por_unidade != null && b.quantidade_por_unidade !== '' ? Number(b.quantidade_por_unidade) : null;
+    const rend = b.rendimento != null && b.rendimento !== '' ? Number(b.rendimento) : null;
+    const ex = await db.q(`SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3`, [TENANT, b.produto_id, b.insumo_produto_id]);
+    if (ex.rows[0]) await db.q(`UPDATE est_producao_receita SET quantidade_por_unidade=$2, unidade=$3, rendimento=$4, observacao=$5, ativo=TRUE WHERE id=$1`, [ex.rows[0].id, qpu, b.unidade || null, rend, b.observacao || null]);
+    else await db.q(`INSERT INTO est_producao_receita (tenant_id, produto_id, insumo_produto_id, quantidade_por_unidade, unidade, rendimento, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [TENANT, b.produto_id, b.insumo_produto_id, qpu, b.unidade || null, rend, b.observacao || null]);
+    return json(res, 200, { ok: true });
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'receita' && seg[4] && req.method === 'DELETE') {
+    const b = await readBody(req); const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    await db.q(`UPDATE est_producao_receita SET ativo=FALSE WHERE id=$1 AND tenant_id=$2`, [parseInt(seg[4], 10), TENANT]);
+    return json(res, 200, { ok: true });
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'run' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!b.usuario_id) return json(res, 403, { erro: 'Faça login.' });
+    const u = await db.q('SELECT nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2', [b.usuario_id, TENANT]);
+    const uname = u.rows[0] ? u.rows[0].nome : null;
+    const pid = parseInt(b.produto_id, 10); const qtd = Number(b.quantidade);
+    if (!pid || !(qtd > 0)) return json(res, 400, { erro: 'produto e quantidade (>0) obrigatórios' });
+    const p = await db.q('SELECT nome, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND pode_produzir', [pid, TENANT]);
+    if (!p.rows[0]) return json(res, 404, { erro: 'produto produzido não encontrado' });
+    const rec = await db.q(`SELECT r.insumo_produto_id, i.nome AS insumo, i.estoque_atual, r.quantidade_por_unidade, r.rendimento FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo`, [TENANT, pid]);
+    const run = await db.q(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [TENANT, pid, qtd, b.usuario_id, uname, b.observacao || null]);
+    const runId = run.rows[0].id; const avisos = [];
+    for (const r of rec.rows) {
+      const qpu = r.quantidade_por_unidade != null ? Number(r.quantidade_por_unidade) : 0;
+      const rend = r.rendimento != null && Number(r.rendimento) > 0 ? Number(r.rendimento) : 1;
+      const baixa = qpu * qtd / rend;
+      if (!(baixa > 0)) continue;
+      const antes = Number(r.estoque_atual), depois = antes - baixa;
+      await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [r.insumo_produto_id, depois]);
+      await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, b.usuario_id, uname, 'Produção de ' + p.rows[0].nome, runId]);
+      if (depois < 0) avisos.push(r.insumo + ' ficou negativo (' + depois.toFixed(3) + ')');
+    }
+    const antesP = Number(p.rows[0].estoque_atual), depoisP = antesP + qtd;
+    await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [pid, depoisP]);
+    await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, qtd, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
+    return json(res, 200, { ok: true, avisos, insumos_baixados: rec.rows.length, produzido_depois: depoisP });
+  }
+  if (sub === 'est' && seg[2] === 'producoes' && req.method === 'GET') {
+    const r = await db.q(`SELECT pr.id, pr.quantidade, pr.usuario_nome, pr.observacao, pr.criado_em, p.nome AS produto, p.unidade FROM est_producao_run pr JOIN est_produto p ON p.id=pr.produto_id WHERE pr.tenant_id=$1 ORDER BY pr.criado_em DESC LIMIT 30`, [TENANT]);
+    return json(res, 200, { producoes: r.rows });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
