@@ -454,13 +454,15 @@ async function api(req, res, url) {
     const hoje = new Date().toISOString().slice(0, 10);
     if (area === 'resumo' || area === 'estoque') {
       out.estoque = {
-        itens_cadastrados: await num('SELECT count(*)::int n FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo', [TENANT]),
-        setores: await one('SELECT setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo GROUP BY setor_nome ORDER BY setor_nome', [TENANT]),
-        contagens_hoje: await num(`SELECT count(*)::int n FROM estoque_contagens WHERE tenant_id=$1 AND DATE(finalizada_em)=$2`, [TENANT, hoje]),
-        movimentos_recentes: await one('SELECT insumo_nome, tipo, quantidade, unidade, origem, criado_em FROM estoque_movimentos WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT 5', [TENANT])
+        itens_cadastrados: await num('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo', [TENANT]),
+        zerados: await num('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_atual<=0', [TENANT]),
+        abaixo_minimo: await num('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual<estoque_minimo', [TENANT]),
+        setores: await one('SELECT s.nome AS setor_nome, count(ps.produto_id)::int itens FROM est_setor s LEFT JOIN est_produto_setor ps ON ps.setor_id=s.id AND ps.tenant_id=s.tenant_id WHERE s.tenant_id=$1 AND s.ativo GROUP BY s.nome ORDER BY s.nome', [TENANT]),
+        contagens_hoje: await num(`SELECT count(*)::int n FROM est_contagem WHERE tenant_id=$1 AND DATE(encerrada_em)=$2`, [TENANT, hoje]),
+        movimentos_recentes: await one('SELECT produto_nome AS insumo_nome, tipo, qtd_movimentada AS quantidade, origem, usuario_nome, criado_em FROM est_movimento WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT 8', [TENANT])
       };
     }
-    if (area === 'resumo' || area === 'contagens') out.ultimas_contagens = await one('SELECT colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 5', [TENANT]);
+    if (area === 'resumo' || area === 'contagens') out.ultimas_contagens = await one("SELECT usuario_nome AS colaborador_nome, setor_nome, itens_contados AS total_itens, status_auditoria, encerrada_em AS finalizada_em FROM est_contagem WHERE tenant_id=$1 AND status<>'EM_ANDAMENTO' ORDER BY COALESCE(encerrada_em, iniciada_em) DESC LIMIT 5", [TENANT]);
     if (area === 'resumo' || area === 'mesas') {
       const ms = await one(`SELECT m.numero, (c.id IS NOT NULL) AS ocupada FROM mesas m LEFT JOIN comandas c ON c.mesa_numero=m.numero AND c.tenant_id=m.tenant_id AND c.status='ABERTA' WHERE m.tenant_id=$1 AND m.ativa ORDER BY m.numero`, [TENANT]);
       out.mesas = { total: ms.length, ocupadas: ms.filter(x => x.ocupada).length };
@@ -548,6 +550,12 @@ async function api(req, res, url) {
       ultimas_contagens: await one('SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY iniciada_em DESC LIMIT 5'),
       ultimas_compras: await one('SELECT c.criado_em, c.usuario_nome, c.total, f.nome AS fornecedor FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 ORDER BY c.criado_em DESC LIMIT 5')
     });
+  }
+  if (sub === 'est' && seg[2] === 'movimentos' && req.method === 'GET') {
+    const lim = Math.min(parseInt(url.searchParams.get('limit'), 10) || 30, 100);
+    const r = await db.q(`SELECT id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, criado_em
+      FROM est_movimento WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT $2`, [TENANT, lim]);
+    return json(res, 200, { movimentos: r.rows });
   }
 
   // estoque v2 — escritas (CRUD) com checagem de gestor/gerente

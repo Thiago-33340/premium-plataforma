@@ -258,10 +258,12 @@
 
         <!-- ESTOQUE -->
         <section class="scr2" id="s_estoque">
-          <div class="pagehead"><h2>Estoque</h2></div>
+          <div class="pagehead"><h2>Estoque</h2><a class="btn primary" href="/estoque" target="_blank" style="margin-left:auto">Abrir app de estoque ↗</a></div>
+          <p class="mut sm" style="margin:0 0 12px">Visão do estoque real do app (contagem, compras, perdas, produção). Aqui você ajusta mínimo/ideal e renomeia setores; contagem e lançamentos são feitos no app de estoque.</p>
+          <div class="kpis" id="estKpis"></div>
           <h3 class="sec">Setores</h3><div class="panel" id="setoresBox" style="margin-bottom:18px"></div>
-          <h3 class="sec">Entradas recentes (incl. Jéssica)</h3><div class="panel" id="movBox" style="margin-bottom:18px"></div>
-          <h3 class="sec">Itens por setor</h3><div id="estItens"></div>
+          <h3 class="sec">Movimentações recentes</h3><div class="panel" id="movBox" style="margin-bottom:18px"></div>
+          <h3 class="sec">Produtos — mínimo / ideal</h3><div id="estItens"></div>
         </section>
 
         <!-- EQUIPE -->
@@ -382,28 +384,28 @@ async function loadInicio(){
   const h=new Date().getHours(); const aberta=h>=18||h<1;
   $('lojaStatus').className='chip '+(aberta?'aberta':'fechada'); $('lojaStatus').innerHTML=`<span class="dot ${aberta?'g':'r'}"></span> Loja ${aberta?'aberta':'fechada'}`;
   const varPed=(ped.hoje||0)-(ped.ontem||0);
-  const abaixo=(s.ultimas_contagens&&s.ultimas_contagens[0])?s.ultimas_contagens[0].itens_abaixo_minimo:0;
+  const abaixo=Number(est.abaixo_minimo||0), zerados=Number(est.zerados||0);
   $('kpis').innerHTML=[
     kpi('Pedidos hoje', ped.hoje||0, 'lar','🧾', varTxt(varPed,ped.ontem)),
     kpi('Receita hoje', BRL(ped.receita_hoje||0), 'ver','💰', `Ticket médio ${BRL(ped.ticket_medio||0)}`),
     kpi('Em andamento', ped.em_aberto||0, 'azu','⏱️', 'pedidos abertos agora'),
     kpi('Mesas ocupadas', (mes.ocupadas||0)+'/'+(mes.total||0), 'rox','🍽️', 'salão'),
-    kpi('Itens em falta', card.em_falta||0, (card.em_falta>0?'am':'ver'),'🚫', 'no cardápio'),
-    kpi('Resolvidos pela Jéssica', '—', 'rox','🤖', 'após aprovação Meta')
+    kpi('Estoque abaixo do mínimo', abaixo, (abaixo>0?'am':'ver'),'📦', zerados>0?(zerados+' zerado(s)'):'no estoque'),
+    kpi('Itens em falta', card.em_falta||0, (card.em_falta>0?'am':'ver'),'🚫', 'no cardápio')
   ].join('');
   // alertas
   const al=[];
+  if(abaixo>0) al.push(`<div class="alert warn">📦 <b>${abaixo} item(ns)</b> abaixo do mínimo no estoque.</div>`);
   if((card.em_falta||0)>0) al.push(`<div class="alert warn">⚠️ <b>${card.em_falta} item(ns)</b> marcados como "em falta" no cardápio.</div>`);
-  if(abaixo>0) al.push(`<div class="alert warn">📦 Última contagem teve <b>${abaixo} item(ns)</b> abaixo do mínimo.</div>`);
   if((est.contagens_hoje||0)===0) al.push(`<div class="alert bad">📋 Nenhuma contagem de estoque registrada hoje.</div>`);
   if(!al.length) al.push(`<div class="alert ok">✅ Operação tranquila — nenhum alerta crítico no momento.</div>`);
   $('alertas').innerHTML=al.join('');
   // ultimas contagens
   const uc=s.ultimas_contagens||[];
-  $('ultContagens').innerHTML = uc.length? uc.map(c=>`<div class="litem"><div class="nm">${c.setor_nome}<small>${c.colaborador_nome} · ${c.turno} · ${fmtData(c.finalizada_em)}</small></div><div class="sm"><b style="color:var(--amar)">${c.itens_abaixo_minimo}</b> abaixo · <b style="color:var(--verm)">${c.itens_zerados}</b> zerados</div></div>`).join('') : '<div class="empty">Nenhuma contagem ainda.</div>';
+  $('ultContagens').innerHTML = uc.length? uc.map(c=>`<div class="litem"><div class="nm">${c.setor_nome||'—'}<small>${c.colaborador_nome||''} · ${fmtData(c.finalizada_em)}</small></div><div class="sm"><b>${c.total_itens||0}</b> itens · ${esc(String(c.status_auditoria||'').toLowerCase())}</div></div>`).join('') : '<div class="empty">Nenhuma contagem ainda.</div>';
   // atividade (movimentos)
-  const mv=(est.movimentos_recentes||[]);
-  $('atividade').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${m.insumo_nome}<small>${m.tipo==='ENTRADA'?'Entrada':m.tipo==='SAIDA'?'Saída':'Ajuste'} · ${m.origem||''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${m.tipo==='ENTRADA'?'var(--verde)':'var(--verm)'}">${m.tipo==='ENTRADA'?'+':'−'}${Number(m.quantidade)} ${m.unidade||''}</div></div>`).join('') : '<div class="empty">Sem movimentações recentes.</div>';
+  const mv=(est.movimentos_recentes||[]); const ent=t=>/ENTRADA|COMPRA|PRODUCAO_ENTRADA/.test(t||'');
+  $('atividade').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${esc(m.insumo_nome||'—')}<small>${esc(String(m.tipo||'').replace(/_/g,' ').toLowerCase())} · ${esc(m.origem||'')} ${m.usuario_nome?('· '+esc(m.usuario_nome)):''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${ent(m.tipo)?'var(--verde)':'var(--verm)'}">${ent(m.tipo)?'+':'−'}${Number(m.quantidade)}</div></div>`).join('') : '<div class="empty">Sem movimentações recentes.</div>';
 }
 function kpi(lbl,val,ic,emoji,sub){ return `<div class="kpi"><div class="top"><div class="lbl">${lbl}</div><div class="ic ${ic}">${emoji}</div></div><div class="val">${val}</div><div class="meta">${sub||''}</div></div>`; }
 
@@ -599,23 +601,38 @@ async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',
 async function setStatus(tp,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tp,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
 
 /* ===== ESTOQUE ===== */
+let _estProd=[];
 async function loadEstoque(){
-  const set=(await (await fetch(API+'/api/admin/setores?admin_id='+user.id)).json()).setores||[]; SETORES=set;
-  $('setoresBox').innerHTML = set.length? set.map(s=>`<div class="row"><div class="nm">${s.setor_nome}<small>${s.itens} itens · responsável: ${s.ultimo_responsavel||'—'} · última contagem: ${s.ultima_contagem?fmtData(s.ultima_contagem):'nunca'}</small></div><button class="btn sm ghost" onclick="renomearSetor('${s.setor_id}','${(s.setor_nome||'').replace(/'/g,"\\'")}')">Renomear</button></div>`).join('') : '<div class="empty">Sem setores.</div>';
-  const mv=(await (await fetch(API+'/api/estoque/movimentos')).json()).movimentos||[];
-  $('movBox').innerHTML = mv.length? mv.slice(0,12).map(m=>`<div class="litem"><div class="nm">${m.insumo_nome}<small>${m.tipo} · ${m.origem||''} ${m.por_nome?('· '+m.por_nome):''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${m.tipo==='ENTRADA'?'var(--verde)':'var(--verm)'}">${m.tipo==='ENTRADA'?'+':'−'}${Number(m.quantidade)} ${m.unidade||''}</div></div>`).join('') : '<div class="empty">Nenhuma entrada/saída registrada ainda.</div>';
-  const itens=(await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json()).itens||[];
-  const box=$('estItens'); box.innerHTML=''; const by={}; itens.forEach(i=>(by[i.setor_nome]=by[i.setor_nome]||[]).push(i));
-  Object.entries(by).forEach(([sn,arr])=>{ const det=document.createElement('details'); let h=`<summary>${sn} <span class="cnt">${arr.length} itens</span></summary><div class="in">`;
-    arr.forEach(i=>{ h+=`<div class="row" data-id="${i.id}"><div class="nm">${i.nome}<small>${i.unidade}</small></div>
-      <label class="xs mut">mín<input class="field mn" data-f="estoque_minimo" value="${Number(i.estoque_minimo)}"></label>
+  let dash={}; try{ dash=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){}
+  $('estKpis').innerHTML=[
+    kpi('Produtos ativos', dash.produtos_ativos||0, 'azu','📦',''),
+    kpi('Abaixo do mínimo', dash.abaixo_minimo||0, (dash.abaixo_minimo>0?'am':'ver'),'⚠️',''),
+    kpi('Zerados', dash.zerados||0, (dash.zerados>0?'am':'ver'),'🚫',''),
+    kpi('Contagens p/ auditar', dash.contagens_aguardando||0, (dash.contagens_aguardando>0?'am':'ver'),'📋','')
+  ].join('');
+  const set=(await (await fetch(API+'/api/est/setores')).json()).setores||[];
+  $('setoresBox').innerHTML = set.length? set.map(s=>`<div class="row"><div class="nm">${esc(s.nome)}<small>${s.ativo?'ativo':'inativo'}</small></div><button class="btn sm ghost" onclick="renomearSetorEst(${s.id},'${esc(s.nome).replace(/'/g,"\\'")}')">Renomear</button></div>`).join('') : '<div class="empty">Sem setores. Configure no app de estoque.</div>';
+  const mv=(await (await fetch(API+'/api/est/movimentos?limit=12')).json()).movimentos||[]; const ent=t=>/ENTRADA|COMPRA|PRODUCAO_ENTRADA/.test(t||'');
+  $('movBox').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${esc(m.produto_nome||'—')}<small>${esc(String(m.tipo||'').replace(/_/g,' ').toLowerCase())} · ${esc(m.origem||'')} ${m.usuario_nome?('· '+esc(m.usuario_nome)):''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${ent(m.tipo)?'var(--verde)':'var(--verm)'}">${ent(m.tipo)?'+':'−'}${Number(m.qtd_movimentada)}</div></div>`).join('') : '<div class="empty">Nenhuma movimentação ainda.</div>';
+  _estProd=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[];
+  const box=$('estItens'); box.innerHTML=''; const by={}; _estProd.filter(p=>p.ativo).forEach(p=>{ const k=p.categoria||'Sem categoria'; (by[k]=by[k]||[]).push(p); });
+  Object.entries(by).forEach(([cat,arr])=>{ const det=document.createElement('details'); let h=`<summary>${esc(cat)} <span class="cnt">${arr.length} itens</span></summary><div class="in">`;
+    arr.forEach(i=>{ h+=`<div class="row" data-id="${i.id}"><div class="nm">${esc(i.nome)}<small>${esc(i.unidade||'')} · atual ${Number(i.estoque_atual)}</small></div>
+      <label class="xs mut">mín<input class="field mn" data-f="estoque_minimo" value="${i.estoque_minimo!=null?Number(i.estoque_minimo):''}"></label>
       <label class="xs mut">ideal<input class="field mn" data-f="estoque_ideal" value="${i.estoque_ideal!=null?Number(i.estoque_ideal):''}"></label>
       <button class="btn sm" data-save>Salvar</button></div>`; });
     det.innerHTML=h+'</div>'; box.appendChild(det); });
-  box.querySelectorAll('[data-save]').forEach(b=> b.onclick=()=>salvarItem(b.closest('.row')));
+  box.querySelectorAll('[data-save]').forEach(b=> b.onclick=()=>salvarItemEst(b.closest('.row')));
 }
-async function renomearSetor(id,atual){ const novo=await pedirTexto('Renomear setor','Nome do setor (ex: Borda, Montagem)',atual); if(novo===null)return; const v=novo.trim(); if(!v){ toast('Informe um nome'); return; }
-  await fetch(API+'/api/admin/setor/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,setor_id:id,novo_nome:v})}); toast('Setor renomeado'); SETORES=[]; loadEstoque(); }
+async function renomearSetorEst(id,atual){ const novo=await pedirTexto('Renomear setor','Nome do setor (ex: Borda, Montagem)',atual); if(novo===null)return; const v=novo.trim(); if(!v){ toast('Informe um nome'); return; }
+  const r=await (await fetch(API+'/api/est/setor/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,nome:v})})).json();
+  if(r.ok){ toast('Setor renomeado'); loadEstoque(); } else toast(r.erro||'Erro'); }
+async function salvarItemEst(rowEl){ const id=Number(rowEl.dataset.id); const p=_estProd.find(x=>x.id===id); if(!p) return;
+  const body={ usuario_id:user.id, nome:p.nome, categoria_id:p.categoria_id, unidade:p.unidade, fornecedor_preferido_id:p.fornecedor_preferido_id,
+    pode_contar:p.pode_contar, pode_comprar:p.pode_comprar, pode_produzir:p.pode_produzir, observacoes:p.observacoes };
+  rowEl.querySelectorAll('[data-f]').forEach(f=> body[f.dataset.f]= f.value===''?null:parseFloat(f.value));
+  const r=await (await fetch(API+'/api/est/produto/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+  if(r.ok){ toast('Item salvo'); const np=_estProd.find(x=>x.id===id); if(np){ np.estoque_minimo=body.estoque_minimo; np.estoque_ideal=body.estoque_ideal; } } else toast(r.erro||'Sem permissão'); }
 /* modal de texto reutilizável (substitui o prompt do navegador) */
 function pedirTexto(titulo,sub,valor){ return new Promise(resolve=>{ $('mInTit').textContent=titulo; $('mInSub').textContent=sub||''; const f=$('mInField'); f.value=valor||''; $('mInput').classList.add('on'); setTimeout(()=>f.focus(),80);
   const fim=v=>{ $('mInput').classList.remove('on'); $('mInOk').onclick=null; $('mInCancel').onclick=null; f.onkeydown=null; resolve(v); };
