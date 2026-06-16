@@ -141,6 +141,7 @@
       <div class="brand"><img src="/logo.png" alt="Premium Pizzas"></div>
       <nav id="navd">
         <a class="on" data-s="inicio" onclick="go('inicio')"><span class="ic">▾</span> Início</a>
+        <a data-s="pedidos" onclick="go('pedidos')"><span class="ic">🧾</span> Pedidos</a>
         <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
         <a data-s="estoque" onclick="go('estoque')"><span class="ic">📦</span> Estoque</a>
         <a data-s="equipe" onclick="go('equipe')"><span class="ic">👥</span> Equipe</a>
@@ -160,6 +161,7 @@
       <div class="topbar"><img src="/logo.png" alt="Premium Pizzas"><span style="color:var(--mut);font-size:12px">Admin</span><span class="who" id="whoNameM"></span></div>
       <div class="tabsm" id="tabsm">
         <button class="on" onclick="go('inicio',this)">Início</button>
+        <button onclick="go('pedidos',this)">Pedidos</button>
         <button onclick="go('cardapio',this)">Cardápio</button>
         <button onclick="go('estoque',this)">Estoque</button>
         <button onclick="go('equipe',this)">Equipe</button>
@@ -182,7 +184,25 @@
           </div>
         </section>
 
+        <!-- PEDIDOS -->
+        <section class="scr2" id="s_pedidos">
+          <div class="pagehead"><h2>Pedidos de hoje</h2><span class="per" id="pedAgora"></span><a class="btn primary" href="/gestor" target="_blank" style="margin-left:auto">Abrir operação completa ↗</a></div>
+          <div class="kpis" id="pedResumo" style="margin-bottom:6px"></div>
+          <div id="pedFila"><div class="empty">Carregando…</div></div>
+        </section>
+
         <style>
+        #s_pedidos .pedcard{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #1d1d20;border-radius:11px;background:#0f0f11;margin-bottom:8px}
+        #s_pedidos .pedcard .nm{flex:1;min-width:0}
+        #s_pedidos .pedcard .nm b{display:block}
+        #s_pedidos .pedcard .nm small{color:#8a8a93;font-size:12px}
+        #s_pedidos .pst{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 9px;border-radius:999px;white-space:nowrap}
+        #s_pedidos .pst.b{background:#15233a;color:#6db0ff}
+        #s_pedidos .pst.y{background:#3a2e10;color:#ffd479}
+        #s_pedidos .pst.g{background:#13301a;color:#86e0a0}
+        #s_pedidos .pst.r{background:#3a1414;color:#ff8d8d}
+        #s_pedidos .pst.x{background:#222;color:#aaa}
+        #s_pedidos .grpsec{font-size:12px;color:#8a8a93;text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px}
         #s_cardapio .catwrap{border:1px solid #1d1d20;border-radius:12px;margin-bottom:12px;background:#0e0e10;overflow:hidden}
         #s_cardapio .catsum{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;cursor:pointer;list-style:none}
         #s_cardapio .catsum::-webkit-details-marker{display:none}
@@ -312,7 +332,8 @@ function abrirApp(u){ user=u; $('whoName').innerHTML=u.nome+'<small>Gestor</smal
 function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.remove('on')); $('s_'+s).classList.add('on');
   document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
   if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
-  if(s==='inicio')loadInicio(); if(s==='cardapio')loadCardapio(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+  if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
+  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
 function sair(){ location.reload(); }
 
@@ -350,6 +371,37 @@ async function loadInicio(){
   $('atividade').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${m.insumo_nome}<small>${m.tipo==='ENTRADA'?'Entrada':m.tipo==='SAIDA'?'Saída':'Ajuste'} · ${m.origem||''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${m.tipo==='ENTRADA'?'var(--verde)':'var(--verm)'}">${m.tipo==='ENTRADA'?'+':'−'}${Number(m.quantidade)} ${m.unidade||''}</div></div>`).join('') : '<div class="empty">Sem movimentações recentes.</div>';
 }
 function kpi(lbl,val,ic,emoji,sub){ return `<div class="kpi"><div class="top"><div class="lbl">${lbl}</div><div class="ic ${ic}">${emoji}</div></div><div class="val">${val}</div><div class="meta">${sub||''}</div></div>`; }
+
+/* ===== PEDIDOS (fila do dia, ao vivo) ===== */
+let _pedTimer=null;
+const PST_COR={ 'RECEBIDO':'b','EM PRODUÇÃO':'y','EM PREPARO':'y','PREPARANDO':'y','PRONTO':'g','SAIU PARA ENTREGA':'g','EM ROTA':'g','ENTREGUE':'x','CONCLUÍDO':'x','CONCLUIDO':'x','FINALIZADO':'x','CANCELADO':'r' };
+const PST_ORDEM=['RECEBIDO','EM PRODUÇÃO','EM PREPARO','PREPARANDO','PRONTO','SAIU PARA ENTREGA','EM ROTA','ENTREGUE','CONCLUÍDO','CONCLUIDO','FINALIZADO','CANCELADO'];
+const TIPO_NOME={ DELIVERY:'Entrega', TAKEOUT:'Retirada', MESA:'Mesa' };
+async function loadPedidos(){ if(_pedTimer)clearInterval(_pedTimer); await renderPedidos(); _pedTimer=setInterval(renderPedidos,20000); }
+async function renderPedidos(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  let d; try{ d=await (await fetch(API+'/api/pedidos?desde='+encodeURIComponent(hoje.toISOString()))).json(); }catch(e){ return; }
+  const ps=d.pedidos||[]; $('pedAgora').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const fin=s=>['ENTREGUE','CONCLUÍDO','CONCLUIDO','FINALIZADO','CANCELADO'].includes(String(s||'').toUpperCase());
+  const abertos=ps.filter(p=>!fin(p.status)), receita=ps.reduce((a,p)=>a+(Number(p.total)||0),0);
+  $('pedResumo').innerHTML=[
+    kpi('Pedidos hoje', ps.length, 'lar','🧾', ''),
+    kpi('Em andamento', abertos.length, 'azu','⏱️', 'abertos agora'),
+    kpi('Receita do dia', BRL(receita), 'ver','💰', '')
+  ].join('');
+  if(!ps.length){ $('pedFila').innerHTML='<div class="empty">Nenhum pedido hoje ainda.</div>'; return; }
+  const grupos={}; ps.forEach(p=>{ const s=String(p.status||'—').toUpperCase(); (grupos[s]=grupos[s]||[]).push(p); });
+  const chaves=Object.keys(grupos).sort((a,b)=>{ const ia=PST_ORDEM.indexOf(a), ib=PST_ORDEM.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+  let h='';
+  for(const st of chaves){ const cor=PST_COR[st]||'x';
+    h+=`<div class="grpsec">${esc(st)} · ${grupos[st].length}</div>`;
+    h+=grupos[st].map(p=>{ const hora=p.criado_em?new Date(p.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+      const tipo=TIPO_NOME[p.tipo]||p.tipo||''; const wa=p.origem_whatsapp?' · WhatsApp':'';
+      return `<div class="pedcard"><div class="nm"><b>#${esc(p.numero)} · ${esc((p.cliente&&p.cliente.nome)||'Cliente')}</b><small>${hora} · ${esc(tipo)}${esc(wa)} · ${esc(p.canal||'')}</small></div><div style="text-align:right"><div style="font-weight:700">${BRL(p.total)}</div><span class="pst ${cor}">${esc(st)}</span></div></div>`;
+    }).join('');
+  }
+  $('pedFila').innerHTML=h;
+}
 function varTxt(d,base){ if(base==null) return 'vs ontem'; if(d>0) return `<b class="up">▲ ${d}</b> vs ontem (${base})`; if(d<0) return `<b class="down">▼ ${Math.abs(d)}</b> vs ontem (${base})`; return `igual a ontem (${base})`; }
 function fmtData(s){ try{ return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
 
