@@ -156,7 +156,7 @@ function precoBaseMontavel(p){
 
 /* ---------- BUILDER ---------- */
 function abrirBuilder(p){
-  build={ produto:p, qtd:1, sel:{} };   // sel[grupoId] = [opcao,...]
+  build={ produto:p, qtd:1, sel:{}, obs:'' };   // sel[grupoId] = [opcao,...]
   (p.grupos||[]).forEach(g=> build.sel[g.id]=[]);
   document.getElementById('mTitulo').textContent=p.nome;
   document.getElementById('mQtd').textContent='1';
@@ -214,6 +214,12 @@ function renderBuilder(){
     });
     b.appendChild(wrap);
   });
+  if(LOJACFG.obs && LOJACFG.obs.permite_item){
+    const ow=document.createElement('div'); ow.className='grupo';
+    ow.innerHTML=`<div class="gtit">${LOJACFG.obs.rotulo_item||'Alguma observação?'} <span class="greq">(opcional)</span></div>`;
+    const ta=document.createElement('textarea'); ta.className='field'; ta.rows=2; ta.placeholder='Ex: sem cebola, bem assada…'; ta.value=build.obs||'';
+    ta.oninput=()=>{ build.obs=ta.value; }; ow.appendChild(ta); b.appendChild(ow);
+  }
   // total + validade
   const tot=calcBuild(); const ok=buildValido();
   const btn=document.getElementById('mAdd'); btn.textContent=`Adicionar • ${BRL(tot)}`; btn.disabled=!ok;
@@ -245,7 +251,7 @@ function addAoCarrinho(){
   // resumo legível
   (p.grupos||[]).forEach(g=>{ if(!grupoVisivel(g))return; const arr=build.sel[g.id]||[]; if(!arr.length)return;
     partes.push(arr.map(o=>o.nome).join(g.repete?' / ':', ')); });
-  cart.push({ tipo:'montavel', produto_id:p.id, nome:p.nome, preco_base:Number(p.preco_base||0), selecoes, quantidade:build.qtd, resumo:partes.join(' · '), unit:calcBuild()/build.qtd });
+  cart.push({ tipo:'montavel', produto_id:p.id, nome:p.nome, preco_base:Number(p.preco_base||0), selecoes, quantidade:build.qtd, resumo:partes.join(' · '), observacao:(build.obs||'').trim(), unit:calcBuild()/build.qtd });
   fecharModal(); atualizarCart(); toast('Adicionado ao carrinho');
 }
 function addSimples(p){ const ex=cart.find(c=>c.tipo==='simples'&&c.produto_id===p.id);
@@ -259,7 +265,7 @@ function atualizarCart(){ const q=cart.reduce((s,c)=>s+c.quantidade,0); const t=
   document.getElementById('cartqtd').textContent=q+(q===1?' item':' itens'); document.getElementById('carttot').textContent=BRL(t); }
 function abrirCarrinho(){ renderCarrinho(); document.getElementById('cart').classList.add('on'); }
 function fecharCarrinho(){ document.getElementById('cart').classList.remove('on'); }
-let checkoutStep=0, cliente=null, tipoEntrega='RETIRADA';
+let checkoutStep=0, cliente=null, tipoEntrega='RETIRADA', obsPedido='';
 function renderCarrinho(){
   checkoutStep=0; const b=document.getElementById('cBody'); b.innerHTML='';
   if(!cart.length){ b.innerHTML='<p class="muted">Carrinho vazio.</p>'; document.getElementById('cGo').style.display='none'; return; }
@@ -289,6 +295,9 @@ function irCheckout(){
       <div id="endBox"></div>`;
     b.querySelectorAll('#segTipo button').forEach(x=>x.onclick=()=>{ tipoEntrega=x.dataset.t; b.querySelectorAll('#segTipo button').forEach(y=>y.classList.remove('on')); x.classList.add('on'); endBox(); });
     endBox();
+    if(LOJACFG.obs && LOJACFG.obs.permite_pedido){ const ow=document.createElement('div'); ow.style.marginTop='12px';
+      ow.innerHTML=`<div class="muted">${LOJACFG.obs.rotulo_pedido||'Observações do pedido'}</div>`;
+      const ta=document.createElement('textarea'); ta.className='field'; ta.id='ckObs'; ta.rows=2; ta.placeholder='Ex: troco para R$ 100, entregar na portaria…'; ta.value=obsPedido||''; ta.oninput=()=>obsPedido=ta.value; ow.appendChild(ta); b.appendChild(ow); }
     document.getElementById('cGo').textContent='Revisar e enviar';
   } else { enviar(); }
 }
@@ -303,10 +312,10 @@ async function enviar(){
     await fetch(API+'/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone:tel,senha:tel,nome})});
     const body={ tipo:tipoEntrega, cliente:{telefone:tel,nome}, itens:cart,
       endereco: tipoEntrega==='DELIVERY'?{linha:(document.getElementById('ckEnd')||{}).value||'',complemento:(document.getElementById('ckComp')||{}).value||''}:null,
-      pagamento:{forma:'DIN'}, observacao:'' };
+      pagamento:{forma:'DIN'}, observacao:(obsPedido||'').trim(), obs_cozinha:(obsPedido||'').trim() };
     const r=await fetch(API+'/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
-    if(d.ok){ cart=[]; atualizarCart(); fecharCarrinho(); toast('Pedido enviado! Nº '+(d.pedido.numero||d.pedido.id)); }
+    if(d.ok){ cart=[]; obsPedido=''; atualizarCart(); fecharCarrinho(); toast('Pedido enviado! Nº '+(d.pedido.numero||d.pedido.id)); }
     else { toast(d.erro||'Erro ao enviar'); go.disabled=false; go.textContent='Revisar e enviar'; }
   }catch(e){ toast('Falha de conexão'); go.disabled=false; go.textContent='Revisar e enviar'; }
 }
@@ -323,7 +332,8 @@ function aplicarTema(t){ if(!t) return; const r=document.documentElement.style;
   const fn=document.getElementById('lojaFunc'); if(fn) fn.textContent=t.texto_funcionamento||'';
   if(t.marca) document.title=t.marca+' — Peça online';
 }
-fetch(API+'/api/tema').then(r=>r.json()).then(d=>aplicarTema(d.tema)).catch(()=>{});
+let LOJACFG={};
+fetch(API+'/api/loja-config').then(r=>r.json()).then(d=>{ LOJACFG=d||{}; aplicarTema(d.tema); }).catch(()=>{});
 carregar();
 </script>
 </body>

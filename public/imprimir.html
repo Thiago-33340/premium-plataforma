@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comanda</title>
+<style>
+  :root{ --w:80mm; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:#3a3a3a; font-family:'Courier New',ui-monospace,monospace; color:#000; }
+  .bar{ background:#111; color:#fff; padding:12px 16px; display:flex; gap:10px; align-items:center; font-family:-apple-system,Segoe UI,Roboto,sans-serif; position:sticky; top:0 }
+  .bar b{ font-size:14px } .bar .sp{ flex:1 }
+  .bar button{ background:#F97316; color:#160a02; border:none; border-radius:8px; padding:9px 16px; font-weight:700; font-size:14px; cursor:pointer }
+  .bar a{ color:#bbb; text-decoration:none; font-size:13px }
+  .bar select{ border-radius:6px; padding:6px; border:1px solid #444; background:#1c1c1c; color:#fff }
+  .sheetwrap{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:20px 10px 60px; }
+  .receipt{ width:var(--w); background:#fff; padding:6mm 4mm; box-shadow:0 6px 20px #0007; }
+  .receipt *{ font-family:'Courier New',monospace; }
+  .ct{ text-align:center; } .b{ font-weight:700; } .big{ font-size:15px; } .sm{ font-size:11px; }
+  .hr{ border:none; border-top:1px dashed #000; margin:6px 0; }
+  .ln{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; line-height:1.5; }
+  .it{ margin:5px 0; font-size:12.5px; }
+  .it .nm{ font-weight:700; }
+  .it .ad{ padding-left:10px; font-size:11.5px; }
+  .it .ob{ padding-left:10px; font-size:12px; font-weight:700; }
+  .obbox{ border:1px dashed #000; padding:4px 6px; margin:6px 0; font-size:12.5px; }
+  .obbox .t{ font-weight:700; font-size:11px; }
+  .tot{ font-size:14px; font-weight:700; }
+  .msg{ color:#fff; font-family:-apple-system,Segoe UI,sans-serif; text-align:center; padding:40px }
+  @media print{
+    html,body{ background:#fff; }
+    .bar{ display:none; }
+    .sheetwrap{ padding:0; gap:0; }
+    .receipt{ width:auto; box-shadow:none; padding:0 1mm; page-break-after:always; }
+    @page{ size:var(--w) auto; margin:0; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>Comanda</b><span id="info" style="color:#bbb;font-size:13px"></span>
+  <span class="sp"></span>
+  <a href="/admin">‹ Painel</a>
+  <button onclick="window.print()">🖨️ Imprimir</button>
+</div>
+<div id="out" class="sheetwrap"><div class="msg">Carregando…</div></div>
+<script>
+const API=location.origin;
+const qs=new URLSearchParams(location.search);
+const BRL=v=>'R$ '+Number(v||0).toFixed(2).replace('.',',');
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const TIPO={DELIVERY:'ENTREGA',TAKEOUT:'RETIRADA',MESA:'MESA'};
+function hora(s){ try{return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return''} }
+
+function receiptHTML(p, cfg){
+  const im=cfg.impressao||{}, marca=(cfg.tema&&cfg.tema.marca)||'';
+  const titulo=(im.cabecalho&&im.cabecalho.trim())?im.cabecalho:marca;
+  const obsTxt=(p.observacao||'').trim();
+  const obsBox = (im.mostrar_obs_pedido!==false && obsTxt) ? `<div class="obbox"><div class="t">OBSERVAÇÕES DO PEDIDO</div>${esc(obsTxt)}</div>` : '';
+  let h=`<div class="receipt">`;
+  if(titulo) h+=`<div class="ct b big">${esc(titulo)}</div>`;
+  h+=`<div class="ct sm">${TIPO[p.tipo]||p.tipo||''} · Pedido #${esc(p.numero)}</div>`;
+  h+=`<div class="ct sm">${hora(p.criado_em)}</div>`;
+  h+=`<hr class="hr">`;
+  if(im.mostrar_cliente!==false){
+    const c=p.cliente||{};
+    h+=`<div class="ln"><span>Cliente</span><span class="b">${esc(c.nome||'—')}</span></div>`;
+    if(c.telefone) h+=`<div class="ln"><span>WhatsApp</span><span>${esc(c.telefone)}</span></div>`;
+    if(p.tipo==='DELIVERY' && p.endereco){ const e=p.endereco; h+=`<div class="sm">End: ${esc(e.linha||'')}${e.complemento?(' — '+esc(e.complemento)):''}</div>`; }
+    h+=`<hr class="hr">`;
+  }
+  if(obsBox && im.obs_pedido_pos==='topo') h+=obsBox;
+  (p.itens||[]).forEach(it=>{
+    const q=it.quantidade||1;
+    h+=`<div class="it"><div class="ln"><span class="nm">${q}x ${esc(it.nome||'Item')}</span>${im.mostrar_precos!==false?`<span>${BRL((it.unit!=null?it.unit:it.preco)*q)}</span>`:''}</div>`;
+    if(it.resumo) h+=`<div class="ad">${esc(it.resumo)}</div>`;
+    else if(Array.isArray(it.selecoes)&&it.selecoes.length) h+=`<div class="ad">${esc(it.selecoes.map(s=>s.nome).join(', '))}</div>`;
+    if(im.mostrar_obs_item!==false && it.observacao && String(it.observacao).trim()) h+=`<div class="ob">&gt; ${esc(it.observacao)}</div>`;
+    h+=`</div>`;
+  });
+  h+=`<hr class="hr">`;
+  if(im.mostrar_precos!==false){
+    h+=`<div class="ln"><span>Subtotal</span><span>${BRL(p.subtotal)}</span></div>`;
+    if(Number(p.taxa_entrega)>0) h+=`<div class="ln"><span>Entrega</span><span>${BRL(p.taxa_entrega)}</span></div>`;
+    h+=`<div class="ln tot"><span>TOTAL</span><span>${BRL(p.total)}</span></div>`;
+  }
+  if(p.pagamento&&p.pagamento.forma) h+=`<div class="ln sm"><span>Pagamento</span><span>${esc(p.pagamento.forma)}</span></div>`;
+  if(obsBox && im.obs_pedido_pos!=='topo') h+=obsBox;
+  h+=`<hr class="hr"><div class="ct sm">Obrigado pela preferência!</div></div>`;
+  return h;
+}
+
+async function init(){
+  const id=qs.get('pedido')||qs.get('id');
+  if(!id){ document.getElementById('out').innerHTML='<div class="msg">Informe ?pedido=NUMERO na URL.</div>'; return; }
+  let p, cfg;
+  try{ p=await (await fetch(API+'/api/pedidos/'+encodeURIComponent(id))).json(); }catch(e){}
+  if(!p || p.erro || !p.numero){ document.getElementById('out').innerHTML='<div class="msg">Pedido não encontrado.</div>'; return; }
+  try{ cfg=await (await fetch(API+'/api/loja-config')).json(); }catch(e){ cfg={}; }
+  const im=cfg.impressao||{};
+  document.documentElement.style.setProperty('--w', im.largura==='58mm'?'58mm':'80mm');
+  document.getElementById('info').textContent='Pedido #'+p.numero;
+  const copias=Math.min(Math.max(parseInt(im.copias,10)||1,1),3);
+  document.getElementById('out').innerHTML = Array.from({length:copias}).map(()=>receiptHTML(p,cfg)).join('');
+  if(qs.get('auto')!=='0') setTimeout(()=>window.print(), 350);
+}
+init();
+</script>
+</body>
+</html>

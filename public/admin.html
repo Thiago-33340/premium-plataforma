@@ -205,6 +205,8 @@
         #s_pedidos .pst.r{background:#3a1414;color:#ff8d8d}
         #s_pedidos .pst.x{background:#222;color:#aaa}
         #s_pedidos .grpsec{font-size:12px;color:#8a8a93;text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px}
+        #s_pedidos .prbtn{font-size:11px;font-weight:700;color:#cfcfd6;background:#1a1a1e;border:1px solid #2a2a30;border-radius:7px;padding:4px 9px;text-decoration:none}
+        #s_pedidos .prbtn:hover{background:#26262c}
         #s_cardapio .catwrap{border:1px solid #1d1d20;border-radius:12px;margin-bottom:12px;background:#0e0e10;overflow:hidden}
         #s_cardapio .catsum{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;cursor:pointer;list-style:none}
         #s_cardapio .catsum::-webkit-details-marker{display:none}
@@ -275,6 +277,25 @@
           <div class="panel" style="margin-bottom:18px">
             <div class="row"><div class="nm">Destino dos pedidos da Jéssica<small>Pra onde vai o pedido que ela fecha no WhatsApp</small></div><div class="seg" id="segDestino"><button data-d="SAIPOS">Saipos</button><button data-d="NOSSO">Nosso sistema</button></div></div>
             <div class="row"><div class="nm">Baixa automática de estoque<small>Dá saída nos insumos pela ficha técnica quando o pedido entra</small></div><div class="seg" id="segBaixa"><button data-b="1">Ligada</button><button data-b="0">Desligada</button></div></div>
+          </div>
+          <h3 class="sec">Impressão de comanda</h3>
+          <div class="panel" style="margin-bottom:18px">
+            <p class="mut sm" style="margin:0 0 4px">Impressão simples: conecte a impressora como <b>padrão do Windows</b>, clique em Imprimir num pedido e pronto — sai pela janela de impressão, sem driver especial.</p>
+            <div class="row"><div class="nm">Largura do papel</div><div class="seg" id="segLarg"><button data-v="58mm">58mm</button><button data-v="80mm">80mm</button></div></div>
+            <div class="row"><div class="nm">Cabeçalho da comanda<small>topo do cupom (nome/CNPJ). Vazio usa o nome da loja</small></div><input class="field" id="cfCab" style="max-width:240px"></div>
+            <div class="row"><div class="nm">Mostrar preços</div><div class="seg" id="segPrec"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Mostrar dados do cliente</div><div class="seg" id="segCli"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Cópias por impressão</div><div class="seg" id="segCop"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></div>
+          </div>
+          <h3 class="sec">Observações do pedido</h3>
+          <div class="panel" style="margin-bottom:18px">
+            <p class="mut sm" style="margin:0 0 4px">Onde o cliente pode escrever observação, e onde ela sai na comanda.</p>
+            <div class="row"><div class="nm">Permitir observação do pedido<small>um campo geral no fim do carrinho</small></div><div class="seg" id="segObsP"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Permitir observação por item<small>um campo em cada item montado</small></div><div class="seg" id="segObsI"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Imprimir observação do item</div><div class="seg" id="segPrI"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Imprimir observação do pedido</div><div class="seg" id="segPrP"><button data-v="1">Sim</button><button data-v="0">Não</button></div></div>
+            <div class="row"><div class="nm">Onde imprime a obs. do pedido</div><div class="seg" id="segPos"><button data-v="topo">No topo</button><button data-v="rodape">No rodapé</button></div></div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn primary" onclick="salvarImpressao()">Salvar impressão & observações</button><span class="mut sm" id="impStatus"></span></div>
           </div>
           <h3 class="sec">Identidade</h3>
           <div class="panel"><div class="row"><div class="nm">Logo da loja<small>Aparece no site, mesas, caixa e admin</small></div><img src="/logo.png" style="height:34px;background:#000;border-radius:8px;padding:4px 8px"></div>
@@ -411,7 +432,7 @@ async function renderPedidos(){
     h+=`<div class="grpsec">${esc(st)} · ${grupos[st].length}</div>`;
     h+=grupos[st].map(p=>{ const hora=p.criado_em?new Date(p.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
       const tipo=TIPO_NOME[p.tipo]||p.tipo||''; const wa=p.origem_whatsapp?' · WhatsApp':'';
-      return `<div class="pedcard"><div class="nm"><b>#${esc(p.numero)} · ${esc((p.cliente&&p.cliente.nome)||'Cliente')}</b><small>${hora} · ${esc(tipo)}${esc(wa)} · ${esc(p.canal||'')}</small></div><div style="text-align:right"><div style="font-weight:700">${BRL(p.total)}</div><span class="pst ${cor}">${esc(st)}</span></div></div>`;
+      return `<div class="pedcard"><div class="nm"><b>#${esc(p.numero)} · ${esc((p.cliente&&p.cliente.nome)||'Cliente')}</b><small>${hora} · ${esc(tipo)}${esc(wa)} · ${esc(p.canal||'')}</small></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="font-weight:700">${BRL(p.total)}</div><span class="pst ${cor}">${esc(st)}</span><a class="prbtn" href="/imprimir?pedido=${encodeURIComponent(p.numero)}" target="_blank">🖨️ Imprimir</a></div></div>`;
     }).join('');
   }
   $('pedFila').innerHTML=h;
@@ -627,8 +648,23 @@ async function loadConfig(){ const c=await (await fetch(API+'/api/admin/config?a
   document.querySelectorAll('#segDestino button').forEach(b=>b.classList.toggle('on',b.dataset.d===(c.destino_pedido||'SAIPOS')));
   document.querySelectorAll('#segBaixa button').forEach(b=>b.classList.toggle('on',b.dataset.b===(c.baixa_estoque_auto?'1':'0')));
   document.querySelectorAll('#segDestino button').forEach(b=> b.onclick=()=>saveCfg({destino_pedido:b.dataset.d}));
-  document.querySelectorAll('#segBaixa button').forEach(b=> b.onclick=()=>saveCfg({baixa_estoque_auto:b.dataset.b==='1'})); }
+  document.querySelectorAll('#segBaixa button').forEach(b=> b.onclick=()=>saveCfg({baixa_estoque_auto:b.dataset.b==='1'}));
+  loadImpressao(); }
 async function saveCfg(c){ await fetch(API+'/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,...c})}); toast('Configuração salva'); loadConfig(); }
+function segPick(id,v){ document.querySelectorAll('#'+id+' button').forEach(b=>{ b.classList.toggle('on',b.dataset.v===String(v)); b.onclick=()=>{ document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }; }); }
+function segGet(id,def){ const b=document.querySelector('#'+id+' button.on'); return b?b.dataset.v:def; }
+async function loadImpressao(){ let d={}; try{ d=await (await fetch(API+'/api/admin/impressao?admin_id='+user.id)).json(); }catch(e){}
+  const im=d.impressao||{}, ob=d.obs||{};
+  segPick('segLarg',im.largura||'80mm'); const cab=$('cfCab'); if(cab)cab.value=im.cabecalho||'';
+  segPick('segPrec',im.mostrar_precos!==false?'1':'0'); segPick('segCli',im.mostrar_cliente!==false?'1':'0'); segPick('segCop',String(im.copias||1));
+  segPick('segObsP',ob.permite_pedido!==false?'1':'0'); segPick('segObsI',ob.permite_item!==false?'1':'0');
+  segPick('segPrI',im.mostrar_obs_item!==false?'1':'0'); segPick('segPrP',im.mostrar_obs_pedido!==false?'1':'0'); segPick('segPos',im.obs_pedido_pos||'rodape'); }
+async function salvarImpressao(){ if($('impStatus'))$('impStatus').textContent='Salvando…';
+  const payload={ admin_id:user.id,
+    impressao:{ largura:segGet('segLarg','80mm'), cabecalho:($('cfCab')||{}).value||'', mostrar_precos:segGet('segPrec','1')==='1', mostrar_cliente:segGet('segCli','1')==='1', copias:parseInt(segGet('segCop','1'),10), mostrar_obs_item:segGet('segPrI','1')==='1', mostrar_obs_pedido:segGet('segPrP','1')==='1', obs_pedido_pos:segGet('segPos','rodape') },
+    obs:{ permite_pedido:segGet('segObsP','1')==='1', permite_item:segGet('segObsI','1')==='1' } };
+  try{ const r=await (await fetch(API+'/api/admin/impressao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).json();
+    if(r.ok){ toast('Salvo'); if($('impStatus'))$('impStatus').textContent='Salvo ✓'; } else if($('impStatus'))$('impStatus').textContent=r.erro||'Erro'; }catch(e){ if($('impStatus'))$('impStatus').textContent='Falha'; } }
 </script>
 </body>
 </html>

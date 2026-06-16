@@ -63,6 +63,28 @@ function temaSanitize(input, base) {
   return t;
 }
 
+/* ===== Observações do pedido + Impressão (config simples por tenant) ===== */
+const OBS_DEFAULTS = { permite_pedido: true, permite_item: true, rotulo_pedido: 'Observações do pedido', rotulo_item: 'Alguma observação?' };
+const IMPRESSAO_DEFAULTS = { largura: '80mm', cabecalho: '', mostrar_precos: true, mostrar_cliente: true, mostrar_obs_item: true, mostrar_obs_pedido: true, obs_pedido_pos: 'rodape', copias: 1 };
+function obsSanitize(input, base) {
+  const o = Object.assign({}, base || OBS_DEFAULTS);
+  if (!input || typeof input !== 'object') return o;
+  for (const k of ['permite_pedido', 'permite_item']) if (typeof input[k] === 'boolean') o[k] = input[k];
+  if (typeof input.rotulo_pedido === 'string') o.rotulo_pedido = input.rotulo_pedido.slice(0, 60);
+  if (typeof input.rotulo_item === 'string') o.rotulo_item = input.rotulo_item.slice(0, 60);
+  return o;
+}
+function impressaoSanitize(input, base) {
+  const i = Object.assign({}, base || IMPRESSAO_DEFAULTS);
+  if (!input || typeof input !== 'object') return i;
+  if (input.largura === '58mm' || input.largura === '80mm') i.largura = input.largura;
+  if (typeof input.cabecalho === 'string') i.cabecalho = input.cabecalho.slice(0, 120);
+  for (const k of ['mostrar_precos', 'mostrar_cliente', 'mostrar_obs_item', 'mostrar_obs_pedido']) if (typeof input[k] === 'boolean') i[k] = input[k];
+  if (input.obs_pedido_pos === 'topo' || input.obs_pedido_pos === 'rodape') i.obs_pedido_pos = input.obs_pedido_pos;
+  const c = parseInt(input.copias, 10); if (c >= 1 && c <= 3) i.copias = c;
+  return i;
+}
+
 /* ===== Helpers compartilhados (matching, movimento, Jéssica) ===== */
 function estNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function estLev(a, b) { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; }
@@ -1131,6 +1153,12 @@ async function api(req, res, url) {
     const cfg = (r.rows[0] && r.rows[0].config) || {};
     return json(res, 200, { tema: temaSanitize(cfg.tema || {}, TEMA_DEFAULTS) });
   }
+  // config pública da loja (tema + observações + impressão) p/ storefront e comanda
+  if (sub === 'loja-config' && req.method === 'GET') {
+    const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const cfg = (r.rows[0] && r.rows[0].config) || {};
+    return json(res, 200, { tema: temaSanitize(cfg.tema || {}, TEMA_DEFAULTS), obs: obsSanitize(cfg.obs || {}, OBS_DEFAULTS), impressao: impressaoSanitize(cfg.impressao || {}, IMPRESSAO_DEFAULTS) });
+  }
 
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
@@ -1551,6 +1579,19 @@ async function api(req, res, url) {
       await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
       return json(res, 200, { ok: true, tema: cur.tema });
     }
+    if (seg[2] === 'impressao' && req.method === 'GET') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cfg = (r.rows[0] && r.rows[0].config) || {};
+      return json(res, 200, { obs: obsSanitize(cfg.obs || {}, OBS_DEFAULTS), impressao: impressaoSanitize(cfg.impressao || {}, IMPRESSAO_DEFAULTS) });
+    }
+    if (seg[2] === 'impressao' && req.method === 'POST') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cur = (r.rows[0] && r.rows[0].config) || {};
+      cur.obs = obsSanitize(body.obs || {}, obsSanitize(cur.obs || {}, OBS_DEFAULTS));
+      cur.impressao = impressaoSanitize(body.impressao || {}, impressaoSanitize(cur.impressao || {}, IMPRESSAO_DEFAULTS));
+      await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
+      return json(res, 200, { ok: true, obs: cur.obs, impressao: cur.impressao });
+    }
     if (seg[2] === 'config' && req.method === 'POST') {
       const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
       const cur = (r.rows[0] && r.rows[0].config) || {};
@@ -1710,6 +1751,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/loja2' || p === '/loja2/') return serveStatic(res, path.join(ROOT, 'public/loja2.html'));
     if (p === '/disponibilidade' || p === '/disponibilidade/') return serveStatic(res, path.join(ROOT, 'public/disponibilidade.html'));
     if (p === '/estoque' || p === '/estoque/') return serveStatic(res, path.join(ROOT, 'public/estoque.html'));
+    if (p === '/imprimir' || p === '/imprimir/') return serveStatic(res, path.join(ROOT, 'public/imprimir.html'));
     if (p === '/mesas' || p === '/mesas/') return serveStatic(res, path.join(ROOT, 'public/mesas.html'));
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
