@@ -77,8 +77,9 @@
 </head>
 <body>
 <header>
-  <img src="/logo.png" alt="Com Amor, Premium Pizzas" style="height:34px;width:auto;display:block">
-  <div class="slogan">SJRP</div>
+  <img id="lojaLogo" src="/logo.png" alt="" style="height:34px;width:auto;display:block">
+  <div class="logo" id="lojaMarca" style="font-size:16px"></div>
+  <div class="slogan" id="lojaFunc"></div>
 </header>
 <div class="cats" id="cats"></div>
 <div class="wrap" id="catalogo"><p class="muted">Carregando cardápio…</p></div>
@@ -310,6 +311,19 @@ async function enviar(){
   }catch(e){ toast('Falha de conexão'); go.disabled=false; go.textContent='Revisar e enviar'; }
 }
 let tt; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2600); }
+
+function aplicarTema(t){ if(!t) return; const r=document.documentElement.style;
+  if(t.cor_primaria){ r.setProperty('--laranja', t.cor_primaria); r.setProperty('--laranja2', t.cor_primaria); }
+  if(t.cor_primaria_texto) r.setProperty('--cor-txt-pri', t.cor_primaria_texto);
+  if(t.modo==='claro'){ r.setProperty('--preto','#f6f4f0'); r.setProperty('--cinza','#ffffff'); r.setProperty('--cinza2','#f0eee9'); r.setProperty('--linha','#e5e1d9'); r.setProperty('--txt','#1f1d1a'); r.setProperty('--mut','#7a756c'); }
+  if(t.fonte){ if(!document.getElementById('tema-font')){ const l=document.createElement('link'); l.id='tema-font'; l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family='+encodeURIComponent(t.fonte)+':wght@400;600;700;800&display=swap'; document.head.appendChild(l); } document.body.style.fontFamily="'"+t.fonte+"',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"; }
+  if(!document.getElementById('tema-ov')){ const s=document.createElement('style'); s.id='tema-ov'; s.textContent='.btn,.add,.cartbar,.cats button.on,.chip{color:var(--cor-txt-pri,#000)!important}'; document.head.appendChild(s); }
+  const lg=document.getElementById('lojaLogo'); if(lg){ if(t.logo_url){ lg.src=t.logo_url; lg.style.display='block'; } else { lg.style.display='none'; } }
+  const mc=document.getElementById('lojaMarca'); if(mc) mc.textContent=t.logo_url?'':(t.marca||'');
+  const fn=document.getElementById('lojaFunc'); if(fn) fn.textContent=t.texto_funcionamento||'';
+  if(t.marca) document.title=t.marca+' — Peça online';
+}
+fetch(API+'/api/tema').then(r=>r.json()).then(d=>aplicarTema(d.tema)).catch(()=>{});
 carregar();
 </script>
 </body>

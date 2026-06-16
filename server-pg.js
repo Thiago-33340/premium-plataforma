@@ -43,6 +43,26 @@ async function estPermsEfetivas(uid) {
 }
 async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
 
+/* ===== Tema white-label da loja (storefront por tenant) ===== */
+const TEMA_DEFAULTS = { marca: 'Premium Pizzas', dominio: '', modo: 'escuro', cor_primaria: '#F97316', cor_primaria_texto: '#160a02', fonte: 'Sora', logo_url: '/logo.png', layout_card: 'lista', mostrar_busca: true, mostrar_descricao: true, mostrar_preco_a_partir: true, mostrar_destaques: false, mostrar_avaliacoes: false, texto_funcionamento: '' };
+const FONTES_OK = ['Sora', 'Inter', 'Archivo', 'Nunito', 'Baloo 2', 'Jost', 'Cormorant Garamond', 'Poppins', 'Montserrat', 'Roboto'];
+function temaSanitize(input, base) {
+  const t = Object.assign({}, base || TEMA_DEFAULTS);
+  if (!input || typeof input !== 'object') return t;
+  const hex = v => (typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v.trim())) ? v.trim() : null;
+  if (typeof input.marca === 'string') t.marca = input.marca.slice(0, 60);
+  if (typeof input.dominio === 'string') t.dominio = input.dominio.replace(/[^a-z0-9.\-:/]/gi, '').slice(0, 80);
+  if (input.modo === 'claro' || input.modo === 'escuro') t.modo = input.modo;
+  if (hex(input.cor_primaria)) t.cor_primaria = hex(input.cor_primaria);
+  if (hex(input.cor_primaria_texto)) t.cor_primaria_texto = hex(input.cor_primaria_texto);
+  if (FONTES_OK.includes(input.fonte)) t.fonte = input.fonte;
+  if (typeof input.logo_url === 'string') t.logo_url = input.logo_url.slice(0, 300);
+  if (input.layout_card === 'grade' || input.layout_card === 'lista') t.layout_card = input.layout_card;
+  for (const k of ['mostrar_busca', 'mostrar_descricao', 'mostrar_preco_a_partir', 'mostrar_destaques', 'mostrar_avaliacoes']) if (typeof input[k] === 'boolean') t[k] = input[k];
+  if (typeof input.texto_funcionamento === 'string') t.texto_funcionamento = input.texto_funcionamento.slice(0, 80);
+  return t;
+}
+
 /* ===== Helpers compartilhados (matching, movimento, Jéssica) ===== */
 function estNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function estLev(a, b) { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; }
@@ -1105,6 +1125,13 @@ async function api(req, res, url) {
     return json(res, 200, { resposta, usuario: u.nome });
   }
 
+  // tema white-label público (storefront lê para se vestir com a cara da loja)
+  if (sub === 'tema' && req.method === 'GET') {
+    const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const cfg = (r.rows[0] && r.rows[0].config) || {};
+    return json(res, 200, { tema: temaSanitize(cfg.tema || {}, TEMA_DEFAULTS) });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
@@ -1511,6 +1538,18 @@ async function api(req, res, url) {
       const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
       const cfg = (r.rows[0] && r.rows[0].config) || {};
       return json(res, 200, { destino_pedido: cfg.destino_pedido || 'SAIPOS', baixa_estoque_auto: !!cfg.baixa_estoque_auto, webhook_contagem: cfg.webhook_contagem || '', printer_ip: cfg.printer_ip || '' });
+    }
+    if (seg[2] === 'tema' && req.method === 'GET') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cfg = (r.rows[0] && r.rows[0].config) || {};
+      return json(res, 200, { tema: temaSanitize(cfg.tema || {}, TEMA_DEFAULTS), fontes: FONTES_OK });
+    }
+    if (seg[2] === 'tema' && req.method === 'POST') {
+      const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cur = (r.rows[0] && r.rows[0].config) || {};
+      cur.tema = temaSanitize(body.tema || body, temaSanitize(cur.tema || {}, TEMA_DEFAULTS));
+      await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
+      return json(res, 200, { ok: true, tema: cur.tema });
     }
     if (seg[2] === 'config' && req.method === 'POST') {
       const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);

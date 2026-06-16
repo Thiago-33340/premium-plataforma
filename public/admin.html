@@ -143,6 +143,7 @@
         <a class="on" data-s="inicio" onclick="go('inicio')"><span class="ic">▾</span> Início</a>
         <a data-s="pedidos" onclick="go('pedidos')"><span class="ic">🧾</span> Pedidos</a>
         <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
+        <a data-s="aparencia" onclick="go('aparencia')"><span class="ic">🎨</span> Aparência</a>
         <a data-s="estoque" onclick="go('estoque')"><span class="ic">📦</span> Estoque</a>
         <a data-s="equipe" onclick="go('equipe')"><span class="ic">👥</span> Equipe</a>
         <a data-s="config" onclick="go('config')"><span class="ic">⚙️</span> Configurações</a>
@@ -163,6 +164,7 @@
         <button class="on" onclick="go('inicio',this)">Início</button>
         <button onclick="go('pedidos',this)">Pedidos</button>
         <button onclick="go('cardapio',this)">Cardápio</button>
+        <button onclick="go('aparencia',this)">Aparência</button>
         <button onclick="go('estoque',this)">Estoque</button>
         <button onclick="go('equipe',this)">Equipe</button>
         <button onclick="go('config',this)">Config</button>
@@ -238,6 +240,18 @@
           <div class="pagehead"><h2>Cardápio</h2><button class="btn primary" onclick="novaCategoria()">+ Nova categoria</button></div>
           <p class="mut sm" style="margin:0 0 12px">Estrutura: <b>Categoria → Item → Variações → Opções</b>. Crie, edite e exclua tudo; preço e disponibilidade refletem na hora no site. Um item sem variações (ex.: Coca-Cola) é vendido direto; um item com variações (ex.: uma borda de pizza) monta o pedido.</p>
           <div id="cardapioBox"></div>
+        </section>
+
+        <!-- APARÊNCIA -->
+        <section class="scr2" id="s_aparencia">
+          <div class="pagehead"><h2>Aparência da loja</h2><a class="btn primary" href="/loja" target="_blank" style="margin-left:auto">Ver minha loja ↗</a></div>
+          <p class="mut sm" style="margin:0 0 14px">Deixe o site com a sua cara. Marca, cores, fonte, logo e domínio são seus — o cliente que compra <b>não vê nada da Titan</b>.</p>
+          <div id="apForm"><div class="mut sm">Carregando…</div></div>
+          <div style="height:80px"></div>
+          <div style="position:sticky;bottom:0;background:#0c0c0eee;backdrop-filter:blur(6px);border-top:1px solid var(--bd,#26262c);padding:12px 0;margin-top:10px;display:flex;gap:10px;align-items:center">
+            <span class="mut sm" id="apStatus"></span>
+            <button class="btn primary" style="margin-left:auto" onclick="salvarAparencia()">Salvar aparência</button>
+          </div>
         </section>
 
         <!-- ESTOQUE -->
@@ -333,7 +347,7 @@ function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.re
   document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
   if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
   if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
-  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
 function sair(){ location.reload(); }
 
@@ -404,6 +418,57 @@ async function renderPedidos(){
 }
 function varTxt(d,base){ if(base==null) return 'vs ontem'; if(d>0) return `<b class="up">▲ ${d}</b> vs ontem (${base})`; if(d<0) return `<b class="down">▼ ${Math.abs(d)}</b> vs ontem (${base})`; return `igual a ontem (${base})`; }
 function fmtData(s){ try{ return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+
+/* ===== APARÊNCIA (tema white-label da loja) ===== */
+let _ap={}, _apFontes=[];
+async function loadAparencia(){
+  let d; try{ d=await (await fetch(API+'/api/admin/tema?admin_id='+user.id)).json(); }catch(e){ d={}; }
+  _ap=d.tema||{}; _apFontes=d.fontes||['Sora','Inter','Poppins','Montserrat','Roboto'];
+  const seg=(id,val,opts)=>`<div class="seg" id="${id}">${opts.map(o=>`<button data-v="${o.v}" class="${String(val)===String(o.v)?'on':''}" onclick="apSeg('${id}','${o.v}')">${o.t}</button>`).join('')}</div>`;
+  const chk=(id,on,lbl,sub)=>`<label class="row" style="cursor:pointer"><div class="nm">${lbl}${sub?`<small>${sub}</small>`:''}</div><input type="checkbox" id="${id}" ${on?'checked':''} style="width:20px;height:20px;accent-color:var(--lar,#ff7a18)"></label>`;
+  $('apForm').innerHTML=`
+   <h3 class="sec">Identidade</h3>
+   <div class="panel" style="margin-bottom:16px">
+     <div class="row"><div class="nm">Nome da loja<small>aparece no topo do site</small></div><input class="field" id="ap_marca" style="max-width:260px" value="${esc(_ap.marca||'')}"></div>
+     <div class="row"><div class="nm">Logo (URL)<small>imagem que aparece no cabeçalho</small></div><input class="field" id="ap_logo" style="max-width:260px" value="${esc(_ap.logo_url||'')}"></div>
+     <div class="row"><div class="nm">Domínio próprio<small>ex: pedir.minhaloja.com.br — apontamento via DNS</small></div><input class="field" id="ap_dom" style="max-width:260px" placeholder="opcional" value="${esc(_ap.dominio||'')}"></div>
+     <div class="row"><div class="nm">Texto de funcionamento<small>ex: Aberto até 23:30 · entrega ~40 min</small></div><input class="field" id="ap_func" style="max-width:260px" value="${esc(_ap.texto_funcionamento||'')}"></div>
+   </div>
+   <h3 class="sec">Cores e fonte</h3>
+   <div class="panel" style="margin-bottom:16px">
+     <div class="row"><div class="nm">Modo<small>fundo do site</small></div>${seg('ap_modo',_ap.modo||'escuro',[{v:'escuro',t:'Escuro'},{v:'claro',t:'Claro'}])}</div>
+     <div class="row"><div class="nm">Cor principal<small>botões e destaques</small></div><input type="color" id="ap_cor" value="${esc(_ap.cor_primaria||'#F97316')}" style="width:54px;height:38px;border:1px solid var(--bd,#26262c);border-radius:8px;background:none"></div>
+     <div class="row"><div class="nm">Cor do texto sobre a cor principal<small>p/ contraste nos botões</small></div><input type="color" id="ap_cortxt" value="${esc(_ap.cor_primaria_texto||'#160a02')}" style="width:54px;height:38px;border:1px solid var(--bd,#26262c);border-radius:8px;background:none"></div>
+     <div class="row"><div class="nm">Fonte<small>tipografia da marca</small></div><select class="field" id="ap_fonte" style="max-width:240px">${_apFontes.map(f=>`<option ${(_ap.fonte===f)?'selected':''}>${f}</option>`).join('')}</select></div>
+   </div>
+   <h3 class="sec">Como os itens aparecem</h3>
+   <div class="panel" style="margin-bottom:16px">
+     <div class="row"><div class="nm">Layout dos produtos<small>lista (com foto ao lado) ou grade (cards)</small></div>${seg('ap_layout',_ap.layout_card||'lista',[{v:'lista',t:'Lista'},{v:'grade',t:'Grade'}])}</div>
+     ${chk('ap_desc',_ap.mostrar_descricao!==false,'Mostrar descrição do item')}
+     ${chk('ap_apartir',_ap.mostrar_preco_a_partir!==false,'Mostrar “a partir de R$”','para itens montáveis')}
+     ${chk('ap_busca',_ap.mostrar_busca!==false,'Mostrar busca no topo')}
+   </div>
+   <h3 class="sec">Seções (ligam quando houver dado)</h3>
+   <div class="panel">
+     ${chk('ap_dest',!!_ap.mostrar_destaques,'Faixa de destaques','requer destaque cadastrado no cardápio')}
+     <label class="row" style="opacity:.6"><div class="nm">Avaliações dos clientes<small>em breve — só liga quando houver avaliação real</small></div><input type="checkbox" disabled style="width:20px;height:20px"></label>
+   </div>`;
+  $('apStatus').textContent='';
+}
+function apSeg(id,v){ const box=$(id); if(!box)return; box.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); box.dataset.val=v; }
+function apSegVal(id,def){ const box=$(id); if(!box)return def; return box.dataset.val || (box.querySelector('button.on')?box.querySelector('button.on').dataset.v:def); }
+async function salvarAparencia(){
+  const tema={
+    marca:$('ap_marca').value.trim(), logo_url:$('ap_logo').value.trim(), dominio:$('ap_dom').value.trim(),
+    texto_funcionamento:$('ap_func').value.trim(), modo:apSegVal('ap_modo','escuro'),
+    cor_primaria:$('ap_cor').value, cor_primaria_texto:$('ap_cortxt').value, fonte:$('ap_fonte').value,
+    layout_card:apSegVal('ap_layout','lista'), mostrar_descricao:$('ap_desc').checked,
+    mostrar_preco_a_partir:$('ap_apartir').checked, mostrar_busca:$('ap_busca').checked, mostrar_destaques:$('ap_dest').checked
+  };
+  $('apStatus').textContent='Salvando…';
+  try{ const r=await (await fetch(API+'/api/admin/tema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tema})})).json();
+    if(r.ok){ _ap=r.tema; toast('Aparência salva — abra “Ver minha loja”'); $('apStatus').textContent='Salvo ✓'; } else { $('apStatus').textContent=r.erro||'Erro'; }
+  }catch(e){ $('apStatus').textContent='Falha de conexão.'; } }
 
 /* ===== CARDÁPIO — CRUD completo (Categoria → Item → Variação → Opção) ===== */
 let _cat={categoria:{},prod:{},grupo:{},opc:{}};
