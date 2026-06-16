@@ -851,9 +851,9 @@ async function api(req, res, url) {
     if (expected && tok !== expected) return json(res, 401, { erro: 'token inválido' });
     const cfgRow = (await db.q(`SELECT periodicidade, ativo, config FROM est_lista_auto WHERE tenant_id=$1 ORDER BY id LIMIT 1`, [TENANT])).rows[0];
     const forcar = !!b.forcar;
-    if (!cfgRow || (!cfgRow.ativo && !forcar)) return json(res, 200, { due: false, motivo: 'lista automática desativada' });
-    const per = cfgRow.periodicidade || 'semanal';
-    const cfg = cfgRow.config || {};
+    if (!forcar && (!cfgRow || !cfgRow.ativo)) return json(res, 200, { due: false, motivo: 'lista automática desativada' });
+    const per = (cfgRow && cfgRow.periodicidade) || 'semanal';
+    const cfg = (cfgRow && cfgRow.config) || {};
     const now = new Date();
     let due = forcar;
     if (!due) {
