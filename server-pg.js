@@ -251,8 +251,8 @@ async function api(req, res, url) {
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal,
-        p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo, p.ultimo_valor, p.maior_valor,
-        c.nome AS categoria, f.nome AS fornecedor
+        p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo, p.ultimo_valor, p.maior_valor, p.observacoes,
+        p.categoria_id, p.fornecedor_preferido_id, c.nome AS categoria, f.nome AS fornecedor
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
@@ -277,6 +277,77 @@ async function api(req, res, url) {
       ultimas_contagens: await one('SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY iniciada_em DESC LIMIT 5'),
       ultimas_compras: await one('SELECT c.criado_em, c.usuario_nome, c.total, f.nome AS fornecedor FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 ORDER BY c.criado_em DESC LIMIT 5')
     });
+  }
+
+  // estoque v2 — escritas (CRUD) com checagem de gestor/gerente
+  if (sub === 'est' && ['produto', 'fornecedor', 'categoria'].includes(seg[2]) && req.method !== 'GET') {
+    const b = await readBody(req);
+    const podeEditar = await (async (uid) => { if (!uid) return false; try { const r = await db.q(`SELECT 1 FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]); return !!r.rows[0]; } catch (e) { return false; } })(b.usuario_id);
+    if (!podeEditar) return json(res, 403, { erro: 'Apenas gestor ou gerente pode editar.' });
+
+    // PRODUTO
+    if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
+      const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      try {
+        const r = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal,
+          fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE) RETURNING id`,
+          [TENANT, nome, b.categoria_id || null, b.unidade || null,
+           b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
+           b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null]);
+        return json(res, 201, { ok: true, id: r.rows[0].id });
+      } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe um produto com esse nome.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'produto' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE est_produto SET nome=COALESCE($2,nome), categoria_id=COALESCE($3,categoria_id), unidade=COALESCE($4,unidade),
+        estoque_minimo=$5, estoque_ideal=$6, fornecedor_preferido_id=$7,
+        pode_contar=COALESCE($8,pode_contar), pode_comprar=COALESCE($9,pode_comprar), pode_produzir=COALESCE($10,pode_produzir),
+        observacoes=COALESCE($11,observacoes), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$12`,
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.categoria_id || null, b.unidade || null,
+         b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
+         b.fornecedor_preferido_id || null, typeof b.pode_contar === 'boolean' ? b.pode_contar : null,
+         typeof b.pode_comprar === 'boolean' ? b.pode_comprar : null, typeof b.pode_produzir === 'boolean' ? b.pode_produzir : null,
+         b.observacoes ?? null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {
+      await db.q('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // FORNECEDOR
+    if (seg[2] === 'fornecedor' && !seg[3] && req.method === 'POST') {
+      const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      try {
+        const r = await db.q(`INSERT INTO est_fornecedor (tenant_id, nome, tipo, endereco, whatsapp, observacoes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+          [TENANT, nome, b.tipo || null, b.endereco || null, b.whatsapp || null, b.observacoes || null]);
+        return json(res, 201, { ok: true, id: r.rows[0].id });
+      } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Fornecedor já cadastrado.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'fornecedor' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE est_fornecedor SET nome=COALESCE($2,nome), tipo=COALESCE($3,tipo), endereco=COALESCE($4,endereco),
+        whatsapp=COALESCE($5,whatsapp), observacoes=COALESCE($6,observacoes), ativo=COALESCE($7,ativo) WHERE id=$1 AND tenant_id=$8`,
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.tipo ?? null, b.endereco ?? null, b.whatsapp ?? null, b.observacoes ?? null,
+         typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'fornecedor' && seg[3] && req.method === 'DELETE') {
+      await db.q('UPDATE est_fornecedor SET ativo=FALSE WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // CATEGORIA
+    if (seg[2] === 'categoria' && !seg[3] && req.method === 'POST') {
+      const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      try { const r = await db.q('INSERT INTO est_categoria (tenant_id, nome, ordem) VALUES ($1,$2,$3) RETURNING id', [TENANT, nome, Number(b.ordem) || 50]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
+      catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Categoria já existe.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'categoria' && seg[3] && req.method === 'PATCH') {
+      await db.q('UPDATE est_categoria SET nome=COALESCE($2,nome), ordem=COALESCE($3,ordem), ativo=COALESCE($4,ativo) WHERE id=$1 AND tenant_id=$5',
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.ordem != null ? Number(b.ordem) : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    return json(res, 404, { erro: 'rota est nao encontrada' });
   }
 
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
