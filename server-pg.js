@@ -137,6 +137,76 @@ async function estInterpretaWA(texto) {
     const o = JSON.parse(j.choices[0].message.content); o.via = 'ia'; return o;
   } catch (e) { return { acao: 'consulta', via: 'fallback' }; }
 }
+async function estMontaRota(inItens) {
+  inItens = (inItens || []).filter(x => x && x.produto_id);
+  if (!inItens.length) return { ir_primeiro_em: null, comprar_por_fornecedor: [], confirmar_antes: [], substitutos: [], nao_encontrados: [], estimativa_total: 0, alerta: null, itens_total: 0 };
+  const ids = inItens.map(x => parseInt(x.produto_id, 10)).filter(Boolean);
+  const pr = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.marca_preferida, p.ultimo_valor, p.menor_valor, p.maior_valor, p.fornecedor_preferido_id, fp.nome AS fornecedor_preferido
+    FROM est_produto p LEFT JOIN est_fornecedor fp ON fp.id=p.fornecedor_preferido_id
+    WHERE p.tenant_id=$1 AND p.id = ANY($2)`, [TENANT, ids]);
+  const pmap = {}; for (const p of pr.rows) pmap[p.id] = p;
+  const pf = await db.q(`SELECT pf.produto_id, pf.fornecedor_id, f.nome AS fornecedor, pf.preferencial, pf.marca, pf.marca_parecida, pf.status, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.frequencia
+    FROM est_produto_fornecedor pf JOIN est_fornecedor f ON f.id=pf.fornecedor_id
+    WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2)`, [TENANT, ids]);
+  const pfByProd = {}; for (const r of pf.rows) (pfByProd[r.produto_id] = pfByProd[r.produto_id] || []).push(r);
+  const itens = [], naoEncontrados = [], confirmar = [], substitutos = [];
+  for (const inp of inItens) {
+    const p = pmap[inp.produto_id]; if (!p) continue;
+    const qtd = inp.quantidade != null && inp.quantidade !== '' ? Number(inp.quantidade) : null;
+    const forns = (pfByProd[p.id] || []).slice();
+    let escolhido = null;
+    if (forns.length) {
+      const comValor = forns.filter(f => f.ultimo_valor != null);
+      escolhido = forns.find(f => f.preferencial) || (comValor.length ? comValor.reduce((a, bb) => Number(bb.ultimo_valor) < Number(a.ultimo_valor) ? bb : a) : null) || forns.reduce((a, bb) => Number(bb.frequencia || 0) > Number(a.frequencia || 0) ? bb : a);
+    }
+    const preco = escolhido && escolhido.ultimo_valor != null ? Number(escolhido.ultimo_valor) : (p.ultimo_valor != null ? Number(p.ultimo_valor) : null);
+    const fornNome = escolhido ? escolhido.fornecedor : (p.fornecedor_preferido || null);
+    const fornId = escolhido ? escolhido.fornecedor_id : (p.fornecedor_preferido_id || null);
+    const estimativa = (preco != null && qtd != null) ? Number((preco * qtd).toFixed(2)) : null;
+    const item = { produto_id: p.id, produto: p.nome, unidade: inp.unidade || p.unidade, quantidade: qtd, estoque_atual: Number(p.estoque_atual), estoque_minimo: p.estoque_minimo != null ? Number(p.estoque_minimo) : null, essencial: p.estoque_minimo != null && Number(p.estoque_atual) <= Number(p.estoque_minimo), fornecedor_id: fornId, fornecedor: fornNome, marca: escolhido ? escolhido.marca : p.marca_preferida, status_fornecedor: escolhido ? escolhido.status : null, preco_unit: preco, estimativa, frequencia: escolhido ? Number(escolhido.frequencia || 0) : null };
+    if (!fornNome) naoEncontrados.push(item); else itens.push(item);
+    if (escolhido && (/(confirm|parec|verific|incert)/i.test(escolhido.status || '') || (escolhido.marca_parecida && !escolhido.marca))) confirmar.push(item);
+    const outros = forns.filter(f => !escolhido || f.fornecedor_id !== escolhido.fornecedor_id);
+    if (outros.length) substitutos.push({ produto: p.nome, opcoes: outros.map(o => ({ fornecedor: o.fornecedor, preco: o.ultimo_valor != null ? Number(o.ultimo_valor) : null, marca: o.marca, marca_parecida: o.marca_parecida, status: o.status })) });
+  }
+  const porForn = {};
+  for (const it of itens) { const k = it.fornecedor || '(sem fornecedor)'; (porForn[k] = porForn[k] || { fornecedor: it.fornecedor, fornecedor_id: it.fornecedor_id, itens: [], total: 0 }); porForn[k].itens.push(it); if (it.estimativa != null) porForn[k].total += it.estimativa; }
+  const grupos = Object.values(porForn).map(g => { g.total = Number(g.total.toFixed(2)); return g; }).sort((a, b) => b.itens.length - a.itens.length || b.total - a.total);
+  const irPrimeiro = grupos.length ? grupos[0].fornecedor : null;
+  const estimativaTotal = Number(itens.reduce((s, it) => s + (it.estimativa || 0), 0).toFixed(2));
+  let alerta = null;
+  if (grupos.length > 1) {
+    const principal = grupos[0].fornecedor; let custoTudoPrincipal = 0, possivel = true;
+    for (const it of itens) {
+      if (it.fornecedor === principal) { custoTudoPrincipal += it.estimativa || 0; continue; }
+      const sub = substitutos.find(s => s.produto === it.produto);
+      const noPrincipal = sub && sub.opcoes.find(o => o.fornecedor === principal && o.preco != null);
+      if (noPrincipal && it.quantidade != null) custoTudoPrincipal += noPrincipal.preco * it.quantidade; else { possivel = false; break; }
+    }
+    if (possivel) { const aMais = Number((custoTudoPrincipal - estimativaTotal).toFixed(2)); if (aMais <= Math.max(8, estimativaTotal * 0.05)) alerta = `Não compensa dividir: comprar tudo em ${principal} custa só R$ ${aMais.toFixed(2)} a mais. Vá num lugar só.`; }
+  }
+  return { ir_primeiro_em: irPrimeiro, comprar_por_fornecedor: grupos, confirmar_antes: confirmar, substitutos, nao_encontrados: naoEncontrados, estimativa_total: estimativaTotal, alerta, itens_total: itens.length + naoEncontrados.length };
+}
+async function estItensReposicao(base) {
+  const cond = base === 'minimo' ? `estoque_minimo IS NOT NULL AND estoque_atual < estoque_minimo` : `estoque_ideal IS NOT NULL AND estoque_atual < estoque_ideal`;
+  const r = await db.q(`SELECT id, unidade, estoque_atual, estoque_minimo, estoque_ideal FROM est_produto WHERE tenant_id=$1 AND ativo AND pode_comprar AND (${cond}) ORDER BY nome`, [TENANT]);
+  return r.rows.map(p => { const atual = Number(p.estoque_atual); const alvo = p.estoque_ideal != null ? Number(p.estoque_ideal) : (p.estoque_minimo != null ? Number(p.estoque_minimo) : 0); const q = Math.max(alvo - atual, 0); return { produto_id: p.id, quantidade: Number(q.toFixed(3)), unidade: p.unidade }; }).filter(x => x.quantidade > 0);
+}
+function estRotaTexto(rota, periodicidade) {
+  const money = v => v != null ? 'R$ ' + Number(v).toFixed(2) : '—';
+  let t = `📋 Lista de compras automática (${periodicidade})`;
+  if (!rota.itens_total) return t + '\nNenhum item precisa de reposição agora. 👍';
+  if (rota.ir_primeiro_em) t += `\n📍 Ir primeiro em: ${rota.ir_primeiro_em}`;
+  for (const g of rota.comprar_por_fornecedor) {
+    t += `\n\n*${g.fornecedor || 'Sem fornecedor'}*${g.total ? ' (' + money(g.total) + ')' : ''}`;
+    for (const it of g.itens) t += `\n• ${it.produto} — ${it.quantidade != null ? it.quantidade : '?'} ${it.unidade || ''}${it.essencial ? ' (essencial)' : ''}`;
+  }
+  if (rota.nao_encontrados.length) { t += `\n\nSem fornecedor definido:`; for (const it of rota.nao_encontrados) t += `\n• ${it.produto} — ${it.quantidade} ${it.unidade || ''}`; }
+  if (rota.confirmar_antes && rota.confirmar_antes.length) t += `\n\n⚠️ Confirmar antes: ` + rota.confirmar_antes.map(i => i.produto).join(', ');
+  t += `\n\n💰 Estimativa total: ${money(rota.estimativa_total)}`;
+  if (rota.alerta) t += `\n⚠️ ${rota.alerta}`;
+  return t;
+}
 
 /* status canônico (orders.status_atual) <-> rótulos do painel atual */
 const CANON_TO_UI = { CONFIRMED: 'RECEBIDO', PRODUCING: 'EM_PREPARO', READY_TO_DELIVER: 'PRONTO', DISPATCHED: 'EM_ROTA', CONCLUDED: 'ENTREGUE', CANCELLED: 'CANCELADO' };
@@ -749,66 +819,64 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const inItens = Array.isArray(b.itens) ? b.itens.filter(x => x && x.produto_id) : [];
     if (!inItens.length) return json(res, 400, { erro: 'lista vazia' });
-    const ids = inItens.map(x => parseInt(x.produto_id, 10)).filter(Boolean);
-    const pr = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.marca_preferida, p.ultimo_valor, p.menor_valor, p.maior_valor, p.fornecedor_preferido_id, fp.nome AS fornecedor_preferido
-      FROM est_produto p LEFT JOIN est_fornecedor fp ON fp.id=p.fornecedor_preferido_id
-      WHERE p.tenant_id=$1 AND p.id = ANY($2)`, [TENANT, ids]);
-    const pmap = {}; for (const p of pr.rows) pmap[p.id] = p;
-    const pf = await db.q(`SELECT pf.produto_id, pf.fornecedor_id, f.nome AS fornecedor, pf.preferencial, pf.marca, pf.marca_parecida, pf.status, pf.ultimo_valor, pf.menor_valor, pf.maior_valor, pf.frequencia
-      FROM est_produto_fornecedor pf JOIN est_fornecedor f ON f.id=pf.fornecedor_id
-      WHERE pf.tenant_id=$1 AND pf.produto_id = ANY($2)`, [TENANT, ids]);
-    const pfByProd = {}; for (const r of pf.rows) (pfByProd[r.produto_id] = pfByProd[r.produto_id] || []).push(r);
-    const itens = [], naoEncontrados = [], confirmar = [], substitutos = [];
-    for (const inp of inItens) {
-      const p = pmap[inp.produto_id]; if (!p) continue;
-      const qtd = inp.quantidade != null && inp.quantidade !== '' ? Number(inp.quantidade) : null;
-      const forns = (pfByProd[p.id] || []).slice();
-      let escolhido = null;
-      if (forns.length) {
-        const comValor = forns.filter(f => f.ultimo_valor != null);
-        escolhido = forns.find(f => f.preferencial)
-          || (comValor.length ? comValor.reduce((a, bb) => Number(bb.ultimo_valor) < Number(a.ultimo_valor) ? bb : a) : null)
-          || forns.reduce((a, bb) => Number(bb.frequencia || 0) > Number(a.frequencia || 0) ? bb : a);
-      }
-      const preco = escolhido && escolhido.ultimo_valor != null ? Number(escolhido.ultimo_valor) : (p.ultimo_valor != null ? Number(p.ultimo_valor) : null);
-      const fornNome = escolhido ? escolhido.fornecedor : (p.fornecedor_preferido || null);
-      const fornId = escolhido ? escolhido.fornecedor_id : (p.fornecedor_preferido_id || null);
-      const estimativa = (preco != null && qtd != null) ? Number((preco * qtd).toFixed(2)) : null;
-      const item = {
-        produto_id: p.id, produto: p.nome, unidade: inp.unidade || p.unidade, quantidade: qtd,
-        estoque_atual: Number(p.estoque_atual), estoque_minimo: p.estoque_minimo != null ? Number(p.estoque_minimo) : null,
-        essencial: p.estoque_minimo != null && Number(p.estoque_atual) <= Number(p.estoque_minimo),
-        fornecedor_id: fornId, fornecedor: fornNome, marca: escolhido ? escolhido.marca : p.marca_preferida,
-        status_fornecedor: escolhido ? escolhido.status : null, preco_unit: preco, estimativa,
-        frequencia: escolhido ? Number(escolhido.frequencia || 0) : null
-      };
-      if (!fornNome) naoEncontrados.push(item); else itens.push(item);
-      if (escolhido && (/(confirm|parec|verific|incert)/i.test(escolhido.status || '') || (escolhido.marca_parecida && !escolhido.marca))) confirmar.push(item);
-      const outros = forns.filter(f => !escolhido || f.fornecedor_id !== escolhido.fornecedor_id);
-      if (outros.length) substitutos.push({ produto: p.nome, opcoes: outros.map(o => ({ fornecedor: o.fornecedor, preco: o.ultimo_valor != null ? Number(o.ultimo_valor) : null, marca: o.marca, marca_parecida: o.marca_parecida, status: o.status })) });
+    const rota = await estMontaRota(inItens);
+    return json(res, 200, rota);
+  }
+
+  // ---- Listas automáticas por período ----
+  if (sub === 'est' && seg[2] === 'lista-auto' && seg[3] === 'preview' && req.method === 'GET') {
+    const base = (url.searchParams.get('base') === 'minimo') ? 'minimo' : 'ideal';
+    const itens = await estItensReposicao(base);
+    const rota = await estMontaRota(itens);
+    return json(res, 200, { base, rota });
+  }
+  if (sub === 'est' && seg[2] === 'lista-auto' && seg[3] === 'config' && req.method === 'GET') {
+    const r = await db.q(`SELECT id, periodicidade, ativo, config FROM est_lista_auto WHERE tenant_id=$1 ORDER BY id LIMIT 1`, [TENANT]);
+    return json(res, 200, { config: r.rows[0] || { periodicidade: 'semanal', ativo: false, config: { base: 'ideal', dia: 1, hora: 8 } } });
+  }
+  if (sub === 'est' && seg[2] === 'lista-auto' && seg[3] === 'config' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'acessar_configuracoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const per = ['diaria', 'semanal', 'mensal', 'trimestral'].includes(b.periodicidade) ? b.periodicidade : 'semanal';
+    const cfg = { base: b.base === 'minimo' ? 'minimo' : 'ideal', dia: Number(b.dia) || 1, hora: Number(b.hora) || 8 };
+    const ex = await db.q(`SELECT id FROM est_lista_auto WHERE tenant_id=$1 ORDER BY id LIMIT 1`, [TENANT]);
+    if (ex.rows[0]) await db.q(`UPDATE est_lista_auto SET periodicidade=$2, ativo=$3, config=$4 WHERE id=$1`, [ex.rows[0].id, per, !!b.ativo, JSON.stringify(cfg)]);
+    else await db.q(`INSERT INTO est_lista_auto (tenant_id, periodicidade, ativo, config) VALUES ($1,$2,$3,$4)`, [TENANT, per, !!b.ativo, JSON.stringify(cfg)]);
+    return json(res, 200, { ok: true });
+  }
+  if (sub === 'est' && seg[2] === 'lista-auto' && seg[3] === 'run' && req.method === 'POST') {
+    const b = await readBody(req);
+    const expected = process.env.WA_INBOUND_TOKEN;
+    const tok = b.token || req.headers['x-wa-token'];
+    if (expected && tok !== expected) return json(res, 401, { erro: 'token inválido' });
+    const cfgRow = (await db.q(`SELECT periodicidade, ativo, config FROM est_lista_auto WHERE tenant_id=$1 ORDER BY id LIMIT 1`, [TENANT])).rows[0];
+    const forcar = !!b.forcar;
+    if (!cfgRow || (!cfgRow.ativo && !forcar)) return json(res, 200, { due: false, motivo: 'lista automática desativada' });
+    const per = cfgRow.periodicidade || 'semanal';
+    const cfg = cfgRow.config || {};
+    const now = new Date();
+    let due = forcar;
+    if (!due) {
+      if (per === 'diaria') due = true;
+      else if (per === 'semanal') due = now.getDay() === (Number(cfg.dia) || 1) % 7;
+      else if (per === 'mensal') due = now.getDate() === (Number(cfg.dia) || 1);
+      else if (per === 'trimestral') due = [0, 3, 6, 9].includes(now.getMonth()) && now.getDate() === (Number(cfg.dia) || 1);
     }
-    const porForn = {};
-    for (const it of itens) { const k = it.fornecedor || '(sem fornecedor)'; (porForn[k] = porForn[k] || { fornecedor: it.fornecedor, fornecedor_id: it.fornecedor_id, itens: [], total: 0 }); porForn[k].itens.push(it); if (it.estimativa != null) porForn[k].total += it.estimativa; }
-    const grupos = Object.values(porForn).map(g => { g.total = Number(g.total.toFixed(2)); return g; }).sort((a, b) => b.itens.length - a.itens.length || b.total - a.total);
-    const irPrimeiro = grupos.length ? grupos[0].fornecedor : null;
-    const estimativaTotal = Number(itens.reduce((s, it) => s + (it.estimativa || 0), 0).toFixed(2));
-    let alerta = null;
-    if (grupos.length > 1) {
-      const principal = grupos[0].fornecedor;
-      let custoTudoPrincipal = 0, possivel = true;
-      for (const it of itens) {
-        if (it.fornecedor === principal) { custoTudoPrincipal += it.estimativa || 0; continue; }
-        const sub = substitutos.find(s => s.produto === it.produto);
-        const noPrincipal = sub && sub.opcoes.find(o => o.fornecedor === principal && o.preco != null);
-        if (noPrincipal && it.quantidade != null) custoTudoPrincipal += noPrincipal.preco * it.quantidade;
-        else { possivel = false; break; }
-      }
-      if (possivel) {
-        const aMais = Number((custoTudoPrincipal - estimativaTotal).toFixed(2));
-        if (aMais <= Math.max(8, estimativaTotal * 0.05)) alerta = `Não compensa dividir: comprar tudo em ${principal} custa só R$ ${aMais.toFixed(2)} a mais. Vá num lugar só.`;
-      }
-    }
-    return json(res, 200, { ir_primeiro_em: irPrimeiro, comprar_por_fornecedor: grupos, confirmar_antes: confirmar, substitutos, nao_encontrados: naoEncontrados, estimativa_total: estimativaTotal, alerta });
+    if (!due) return json(res, 200, { due: false, motivo: 'hoje não é dia de gerar' });
+    const base = cfg.base === 'minimo' ? 'minimo' : 'ideal';
+    const itens = await estItensReposicao(base);
+    const rota = await estMontaRota(itens);
+    const texto = estRotaTexto(rota, per);
+    // persiste a lista gerada
+    let listaId = null;
+    try {
+      const lc = await db.q(`INSERT INTO est_lista_compra (tenant_id, status, origem, estimativa, meta) VALUES ($1,'GERADA','AUTO',$2,$3) RETURNING id`, [TENANT, rota.estimativa_total, JSON.stringify({ base, periodicidade: per })]);
+      listaId = lc.rows[0].id;
+      const todos = [].concat(...rota.comprar_por_fornecedor.map(g => g.itens), rota.nao_encontrados);
+      for (const it of todos) await db.q(`INSERT INTO est_lista_compra_item (tenant_id, lista_id, produto_id, quantidade, unidade, fornecedor_id, status) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [TENANT, listaId, it.produto_id, it.quantidade, it.unidade || null, it.fornecedor_id || null, it.fornecedor ? 'OK' : 'SEM_FORNECEDOR']);
+    } catch (e) {}
+    const gestores = (await db.q(`SELECT DISTINCT regexp_replace(COALESCE(phone,''),'\\D','','g') AS tel FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND COALESCE(phone,'')<>'' AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [TENANT])).rows.map(r => r.tel).filter(Boolean);
+    return json(res, 200, { due: true, periodicidade: per, lista_id: listaId, estimativa_total: rota.estimativa_total, itens_total: rota.itens_total, texto, gestores });
   }
 
   // ---- Produção Interna (ficha técnica + baixa de insumos) ----
