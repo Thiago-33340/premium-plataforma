@@ -234,6 +234,51 @@ async function api(req, res, url) {
     });
   }
 
+  if (sub === 'est' && seg[2] === 'categorias' && req.method === 'GET') {
+    const r = await db.q('SELECT id, nome, ordem, ativo FROM est_categoria WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+    return json(res, 200, { categorias: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'fornecedores' && req.method === 'GET') {
+    const r = await db.q('SELECT id, nome, tipo, endereco, whatsapp, observacoes, ativo FROM est_fornecedor WHERE tenant_id=$1 ORDER BY nome', [TENANT]);
+    return json(res, 200, { fornecedores: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'setores' && req.method === 'GET') {
+    const r = await db.q('SELECT id, nome, ordem, ativo FROM est_setor WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+    return json(res, 200, { setores: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'produtos' && req.method === 'GET') {
+    const busca = (url.searchParams.get('busca') || '').toLowerCase();
+    const cat = url.searchParams.get('categoria') || '';
+    const forn = url.searchParams.get('fornecedor') || '';
+    const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal,
+        p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo, p.ultimo_valor, p.maior_valor,
+        c.nome AS categoria, f.nome AS fornecedor
+      FROM est_produto p
+      LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
+      WHERE p.tenant_id=$1
+        AND ($2='' OR lower(p.nome) LIKE '%'||$2||'%')
+        AND ($3='' OR c.nome=$3)
+        AND ($4='' OR f.nome=$4)
+      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn]);
+    return json(res, 200, { produtos: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'dashboard' && req.method === 'GET') {
+    const n = async (s) => { try { const r = await db.q(s, [TENANT]); return Number(r.rows[0].n); } catch (e) { return 0; } };
+    const one = async (s) => { try { const r = await db.q(s, [TENANT]); return r.rows; } catch (e) { return []; } };
+    return json(res, 200, {
+      produtos_ativos: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo'),
+      zerados: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_atual=0'),
+      abaixo_minimo: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_minimo IS NOT NULL AND estoque_atual < estoque_minimo'),
+      abaixo_ideal: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND estoque_ideal IS NOT NULL AND estoque_atual < estoque_ideal'),
+      sem_fornecedor: await n('SELECT count(*)::int n FROM est_produto WHERE tenant_id=$1 AND ativo AND fornecedor_preferido_id IS NULL'),
+      contagens_aguardando: await n("SELECT count(*)::int n FROM est_contagem WHERE tenant_id=$1 AND status_auditoria='AGUARDANDO' AND status<>'EM_ANDAMENTO'"),
+      fornecedores: await n('SELECT count(*)::int n FROM est_fornecedor WHERE tenant_id=$1 AND ativo'),
+      ultimas_contagens: await one('SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY iniciada_em DESC LIMIT 5'),
+      ultimas_compras: await one('SELECT c.criado_em, c.usuario_nome, c.total, f.nome AS fornecedor FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 ORDER BY c.criado_em DESC LIMIT 5')
+    });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {

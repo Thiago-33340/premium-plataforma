@@ -204,3 +204,7 @@ CREATE TABLE IF NOT EXISTS est_lista_auto (
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   periodicidade VARCHAR(20), ativo BOOLEAN NOT NULL DEFAULT FALSE, config JSONB NOT NULL DEFAULT '{}'
 );
+
+-- correção idempotente: itens importados como 'Outros' (sem categoria oficial) -> Materiais de escritório
+UPDATE est_produto SET categoria_id = (SELECT id FROM est_categoria WHERE tenant_id=est_produto.tenant_id AND nome='Materiais de escritório')
+WHERE categoria_id IS NULL AND (legado->>'categoria_original')='Outros';
