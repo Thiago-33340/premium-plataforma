@@ -595,6 +595,8 @@ async function api(req, res, url) {
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
     const UNI = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|kilo|kilos|quilo|quilos|g|gr|grs|gramas?|l|lt|lts|litros?|ml|un|und|unid|unidades?|cx|caixas?|pct|pacotes?|dz|duzias?|latas?|garrafas?|sacos?|fardos?|pc|pcs|pecas?|bdj|bandejas?|potes?)?\b/i;
     const cand = prods.rows.map(p => { const n = norm(p.nome); return { id: p.id, nome: p.nome, unidade: p.unidade, atual: Number(p.estoque_atual), ideal: p.estoque_ideal != null ? Number(p.estoque_ideal) : null, n, toks: n.split(' ').filter(Boolean) }; });
+    const lev = (a, b) => { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; };
+    const sim = (a, b) => { if (!a || !b) return 0; return 1 - lev(a, b) / Math.max(a.length, b.length); };
     const linhas = texto.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
     const itens = linhas.map(raw => {
       let qtd = null, uni = null;
@@ -615,6 +617,10 @@ async function api(req, res, url) {
           const denom = Math.max(c.toks.length, inToks.length) || 1;
           s = inter / denom;
           if (s === 0) { const pf = inToks.filter(t => t.length > 3 && c.toks.some(ct => ct.startsWith(t) || t.startsWith(ct))).length; if (pf) s = 0.5 * pf / denom; }
+          // fuzzy por caractere (ex: "mussarela" -> "muçarela"): melhor par token a token + string inteira
+          let fz = sim(nin, c.n);
+          for (const t of inToks) { if (t.length < 4) continue; for (const ct of c.toks) { if (ct.length < 4) continue; const sv = sim(t, ct); if (sv > fz) fz = sv; } }
+          if (fz >= 0.72 && fz * 0.95 > s) s = fz * 0.95;
         }
         if (s > bestS) { bestS = s; best = c; }
       }
