@@ -617,10 +617,13 @@ async function api(req, res, url) {
           const denom = Math.max(c.toks.length, inToks.length) || 1;
           s = inter / denom;
           if (s === 0) { const pf = inToks.filter(t => t.length > 3 && c.toks.some(ct => ct.startsWith(t) || t.startsWith(ct))).length; if (pf) s = 0.5 * pf / denom; }
-          // fuzzy por caractere (ex: "mussarela" -> "muçarela"): melhor par token a token + string inteira
-          let fz = sim(nin, c.n);
-          for (const t of inToks) { if (t.length < 4) continue; for (const ct of c.toks) { if (ct.length < 4) continue; const sv = sim(t, ct); if (sv > fz) fz = sv; } }
-          if (fz >= 0.72 && fz * 0.95 > s) s = fz * 0.95;
+          // fuzzy por caractere (ex: "mussarela" -> "muçarela"): melhor par token a token + string inteira.
+          // Tokens curtos exigem similaridade alta p/ evitar falso positivo (coca vs coco).
+          let fz = 0, fzLen = 0;
+          { const sv = sim(nin, c.n); if (sv > fz) { fz = sv; fzLen = Math.min(nin.length, c.n.length); } }
+          for (const t of inToks) { if (t.length < 4) continue; for (const ct of c.toks) { if (ct.length < 4) continue; const sv = sim(t, ct); if (sv > fz) { fz = sv; fzLen = Math.min(t.length, ct.length); } } }
+          const gate = fzLen >= 6 ? 0.72 : 0.86;
+          if (fz >= gate && fz * 0.95 > s) s = fz * 0.95;
         }
         if (s > bestS) { bestS = s; best = c; }
       }
