@@ -925,7 +925,7 @@ async function api(req, res, url) {
   // ---- WhatsApp: webhook de entrada (Jéssica recebe e lança) ----
   if (sub === 'est' && seg[2] === 'whatsapp' && seg[3] === 'inbound' && req.method === 'POST') {
     const b = await readBody(req);
-    const expected = process.env.WA_INBOUND_TOKEN || WA_SECRET;
+    const expected = process.env.WA_INBOUND_TOKEN; // só exige token se explicitamente configurado no Easypanel
     const tok = b.token || req.headers['x-wa-token'];
     if (expected && tok !== expected) return json(res, 401, { erro: 'token inválido' });
     const telefone = soPhone(b.telefone || b.from || b.phone);
