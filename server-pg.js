@@ -294,24 +294,72 @@ async function notificarContagem(resumo) {
   } catch (e) { console.log('[estoque] notificacao aviso:', e.message); }
 }
 
-// Baixa de estoque por pedido (via ficha tecnica dos sabores). Best-effort, gated por config.
+// ===== Baixa automática de estoque por pedido (ficha técnica -> est_produto) =====
+// Explode ficha do produto + de todas as opções escolhidas, explode preparos (sub-receitas),
+// agrega por insumo, baixa no est_produto com histórico antes/depois. Idempotente por pedido.
+async function estBaixaPedido(orderRef, itens, opts) {
+  opts = opts || {};
+  const out = { ref: orderRef ? String(orderRef) : null, ja_processado: false, simulado: !!opts.simular, baixados: [], nao_mapeados: [], itens_processados: 0 };
+  itens = Array.isArray(itens) ? itens : [];
+  if (!itens.length) return out;
+  if (orderRef && !opts.force && !opts.simular) {
+    const ja = await db.q(`SELECT 1 FROM est_movimento WHERE tenant_id=$1 AND ref=$2 AND origem='PEDIDO' LIMIT 1`, [TENANT, String(orderRef)]);
+    if (ja.rows[0]) { out.ja_processado = true; return out; }
+  }
+  const prodRows = (await db.q(`SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
+  const prodByNome = {}; for (const p of prodRows) prodByNome[estNorm(p.nome)] = p;
+  const prepRows = (await db.q(`SELECT id, nome, rendimento FROM preparos WHERE tenant_id=$1`, [TENANT])).rows;
+  const prepByNome = {}; for (const p of prepRows) prepByNome[estNorm(p.nome)] = p;
+  const consumo = {}, semMap = {};
+  const addConsumo = (p, q) => { if (!(q > 0)) return; (consumo[p.id] || (consumo[p.id] = { produto: p, qtd: 0 })).qtd += q; };
+  async function resolve(nome, qtd, depth) {
+    if (!nome || !(qtd > 0) || depth > 3) return;
+    const n = estNorm(nome);
+    if (prodByNome[n]) { addConsumo(prodByNome[n], qtd); return; }
+    let hit = null; for (const p of prodRows) { const pn = estNorm(p.nome); if (pn && (n.includes(pn) || pn.includes(n))) { hit = p; break; } }
+    if (hit) { addConsumo(hit, qtd); return; }
+    if (prepByNome[n]) {
+      const prep = prepByNome[n]; const rend = Number(prep.rendimento) > 0 ? Number(prep.rendimento) : 1;
+      const pit = (await db.q(`SELECT insumo_nome, quantidade FROM preparo_itens WHERE tenant_id=$1 AND preparo_id=$2`, [TENANT, prep.id])).rows;
+      for (const x of pit) await resolve(x.insumo_nome, (Number(x.quantidade) || 0) * qtd / rend, depth + 1);
+      return;
+    }
+    semMap[nome] = (semMap[nome] || 0) + qtd;
+  }
+  async function fichasDoItem(item, Q) {
+    const prodId = item.produto_id || item.id;
+    let frows = [];
+    if (prodId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(prodId))) frows = (await db.q(`SELECT insumo_nome, quantidade FROM ficha_itens WHERE tenant_id=$1 AND produto_id=$2`, [TENANT, prodId])).rows;
+    else if (item.nome) frows = (await db.q(`SELECT fi.insumo_nome, fi.quantidade FROM ficha_itens fi JOIN produtos p ON p.id=fi.produto_id WHERE fi.tenant_id=$1 AND lower(p.nome)=lower($2)`, [TENANT, item.nome])).rows;
+    for (const r of frows) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0);
+    const sels = [].concat(item.selecoes || [], item.sabores || [], item.adicionais || [], (item.borda ? [item.borda] : []));
+    for (const s of sels) {
+      const nm = s && (s.nome || s.opcao || s.label); if (!nm) continue;
+      const fr = (await db.q(`SELECT fi.insumo_nome, fi.quantidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)`, [TENANT, nm])).rows;
+      for (const r of fr) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0);
+    }
+  }
+  for (const it of itens) { out.itens_processados++; await fichasDoItem(it, Number(it.quantidade) || 1); }
+  for (const k of Object.keys(consumo)) {
+    const c = consumo[k]; const qtd = Number(c.qtd.toFixed(4)); if (!(qtd > 0)) continue;
+    const antes = Number(c.produto.estoque_atual), depois = Number((antes - qtd).toFixed(4));
+    if (!opts.simular) {
+      await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [c.produto.id, depois]);
+      await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'SAIDA',$4,$5,$6,'PEDIDO',$7,$8,$9)`, [TENANT, c.produto.id, c.produto.nome, antes, qtd, depois, 'Titan (automático)', 'Baixa por pedido', String(orderRef || '')]);
+    }
+    out.baixados.push({ produto: c.produto.nome, qtd, antes, depois, unidade: c.produto.unidade });
+  }
+  out.nao_mapeados = Object.keys(semMap).map(nome => ({ insumo: nome, qtd: Number(semMap[nome].toFixed(4)) }));
+  return out;
+}
+// Gated por config (tenants.config.baixa_estoque_auto). Best-effort no fluxo de criação de pedido.
 async function baixaEstoqueSeLigado(itens, ref) {
   try {
     const cfgr = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const cfg = (cfgr.rows[0] && cfgr.rows[0].config) || {};
     if (!cfg.baixa_estoque_auto) return;
-    for (const it of (itens || [])) {
-      if (it.tipo !== 'montavel' || !Array.isArray(it.selecoes)) continue;
-      const qped = it.quantidade || 1;
-      for (const s of it.selecoes.filter(x => /sabor/i.test(x.grupo || ''))) {
-        const f = await db.q('SELECT fi.insumo_nome, fi.quantidade, fi.unidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)', [TENANT, s.nome]);
-        for (const row of f.rows) {
-          await db.q(`INSERT INTO estoque_movimentos (tenant_id, insumo_nome, tipo, quantidade, unidade, origem, ref_pedido) VALUES ($1,$2,'SAIDA',$3,$4,'pedido',$5)`,
-            [TENANT, row.insumo_nome, (Number(row.quantidade) || 0) * qped, row.unidade, ref]);
-        }
-      }
-    }
-    console.log('[estoque] baixa automatica aplicada p/ pedido ' + ref);
+    const r = await estBaixaPedido(ref, itens, {});
+    console.log('[estoque] baixa pedido ' + ref + ': ' + r.baixados.length + ' insumo(s), ' + r.nao_mapeados.length + ' nao mapeado(s)' + (r.ja_processado ? ' (ja processado)' : ''));
   } catch (e) { console.log('[estoque] baixa aviso:', e.message); }
 }
 
@@ -877,6 +925,24 @@ async function api(req, res, url) {
     } catch (e) {}
     const gestores = (await db.q(`SELECT DISTINCT regexp_replace(COALESCE(phone,''),'\\D','','g') AS tel FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND COALESCE(phone,'')<>'' AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [TENANT])).rows.map(r => r.tel).filter(Boolean);
     return json(res, 200, { due: true, periodicidade: per, lista_id: listaId, estimativa_total: rota.estimativa_total, itens_total: rota.itens_total, texto, gestores });
+  }
+
+  // ---- Baixa automática de estoque por pedido (Saipos/DD/Titan via n8n) ----
+  if (sub === 'est' && seg[2] === 'baixa-pedido' && req.method === 'POST') {
+    const b = await readBody(req);
+    const expected = process.env.WA_INBOUND_TOKEN;
+    const tok = b.token || req.headers['x-wa-token'];
+    if (expected && tok !== expected) return json(res, 401, { erro: 'token inválido' });
+    let itens = Array.isArray(b.itens) ? b.itens : null;
+    let ref = b.order_id || b.pedido_id || b.ref || null;
+    if (!itens && ref) {
+      const o = await db.q('SELECT id, items FROM orders WHERE tenant_id=$1 AND (id=$2 OR display_id=$2)', [TENANT, String(ref)]);
+      if (!o.rows[0]) return json(res, 404, { erro: 'pedido não encontrado' });
+      ref = o.rows[0].id; itens = o.rows[0].items || [];
+    }
+    if (!itens) return json(res, 400, { erro: 'envie itens ou order_id' });
+    const out = await estBaixaPedido(ref, itens, { force: !!b.force, simular: !!b.simular });
+    return json(res, 200, out);
   }
 
   // ---- Produção Interna (ficha técnica + baixa de insumos) ----
