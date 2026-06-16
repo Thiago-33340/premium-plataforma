@@ -91,6 +91,22 @@ nav button.on{ color:var(--lar); }
 .fcheck input{ width:20px; height:20px; }
 .mfoot{ display:flex; gap:8px; margin-top:16px; }
 .mfoot .btn{ flex:1; }
+
+.setor-btn{ width:100%; text-align:left; background:var(--bg2); border:1px solid var(--bd); color:var(--tx); border-radius:12px; padding:16px; margin-bottom:10px; font-size:16px; font-weight:600; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.setor-btn small{ color:var(--mut); font-weight:400; font-size:12px; }
+.audit-banner{ background:#2a2410; border:1px solid #5a4a16; color:#ffd479; border-radius:12px; padding:12px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; font-weight:600; }
+.cnt-item{ background:var(--bg2); border:1px solid var(--bd); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+.cnt-item.done{ border-color:#1d4a2a; }
+.cnt-item .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.cnt-item .pn{ font-weight:600; font-size:15px; }
+.cnt-item .ob{ font-size:10px; padding:2px 7px; border-radius:999px; background:#3a2e10; color:#ffd479; font-weight:700; flex:0 0 auto; }
+.cnt-row{ display:flex; gap:8px; align-items:center; margin-top:8px; }
+.cnt-row input.qt{ flex:1; text-align:center; font-size:18px; font-weight:700; }
+.cnt-row .un{ color:var(--mut); font-size:13px; min-width:56px; }
+.cnt-row .ig{ background:var(--bg3); border:1px solid var(--bd); color:var(--mut); border-radius:10px; padding:10px 12px; font-size:13px; cursor:pointer; }
+.cnt-row .ig.on{ background:#2a2410; color:#ffd479; border-color:#5a4a16; }
+.cnt-foot{ position:fixed; left:0; right:0; bottom:calc(62px + env(safe-area-inset-bottom)); padding:10px 14px; background:rgba(11,11,12,.97); border-top:1px solid var(--bd); display:flex; align-items:center; gap:10px; z-index:25; }
+.cnt-foot .prog{ flex:1; font-size:13px; color:var(--mut); line-height:1.3; }
 </style>
 </head>
 <body>
@@ -148,8 +164,7 @@ nav button.on{ color:var(--lar); }
     </section>
 
     <section id="v-contagem" class="hide">
-      <div class="vhead"><h2 class="tit">Contagem por setor</h2></div>
-      <div class="panel"><div class="empty">A tela de contagem (com aceite de 0 e obrigatoriedade por setor) é a próxima entrega.</div></div>
+      <div id="contWrap"></div>
     </section>
 
     <section id="v-mais" class="hide">
@@ -217,7 +232,7 @@ function sair(){ try{ localStorage.removeItem('est_u'); }catch(e){} user=null; l
 function nav(v){ ['inicio','produtos','contagem','fornecedores','mais'].forEach(x=> $('v-'+x).classList.toggle('hide', x!==v));
   document.querySelectorAll('#nav button').forEach(b=> b.classList.toggle('on', b.dataset.v===v));
   window.scrollTo(0,0);
-  if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); }
+  if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); if(v==='contagem') loadContagem(); }
 
 async function loadInicio(){ let d; try{ d=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){ return; }
   const k=(v,l,cls='')=>`<div class="kpi ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
@@ -319,6 +334,55 @@ function pedirConfirm(titulo,msg){ return new Promise(resolve=>{
   ov.querySelector('[data-act="d"]').onclick=()=>{ document.body.removeChild(ov); resolve(true); };
   document.body.appendChild(ov);
 }); }
+
+/* ===== CONTAGEM POR SETOR ===== */
+let _cnt = null;
+function ehGestor(){ const p=((user&&user.perfil)||'').toUpperCase(); return p==='GESTOR'||p==='GERENTE'; }
+async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem(); return; }
+  w.innerHTML='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div><div class="empty">Carregando…</div>';
+  let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
+  let aud=0; try{ aud=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens||[]).length; }catch(e){}
+  let h='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div>';
+  h+=`<div class="audit-banner" onclick="abrirAuditorias()"><span>⏳ ${aud} aguardando auditoria</span><span>Auditar ›</span></div>`;
+  h+='<p class="mut sm" style="margin:0 0 10px">Escolha o setor. O valor <b>0</b> é válido (item contado e zerado).</p>';
+  h+=setores.map(s=>`<button class="setor-btn" onclick="iniciarContagem(${s.id})"><span>${esc(s.nome)}</span><span>Contar ›</span></button>`).join('')||'<div class="empty">Sem setores.</div>';
+  w.innerHTML=h; }
+async function iniciarContagem(setorId){ try{ const d=await estFetch('/api/est/contagem/iniciar','POST',{setor_id:setorId}); _cnt={ id:d.contagem.id, setor_nome:d.contagem.setor_nome, itens:d.itens }; renderContagem(); }catch(e){} }
+function renderContagem(){ const w=$('contWrap');
+  let h=`<div class="vhead"><h2 class="tit">${esc(_cnt.setor_nome)}</h2><button class="btn ghost sm" onclick="cancelarContagem()">Sair</button></div><div id="cntList" style="padding-bottom:130px">`;
+  h+=_cnt.itens.map(cntItemHTML).join('')+'</div>';
+  h+=`<div class="cnt-foot"><div class="prog" id="cntProg"></div><button class="btn primary sm" onclick="encerrarContagem()">Encerrar</button></div>`;
+  w.innerHTML=h; atualizaProg(); }
+function cntItemHTML(it){ const val=it.quantidade!=null?it.quantidade:''; const ign=it.status==='IGNORADO';
+  return `<div class="cnt-item ${it.status==='CONTADO'?'done':''}" id="ci-${it.id}"><div class="top"><span class="pn">${esc(it.produto_nome)}</span>${it.obrigatorio?'<span class="ob">obrigatório</span>':''}</div>
+  <div class="cnt-row"><span class="un">${esc(it.unidade||'')}</span><input class="field qt" inputmode="decimal" placeholder="qtd" value="${val}" data-it="${it.id}" oninput="onQtd('${it.id}')" ${ign?'disabled':''}>${it.obrigatorio?'':`<button class="ig ${ign?'on':''}" onclick="toggleIgnora('${it.id}')">ignorar</button>`}</div></div>`; }
+function itById(id){ return _cnt.itens.find(x=>String(x.id)===String(id)); }
+function onQtd(id){ const it=itById(id); const el=document.querySelector(`input[data-it="${id}"]`); const v=el.value.trim().replace(',','.');
+  if(v===''){ it.quantidade=null; it.status='PENDENTE'; } else { it.quantidade=v; it.status='CONTADO'; }
+  $('ci-'+id).classList.toggle('done', it.status==='CONTADO'); atualizaProg(); }
+function toggleIgnora(id){ const it=itById(id); it.status=it.status==='IGNORADO'?'PENDENTE':'IGNORADO'; if(it.status==='IGNORADO') it.quantidade=null; renderContagem(); }
+function atualizaProg(){ const tot=_cnt.itens.length, cont=_cnt.itens.filter(x=>x.status==='CONTADO').length, obr=_cnt.itens.filter(x=>x.obrigatorio&&x.status==='PENDENTE').length;
+  $('cntProg').innerHTML=`${cont}/${tot} contados`+(obr?` · <b style="color:var(--amar)">${obr} obrigatório(s)</b>`:''); }
+function cancelarContagem(){ _cnt=null; loadContagem(); }
+async function encerrarContagem(){ const obr=_cnt.itens.filter(x=>x.obrigatorio&&x.status==='PENDENTE').length; if(obr){ toast('Faltam '+obr+' obrigatório(s)'); return; }
+  const itens=_cnt.itens.map(x=>({id:x.id,quantidade:x.quantidade,status:x.status,observacao:x.observacao}));
+  try{ await estFetch('/api/est/contagem/'+_cnt.id+'/encerrar','POST',{itens}); toast('Enviada para auditoria'); _cnt=null; loadContagem(); }catch(e){} }
+
+/* ===== AUDITORIA ===== */
+async function abrirAuditorias(){ let cs=[]; try{ cs=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens)||[]; }catch(e){}
+  const body= cs.length? cs.map(c=>`<div class="prow" onclick="abrirAuditoria('${c.id}')"><div class="nm"><b>${esc(c.setor_nome)}</b><small>${esc(c.usuario_nome||'')} · ${c.itens_contados||0} itens</small></div><div class="qt"><span class="tag low">auditar</span></div></div>`).join('') : '<div class="empty">Nada aguardando auditoria.</div>';
+  modalHTML('Auditoria de contagens', body); }
+async function abrirAuditoria(id){ let d; try{ d=await (await fetch(API+'/api/est/contagem/'+id)).json(); }catch(e){ return; }
+  const its=d.itens||[];
+  let body=`<div class="mut sm" style="margin-bottom:8px">${esc(d.contagem.setor_nome)} · ${esc(d.contagem.usuario_nome||'')}</div><div style="max-height:44vh;overflow:auto;margin-bottom:8px">`;
+  body+=its.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto_nome)}</b><small>${it.status==='IGNORADO'?'ignorado':(it.obrigatorio?'obrigatório':'')}</small></div><div class="qt"><span class="big">${it.quantidade!=null?fmt(it.quantidade):'—'}</span> <span class="mut xs">${esc(it.unidade||'')}</span></div></div>`).join('')+'</div>';
+  body+=`<div class="mfoot"><button class="btn ghost" onclick="auditar('${id}','corrigir')">Corrigir</button><button class="btn danger" onclick="auditar('${id}','reprovar')">Reprovar</button><button class="btn primary" onclick="auditar('${id}','aprovar')">Aprovar</button></div>`;
+  modalHTML('Conferir contagem', body); }
+async function auditar(id,acao){ try{ await estFetch('/api/est/contagem/'+id+'/auditar','POST',{acao}); fecharModais(); toast(acao==='aprovar'?'Aprovada — estoque atualizado':acao==='reprovar'?'Reprovada':'Correção solicitada'); loadContagem(); }catch(e){} }
+function modalHTML(titulo, body){ const ov=document.createElement('div'); ov.className='modal on est-modal';
+  ov.innerHTML=`<div class="box"><h3 style="margin:0 0 10px">${titulo}</h3>${body}<div style="margin-top:12px"><button class="btn ghost" onclick="this.closest('.est-modal').remove()">Fechar</button></div></div>`;
+  document.body.appendChild(ov); }
+function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.remove()); }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();

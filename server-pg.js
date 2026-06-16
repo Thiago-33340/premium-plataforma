@@ -350,6 +350,81 @@ async function api(req, res, url) {
     return json(res, 404, { erro: 'rota est nao encontrada' });
   }
 
+  // ===== CONTAGEM POR SETOR + AUDITORIA =====
+  const estGestor = async (uid) => { if (!uid) return null; try { const r = await db.q(`SELECT id, nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]); return r.rows[0] || null; } catch (e) { return null; } };
+
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!b.usuario_id || !b.setor_id) return json(res, 400, { erro: 'informe usuario_id e setor_id' });
+    const u = await db.q('SELECT id, nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [b.usuario_id, TENANT]);
+    if (!u.rows[0]) return json(res, 403, { erro: 'usuário inválido' });
+    const s = await db.q('SELECT id, nome FROM est_setor WHERE id=$1 AND tenant_id=$2', [b.setor_id, TENANT]);
+    if (!s.rows[0]) return json(res, 400, { erro: 'setor inválido' });
+    const itens = await db.q(`SELECT ps.produto_id, ps.obrigatorio, p.nome, p.unidade
+      FROM est_produto_setor ps JOIN est_produto p ON p.id=ps.produto_id
+      WHERE ps.tenant_id=$1 AND ps.setor_id=$2 AND p.ativo AND p.pode_contar ORDER BY p.nome`, [TENANT, b.setor_id]);
+    if (!itens.rows.length) return json(res, 400, { erro: 'Este setor não tem itens. Configure os itens do setor primeiro.' });
+    const c = await db.q(`INSERT INTO est_contagem (tenant_id, setor_id, setor_nome, usuario_id, usuario_nome, status, status_auditoria)
+      VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id`, [TENANT, s.rows[0].id, s.rows[0].nome, b.usuario_id, u.rows[0].nome]);
+    const cid = c.rows[0].id;
+    for (const it of itens.rows)
+      await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status) VALUES ($1,$2,$3,$4,$5,$6,'PENDENTE')`,
+        [TENANT, cid, it.produto_id, it.nome, it.unidade, it.obrigatorio]);
+    const out = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao FROM est_contagem_item WHERE contagem_id=$1 ORDER BY produto_nome', [cid]);
+    return json(res, 201, { contagem: { id: cid, setor_nome: s.rows[0].nome }, itens: out.rows });
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'encerrar' && req.method === 'POST') {
+    const b = await readBody(req); const cid = seg[3];
+    for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
+      const q = (it.quantidade === '' || it.quantidade == null) ? null : Number(it.quantidade);
+      const st = it.status === 'IGNORADO' ? 'IGNORADO' : (q != null && !Number.isNaN(q) ? 'CONTADO' : 'PENDENTE');
+      await db.q('UPDATE est_contagem_item SET quantidade=$2, status=$3, observacao=$4 WHERE id=$1 AND tenant_id=$5', [it.id, st === 'PENDENTE' ? null : q, st, it.observacao || null, TENANT]);
+    }
+    const pend = await db.q(`SELECT count(*)::int n FROM est_contagem_item WHERE contagem_id=$1 AND obrigatorio AND status='PENDENTE'`, [cid]);
+    if (pend.rows[0].n > 0) return json(res, 400, { erro: 'Faltam ' + pend.rows[0].n + ' item(ns) obrigatório(s) sem contagem.' });
+    const cnt = await db.q(`SELECT count(*)::int n FROM est_contagem_item WHERE contagem_id=$1 AND status='CONTADO'`, [cid]);
+    await db.q(`UPDATE est_contagem SET status='ENCERRADA', status_auditoria='AGUARDANDO', encerrada_em=NOW(), itens_contados=$2, obrigatorios_pendentes=0, observacoes=$3 WHERE id=$1 AND tenant_id=$4`, [cid, cnt.rows[0].n, b.observacoes || null, TENANT]);
+    const c = await db.q('SELECT setor_nome, usuario_nome FROM est_contagem WHERE id=$1', [cid]);
+    await db.q(`INSERT INTO est_notificacao (tenant_id, tipo, titulo, corpo, ref) VALUES ($1,'CONTAGEM_ENCERRADA',$2,$3,$4)`,
+      [TENANT, 'Contagem encerrada — ' + (c.rows[0] ? c.rows[0].setor_nome : ''), (c.rows[0] ? c.rows[0].usuario_nome : '') + ' encerrou. ' + cnt.rows[0].n + ' itens contados.', cid]).catch(() => {});
+    return json(res, 200, { ok: true, itens_contados: cnt.rows[0].n });
+  }
+  if (sub === 'est' && seg[2] === 'contagens' && req.method === 'GET') {
+    const ag = url.searchParams.get('aguardando');
+    const r = await db.q(`SELECT id, setor_nome, usuario_nome, status, status_auditoria, iniciada_em, encerrada_em, itens_contados
+      FROM est_contagem WHERE tenant_id=$1 ${ag ? "AND status_auditoria='AGUARDANDO' AND status='ENCERRADA'" : ''} ORDER BY iniciada_em DESC LIMIT 50`, [TENANT]);
+    return json(res, 200, { contagens: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && !seg[4] && req.method === 'GET') {
+    const c = await db.q('SELECT id, setor_nome, usuario_nome, status, status_auditoria, iniciada_em, encerrada_em, itens_contados, observacoes FROM est_contagem WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+    if (!c.rows[0]) return json(res, 404, { erro: 'não encontrada' });
+    const it = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao FROM est_contagem_item WHERE contagem_id=$1 ORDER BY produto_nome', [seg[3]]);
+    return json(res, 200, { contagem: c.rows[0], itens: it.rows });
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'auditar' && req.method === 'POST') {
+    const b = await readBody(req); const cid = seg[3];
+    const g = await estGestor(b.usuario_id);
+    if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente audita.' });
+    const acao = b.acao;
+    if (acao === 'aprovar') {
+      const its = await db.q('SELECT produto_id, quantidade FROM est_contagem_item WHERE contagem_id=$1 AND quantidade IS NOT NULL AND produto_id IS NOT NULL', [cid]);
+      for (const it of its.rows) {
+        const cur = await db.q('SELECT estoque_atual FROM est_produto WHERE id=$1', [it.produto_id]);
+        const antes = cur.rows[0] ? Number(cur.rows[0].estoque_atual) : 0, depois = Number(it.quantidade);
+        await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [it.produto_id, depois]);
+        await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref)
+          VALUES ($1,$2,'CONTAGEM',$3,$4,$5,'CONTAGEM',$6,$7,$8)`, [TENANT, it.produto_id, antes, depois - antes, depois, b.usuario_id, g.nome, cid]);
+      }
+      await db.q("UPDATE est_contagem SET status='APROVADA', status_auditoria='APROVADA' WHERE id=$1 AND tenant_id=$2", [cid, TENANT]);
+    } else if (acao === 'reprovar') {
+      await db.q("UPDATE est_contagem SET status='REPROVADA', status_auditoria='REPROVADA' WHERE id=$1 AND tenant_id=$2", [cid, TENANT]);
+    } else if (acao === 'corrigir') {
+      await db.q("UPDATE est_contagem SET status='EM_ANDAMENTO', status_auditoria='CORRECAO_SOLICITADA' WHERE id=$1 AND tenant_id=$2", [cid, TENANT]);
+    } else return json(res, 400, { erro: 'ação inválida' });
+    await db.q('INSERT INTO est_auditoria (tenant_id, contagem_id, gestor_id, gestor_nome, acao, observacao) VALUES ($1,$2,$3,$4,$5,$6)', [TENANT, cid, b.usuario_id, g.nome, acao, b.observacao || null]);
+    return json(res, 200, { ok: true });
+  }
+
   // catalogo: modelo novo (produtos -> grupos -> opcoes). Fonte para a UI da Fase 1/3.
   if (sub === 'catalogo' && req.method === 'GET') {
     try {
