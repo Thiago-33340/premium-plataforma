@@ -145,6 +145,7 @@
         <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
         <a data-s="aparencia" onclick="go('aparencia')"><span class="ic">🎨</span> Aparência</a>
         <a data-s="receitas" onclick="go('receitas')"><span class="ic">📖</span> Receitas</a>
+        <a data-s="producao" onclick="go('producao')"><span class="ic">🏭</span> Produção</a>
         <a data-s="estoque" onclick="go('estoque')"><span class="ic">📦</span> Estoque</a>
         <a data-s="equipe" onclick="go('equipe')"><span class="ic">👥</span> Equipe</a>
         <a data-s="config" onclick="go('config')"><span class="ic">⚙️</span> Configurações</a>
@@ -167,6 +168,7 @@
         <button onclick="go('cardapio',this)">Cardápio</button>
         <button onclick="go('aparencia',this)">Aparência</button>
         <button onclick="go('receitas',this)">Receitas</button>
+        <button onclick="go('producao',this)">Produção</button>
         <button onclick="go('estoque',this)">Estoque</button>
         <button onclick="go('equipe',this)">Equipe</button>
         <button onclick="go('config',this)">Config</button>
@@ -267,6 +269,17 @@
           <h3 class="sec">Fichas técnicas por item do cardápio</h3>
           <p class="mut sm" style="margin:0 0 8px">Escolha um produto montável para editar a ficha de cada opção (sabor, borda…).</p>
           <div id="fichasBox"><div class="mut sm">Carregando…</div></div>
+        </section>
+
+        <!-- PRODUÇÃO E SETORES -->
+        <section class="scr2" id="s_producao">
+          <div class="pagehead"><h2>Produção e setores</h2></div>
+          <p class="mut sm" style="margin:0 0 12px">Ligue cada item <b>produzido/fracionado</b> ao seu <b>bruto</b> e ao(s) <b>setor(es)</b> corretos. A quantidade por unidade define a baixa do bruto ao produzir. Editar aqui afeta a baixa real.</p>
+          <h3 class="sec">Itens produzidos e fracionados</h3>
+          <div id="vincBox"><div class="mut sm">Carregando…</div></div>
+          <h3 class="sec">Setor dos demais produtos</h3>
+          <input id="setBusca" class="field" placeholder="Buscar produto…" oninput="renderSetorOutros()" style="max-width:280px;margin-bottom:10px">
+          <div id="setOutrosBox"></div>
         </section>
 
         <!-- ESTOQUE -->
@@ -383,7 +396,7 @@ function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.re
   document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
   if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
   if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
-  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='producao')loadProducao(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
 function sair(){ location.reload(); }
 
@@ -513,6 +526,35 @@ async function salvarAparencia(){
   try{ const r=await (await fetch(API+'/api/admin/tema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tema})})).json();
     if(r.ok){ _ap=r.tema; toast('Aparência salva — abra “Ver minha loja”'); $('apStatus').textContent='Salvo ✓'; } else { $('apStatus').textContent=r.erro||'Erro'; }
   }catch(e){ $('apStatus').textContent='Falha de conexão.'; } }
+
+/* ===== PRODUÇÃO E SETORES (vínculo bruto -> produzido) ===== */
+let _vinc={setores:[],produtos:[],receitas:[]};
+async function loadProducao(){ try{ _vinc=await (await fetch(API+'/api/est/vinculos')).json(); }catch(e){ _vinc={setores:[],produtos:[],receitas:[]}; }
+  renderVinc(); renderSetorOutros(); }
+function ehProduzido(p){ return p.pode_produzir || p.categoria==='Produtos produzidos internamente'; }
+function setorChips(p){ return (_vinc.setores||[]).map(s=>`<button type="button" class="chip ${(p.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join(''); }
+function renderVinc(){ const box=$('vincBox'); const prod=(_vinc.produtos||[]).filter(ehProduzido);
+  if(!prod.length){ box.innerHTML='<div class="empty">Nenhum item produzido.</div>'; return; }
+  const cands=(_vinc.produtos||[]);
+  box.innerHTML=prod.map(p=>{ const rec=(_vinc.receitas||[]).find(r=>r.produto_id===p.id); const cur=rec?rec.bruto_id:'';
+    const opts='<option value="">— bruto —</option>'+cands.filter(c=>c.id!==p.id).map(c=>`<option value="${c.id}" ${String(cur)===String(c.id)?'selected':''}>${esc(c.nome)}</option>`).join('');
+    return `<div class="panel" style="margin-bottom:10px" data-pid="${p.id}"><div class="nm" style="font-weight:600">${esc(p.nome)} <small class="mut">[${esc(p.unidade||'')}]</small></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center"><span class="xs mut">Bruto:</span><select class="field" data-bruto style="min-width:170px">${opts}</select><input class="field" data-qpu placeholder="qtd/un" value="${rec&&rec.qpu!=null?Number(rec.qpu):''}" style="width:90px"><input class="field" data-bu placeholder="un" value="${rec?esc(rec.unidade||''):''}" style="width:80px"></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center"><span class="xs mut">Setor:</span>${setorChips(p)}</div>
+      <button class="btn sm" style="margin-top:8px" onclick="salvarVinc('${p.id}',this)">Salvar item</button></div>`;
+  }).join('');
+}
+async function salvarVinc(pid,btn){ const card=btn.closest('[data-pid]');
+  const bruto=card.querySelector('[data-bruto]').value, qpu=card.querySelector('[data-qpu]').value, bu=card.querySelector('[data-bu]').value;
+  const setores=[...card.querySelectorAll('[data-setor].on')].map(b=>Number(b.dataset.setor));
+  try{ await fetch(API+'/api/est/produto/'+pid+'/setores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,setores})});
+    await fetch(API+'/api/est/produto/'+pid+'/bruto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,insumo_produto_id:bruto||null,quantidade_por_unidade:qpu,unidade:bu})});
+    toast('Item salvo'); loadProducao(); }catch(e){ toast('Erro ao salvar'); } }
+function renderSetorOutros(){ const box=$('setOutrosBox'); if(!box)return; const q=(($('setBusca')&&$('setBusca').value)||'').toLowerCase();
+  const outros=(_vinc.produtos||[]).filter(p=>!ehProduzido(p) && (!q||p.nome.toLowerCase().includes(q))).slice(0,80);
+  box.innerHTML=outros.map(p=>`<div class="panel" style="margin-bottom:8px" data-pid="${p.id}"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><div class="nm" style="font-weight:600;min-width:160px;flex:1">${esc(p.nome)} <small class="mut">${esc(p.categoria||'')}</small></div></div><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">${setorChips(p)}<button class="btn sm" style="margin-left:auto" onclick="salvarSetorOnly('${p.id}',this)">Salvar setor</button></div></div>`).join('')||'<div class="empty">Nenhum produto.</div>'; }
+async function salvarSetorOnly(pid,btn){ const card=btn.closest('[data-pid]'); const setores=[...card.querySelectorAll('[data-setor].on')].map(b=>Number(b.dataset.setor));
+  try{ await fetch(API+'/api/est/produto/'+pid+'/setores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,setores})}); toast('Setor salvo'); const p=(_vinc.produtos||[]).find(x=>x.id==pid); if(p)p.setores=setores; }catch(e){ toast('Erro'); } }
 
 /* ===== RECEITAS / FICHAS TÉCNICAS ===== */
 let _insumos=[], _preparos=[], _catR=[], _fres={porOpcao:{},porProduto:{}}, _fichaProdSel='';

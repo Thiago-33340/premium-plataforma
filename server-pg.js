@@ -559,6 +559,37 @@ async function api(req, res, url) {
       FROM est_movimento WHERE tenant_id=$1 ORDER BY criado_em DESC LIMIT $2`, [TENANT, lim]);
     return json(res, 200, { movimentos: r.rows });
   }
+  // Vínculos: produtos com setores + ligação bruto->produzido (para conferência sem erro)
+  if (sub === 'est' && seg[2] === 'vinculos' && req.method === 'GET') {
+    const setores = (await db.q('SELECT id, nome FROM est_setor WHERE tenant_id=$1 AND ativo ORDER BY ordem, nome', [TENANT])).rows;
+    const prods = (await db.q(`SELECT p.id, p.nome, p.unidade, p.pode_produzir, c.nome AS categoria,
+        COALESCE((SELECT array_agg(ps.setor_id) FROM est_produto_setor ps WHERE ps.produto_id=p.id AND ps.tenant_id=p.tenant_id),'{}') AS setores
+      FROM est_produto p LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      WHERE p.tenant_id=$1 AND p.ativo ORDER BY c.ordem, p.nome`, [TENANT])).rows;
+    const receitas = (await db.q(`SELECT r.produto_id, r.insumo_produto_id AS bruto_id, b.nome AS bruto_nome, r.quantidade_por_unidade AS qpu, r.unidade
+      FROM est_producao_receita r JOIN est_produto b ON b.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.ativo`, [TENANT])).rows;
+    return json(res, 200, { setores, produtos: prods, receitas });
+  }
+  if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'setores' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão.' });
+    const pid = parseInt(seg[3], 10); const setores = Array.isArray(b.setores) ? b.setores.map(x => parseInt(x, 10)).filter(Boolean) : [];
+    await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]);
+    for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, pid, sid]);
+    return json(res, 200, { ok: true, setores });
+  }
+  if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'bruto' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão.' });
+    const pid = parseInt(seg[3], 10);
+    if (!b.insumo_produto_id) { await db.q('UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]); return json(res, 200, { ok: true, desligado: true }); }
+    const bid = parseInt(b.insumo_produto_id, 10);
+    const qpu = b.quantidade_por_unidade != null && b.quantidade_por_unidade !== '' ? Number(b.quantidade_por_unidade) : null;
+    const ex = await db.q('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3', [TENANT, pid, bid]);
+    if (ex.rows[0]) await db.q('UPDATE est_producao_receita SET quantidade_por_unidade=$2, unidade=$3, ativo=TRUE WHERE id=$1', [ex.rows[0].id, qpu, b.unidade || null]);
+    else await db.q('INSERT INTO est_producao_receita (tenant_id, produto_id, insumo_produto_id, quantidade_por_unidade, unidade, rendimento, ativo) VALUES ($1,$2,$3,$4,$5,1,TRUE)', [TENANT, pid, bid, qpu, b.unidade || null]);
+    return json(res, 200, { ok: true });
+  }
 
   // estoque v2 — escritas (CRUD) com checagem de gestor/gerente
   if (sub === 'est' && ['produto', 'fornecedor', 'categoria'].includes(seg[2]) && req.method !== 'GET') {
