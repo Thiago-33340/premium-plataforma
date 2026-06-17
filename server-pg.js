@@ -349,21 +349,23 @@ async function estBaixaPedido(orderRef, itens, opts) {
     if (ja.rows[0]) { out.ja_processado = true; return out; }
   }
   const prodRows = (await db.q(`SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
-  const prodByNome = {}; for (const p of prodRows) prodByNome[estNorm(p.nome)] = p;
+  const prodByNome = {}, prodById = {}; for (const p of prodRows) { prodByNome[estNorm(p.nome)] = p; prodById[p.id] = p; }
   const prepRows = (await db.q(`SELECT id, nome, rendimento FROM preparos WHERE tenant_id=$1`, [TENANT])).rows;
   const prepByNome = {}; for (const p of prepRows) prepByNome[estNorm(p.nome)] = p;
   const consumo = {}, semMap = {};
   const addConsumo = (p, q) => { if (!(q > 0)) return; (consumo[p.id] || (consumo[p.id] = { produto: p, qtd: 0 })).qtd += q; };
-  async function resolve(nome, qtd, depth) {
-    if (!nome || !(qtd > 0) || depth > 3) return;
+  async function resolve(nome, qtd, depth, estId) {
+    if (!(qtd > 0) || depth > 3) return;
+    if (estId && prodById[estId]) { addConsumo(prodById[estId], qtd); return; }
+    if (!nome) return;
     const n = estNorm(nome);
     if (prodByNome[n]) { addConsumo(prodByNome[n], qtd); return; }
     let hit = null; for (const p of prodRows) { const pn = estNorm(p.nome); if (pn && (n.includes(pn) || pn.includes(n))) { hit = p; break; } }
     if (hit) { addConsumo(hit, qtd); return; }
     if (prepByNome[n]) {
       const prep = prepByNome[n]; const rend = Number(prep.rendimento) > 0 ? Number(prep.rendimento) : 1;
-      const pit = (await db.q(`SELECT insumo_nome, quantidade FROM preparo_itens WHERE tenant_id=$1 AND preparo_id=$2`, [TENANT, prep.id])).rows;
-      for (const x of pit) await resolve(x.insumo_nome, (Number(x.quantidade) || 0) * qtd / rend, depth + 1);
+      const pit = (await db.q(`SELECT insumo_nome, est_produto_id, quantidade FROM preparo_itens WHERE tenant_id=$1 AND preparo_id=$2`, [TENANT, prep.id])).rows;
+      for (const x of pit) await resolve(x.insumo_nome, (Number(x.quantidade) || 0) * qtd / rend, depth + 1, x.est_produto_id);
       return;
     }
     semMap[nome] = (semMap[nome] || 0) + qtd;
@@ -371,14 +373,14 @@ async function estBaixaPedido(orderRef, itens, opts) {
   async function fichasDoItem(item, Q) {
     const prodId = item.produto_id || item.id;
     let frows = [];
-    if (prodId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(prodId))) frows = (await db.q(`SELECT insumo_nome, quantidade FROM ficha_itens WHERE tenant_id=$1 AND produto_id=$2`, [TENANT, prodId])).rows;
-    else if (item.nome) frows = (await db.q(`SELECT fi.insumo_nome, fi.quantidade FROM ficha_itens fi JOIN produtos p ON p.id=fi.produto_id WHERE fi.tenant_id=$1 AND lower(p.nome)=lower($2)`, [TENANT, item.nome])).rows;
-    for (const r of frows) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0);
+    if (prodId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(prodId))) frows = (await db.q(`SELECT insumo_nome, est_produto_id, quantidade FROM ficha_itens WHERE tenant_id=$1 AND produto_id=$2`, [TENANT, prodId])).rows;
+    else if (item.nome) frows = (await db.q(`SELECT fi.insumo_nome, fi.est_produto_id, fi.quantidade FROM ficha_itens fi JOIN produtos p ON p.id=fi.produto_id WHERE fi.tenant_id=$1 AND lower(p.nome)=lower($2)`, [TENANT, item.nome])).rows;
+    for (const r of frows) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0, r.est_produto_id);
     const sels = [].concat(item.selecoes || [], item.sabores || [], item.adicionais || [], (item.borda ? [item.borda] : []));
     for (const s of sels) {
       const nm = s && (s.nome || s.opcao || s.label); if (!nm) continue;
-      const fr = (await db.q(`SELECT fi.insumo_nome, fi.quantidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)`, [TENANT, nm])).rows;
-      for (const r of fr) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0);
+      const fr = (await db.q(`SELECT fi.insumo_nome, fi.est_produto_id, fi.quantidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)`, [TENANT, nm])).rows;
+      for (const r of fr) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0, r.est_produto_id);
     }
   }
   for (const it of itens) { out.itens_processados++; await fichasDoItem(it, Number(it.quantidade) || 1); }
@@ -1599,6 +1601,71 @@ async function api(req, res, url) {
       cur.impressao = impressaoSanitize(body.impressao || {}, impressaoSanitize(cur.impressao || {}, IMPRESSAO_DEFAULTS));
       await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
       return json(res, 200, { ok: true, obs: cur.obs, impressao: cur.impressao });
+    }
+
+    // ===== RECEITAS: preparos (sub-receitas com modo de preparo) =====
+    if (seg[2] === 'preparos' && req.method === 'GET') {
+      const pr = await db.q('SELECT id, nome, rendimento, unidade_rendimento, modo_preparo FROM preparos WHERE tenant_id=$1 ORDER BY nome', [TENANT]);
+      const it = await db.q('SELECT id, preparo_id, insumo_nome, est_produto_id, quantidade, unidade FROM preparo_itens WHERE tenant_id=$1', [TENANT]);
+      const byP = {}; for (const x of it.rows) (byP[x.preparo_id] = byP[x.preparo_id] || []).push(x);
+      return json(res, 200, { preparos: pr.rows.map(p => ({ ...p, itens: byP[p.id] || [] })) });
+    }
+    if (seg[2] === 'preparo' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      try { const r = await db.q(`INSERT INTO preparos (tenant_id, nome, rendimento, unidade_rendimento, modo_preparo) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (tenant_id, nome) DO UPDATE SET rendimento=EXCLUDED.rendimento, unidade_rendimento=EXCLUDED.unidade_rendimento, modo_preparo=EXCLUDED.modo_preparo RETURNING id`,
+        [TENANT, nome, body.rendimento != null && body.rendimento !== '' ? Number(body.rendimento) : null, body.unidade_rendimento || null, body.modo_preparo || null]);
+        return json(res, 200, { ok: true, id: r.rows[0].id }); } catch (e) { return json(res, 400, { erro: e.code || e.message }); }
+    }
+    if (seg[2] === 'preparo' && seg[3] && req.method === 'PATCH') {
+      await db.q('UPDATE preparos SET nome=COALESCE($2,nome), rendimento=$3, unidade_rendimento=$4, modo_preparo=$5 WHERE id=$1 AND tenant_id=$6',
+        [seg[3], body.nome ? String(body.nome).trim() : null, body.rendimento != null && body.rendimento !== '' ? Number(body.rendimento) : null, body.unidade_rendimento || null, body.modo_preparo ?? null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'preparo' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM preparos WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'preparo-item' && !seg[3] && req.method === 'POST') {
+      if (!body.preparo_id) return json(res, 400, { erro: 'preparo_id obrigatório' });
+      const nome = String(body.insumo_nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o insumo' });
+      await db.q(`INSERT INTO preparo_itens (tenant_id, preparo_id, insumo_nome, est_produto_id, quantidade, unidade) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [TENANT, body.preparo_id, nome, body.est_produto_id || null, body.quantidade != null && body.quantidade !== '' ? Number(body.quantidade) : null, body.unidade || null]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'preparo-item' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM preparo_itens WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // ===== RECEITAS: ficha técnica por opção/produto do cardápio =====
+    if (seg[2] === 'ficha-resumo' && req.method === 'GET') {
+      const fo = await db.q(`SELECT opcao_id, produto_id, count(*)::int n FROM ficha_itens WHERE tenant_id=$1 GROUP BY opcao_id, produto_id`, [TENANT]);
+      const porOpcao = {}, porProduto = {};
+      for (const r of fo.rows) { if (r.opcao_id) porOpcao[r.opcao_id] = r.n; else if (r.produto_id) porProduto[r.produto_id] = r.n; }
+      return json(res, 200, { porOpcao, porProduto });
+    }
+    if (seg[2] === 'ficha' && req.method === 'GET') {
+      const op = url.searchParams.get('opcao_id'), pr = url.searchParams.get('produto_id');
+      const r = op
+        ? await db.q('SELECT id, insumo_nome, est_produto_id, quantidade, unidade, observacao FROM ficha_itens WHERE tenant_id=$1 AND opcao_id=$2 ORDER BY id', [TENANT, op])
+        : await db.q('SELECT id, insumo_nome, est_produto_id, quantidade, unidade, observacao FROM ficha_itens WHERE tenant_id=$1 AND produto_id=$2 ORDER BY id', [TENANT, pr]);
+      return json(res, 200, { itens: r.rows });
+    }
+    if (seg[2] === 'ficha-item' && !seg[3] && req.method === 'POST') {
+      const nome = String(body.insumo_nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o insumo' });
+      if (!body.opcao_id && !body.produto_id) return json(res, 400, { erro: 'informe opcao_id ou produto_id' });
+      await db.q(`INSERT INTO ficha_itens (tenant_id, opcao_id, produto_id, insumo_nome, est_produto_id, quantidade, unidade, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [TENANT, body.opcao_id || null, body.produto_id || null, nome, body.est_produto_id || null, body.quantidade != null && body.quantidade !== '' ? Number(body.quantidade) : null, body.unidade || null, body.observacao || null]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'ficha-item' && seg[3] && req.method === 'PATCH') {
+      await db.q('UPDATE ficha_itens SET insumo_nome=COALESCE($2,insumo_nome), est_produto_id=$3, quantidade=$4, unidade=$5, observacao=$6 WHERE id=$1 AND tenant_id=$7',
+        [seg[3], body.insumo_nome ? String(body.insumo_nome).trim() : null, body.est_produto_id || null, body.quantidade != null && body.quantidade !== '' ? Number(body.quantidade) : null, body.unidade || null, body.observacao ?? null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'ficha-item' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM ficha_itens WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
     }
     if (seg[2] === 'config' && req.method === 'POST') {
       const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);

@@ -144,6 +144,7 @@
         <a data-s="pedidos" onclick="go('pedidos')"><span class="ic">🧾</span> Pedidos</a>
         <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
         <a data-s="aparencia" onclick="go('aparencia')"><span class="ic">🎨</span> Aparência</a>
+        <a data-s="receitas" onclick="go('receitas')"><span class="ic">📖</span> Receitas</a>
         <a data-s="estoque" onclick="go('estoque')"><span class="ic">📦</span> Estoque</a>
         <a data-s="equipe" onclick="go('equipe')"><span class="ic">👥</span> Equipe</a>
         <a data-s="config" onclick="go('config')"><span class="ic">⚙️</span> Configurações</a>
@@ -165,6 +166,7 @@
         <button onclick="go('pedidos',this)">Pedidos</button>
         <button onclick="go('cardapio',this)">Cardápio</button>
         <button onclick="go('aparencia',this)">Aparência</button>
+        <button onclick="go('receitas',this)">Receitas</button>
         <button onclick="go('estoque',this)">Estoque</button>
         <button onclick="go('equipe',this)">Equipe</button>
         <button onclick="go('config',this)">Config</button>
@@ -254,6 +256,17 @@
             <span class="mut sm" id="apStatus"></span>
             <button class="btn primary" style="margin-left:auto" onclick="salvarAparencia()">Salvar aparência</button>
           </div>
+        </section>
+
+        <!-- RECEITAS -->
+        <section class="scr2" id="s_receitas">
+          <div class="pagehead"><h2>Receitas e fichas técnicas</h2></div>
+          <p class="mut sm" style="margin:0 0 12px">A receita liga o produto do cardápio aos insumos do estoque. Editar aqui afeta a <b>baixa de estoque</b> de cada venda. Preparos (massa, molho…) são sub-receitas com modo de preparo.</p>
+          <h3 class="sec">Preparos (sub-receitas) <button class="btn primary sm" style="float:right" onclick="novoPreparo()">+ Novo preparo</button></h3>
+          <div id="preparosBox" style="margin-bottom:20px"><div class="mut sm">Carregando…</div></div>
+          <h3 class="sec">Fichas técnicas por item do cardápio</h3>
+          <p class="mut sm" style="margin:0 0 8px">Escolha um produto montável para editar a ficha de cada opção (sabor, borda…).</p>
+          <div id="fichasBox"><div class="mut sm">Carregando…</div></div>
         </section>
 
         <!-- ESTOQUE -->
@@ -370,7 +383,7 @@ function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.re
   document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
   if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
   if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
-  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
 function sair(){ location.reload(); }
 
@@ -500,6 +513,76 @@ async function salvarAparencia(){
   try{ const r=await (await fetch(API+'/api/admin/tema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tema})})).json();
     if(r.ok){ _ap=r.tema; toast('Aparência salva — abra “Ver minha loja”'); $('apStatus').textContent='Salvo ✓'; } else { $('apStatus').textContent=r.erro||'Erro'; }
   }catch(e){ $('apStatus').textContent='Falha de conexão.'; } }
+
+/* ===== RECEITAS / FICHAS TÉCNICAS ===== */
+let _insumos=[], _preparos=[], _catR=[], _fres={porOpcao:{},porProduto:{}}, _fichaProdSel='';
+async function loadReceitas(){
+  try{ _insumos=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[]; }catch(e){ _insumos=[]; }
+  try{ _preparos=(await (await fetch(API+'/api/admin/preparos?admin_id='+user.id)).json()).preparos||[]; }catch(e){ _preparos=[]; }
+  try{ _catR=(await (await fetch(API+'/api/admin/catalogo?admin_id='+user.id)).json()).categorias||[]; }catch(e){ _catR=[]; }
+  try{ _fres=(await (await fetch(API+'/api/admin/ficha-resumo?admin_id='+user.id)).json()); }catch(e){ _fres={porOpcao:{},porProduto:{}}; }
+  renderPreparos(); renderFichasNav();
+}
+function insumoSel(cur){ let h='<select class="field" data-insumo style="min-width:150px"><option value="">— insumo / preparo —</option><optgroup label="Insumos (estoque)">';
+  h+=_insumos.map(p=>`<option value="est:${p.id}" ${cur&&String(cur.est_produto_id)===String(p.id)?'selected':''}>${esc(p.nome)}</option>`).join('');
+  h+='</optgroup><optgroup label="Preparos">'+_preparos.map(p=>`<option value="prep:${esc(p.nome)}" ${cur&&!cur.est_produto_id&&cur.insumo_nome===p.nome?'selected':''}>${esc(p.nome)}</option>`).join('')+'</optgroup></select>';
+  return h; }
+function parseInsumo(v){ if(!v)return null; if(v.indexOf('est:')===0){ const id=Number(v.slice(4)); const p=_insumos.find(x=>x.id===id); return {est_produto_id:id,insumo_nome:p?p.nome:''}; } if(v.indexOf('prep:')===0) return {est_produto_id:null,insumo_nome:v.slice(5)}; return null; }
+async function apiAdmin(path,method,body){ const r=await fetch(API+path,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({admin_id:user.id},body||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||j.erro){ toast(j.erro||('Erro '+r.status)); throw new Error(j.erro||r.status); } return j; }
+
+function renderPreparos(){ const box=$('preparosBox');
+  if(!_preparos.length){ box.innerHTML='<div class="empty">Nenhum preparo ainda. Crie a Massa, o Molho, etc.</div>'; return; }
+  box.innerHTML=_preparos.map(p=>{
+    const itens=(p.itens||[]).map(it=>`<div class="row" style="gap:8px"><div class="nm">${esc(it.insumo_nome)}<small>${it.quantidade!=null?Number(it.quantidade):'?'} ${esc(it.unidade||'')}</small></div><button class="ic" title="remover" onclick="delPrepItem('${it.id}')">🗑️</button></div>`).join('')||'<div class="mut sm" style="padding:4px 0">Sem insumos.</div>';
+    return `<details class="catwrap"><summary class="catsum"><span class="csL"><span class="pill">PREPARO</span> <b>${esc(p.nome)}</b> <span class="cnt">${(p.itens||[]).length} insumos${p.rendimento?(' · rende '+Number(p.rendimento)+' '+esc(p.unidade_rendimento||'')):''}</span></span></summary>
+      <div class="in">
+        <label class="xs mut">Modo de preparo<textarea class="field" rows="3" data-mp="${p.id}" placeholder="Descreva o passo a passo…">${esc(p.modo_preparo||'')}</textarea></label>
+        <div style="display:flex;gap:8px;margin:6px 0 12px"><button class="btn sm" onclick="salvarPrepCab('${p.id}')">Salvar modo/rendimento</button>
+          <input class="field" data-rend="${p.id}" placeholder="rendimento" value="${p.rendimento!=null?Number(p.rendimento):''}" style="width:110px">
+          <input class="field" data-rendu="${p.id}" placeholder="un (ex: massas)" value="${esc(p.unidade_rendimento||'')}" style="width:130px">
+          <button class="btn sm ghost" style="margin-left:auto" onclick="delPreparo('${p.id}')">Excluir preparo</button></div>
+        <div class="sec" style="margin:4px 0 6px">Insumos</div>${itens}
+        <div class="row" style="gap:8px;margin-top:8px" data-addprep="${p.id}">${insumoSel(null)}<input class="field" data-q placeholder="qtd" style="width:80px"><input class="field" data-u placeholder="un" style="width:80px"><button class="btn sm" onclick="addPrepItem('${p.id}',this)">+ Insumo</button></div>
+      </div></details>`;
+  }).join('');
+}
+async function novoPreparo(){ const nome=await pedirTexto('Novo preparo','Nome (ex: Massa, Molho Premium, Brigadeiro de Ninho)',''); if(!nome)return; try{ await apiAdmin('/api/admin/preparo','POST',{nome:nome.trim()}); toast('Preparo criado'); loadReceitas(); }catch(e){} }
+async function salvarPrepCab(id){ const mp=document.querySelector('[data-mp="'+id+'"]').value; const rend=document.querySelector('[data-rend="'+id+'"]').value; const ru=document.querySelector('[data-rendu="'+id+'"]').value;
+  try{ await apiAdmin('/api/admin/preparo/'+id,'PATCH',{modo_preparo:mp,rendimento:rend,unidade_rendimento:ru}); toast('Preparo salvo'); }catch(e){} }
+async function delPreparo(id){ if(!confirm('Excluir este preparo e seus insumos?'))return; try{ await apiAdmin('/api/admin/preparo/'+id,'DELETE'); toast('Excluído'); loadReceitas(); }catch(e){} }
+async function addPrepItem(prepId,btn){ const row=btn.closest('[data-addprep]'); const ins=parseInsumo(row.querySelector('[data-insumo]').value); if(!ins){ toast('Escolha o insumo'); return; }
+  const q=row.querySelector('[data-q]').value, u=row.querySelector('[data-u]').value;
+  try{ await apiAdmin('/api/admin/preparo-item','POST',{preparo_id:prepId,insumo_nome:ins.insumo_nome,est_produto_id:ins.est_produto_id,quantidade:q,unidade:u}); toast('Insumo adicionado'); loadReceitas(); }catch(e){} }
+async function delPrepItem(id){ try{ await apiAdmin('/api/admin/preparo-item/'+id,'DELETE'); loadReceitas(); }catch(e){} }
+
+function renderFichasNav(){ const box=$('fichasBox');
+  const monta=[]; _catR.forEach(c=>c.produtos.forEach(p=>{ if((p.grupos||[]).length) monta.push({cat:c.nome,p}); }));
+  let h='<select class="field" style="max-width:340px" onchange="_fichaProdSel=this.value;renderFichaProduto()"><option value="">— escolher produto —</option>';
+  h+=monta.map(m=>`<option value="${m.p.id}" ${_fichaProdSel===m.p.id?'selected':''}>${esc(m.cat)} · ${esc(m.p.nome)}</option>`).join('')+'</select><div id="fichaProd" style="margin-top:12px"></div>';
+  box.innerHTML=h; renderFichaProduto();
+}
+function renderFichaProduto(){ const wrap=$('fichaProd'); if(!wrap)return; if(!_fichaProdSel){ wrap.innerHTML='<div class="mut sm">Selecione um produto acima.</div>'; return; }
+  let prod=null; _catR.forEach(c=>c.produtos.forEach(p=>{ if(p.id===_fichaProdSel)prod=p; }));
+  if(!prod){ wrap.innerHTML=''; return; }
+  let h='';
+  (prod.grupos||[]).forEach(g=>{ h+=`<div class="sec" style="margin:10px 0 6px">${esc(g.nome)}</div>`;
+    (g.opcoes||[]).forEach(o=>{ const n=_fres.porOpcao[o.id]||0; h+=`<div class="row"><div class="nm">${esc(o.nome)}<small>${n?(n+' insumo(s) na ficha'):'sem ficha'}</small></div><button class="btn sm ${n?'ghost':''}" onclick="abrirFicha('${o.id}','${esc(o.nome).replace(/'/g,"\\'")}')">${n?'Editar ficha':'Criar ficha'}</button></div>`; });
+  });
+  wrap.innerHTML=h+'<div id="fichaEditor"></div>';
+}
+async function abrirFicha(opcaoId,nome){ let d={itens:[]}; try{ d=await (await fetch(API+'/api/admin/ficha?admin_id='+user.id+'&opcao_id='+encodeURIComponent(opcaoId))).json(); }catch(e){}
+  const ed=$('fichaEditor'); const linhas=(d.itens||[]).map(it=>`<div class="row" style="gap:8px" data-fid="${it.id}"><div class="nm" style="flex:1">${esc(it.insumo_nome)}</div><input class="field" data-q value="${it.quantidade!=null?Number(it.quantidade):''}" style="width:80px"><input class="field" data-u value="${esc(it.unidade||'')}" style="width:80px"><button class="btn sm" onclick="salvarFichaLinha('${it.id}',this)">ok</button><button class="ic" onclick="delFichaItem('${it.id}','${opcaoId}','${esc(nome).replace(/'/g,"\\'")}')">🗑️</button></div>`).join('');
+  ed.innerHTML=`<div class="panel" style="margin-top:12px"><div class="sec" style="margin:0 0 8px">Ficha técnica — ${esc(nome)}</div>
+    ${linhas||'<div class="mut sm">Sem insumos ainda.</div>'}
+    <div class="row" style="gap:8px;margin-top:10px" data-addficha>${insumoSel(null)}<input class="field" data-q placeholder="qtd" style="width:80px"><input class="field" data-u placeholder="un" style="width:80px"><button class="btn sm" onclick="addFichaItem('${opcaoId}','${esc(nome).replace(/'/g,"\\'")}',this)">+ Insumo</button></div></div>`;
+  ed.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function addFichaItem(opcaoId,nome,btn){ const row=btn.closest('[data-addficha]'); const ins=parseInsumo(row.querySelector('[data-insumo]').value); if(!ins){ toast('Escolha o insumo'); return; }
+  const q=row.querySelector('[data-q]').value,u=row.querySelector('[data-u]').value;
+  try{ await apiAdmin('/api/admin/ficha-item','POST',{opcao_id:opcaoId,insumo_nome:ins.insumo_nome,est_produto_id:ins.est_produto_id,quantidade:q,unidade:u}); toast('Insumo adicionado'); _fres.porOpcao[opcaoId]=(_fres.porOpcao[opcaoId]||0)+1; abrirFicha(opcaoId,nome); }catch(e){} }
+async function salvarFichaLinha(id,btn){ const row=btn.closest('[data-fid]'); const q=row.querySelector('[data-q]').value,u=row.querySelector('[data-u]').value;
+  try{ await apiAdmin('/api/admin/ficha-item/'+id,'PATCH',{quantidade:q,unidade:u}); toast('Salvo'); }catch(e){} }
+async function delFichaItem(id,opcaoId,nome){ try{ await apiAdmin('/api/admin/ficha-item/'+id,'DELETE'); _fres.porOpcao[opcaoId]=Math.max((_fres.porOpcao[opcaoId]||1)-1,0); abrirFicha(opcaoId,nome); }catch(e){} }
 
 /* ===== CARDÁPIO — CRUD completo (Categoria → Item → Variação → Opção) ===== */
 let _cat={categoria:{},prod:{},grupo:{},opc:{}};

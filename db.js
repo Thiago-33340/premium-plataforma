@@ -106,7 +106,10 @@ const MIGRATIONS = [
      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
   "CREATE INDEX IF NOT EXISTS idx_estmov ON estoque_movimentos(tenant_id, criado_em DESC)",
-  "CREATE INDEX IF NOT EXISTS idx_estmov_item ON estoque_movimentos(tenant_id, item_id, criado_em DESC)"
+  "CREATE INDEX IF NOT EXISTS idx_estmov_item ON estoque_movimentos(tenant_id, item_id, criado_em DESC)",
+  "ALTER TABLE preparos ADD COLUMN IF NOT EXISTS modo_preparo TEXT",
+  "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
+  "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT"
 ];
 
 const state = { migrationsOk: false, ultimoErro: null };
