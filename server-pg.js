@@ -42,6 +42,19 @@ async function estPermsEfetivas(uid) {
   return { user: u, perms: EST_PERMS_COLAB.slice(), gestor: false };
 }
 async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
+// Converte uma quantidade de receita para a UNIDADE DE CONTAGEM do insumo bruto.
+// Se a unidade da receita for de massa/volume (g/kg/ml/l) e o bruto tiver peso_g (gramas por unidade), converte; senão usa o número direto.
+function estToGramas(qtd, unidade) {
+  const u = String(unidade || '').toLowerCase().trim();
+  if (u === 'kg' || u === 'kgs' || u === 'kilo' || u === 'quilo' || u === 'l' || u === 'lt' || u === 'litro' || u === 'litros') return qtd * 1000;
+  if (u === 'g' || u === 'gr' || u === 'grama' || u === 'gramas' || u === 'ml') return qtd * 1;
+  return null;
+}
+function estBaixaEmUnidades(qtdReceita, unidadeReceita, pesoG) {
+  const g = estToGramas(qtdReceita, unidadeReceita);
+  if (g != null && Number(pesoG) > 0) return g / Number(pesoG);
+  return qtdReceita;
+}
 
 /* ===== Tema white-label da loja (storefront por tenant) ===== */
 const TEMA_DEFAULTS = { marca: 'Premium Pizzas', dominio: '', modo: 'escuro', cor_primaria: '#F97316', cor_primaria_texto: '#160a02', fonte: 'Sora', logo_url: '/logo.png', layout_card: 'lista', mostrar_busca: true, mostrar_descricao: true, mostrar_preco_a_partir: true, mostrar_destaques: false, mostrar_avaliacoes: false, texto_funcionamento: '' };
@@ -525,7 +538,7 @@ async function api(req, res, url) {
     const busca = (url.searchParams.get('busca') || '').toLowerCase();
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
-    const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal,
+    const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo, p.ultimo_valor, p.maior_valor, p.observacoes,
         p.categoria_id, p.fornecedor_preferido_id, c.nome AS categoria, f.nome AS fornecedor
       FROM est_produto p
@@ -562,7 +575,7 @@ async function api(req, res, url) {
   // Vínculos: produtos com setores + ligação bruto->produzido (para conferência sem erro)
   if (sub === 'est' && seg[2] === 'vinculos' && req.method === 'GET') {
     const setores = (await db.q('SELECT id, nome FROM est_setor WHERE tenant_id=$1 AND ativo ORDER BY ordem, nome', [TENANT])).rows;
-    const prods = (await db.q(`SELECT p.id, p.nome, p.unidade, p.pode_produzir, c.nome AS categoria,
+    const prods = (await db.q(`SELECT p.id, p.nome, p.unidade, p.peso_g, p.pode_produzir, c.nome AS categoria,
         COALESCE((SELECT array_agg(ps.setor_id) FROM est_produto_setor ps WHERE ps.produto_id=p.id AND ps.tenant_id=p.tenant_id),'{}') AS setores
       FROM est_produto p LEFT JOIN est_categoria c ON c.id=p.categoria_id
       WHERE p.tenant_id=$1 AND p.ativo ORDER BY c.ordem, p.nome`, [TENANT])).rows;
@@ -577,6 +590,14 @@ async function api(req, res, url) {
     await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]);
     for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, pid, sid]);
     return json(res, 200, { ok: true, setores });
+  }
+  if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'peso' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão.' });
+    const pid = parseInt(seg[3], 10);
+    const pg = b.peso_g != null && b.peso_g !== '' ? Number(b.peso_g) : null;
+    await db.q('UPDATE est_produto SET peso_g=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [pid, pg, TENANT]);
+    return json(res, 200, { ok: true, peso_g: pg });
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'bruto' && req.method === 'POST') {
     const b = await readBody(req);
@@ -1068,13 +1089,14 @@ async function api(req, res, url) {
     if (!pid || !(qtd > 0)) return json(res, 400, { erro: 'produto e quantidade (>0) obrigatórios' });
     const p = await db.q('SELECT nome, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND pode_produzir', [pid, TENANT]);
     if (!p.rows[0]) return json(res, 404, { erro: 'produto produzido não encontrado' });
-    const rec = await db.q(`SELECT r.insumo_produto_id, i.nome AS insumo, i.estoque_atual, r.quantidade_por_unidade, r.rendimento FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo`, [TENANT, pid]);
+    const rec = await db.q(`SELECT r.insumo_produto_id, i.nome AS insumo, i.estoque_atual, i.peso_g, r.quantidade_por_unidade, r.unidade AS receita_unidade, r.rendimento FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo`, [TENANT, pid]);
     const run = await db.q(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [TENANT, pid, qtd, b.usuario_id, uname, b.observacao || null]);
     const runId = run.rows[0].id; const avisos = [];
     for (const r of rec.rows) {
       const qpu = r.quantidade_por_unidade != null ? Number(r.quantidade_por_unidade) : 0;
       const rend = r.rendimento != null && Number(r.rendimento) > 0 ? Number(r.rendimento) : 1;
-      const baixa = qpu * qtd / rend;
+      // por unidade produzida: converte g/kg/ml -> unidade de contagem do bruto via peso_g
+      const baixa = estBaixaEmUnidades(qpu, r.receita_unidade, r.peso_g) * qtd / rend;
       if (!(baixa > 0)) continue;
       const antes = Number(r.estoque_atual), depois = antes - baixa;
       await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [r.insumo_produto_id, depois]);

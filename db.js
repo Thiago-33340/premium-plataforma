@@ -109,7 +109,8 @@ const MIGRATIONS = [
   "CREATE INDEX IF NOT EXISTS idx_estmov_item ON estoque_movimentos(tenant_id, item_id, criado_em DESC)",
   "ALTER TABLE preparos ADD COLUMN IF NOT EXISTS modo_preparo TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
-  "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT"
+  "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
+  "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)"
 ];
 
 const state = { migrationsOk: false, ultimoErro: null };
