@@ -175,6 +175,12 @@ async function init(retries) {
         }
       } catch (ee) { console.log('[db] estoque-v2 aviso:', ee.code || ee.message); }
       try {
+        const seedProd = fs.readFileSync(path.join(__dirname, 'seed-produzidos-rp.sql'), 'utf8');
+        await pool.query(seedProd);
+        const rpd = await pool.query("SELECT COUNT(*)::int AS n FROM est_produto p JOIN est_categoria c ON c.id=p.categoria_id WHERE p.tenant_id=$1 AND c.nome='Produtos produzidos internamente'", [TENANT]);
+        console.log('[db] seed produzidos (idempotente) aplicado - produzidos: ' + rpd.rows[0].n);
+      } catch (epd) { console.log('[db] seed-produzidos aviso:', epd.code || epd.message); }
+      try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
         console.log('[db] seed de PINs (idempotente) aplicado');
