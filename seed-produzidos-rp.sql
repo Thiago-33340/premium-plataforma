@@ -313,7 +313,7 @@ INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantid
 INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,ativo) SELECT 'khardela:premiumpizzas:sjrp',(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Bolinha de muçarela'),(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Muçarela'),0.035,'PEÇA DE 4 KG',1,TRUE WHERE NOT EXISTS (SELECT 1 FROM est_producao_receita r WHERE r.tenant_id='khardela:premiumpizzas:sjrp' AND r.produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Bolinha de muçarela'));
 
 -- ===== Ajustes: peso_g dos brutos, contagem por peso (abertos), fracionados em gramas, fichas bolinhas, bisnagas =====
-UPDATE est_produto SET peso_g=4000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Muçarela';
+UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Muçarela';
 UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Bacon';
 UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Calabresa Reta';
 UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Lombo Canadense';
@@ -379,3 +379,7 @@ UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas
 UPDATE est_producao_receita SET quantidade_por_unidade=54, unidade='g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Rolinho de muçarela') AND insumo_produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Muçarela');
 UPDATE est_producao_receita SET quantidade_por_unidade=27, unidade='g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Rolinho de presunto e muçarela') AND insumo_produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Muçarela');
 UPDATE est_producao_receita SET quantidade_por_unidade=24, unidade='g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Rolinho de presunto e muçarela') AND insumo_produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Presunto');
+
+-- ===== Ajuste 5: pesos File Mignon e Oregano (kg=1000g) =====
+UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='File Mignon';
+UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Orégano';
