@@ -54,6 +54,8 @@
   .pagehead .per{ color:var(--mut); font-size:13px; }
   .chip{ font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
   .chip .dot{ width:8px; height:8px; border-radius:50%; }
+  .schip{ font-size:12px; font-weight:700; padding:6px 12px; border-radius:8px; border:1px solid #2e2e34; background:#141417; color:#9a9aa3; cursor:pointer; }
+  .schip.on{ background:#F97316; color:#160a02; border-color:#F97316; }
   .chip.aberta{ background:#0f2a18; color:var(--verde); } .chip.fechada{ background:#2a1414; color:var(--verm); }
   .chip .dot.g{ background:var(--verde); } .chip .dot.r{ background:var(--verm); }
 
@@ -532,7 +534,7 @@ let _vinc={setores:[],produtos:[],receitas:[]};
 async function loadProducao(){ try{ _vinc=await (await fetch(API+'/api/est/vinculos')).json(); }catch(e){ _vinc={setores:[],produtos:[],receitas:[]}; }
   renderVinc(); renderSetorOutros(); }
 function ehProduzido(p){ return p.pode_produzir || p.categoria==='Produtos produzidos internamente'; }
-function setorChips(p){ return (_vinc.setores||[]).map(s=>`<button type="button" class="chip ${(p.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join(''); }
+function setorChips(p){ return (_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(p.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join(''); }
 function renderVinc(){ const box=$('vincBox'); const prod=(_vinc.produtos||[]).filter(ehProduzido);
   if(!prod.length){ box.innerHTML='<div class="empty">Nenhum item produzido.</div>'; return; }
   const cands=(_vinc.produtos||[]);
