@@ -56,6 +56,64 @@ function estBaixaEmUnidades(qtdReceita, unidadeReceita, pesoG) {
   return qtdReceita;
 }
 
+/* ===== Contagem Geral (periódica, genérica por tenant) =====
+   Os itens do setor "Gerais" (sem dono fixo) são divididos entre os setores
+   participantes no dia da contagem geral, de forma equilibrada pela carga:
+   quem tem menos itens fixos recebe mais, nivelando os totais sem sobrecarregar.
+   O que já pertence a um setor permanece no setor (não entra na divisão). */
+const GERAL_DEFAULTS = { ativo: false, dia: 1, escopo: 'gerais', setores_participantes: ['Borda', 'Montagem', 'Finalização'], forcar_data: null };
+function estHojeISO() {
+  const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+async function estGeralCfg() {
+  const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+  const c = (r.rows[0] && r.rows[0].config && r.rows[0].config.contagem_geral) || {};
+  return Object.assign({}, GERAL_DEFAULTS, c);
+}
+function estGeralAtivaHoje(cfg) {
+  if (cfg && cfg.forcar_data === estHojeISO()) return true;
+  if (!cfg || !cfg.ativo) return false;
+  return new Date().getDay() === Number(cfg.dia);
+}
+// Calcula quais produtos do "Gerais" cada setor participante conta na geral.
+async function estDivisaoGeral(cfg) {
+  cfg = cfg || await estGeralCfg();
+  const parts = (cfg.setores_participantes || []).filter(Boolean);
+  const ger = (await db.q(
+    `SELECT p.id, p.nome, p.unidade FROM est_produto p
+       JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+       JOIN est_setor s ON s.id=ps.setor_id
+      WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar AND s.nome='Gerais'
+      ORDER BY p.nome`, [TENANT])).rows;
+  if (!parts.length || !ger.length) return { gerais: ger.length, participantes: parts, fixos: {}, alvo: {}, porSetor: {} };
+  const fixos = {};
+  for (const sn of parts) {
+    const r = await db.q(
+      `SELECT count(*)::int n FROM est_produto_setor ps
+         JOIN est_setor s ON s.id=ps.setor_id JOIN est_produto p ON p.id=ps.produto_id
+        WHERE ps.tenant_id=$1 AND s.nome=$2 AND p.ativo AND p.pode_contar AND s.nome<>'Gerais'`, [TENANT, sn]);
+    fixos[sn] = r.rows[0].n;
+  }
+  const G = ger.length;
+  const sumF = parts.reduce((a, s) => a + fixos[s], 0);
+  const T = (sumF + G) / parts.length; // total alvo por setor após a divisão
+  const ideal = parts.map(s => Math.max(0, T - fixos[s]));
+  const isum = ideal.reduce((a, b) => a + b, 0) || 1;
+  const counts = parts.map((s, i) => Math.round(ideal[i] / isum * G));
+  // ajuste fino de arredondamento para somar exatamente G
+  let diff = G - counts.reduce((a, b) => a + b, 0), guard = 0;
+  while (diff !== 0 && guard++ < 5000) {
+    // dá/tira do setor que ficará com menor/maior total, mantendo igualdade
+    const totals = parts.map((s, i) => fixos[s] + counts[i]);
+    if (diff > 0) { const j = totals.indexOf(Math.min(...totals)); counts[j]++; diff--; }
+    else { const cand = parts.map((s, i) => counts[i] > 0 ? fixos[s] + counts[i] : Infinity); const j = cand.indexOf(Math.max(...cand.filter(x => x !== Infinity))); counts[(j < 0 ? 0 : j)]--; diff++; }
+  }
+  const porSetor = {}; let k = 0;
+  parts.forEach((s, i) => { porSetor[s] = ger.slice(k, k + counts[i]).map(x => x.id); k += counts[i]; });
+  const alvo = {}; parts.forEach((s, i) => { alvo[s] = fixos[s] + counts[i]; });
+  return { gerais: G, participantes: parts, fixos, counts: Object.fromEntries(parts.map((s, i) => [s, counts[i]])), alvo, porSetor };
+}
+
 /* ===== Tema white-label da loja (storefront por tenant) ===== */
 const TEMA_DEFAULTS = { marca: 'Premium Pizzas', dominio: '', modo: 'escuro', cor_primaria: '#F97316', cor_primaria_texto: '#160a02', fonte: 'Sora', logo_url: '/logo.png', layout_card: 'lista', mostrar_busca: true, mostrar_descricao: true, mostrar_preco_a_partir: true, mostrar_destaques: false, mostrar_avaliacoes: false, texto_funcionamento: '' };
 const FONTES_OK = ['Sora', 'Inter', 'Archivo', 'Nunito', 'Baloo 2', 'Jost', 'Cormorant Garamond', 'Poppins', 'Montserrat', 'Roboto'];
@@ -714,10 +772,56 @@ async function api(req, res, url) {
       VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id`, [TENANT, s.rows[0].id, s.rows[0].nome, b.usuario_id, u.rows[0].nome]);
     const cid = c.rows[0].id;
     for (const it of itens.rows)
-      await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status) VALUES ($1,$2,$3,$4,$5,$6,'PENDENTE')`,
+      await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral) VALUES ($1,$2,$3,$4,$5,$6,'PENDENTE',FALSE)`,
         [TENANT, cid, it.produto_id, it.nome, it.unidade, it.obrigatorio]);
-    const out = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao FROM est_contagem_item WHERE contagem_id=$1 ORDER BY produto_nome', [cid]);
-    return json(res, 201, { contagem: { id: cid, setor_nome: s.rows[0].nome }, itens: out.rows });
+    // Contagem geral: no dia configurado, anexa a fatia do "Gerais" deste setor
+    const gcfg = await estGeralCfg();
+    let geralInfo = null;
+    if (estGeralAtivaHoje(gcfg) && (gcfg.setores_participantes || []).includes(s.rows[0].nome)) {
+      const div = await estDivisaoGeral(gcfg);
+      const ids = div.porSetor[s.rows[0].nome] || [];
+      if (ids.length) {
+        const gp = await db.q(`SELECT id, nome, unidade FROM est_produto WHERE tenant_id=$1 AND id = ANY($2::int[]) AND ativo AND pode_contar`, [TENANT, ids]);
+        for (const it of gp.rows)
+          await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral) VALUES ($1,$2,$3,$4,$5,FALSE,'PENDENTE',TRUE)`,
+            [TENANT, cid, it.id, it.nome, it.unidade]);
+        geralInfo = { itens: gp.rows.length };
+      }
+    }
+    const out = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY geral, produto_nome', [cid]);
+    return json(res, 201, { contagem: { id: cid, setor_nome: s.rows[0].nome }, itens: out.rows, geral: geralInfo });
+  }
+  // ===== Contagem Geral: config + status + disparo (gestor) =====
+  if (sub === 'est' && seg[2] === 'contagem-geral' && (!seg[3] || seg[3] === 'status') && req.method === 'GET') {
+    if (!await estPode(url.searchParams.get('usuario_id'), 'acessar_configuracoes')) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const cfg = await estGeralCfg();
+    const div = await estDivisaoGeral(cfg);
+    return json(res, 200, { config: cfg, ativa_hoje: estGeralAtivaHoje(cfg), hoje: estHojeISO(), divisao: div });
+  }
+  if (sub === 'est' && seg[2] === 'contagem-geral' && (!seg[3] || seg[3] === 'config') && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!await estPode(b.usuario_id, 'acessar_configuracoes')) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const cur = await estGeralCfg();
+    const nv = Object.assign({}, cur);
+    if (typeof b.ativo === 'boolean') nv.ativo = b.ativo;
+    if (b.dia != null && Number(b.dia) >= 0 && Number(b.dia) <= 6) nv.dia = Number(b.dia);
+    if (Array.isArray(b.setores_participantes)) nv.setores_participantes = b.setores_participantes.map(String).filter(Boolean);
+    const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const conf = Object.assign({}, r.rows[0] && r.rows[0].config); conf.contagem_geral = nv;
+    await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, conf]);
+    const div = await estDivisaoGeral(nv);
+    return json(res, 200, { ok: true, config: nv, ativa_hoje: estGeralAtivaHoje(nv), divisao: div });
+  }
+  if (sub === 'est' && seg[2] === 'contagem-geral' && (seg[3] === 'iniciar-agora' || seg[3] === 'parar') && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!await estPode(b.usuario_id, 'acessar_configuracoes')) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+    const conf = Object.assign({}, r.rows[0] && r.rows[0].config);
+    const cg = Object.assign({}, GERAL_DEFAULTS, conf.contagem_geral);
+    cg.forcar_data = seg[3] === 'iniciar-agora' ? estHojeISO() : null;
+    conf.contagem_geral = cg;
+    await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, conf]);
+    return json(res, 200, { ok: true, ativa_hoje: estGeralAtivaHoje(cg) });
   }
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'encerrar' && req.method === 'POST') {
     const b = await readBody(req); const cid = seg[3];

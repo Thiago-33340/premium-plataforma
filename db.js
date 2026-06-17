@@ -110,7 +110,8 @@ const MIGRATIONS = [
   "ALTER TABLE preparos ADD COLUMN IF NOT EXISTS modo_preparo TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
-  "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)"
+  "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
+  "ALTER TABLE est_contagem_item ADD COLUMN IF NOT EXISTS geral BOOLEAN NOT NULL DEFAULT FALSE"
 ];
 
 const state = { migrationsOk: false, ultimoErro: null };

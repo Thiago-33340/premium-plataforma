@@ -96,6 +96,8 @@ nav button.on{ color:var(--lar); }
 .setor-btn small{ color:var(--mut); font-weight:400; font-size:12px; }
 .audit-banner{ background:#2a2410; border:1px solid #5a4a16; color:#ffd479; border-radius:12px; padding:12px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; font-weight:600; }
 .cnt-item{ background:var(--bg2); border:1px solid var(--bd); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+.cnt-div{ margin:18px 0 10px; padding:9px 12px; border-radius:10px; background:linear-gradient(90deg,rgba(249,115,22,.18),rgba(249,115,22,.04)); border:1px solid rgba(249,115,22,.4); color:var(--fg); font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
+.cnt-div small{ color:var(--mut); font-weight:600; font-size:11px; }
 .cnt-item.done{ border-color:#1d4a2a; }
 .cnt-item .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .cnt-item .pn{ font-weight:600; font-size:15px; }
@@ -368,7 +370,10 @@ async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem()
 async function iniciarContagem(setorId){ try{ const d=await estFetch('/api/est/contagem/iniciar','POST',{setor_id:setorId}); _cnt={ id:d.contagem.id, setor_nome:d.contagem.setor_nome, itens:d.itens }; renderContagem(); }catch(e){} }
 function renderContagem(){ const w=$('contWrap');
   let h=`<div class="vhead"><h2 class="tit">${esc(_cnt.setor_nome)}</h2><button class="btn ghost sm" onclick="cancelarContagem()">Sair</button></div><div id="cntList" style="padding-bottom:130px">`;
-  h+=_cnt.itens.map(cntItemHTML).join('')+'</div>';
+  const fixos=_cnt.itens.filter(x=>!x.geral), gerais=_cnt.itens.filter(x=>x.geral);
+  h+=fixos.map(cntItemHTML).join('');
+  if(gerais.length){ h+=`<div class="cnt-div">📋 Contagem geral de hoje <small>${gerais.length} ${gerais.length===1?'item':'itens'} extras</small></div>`+gerais.map(cntItemHTML).join(''); }
+  h+='</div>';
   h+=`<div class="cnt-foot"><div class="prog" id="cntProg"></div><button class="btn primary sm" onclick="encerrarContagem()">Encerrar</button></div>`;
   w.innerHTML=h; atualizaProg(); }
 function cntItemHTML(it){ const val=it.quantidade!=null?it.quantidade:''; const ign=it.status==='IGNORADO';

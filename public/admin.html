@@ -290,6 +290,7 @@
           <p class="mut sm" style="margin:0 0 12px">Visão do estoque real do app (contagem, compras, perdas, produção). Aqui você ajusta mínimo/ideal e renomeia setores; contagem e lançamentos são feitos no app de estoque.</p>
           <div class="kpis" id="estKpis"></div>
           <h3 class="sec">Setores</h3><div class="panel" id="setoresBox" style="margin-bottom:18px"></div>
+<h3 class="sec">Contagem geral periódica</h3><div class="panel" id="contGeralBox" style="margin-bottom:18px"></div>
           <h3 class="sec">Movimentações recentes</h3><div class="panel" id="movBox" style="margin-bottom:18px"></div>
           <h3 class="sec">Produtos — mínimo / ideal</h3><div id="estItens"></div>
         </section>
@@ -752,6 +753,47 @@ async function loadEstoque(){
       <button class="btn sm" data-save>Salvar</button></div>`; });
     det.innerHTML=h+'</div>'; box.appendChild(det); });
   box.querySelectorAll('[data-save]').forEach(b=> b.onclick=()=>salvarItemEst(b.closest('.row')));
+  loadContagemGeral(set);
+}
+let _cgSet=[];
+async function loadContagemGeral(setores){
+  _cgSet=setores||_cgSet;
+  let d={}; try{ d=await (await fetch(API+'/api/est/contagem-geral/status?usuario_id='+user.id)).json(); }catch(e){}
+  if(d.erro){ $('contGeralBox').innerHTML='<div class="empty">Apenas gestor.</div>'; return; }
+  const cfg=d.config||{}, div=d.divisao||{}, parts=cfg.setores_participantes||[];
+  const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const participaveis=(_cgSet||[]).map(s=>s.nome).filter(n=>n&&n!=='Gerais');
+  const resumo = (div.participantes||[]).map(sn=>`<div class="litem"><div class="nm">${esc(sn)}<small>fixos ${div.fixos[sn]||0} + geral ${(div.counts&&div.counts[sn])||0} = <b>${(div.alvo&&div.alvo[sn])||0}</b> itens no dia</small></div></div>`).join('')||'<div class="empty">Defina os setores participantes.</div>';
+  $('contGeralBox').innerHTML=`
+    <div style="padding:12px 14px">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="cgAtivo" ${cfg.ativo?'checked':''}> <b>Ativar contagem geral automática</b></label>
+      <div class="grid2" style="margin-bottom:10px">
+        <label class="xs mut">Dia da semana<select class="field" id="cgDia">${DIAS.map((n,i)=>`<option value="${i}" ${Number(cfg.dia)===i?'selected':''}>${n}</option>`).join('')}</select></label>
+        <div></div>
+      </div>
+      <div class="xs mut" style="margin-bottom:4px">Setores que recebem a fatia do "Gerais" (segure Ctrl):</div>
+      <select class="field" id="cgSetores" multiple size="${Math.min(5,Math.max(3,participaveis.length))}" style="margin-bottom:10px">
+        ${participaveis.map(n=>`<option value="${esc(n)}" ${parts.includes(n)?'selected':''}>${esc(n)}</option>`).join('')}
+      </select>
+      <div class="mut xs" style="margin-bottom:8px">Escopo: somente o setor <b>"Gerais"</b> (${div.gerais||0} itens) é dividido. O que já pertence a um setor permanece no setor. A divisão é equilibrada pela carga: quem tem menos itens fixos recebe mais.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <button class="btn sm" onclick="salvarContagemGeral()">Salvar configuração</button>
+        ${d.ativa_hoje?`<span class="tag" style="background:#1f3a1f;color:#9be29b;padding:4px 10px;border-radius:999px;font-size:12px">Geral ativa hoje (${d.hoje})</span><button class="btn sm ghost" onclick="dispararGeral('parar')">Encerrar geral de hoje</button>`:`<button class="btn sm ghost" onclick="dispararGeral('iniciar-agora')">Iniciar geral agora</button>`}
+      </div>
+      <div class="mut xs" style="margin-bottom:6px">Prévia da divisão (hoje):</div>
+      ${resumo}
+    </div>`;
+}
+async function salvarContagemGeral(){
+  const ativo=$('cgAtivo').checked, dia=Number($('cgDia').value);
+  const setores=[...$('cgSetores').selectedOptions].map(o=>o.value);
+  const r=await (await fetch(API+'/api/est/contagem-geral/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,ativo,dia,setores_participantes:setores})})).json();
+  if(r.ok){ toast('Contagem geral configurada'); loadContagemGeral(); } else toast(r.erro||'Erro');
+}
+async function dispararGeral(acao){
+  const r=await (await fetch(API+'/api/est/contagem-geral/'+acao,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id})})).json();
+  if(r.ok){ toast(acao==='parar'?'Geral de hoje encerrada':'Geral iniciada para hoje'); loadContagemGeral(); } else toast(r.erro||'Erro');
 }
 async function renomearSetorEst(id,atual){ const novo=await pedirTexto('Renomear setor','Nome do setor (ex: Borda, Montagem)',atual); if(novo===null)return; const v=novo.trim(); if(!v){ toast('Informe um nome'); return; }
   const r=await (await fetch(API+'/api/est/setor/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,nome:v})})).json();
