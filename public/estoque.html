@@ -361,6 +361,7 @@ function ehGestor(){ const p=((user&&user.perfil)||'').toUpperCase(); return p==
 async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem(); return; }
   w.innerHTML='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div><div class="empty">Carregando…</div>';
   let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
+  if(!ehGestor()){ const sp=((user&&user.setores_permitidos)||[]).map(String); if(!sp.includes('TUDO')) setores=setores.filter(s=> sp.includes(String(s.id))||sp.includes(s.nome)); }
   let aud=0; try{ aud=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens||[]).length; }catch(e){}
   let h='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div>';
   if(temPerm('acessar_auditoria')) h+=`<div class="audit-banner" onclick="abrirAuditorias()"><span>⏳ ${aud} aguardando auditoria</span><span>Auditar ›</span></div>`;

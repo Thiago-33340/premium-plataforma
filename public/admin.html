@@ -815,7 +815,7 @@ async function salvarItem(rowEl){ const id=rowEl.dataset.id; const all=(await (a
 
 /* ===== EQUIPE ===== */
 function setorNome(sid){ const s=SETORES.find(x=>x.setor_id===sid); return s?s.setor_nome:sid; }
-async function loadEquipe(){ if(!SETORES.length){ try{ SETORES=(await (await fetch(API+'/api/admin/setores?admin_id='+user.id)).json()).setores||[]; }catch(e){} }
+async function loadEquipe(){ if(!SETORES.length){ try{ const ss=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; SETORES=ss.map(s=>({setor_id:String(s.id), setor_nome:s.nome})); }catch(e){} }
   const us=(await (await fetch(API+'/api/admin/usuarios?admin_id='+user.id)).json()).usuarios||[]; const box=$('equipeBox'); box.innerHTML='';
   us.forEach(u=>{ const det=document.createElement('details');
     const setoresNomes=(u.setores_permitidos||[]).map(s=> s==='TUDO'?'Todos os setores':setorNome(s)).join(', ')||'—';
