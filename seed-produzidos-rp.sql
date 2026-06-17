@@ -383,3 +383,26 @@ UPDATE est_producao_receita SET quantidade_por_unidade=24, unidade='g' WHERE ten
 -- ===== Ajuste 5: pesos File Mignon e Oregano (kg=1000g) =====
 UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='File Mignon';
 UPDATE est_produto SET peso_g=1000 WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Orégano';
+
+-- ===== Ajuste 6: renames, unidades, lombo, frango, chocolate =====
+UPDATE est_produto SET nome='Farinha' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Farinha Anaconda' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Farinha');
+UPDATE est_produto SET marca_preferida='Anaconda' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Farinha';
+UPDATE est_produto SET nome='Calabresa picada 80g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Calabresa picada 70g' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Calabresa picada 80g');
+UPDATE est_producao_receita SET quantidade_por_unidade=80, unidade='g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Calabresa picada 80g') AND insumo_produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Calabresa Reta');
+UPDATE est_produto SET nome='Lombo Fracionado' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Lombo 150g' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Lombo Fracionado');
+UPDATE est_produto SET unidade='g' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Lombo Fracionado';
+UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Lombo Fracionado');
+UPDATE est_produto SET nome='Frango Coxa - Congelado' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango Coxa' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango Coxa - Congelado');
+UPDATE est_produto SET nome='Frango Peito - Congelado' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango Peito' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango Peito - Congelado');
+UPDATE est_produto SET ativo=FALSE WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango congelado';
+UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id='khardela:premiumpizzas:sjrp' AND insumo_produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Frango congelado');
+UPDATE est_produto SET nome='Chocolate ao Leite Aberto da Borda' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Chocolate ao Leite Bisnaga - Borda' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Chocolate ao Leite Aberto da Borda');
+UPDATE est_produto SET nome='Chocolate Branco Aberto da Borda' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Chocolate Branco Bisnaga - Borda' AND NOT EXISTS (SELECT 1 FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Chocolate Branco Aberto da Borda');
+UPDATE est_produto SET ativo=FALSE WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome IN ('Chocolate ao Leite Bisnaga - Finalização','Chocolate Branco Bisnaga - Finalização');
+UPDATE est_produto SET ativo=FALSE WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome IN ('Catupiry Aberto da Montagem','Cheddar Aberto da Montagem');
+UPDATE est_produto SET unidade='Litro' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Molho produzido';
+UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Ferrero Rocher';
+UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Raffaello';
+UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Ouro Branco';
+UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Sonho de Valsa';
+UPDATE est_produto SET unidade='UNIDADE' WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Prestígio';

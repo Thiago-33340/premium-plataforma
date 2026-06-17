@@ -182,6 +182,15 @@ async function init(retries) {
         console.log('[db] seed produzidos (idempotente) aplicado - produzidos: ' + rpd.rows[0].n);
       } catch (epd) { console.log('[db] seed-produzidos aviso:', epd.code || epd.message); }
       try {
+        const mk = await pool.query("SELECT (config->>'setores_premium_v3') AS m FROM tenants WHERE id=$1", [TENANT]);
+        if (!mk.rows[0] || !mk.rows[0].m) {
+          const seedSet = fs.readFileSync(path.join(__dirname, 'seed-setores-premium.sql'), 'utf8');
+          await pool.query(seedSet);
+          await pool.query("UPDATE tenants SET config = COALESCE(config,'{}'::jsonb) || '{\"setores_premium_v3\":true}'::jsonb WHERE id=$1", [TENANT]);
+          console.log('[db] layout de setores Premium aplicado (carga unica v3)');
+        } else { console.log('[db] layout de setores ja aplicado - ignorado'); }
+      } catch (est) { console.log('[db] seed-setores aviso:', est.code || est.message); }
+      try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
         console.log('[db] seed de PINs (idempotente) aplicado');
