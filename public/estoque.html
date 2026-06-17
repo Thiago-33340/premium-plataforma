@@ -607,7 +607,8 @@ function renderProducao(){ const p=_prod.sel; const isG=ehGestor();
    <div class="sec">Ficha técnica (consumo por unidade)</div><div class="cnt-item">${rows}</div>
    ${isG?`<button class="btn ghost sm" style="margin-top:8px" onclick="addFicha()">+ Adicionar insumo</button>`:''}
    <div class="sec">Lançar produção</div>
-   <label class="flabel">Quantidade produzida (${esc(p.unidade||'un')})<input id="prodQtd" class="field" inputmode="decimal" placeholder="ex: 10"></label>
+   <label class="flabel">Quantidade base — para baixa dos insumos (${esc(p.unidade||'un')})<input id="prodQtd" class="field" inputmode="decimal" placeholder="ex: 10"></label>
+   <label class="flabel">Total realmente rendido (${esc(p.unidade||'un')}) <small class="mut">— opcional; a diferença vira perda</small><input id="prodRend" class="field" inputmode="decimal" placeholder="ex: 7"></label>
    <label class="flabel">Observação<input id="prodObs" class="field" placeholder="opcional"></label>
    <div style="padding-bottom:90px"></div>
    <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="lancarProducao()">Produzir e dar baixa</button></div>`; }
@@ -626,8 +627,13 @@ async function addFicha(){ const insOpts=_prod.insumos.filter(i=>i.id!==_prod.se
   try{ await estFetch('/api/est/producao/receita','POST',Object.assign({produto_id:_prod.sel.id},v)); toast('Insumo adicionado'); abreProducao(_prod.sel.id); }catch(e){} }
 async function delFicha(id){ if(!await pedirConfirm('Remover insumo','Tirar este insumo da ficha técnica?')) return; try{ await estFetch('/api/est/producao/receita/'+id,'DELETE'); toast('Removido'); abreProducao(_prod.sel.id); }catch(e){} }
 async function lancarProducao(){ const q=(($('prodQtd')&&$('prodQtd').value)||'').replace(',','.'); const obs=($('prodObs')&&$('prodObs').value)||'';
-  if(!(parseFloat(q)>0)){ toast('Informe a quantidade'); return; }
-  try{ const d=await estFetch('/api/est/producao/run','POST',{produto_id:_prod.sel.id,quantidade:q,observacao:obs}); toast('Produção lançada — estoque atualizado'); if(d.avisos&&d.avisos.length) setTimeout(()=>toast('Atenção: '+d.avisos[0]),1700); producaoTela(); }catch(e){} }
+  const rend=(($('prodRend')&&$('prodRend').value)||'').replace(',','.');
+  if(!(parseFloat(q)>0)){ toast('Informe a quantidade base'); return; }
+  if(rend!=='' && parseFloat(rend)>parseFloat(q)){ toast('O rendido não pode ser maior que a base'); return; }
+  const body={produto_id:_prod.sel.id,quantidade:q,observacao:obs}; if(rend!=='') body.rendido=rend;
+  try{ const d=await estFetch('/api/est/producao/run','POST',body);
+    toast(d.perda>0?('Produção lançada — perda de '+(d.perda_pct!=null?d.perda_pct.toFixed(1):'?')+'%'):'Produção lançada — estoque atualizado');
+    if(d.avisos&&d.avisos.length) setTimeout(()=>toast('Atenção: '+d.avisos[0]),1700); producaoTela(); }catch(e){} }
 
 /* ===== PERMISSÕES DA EQUIPE ===== */
 const PERM_LABEL={ acessar_estoque_premium_rp:'Acessar o estoque', acessar_produtos:'Ver produtos', acessar_categorias:'Ver categorias', acessar_fornecedores:'Ver fornecedores', acessar_visitas:'Acessar visitas', acessar_mapa_comparativo_fornecedores:'Ver mapa de fornecedores', acessar_lista_compras_inteligente:'Lista de compras inteligente', acessar_contagem:'Acessar contagem', acessar_auditoria:'Acessar auditoria', acessar_producao_interna:'Acessar produção interna', acessar_lancamentos:'Acessar lançamentos', acessar_configuracoes:'Acessar configurações', ver_valores:'Ver valores/preços', ver_maior_valor_pago:'Ver maior valor já pago', editar_produtos:'Editar produtos', editar_categorias:'Editar categorias', registrar_compra:'Registrar compra', registrar_visita:'Registrar visita', fazer_contagem:'Lançar contagem', auditar_contagem:'Auditar contagem', aprovar_contagem:'Aprovar contagem', reprovar_contagem:'Reprovar contagem', exportar_dados:'Exportar dados', criar_usuarios:'Criar usuários', editar_permissoes:'Editar permissões' };

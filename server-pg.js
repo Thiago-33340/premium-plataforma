@@ -1204,10 +1204,15 @@ async function api(req, res, url) {
     const uname = u.rows[0] ? u.rows[0].nome : null;
     const pid = parseInt(b.produto_id, 10); const qtd = Number(b.quantidade);
     if (!pid || !(qtd > 0)) return json(res, 400, { erro: 'produto e quantidade (>0) obrigatórios' });
+    // total realmente rendido após o processo (opcional). Se informado e menor que a base, a diferença é PERDA.
+    const rendidoIn = (b.rendido === '' || b.rendido == null) ? null : Number(String(b.rendido).replace(',', '.'));
+    const rendido = (rendidoIn != null && rendidoIn >= 0 && !Number.isNaN(rendidoIn)) ? rendidoIn : null;
+    const entrada = rendido != null ? rendido : qtd;          // o que entra no estoque do produzido
+    const perda = (rendido != null && qtd - rendido > 0) ? (qtd - rendido) : 0;
     const p = await db.q('SELECT nome, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND pode_produzir', [pid, TENANT]);
     if (!p.rows[0]) return json(res, 404, { erro: 'produto produzido não encontrado' });
     const rec = await db.q(`SELECT r.insumo_produto_id, i.nome AS insumo, i.estoque_atual, i.peso_g, r.quantidade_por_unidade, r.unidade AS receita_unidade, r.rendimento FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo`, [TENANT, pid]);
-    const run = await db.q(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [TENANT, pid, qtd, b.usuario_id, uname, b.observacao || null]);
+    const run = await db.q(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, rendido, perda, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [TENANT, pid, qtd, rendido, perda || null, b.usuario_id, uname, b.observacao || null]);
     const runId = run.rows[0].id; const avisos = [];
     for (const r of rec.rows) {
       const qpu = r.quantidade_por_unidade != null ? Number(r.quantidade_por_unidade) : 0;
@@ -1220,10 +1225,26 @@ async function api(req, res, url) {
       await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, b.usuario_id, uname, 'Produção de ' + p.rows[0].nome, runId]);
       if (depois < 0) avisos.push(r.insumo + ' ficou negativo (' + depois.toFixed(3) + ')');
     }
-    const antesP = Number(p.rows[0].estoque_atual), depoisP = antesP + qtd;
+    const antesP = Number(p.rows[0].estoque_atual), depoisP = antesP + entrada;
     await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [pid, depoisP]);
-    await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, qtd, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
-    return json(res, 200, { ok: true, avisos, insumos_baixados: rec.rows.length, produzido_depois: depoisP });
+    await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, entrada, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
+    // Perda de produção (merma): diferença entre a base e o rendido real
+    let perda_pct = null, alerta_perda = null;
+    if (perda > 0) {
+      perda_pct = qtd > 0 ? (perda / qtd * 100) : 0;
+      await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PERDA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`,
+        [TENANT, pid, p.rows[0].nome, depoisP, perda, depoisP, b.usuario_id, uname, 'Merma de produção (' + perda_pct.toFixed(1) + '%)', runId]);
+      // Alerta se a perda % ficar acima da média das últimas produções deste item
+      try {
+        const hist = await db.q(`SELECT AVG(perda / NULLIF(quantidade,0))::float AS media FROM est_producao_run WHERE tenant_id=$1 AND produto_id=$2 AND perda IS NOT NULL AND id<>$3`, [TENANT, pid, runId]);
+        const media = hist.rows[0] && hist.rows[0].media != null ? hist.rows[0].media * 100 : null;
+        if (media != null && perda_pct > media * 1.3 && perda_pct - media >= 5) {
+          alerta_perda = 'Perda de ' + perda_pct.toFixed(1) + '% acima da média (' + media.toFixed(1) + '%) deste item.';
+          avisos.push(alerta_perda);
+        }
+      } catch (e) {}
+    }
+    return json(res, 200, { ok: true, avisos, insumos_baixados: rec.rows.length, produzido_depois: depoisP, rendido, perda: perda || 0, perda_pct, alerta_perda });
   }
   if (sub === 'est' && seg[2] === 'producoes' && req.method === 'GET') {
     const r = await db.q(`SELECT pr.id, pr.quantidade, pr.usuario_nome, pr.observacao, pr.criado_em, p.nome AS produto, p.unidade FROM est_producao_run pr JOIN est_produto p ON p.id=pr.produto_id WHERE pr.tenant_id=$1 ORDER BY pr.criado_em DESC LIMIT 30`, [TENANT]);
