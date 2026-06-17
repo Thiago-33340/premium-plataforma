@@ -232,15 +232,17 @@ async function carregarPerms(){ if(ehGestor()){ aplicaNavPerms(); return; }
   try{ const d=await (await fetch(API+'/api/est/permissoes?usuario_id='+encodeURIComponent(user.id))).json(); user.perms=d.perms||[]; }catch(e){ user.perms=[]; }
   aplicaNavPerms(); }
 const NAV_PERM={ produtos:'acessar_produtos', contagem:'acessar_contagem', fornecedores:'acessar_fornecedores' };
-function aplicaNavPerms(){ document.querySelectorAll('#nav button').forEach(b=>{ const v=b.dataset.v; const need=NAV_PERM[v]; b.style.display=(need&&!temPerm(need))?'none':''; }); }
+function maisVisivel(){ return ehGestor() || temPerm('acessar_lancamentos')||temPerm('acessar_lista_compras_inteligente')||temPerm('acessar_visitas')||temPerm('acessar_mapa_comparativo_fornecedores')||temPerm('acessar_producao_interna')||temPerm('acessar_configuracoes')||temPerm('editar_permissoes'); }
+function aplicaNavPerms(){ document.querySelectorAll('#nav button').forEach(b=>{ const v=b.dataset.v; let show=true; if(NAV_PERM[v]) show=temPerm(NAV_PERM[v]); if(v==='mais') show=maisVisivel(); b.style.display=show?'':'none'; }); }
 
-function nav(v){ const need=NAV_PERM[v]; if(need&&!temPerm(need)){ v='inicio'; }
+function nav(v){ const need=NAV_PERM[v]; if(need&&!temPerm(need)) v='inicio'; if(v==='mais'&&!maisVisivel()) v='inicio';
   ['inicio','produtos','contagem','fornecedores','mais'].forEach(x=> $('v-'+x).classList.toggle('hide', x!==v));
   document.querySelectorAll('#nav button').forEach(b=> b.classList.toggle('on', b.dataset.v===v));
   window.scrollTo(0,0);
   if(v==='inicio') loadInicio(); if(v==='produtos') loadProdutos(); if(v==='fornecedores') loadFornecedores(); if(v==='contagem') loadContagem(); if(v==='mais') loadMais(); }
 
-async function loadInicio(){ let d; try{ d=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){ return; }
+async function loadInicio(){ if(!ehGestor()) return loadInicioColab();
+  let d; try{ d=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){ return; }
   const k=(v,l,cls='')=>`<div class="kpi ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
   $('kpis').innerHTML = k(d.produtos_ativos,'Produtos ativos')
     + k(d.zerados,'Zerados', d.zerados>0?'bad':'ok')
@@ -250,6 +252,16 @@ async function loadInicio(){ let d; try{ d=await (await fetch(API+'/api/est/dash
     + k(d.fornecedores,'Fornecedores');
   const uc=d.ultimas_contagens||[]; $('ultContagens').innerHTML = uc.length? uc.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.setor_nome||'—')}</b><small>${esc(c.usuario_nome||'')} · ${esc(c.status_auditoria||'')}</small></div></div>`).join('') : '<div class="empty">Nenhuma contagem ainda.</div>';
   const cp=d.ultimas_compras||[]; $('ultCompras').innerHTML = cp.length? cp.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.fornecedor||'—')}</b><small>${esc(c.usuario_nome||'')}</small></div><div class="qt"><span class="big">R$ ${Number(c.total||0).toFixed(2)}</span></div></div>`).join('') : '<div class="empty">Nenhuma compra ainda.</div>';
+}
+async function loadInicioColab(){
+  const sec=$('v-inicio');
+  let d; try{ d=await (await fetch(API+'/api/est/meus-itens?usuario_id='+encodeURIComponent(user.id))).json(); }catch(e){ d={itens:[]}; }
+  const itens=d.itens||[]; const byS={}; itens.forEach(i=>{ (byS[i.setor||'—']=byS[i.setor||'—']||[]).push(i); });
+  let h=`<div class="vhead"><h2 class="tit">Olá, ${esc((user.nome||user.login||'').split(' ')[0])}</h2></div>`;
+  h+=`<button class="btn primary" style="width:100%;margin:0 0 16px" onclick="nav('contagem')">📝 Fazer contagem</button>`;
+  if(!itens.length){ h+='<div class="empty">Você ainda não tem itens de setor atribuídos. Peça ao gestor para definir seu setor.</div>'; }
+  else { for(const s of Object.keys(byS).sort()){ h+=`<div class="sec">${esc(s)}</div><div class="panel">`+byS[s].map(i=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(i.nome)}</b><small>${esc(i.unidade||'')}</small></div><div class="qt"><span class="big">${fmt(i.estoque_atual)}</span></div></div>`).join('')+'</div>'; } }
+  sec.innerHTML=h;
 }
 
 let _bt=null;

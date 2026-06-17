@@ -29,7 +29,7 @@ function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c 
 
 /* ===== Permissões do Estoque (configuráveis por usuário) ===== */
 const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
-const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_producao_interna', 'acessar_lancamentos', 'ver_valores', 'fazer_contagem', 'registrar_compra', 'registrar_visita'];
+const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
 async function estPermsEfetivas(uid) {
   if (!uid) return { user: null, perms: [], gestor: false };
   let u; try { u = (await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT])).rows[0]; } catch (e) { return { user: null, perms: [], gestor: false }; }
@@ -565,6 +565,19 @@ async function api(req, res, url) {
       ultimas_contagens: await one('SELECT setor_nome, usuario_nome, status, status_auditoria, encerrada_em FROM est_contagem WHERE tenant_id=$1 ORDER BY iniciada_em DESC LIMIT 5'),
       ultimas_compras: await one('SELECT c.criado_em, c.usuario_nome, c.total, f.nome AS fornecedor FROM est_compra c LEFT JOIN est_fornecedor f ON f.id=c.fornecedor_id WHERE c.tenant_id=$1 ORDER BY c.criado_em DESC LIMIT 5')
     });
+  }
+  if (sub === 'est' && seg[2] === 'meus-itens' && req.method === 'GET') {
+    const uid = url.searchParams.get('usuario_id');
+    const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
+    if (!u) return json(res, 403, { erro: 'usuário inválido' });
+    const perfis = [u.perfil_principal].concat(u.perfis_adicionais || []).map(x => String(x || '').toUpperCase());
+    const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+    const setp = (u.setores_permitidos || []).map(x => String(x));
+    const tudo = gestor || setp.includes('TUDO');
+    const r = tudo
+      ? await db.q(`SELECT DISTINCT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor FROM est_produto p JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id JOIN est_setor s ON s.id=ps.setor_id WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar ORDER BY s.nome, p.nome`, [TENANT])
+      : await db.q(`SELECT DISTINCT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor FROM est_produto p JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id JOIN est_setor s ON s.id=ps.setor_id WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar AND (s.id::text = ANY($2) OR s.nome = ANY($2)) ORDER BY s.nome, p.nome`, [TENANT, setp]);
+    return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
   }
   if (sub === 'est' && seg[2] === 'movimentos' && req.method === 'GET') {
     const lim = Math.min(parseInt(url.searchParams.get('limit'), 10) || 30, 100);
@@ -1470,7 +1483,7 @@ async function api(req, res, url) {
     const perfis = [col.perfil_principal].concat(col.perfis_adicionais || []);
     const ehGarcom = perfis.includes('GARCOM');
     const ehGestor = perfis.some(p => ['GESTOR', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
-    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login,
+    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login, setores_permitidos: col.setores_permitidos || [],
       pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfis.includes('GESTOR') } });
   }
   // trocar o proprio PIN (primeiro login obrigatorio): valida o atual, grava o novo.
