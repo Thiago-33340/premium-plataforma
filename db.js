@@ -144,6 +144,8 @@ async function sincronizarCatalogoEstoqueV4(client) {
   const arquivo = path.join(__dirname, 'data', 'estoque-catalogo-premium-v4.json');
   const catalogo = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^\uFEFF/, ''));
   const produzido = new Set(Object.values(catalogo.produzidos || {}).flat());
+  const nomesCatalogo = Object.values(catalogo.setores || {}).flat().map(function (item) { return String(item[0]); });
+  const nomesCatalogoLower = nomesCatalogo.map(function (nome) { return nome.toLowerCase(); });
   const ordemSetor = { Gerais: 10, Borda: 20, Finalização: 30, Montagem: 40, Recepção: 50 };
   await client.query('BEGIN');
   try {
@@ -165,18 +167,28 @@ async function sincronizarCatalogoEstoqueV4(client) {
       for (const [nome, unidade] of itens) {
         const ehProduzido = produzido.has(nome);
         let pr = await client.query('SELECT id FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2) ORDER BY ativo DESC,id LIMIT 1',[TENANT,nome]);
-        if (!pr.rows[0]) pr = await client.query(`INSERT INTO est_produto (tenant_id,nome,categoria_id,unidade,pode_contar,pode_comprar,pode_produzir,ativo,legado)
-          VALUES ($1,$2,$3,$4,TRUE,$5,$6,TRUE,$7::jsonb) RETURNING id`,[TENANT,nome,ehProduzido?catProduzido:null,unidade,!ehProduzido,ehProduzido,JSON.stringify({fonte:'catalogo-premium-v4'})]);
+        if (!pr.rows[0]) pr = ehProduzido
+          ? await client.query(`INSERT INTO est_produto (tenant_id,nome,categoria_id,unidade,pode_contar,pode_comprar,pode_produzir,ativo,legado)
+              VALUES ($1::varchar,$2::text,$3::int,$4::text,TRUE,FALSE,TRUE,TRUE,$5::jsonb) RETURNING id`,[TENANT,nome,catProduzido,unidade,JSON.stringify({fonte:'catalogo-premium-v4'})])
+          : await client.query(`INSERT INTO est_produto (tenant_id,nome,categoria_id,unidade,pode_contar,pode_comprar,pode_produzir,ativo,legado)
+              VALUES ($1::varchar,$2::text,NULL,$3::text,TRUE,TRUE,FALSE,TRUE,$4::jsonb) RETURNING id`,[TENANT,nome,unidade,JSON.stringify({fonte:'catalogo-premium-v4'})]);
         const pid = pr.rows[0].id;
-        await client.query(`UPDATE est_produto SET nome=$3,unidade=$4,ativo=TRUE,pode_contar=TRUE,
-          pode_produzir=CASE WHEN $5 THEN TRUE ELSE pode_produzir END,
-          pode_comprar=CASE WHEN $5 THEN FALSE ELSE pode_comprar END,
-          categoria_id=CASE WHEN $5 THEN $6 ELSE categoria_id END,atualizado_em=NOW()
-          WHERE tenant_id=$1 AND id=$2`,[TENANT,pid,nome,unidade,ehProduzido,catProduzido]);
+        await client.query(`UPDATE est_produto SET nome=$3::text,unidade=$4::text,ativo=TRUE,pode_contar=TRUE,atualizado_em=NOW()
+          WHERE tenant_id=$1::varchar AND id=$2::int`,[TENANT,pid,nome,unidade]);
+        if (ehProduzido) await client.query(`UPDATE est_produto SET pode_produzir=TRUE,pode_comprar=FALSE,categoria_id=$3::int
+          WHERE tenant_id=$1::varchar AND id=$2::int`,[TENANT,pid,catProduzido]);
+        await client.query('UPDATE est_produto SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1::varchar AND lower(nome)=lower($2::text) AND id<>$3::int',[TENANT,nome,pid]);
         await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);
         await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE)',[TENANT,pid,sid]);
       }
     }
+    // O catálogo confirmado é a fonte operacional. Registros antigos permanecem no banco
+    // para preservar movimentos e auditorias, mas não aparecem mais na operação.
+    await client.query(`UPDATE est_produto SET ativo=FALSE,atualizado_em=NOW()
+      WHERE tenant_id=$1::varchar AND ativo AND NOT(lower(nome)=ANY($2::text[]))`,[TENANT,nomesCatalogoLower]);
+    await client.query(`UPDATE est_produto SET pode_produzir=FALSE,pode_comprar=TRUE,
+        categoria_id=CASE WHEN categoria_id=$3::int THEN NULL ELSE categoria_id END
+      WHERE tenant_id=$1::varchar AND ativo AND lower(nome)=ANY($2::text[])`,[TENANT,nomesCatalogoLower,catProduzido]);
     for (const [setor, nomes] of Object.entries(catalogo.produzidos || {})) {
       const sid=(await client.query('SELECT id FROM est_setor WHERE tenant_id=$1 AND nome=$2',[TENANT,setor])).rows[0].id;
       for (const nome of nomes) {
@@ -280,7 +292,7 @@ async function init(retries) {
           const total = Object.values(cat4.setores || {}).reduce((n, itens) => n + itens.length, 0);
           console.log('[db] catalogo operacional Premium v4 aplicado - vinculos: ' + total);
         } else { console.log('[db] catalogo operacional Premium v4 ja aplicado - ignorado'); }
-      } catch (ef4) { console.log('[db] catalogo/fichas v4 aviso:', ef4.code || ef4.message); }
+      } catch (ef4) { console.log('[db] catalogo/fichas v4 aviso:', ef4.code || '', ef4.message || ''); }
       try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);
