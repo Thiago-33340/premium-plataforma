@@ -149,6 +149,48 @@ CREATE TABLE IF NOT EXISTS est_producao_receita (
   quantidade_por_unidade NUMERIC(14,4), unidade TEXT, rendimento NUMERIC(14,3),
   ativo BOOLEAN NOT NULL DEFAULT TRUE, observacao TEXT
 );
+-- Ficha de produção v2: uma ficha pode ter várias porções, cada uma com seus insumos.
+-- A tabela antiga acima é mantida para compatibilidade e migração dos dados já cadastrados.
+CREATE TABLE IF NOT EXISTS est_ficha_producao (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  produto_id INT NOT NULL REFERENCES est_produto(id) ON DELETE CASCADE,
+  descricao TEXT,
+  unidade_consumo TEXT,
+  tipo VARCHAR(30) NOT NULL DEFAULT 'PRODUZIDO',
+  instrucoes TEXT,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (tenant_id, produto_id)
+);
+CREATE TABLE IF NOT EXISTS est_ficha_porcao (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  ficha_id INT NOT NULL REFERENCES est_ficha_producao(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  rendimento NUMERIC(14,4) NOT NULL DEFAULT 1,
+  unidade TEXT,
+  ordem INT NOT NULL DEFAULT 0,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS est_ficha_porcao_item (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  porcao_id INT NOT NULL REFERENCES est_ficha_porcao(id) ON DELETE CASCADE,
+  insumo_produto_id INT NOT NULL REFERENCES est_produto(id),
+  quantidade NUMERIC(14,4) NOT NULL,
+  unidade TEXT,
+  observacao TEXT,
+  ordem INT NOT NULL DEFAULT 0,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (tenant_id, porcao_id, insumo_produto_id)
+);
+CREATE INDEX IF NOT EXISTS idx_est_ficha_produto ON est_ficha_producao(tenant_id, produto_id, ativo);
+CREATE INDEX IF NOT EXISTS idx_est_ficha_porcao ON est_ficha_porcao(tenant_id, ficha_id, ativo);
+CREATE INDEX IF NOT EXISTS idx_est_ficha_item ON est_ficha_porcao_item(tenant_id, porcao_id);
 CREATE TABLE IF NOT EXISTS est_producao_run (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

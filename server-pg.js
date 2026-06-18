@@ -50,10 +50,21 @@ function estToGramas(qtd, unidade) {
   if (u === 'g' || u === 'gr' || u === 'grama' || u === 'gramas' || u === 'ml') return qtd * 1;
   return null;
 }
-function estBaixaEmUnidades(qtdReceita, unidadeReceita, pesoG) {
-  const g = estToGramas(qtdReceita, unidadeReceita);
-  if (g != null && Number(pesoG) > 0) return g / Number(pesoG);
-  return qtdReceita;
+function estBaixaEmUnidades(qtdReceita, unidadeReceita, pesoG, unidadeEstoque) {
+  const qtd = Number(qtdReceita) || 0;
+  const ur = estNorm(unidadeReceita).toUpperCase(), ue = estNorm(unidadeEstoque).toUpperCase();
+  const massaG = estToGramas(qtd, unidadeReceita);
+  if ((ue === 'KG' || ue.startsWith('QUILOGRAMA')) && massaG != null) return massaG / 1000;
+  if ((ue === 'G' || ue.startsWith('GRAMA')) && massaG != null) return massaG;
+  if ((ue === 'L' || ue === 'LITRO') && (ur === 'ML' || ur === 'MILILITRO')) return qtd / 1000;
+  if ((ue === 'ML' || ue === 'MILILITRO') && (ur === 'L' || ur === 'LITRO')) return qtd * 1000;
+  if (massaG != null && Number(pesoG) > 0) return massaG / Number(pesoG);
+  return qtd;
+}
+function estCustoReceita(qtd, unidadeReceita, produto) {
+  const unidades = estBaixaEmUnidades(qtd, unidadeReceita, produto.peso_g, produto.unidade);
+  const custo = Number(produto.medio_valor != null ? produto.medio_valor : produto.ultimo_valor);
+  return Number.isFinite(custo) ? unidades * custo : null;
 }
 
 /* ===== Contagem Geral (periódica, genérica por tenant) =====
@@ -180,7 +191,7 @@ async function estAchaProduto(texto, minScore) {
 }
 async function estLancaMov(tipo, user, produto, qtd, motivo, origem, observacao) {
   const antes = Number(produto.estoque_atual); const depois = (tipo === 'ENTRADA') ? antes + qtd : antes - qtd;
-  await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [produto.id, depois]);
+  await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [produto.id, depois, TENANT]);
   await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [TENANT, produto.id, produto.nome, tipo, antes, qtd, depois, origem || 'MANUAL', user.id, user.nome, motivo || null, observacao || null]);
   return { antes, depois };
 }
@@ -481,7 +492,7 @@ async function baixaEstoqueSeLigado(itens, ref) {
 async function api(req, res, url) {
   const seg = url.pathname.split('/').filter(Boolean);
   const sub = seg[1];
-  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }); return res.end(); }
+  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }); return res.end(); }
 
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
 
@@ -609,6 +620,24 @@ async function api(req, res, url) {
       ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn]);
     return json(res, 200, { produtos: r.rows });
   }
+  if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
+    const pid = parseInt(seg[3], 10);
+    if (!pid) return json(res, 400, { erro: 'produto inválido' });
+    const pr = await db.q(`SELECT p.*, c.nome AS categoria, f.nome AS fornecedor
+      FROM est_produto p
+      LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
+      WHERE p.id=$1 AND p.tenant_id=$2`, [pid, TENANT]);
+    if (!pr.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
+    const setores = await db.q(`SELECT s.id, s.nome, ps.obrigatorio
+      FROM est_produto_setor ps JOIN est_setor s ON s.id=ps.setor_id
+      WHERE ps.tenant_id=$1 AND ps.produto_id=$2 ORDER BY s.ordem,s.nome`, [TENANT, pid]);
+    const ficha = await db.q(`SELECT r.id, r.insumo_produto_id, i.nome AS insumo, i.unidade AS insumo_unidade,
+        r.quantidade_por_unidade, r.unidade, r.rendimento, r.observacao
+      FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id
+      WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo ORDER BY i.nome`, [TENANT, pid]);
+    return json(res, 200, { produto: pr.rows[0], setores: setores.rows, ficha: ficha.rows });
+  }
   if (sub === 'est' && seg[2] === 'dashboard' && req.method === 'GET') {
     const n = async (s) => { try { const r = await db.q(s, [TENANT]); return Number(r.rows[0].n); } catch (e) { return 0; } };
     const one = async (s) => { try { const r = await db.q(s, [TENANT]); return r.rows; } catch (e) { return []; } };
@@ -683,6 +712,92 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  // Grava a ficha inteira de uma vez. Evita telas dizendo "salvo" após uma falha parcial.
+  if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'ficha' && req.method === 'PUT') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão para editar fichas.' });
+    const pid = parseInt(seg[3], 10); const rendimento = Number(String(b.rendimento == null ? 1 : b.rendimento).replace(',', '.'));
+    if (!pid || !(rendimento > 0)) return json(res, 400, { erro: 'Informe um rendimento maior que zero.' });
+    const itens = Array.isArray(b.itens) ? b.itens : [];
+    const vistos = new Set(); const limpos = [];
+    for (const item of itens) {
+      const iid = parseInt(item.insumo_produto_id, 10);
+      const qtd = Number(String(item.quantidade == null ? '' : item.quantidade).replace(',', '.'));
+      if (!iid || iid === pid) return json(res, 400, { erro: 'Escolha um ingrediente válido, diferente do produto final.' });
+      if (!(qtd > 0)) return json(res, 400, { erro: 'Toda linha da ficha precisa de quantidade maior que zero.' });
+      if (vistos.has(iid)) return json(res, 400, { erro: 'O mesmo ingrediente aparece mais de uma vez na ficha.' });
+      vistos.add(iid); limpos.push({ iid, qtd, unidade: String(item.unidade || '').trim() || null, observacao: String(item.observacao || '').trim() || null });
+    }
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existe = await client.query('SELECT id,nome,unidade FROM est_produto WHERE id=$1 AND tenant_id=$2', [pid, TENANT]);
+      if (!existe.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'Produto não encontrado.' }); }
+      await client.query('UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]);
+      for (const item of limpos) {
+        const ex = await client.query('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3', [TENANT, pid, item.iid]);
+        if (ex.rows[0]) await client.query(`UPDATE est_producao_receita SET quantidade_por_unidade=$2,unidade=$3,rendimento=$4,observacao=$5,ativo=TRUE WHERE id=$1`, [ex.rows[0].id, item.qtd, item.unidade, rendimento, item.observacao]);
+        else await client.query(`INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)`, [TENANT, pid, item.iid, item.qtd, item.unidade, rendimento, item.observacao]);
+      }
+      const ficha=await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,ativo)
+        VALUES ($1,$2,$3,$4,'PRODUZIDO',TRUE) ON CONFLICT (tenant_id,produto_id) DO UPDATE SET ativo=TRUE,atualizado_em=NOW() RETURNING id`,[TENANT,pid,existe.rows[0].nome,existe.rows[0].unidade]);
+      let porcao=await client.query('SELECT id FROM est_ficha_porcao WHERE tenant_id=$1 AND ficha_id=$2 AND ativo ORDER BY ordem,id LIMIT 1',[TENANT,ficha.rows[0].id]);
+      if(!porcao.rows[0])porcao=await client.query('INSERT INTO est_ficha_porcao (tenant_id,ficha_id,nome,rendimento,unidade,ordem,ativo) VALUES ($1,$2,\'Receita padrão\',$3,$4,0,TRUE) RETURNING id',[TENANT,ficha.rows[0].id,rendimento,existe.rows[0].unidade]);
+      else await client.query('UPDATE est_ficha_porcao SET rendimento=$2,unidade=$3,atualizado_em=NOW() WHERE id=$1',[porcao.rows[0].id,rendimento,existe.rows[0].unidade]);
+      await client.query('DELETE FROM est_ficha_porcao_item WHERE tenant_id=$1 AND porcao_id=$2',[TENANT,porcao.rows[0].id]);
+      for(let i=0;i<limpos.length;i++)await client.query('INSERT INTO est_ficha_porcao_item (tenant_id,porcao_id,insumo_produto_id,quantidade,unidade,observacao,ordem) VALUES ($1,$2,$3,$4,$5,$6,$7)',[TENANT,porcao.rows[0].id,limpos[i].iid,limpos[i].qtd,limpos[i].unidade,limpos[i].observacao,i]);
+      await client.query('UPDATE est_produto SET pode_produzir=TRUE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [pid, TENANT]);
+      await client.query('COMMIT');
+      return json(res, 200, { ok: true, itens: limpos.length, rendimento });
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e.code || e.message });
+    } finally { client.release(); }
+  }
+
+  // Fichas de venda: liga produtos/opções do cardápio aos insumos reais do estoque.
+  if (sub === 'est' && seg[2] === 'fichas-cardapio' && req.method === 'GET') {
+    const uid = url.searchParams.get('usuario_id');
+    if (!(await estPode(uid, 'acessar_produtos'))) return json(res, 403, { erro: 'Sem permissão para consultar fichas.' });
+    const cats = await db.q('SELECT id,nome,ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem,nome',[TENANT]);
+    const prods = await db.q('SELECT id,categoria_id,nome,status FROM produtos WHERE tenant_id=$1 ORDER BY ordem,nome',[TENANT]);
+    const grupos = await db.q('SELECT id,produto_id,nome FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem,nome',[TENANT]);
+    const opcoes = await db.q('SELECT o.id,o.grupo_id,o.nome,o.status FROM opcoes o JOIN opcao_grupos g ON g.id=o.grupo_id WHERE o.tenant_id=$1 ORDER BY o.ordem,o.nome',[TENANT]);
+    const resumo = await db.q('SELECT opcao_id,produto_id,count(*)::int n FROM ficha_itens WHERE tenant_id=$1 GROUP BY opcao_id,produto_id',[TENANT]);
+    return json(res,200,{categorias:cats.rows,produtos:prods.rows,grupos:grupos.rows,opcoes:opcoes.rows,resumo:resumo.rows});
+  }
+  if (sub === 'est' && seg[2] === 'ficha-cardapio' && req.method === 'GET') {
+    const uid=url.searchParams.get('usuario_id'), tipo=url.searchParams.get('tipo'), id=url.searchParams.get('id');
+    if (!(await estPode(uid,'acessar_produtos'))) return json(res,403,{erro:'Sem permissão para consultar fichas.'});
+    if (!id || !['produto','opcao'].includes(tipo)) return json(res,400,{erro:'Alvo da ficha inválido.'});
+    const col=tipo==='produto'?'produto_id':'opcao_id';
+    const r=await db.q(`SELECT f.id,f.est_produto_id,e.nome AS insumo_nome,f.quantidade,f.unidade,f.observacao FROM ficha_itens f LEFT JOIN est_produto e ON e.id=f.est_produto_id WHERE f.tenant_id=$1 AND f.${col}=$2 ORDER BY f.id`,[TENANT,id]);
+    return json(res,200,{itens:r.rows});
+  }
+  if (sub === 'est' && seg[2] === 'ficha-cardapio' && req.method === 'PUT') {
+    const b=await readBody(req);
+    if (!(await estPode(b.usuario_id,'editar_produtos'))) return json(res,403,{erro:'Sem permissão para editar fichas.'});
+    const tipo=b.tipo, alvo=String(b.id||'');
+    if (!alvo || !['produto','opcao'].includes(tipo)) return json(res,400,{erro:'Alvo da ficha inválido.'});
+    const itens=Array.isArray(b.itens)?b.itens:[], vistos=new Set(), limpos=[];
+    for(const item of itens){ const iid=parseInt(item.est_produto_id,10), qtd=Number(String(item.quantidade==null?'':item.quantidade).replace(',','.'));
+      if(!iid||!(qtd>0)) return json(res,400,{erro:'Escolha o insumo e informe uma quantidade maior que zero em todas as linhas.'});
+      if(vistos.has(iid)) return json(res,400,{erro:'O mesmo insumo aparece mais de uma vez.'}); vistos.add(iid);
+      limpos.push({iid,qtd,unidade:String(item.unidade||'').trim()||null,observacao:String(item.observacao||'').trim()||null}); }
+    const client=await db.pool.connect();
+    try{ await client.query('BEGIN');
+      const alvoOk=tipo==='produto'
+        ? await client.query('SELECT id FROM produtos WHERE id=$1 AND tenant_id=$2',[alvo,TENANT])
+        : await client.query('SELECT o.id FROM opcoes o JOIN opcao_grupos g ON g.id=o.grupo_id WHERE o.id=$1 AND o.tenant_id=$2 AND g.tenant_id=$2',[alvo,TENANT]);
+      if(!alvoOk.rows[0]){ await client.query('ROLLBACK'); return json(res,404,{erro:'Item do cardápio não encontrado.'}); }
+      const col=tipo==='produto'?'produto_id':'opcao_id'; await client.query(`DELETE FROM ficha_itens WHERE tenant_id=$1 AND ${col}=$2`,[TENANT,alvo]);
+      for(const item of limpos){ const ins=await client.query('SELECT nome FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo',[item.iid,TENANT]);
+        if(!ins.rows[0]) throw new Error('Um dos insumos não existe ou está inativo.');
+        await client.query(`INSERT INTO ficha_itens (tenant_id,${col},insumo_nome,est_produto_id,quantidade,unidade,observacao) VALUES ($1,$2,$3,$4,$5,$6,$7)`,[TENANT,alvo,ins.rows[0].nome,item.iid,item.qtd,item.unidade,item.observacao]); }
+      await client.query('COMMIT'); return json(res,200,{ok:true,itens:limpos.length});
+    }catch(e){ try{await client.query('ROLLBACK')}catch(_){} return json(res,400,{erro:e.code||e.message}); }finally{client.release();}
+  }
+
   // estoque v2 — escritas (CRUD) com checagem de gestor/gerente
   if (sub === 'est' && ['produto', 'fornecedor', 'categoria'].includes(seg[2]) && req.method !== 'GET') {
     const b = await readBody(req);
@@ -694,25 +809,35 @@ async function api(req, res, url) {
       const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
       try {
         const r = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal,
-          fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE) RETURNING id`,
-          [TENANT, nome, b.categoria_id || null, b.unidade || null,
-           b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
-           b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null]);
-        return json(res, 201, { ok: true, id: r.rows[0].id });
+          fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo, subcategoria, marca_preferida, peso_g)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14) RETURNING id`,
+          [TENANT, nome, b.categoria_id || null, String(b.unidade || '').trim() || null,
+           b.estoque_minimo !== '' && b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal !== '' && b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
+           b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null,
+           String(b.subcategoria || '').trim() || null, String(b.marca_preferida || '').trim() || null, b.peso_g !== '' && b.peso_g != null ? Number(b.peso_g) : null]);
+        const pid = r.rows[0].id;
+        const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean) : [];
+        for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT,pid,sid]);
+        return json(res, 201, { ok: true, id: pid });
       } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe um produto com esse nome.' : (e.code || e.message) }); }
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'PATCH') {
-      await db.q(`UPDATE est_produto SET nome=COALESCE($2,nome), categoria_id=COALESCE($3,categoria_id), unidade=COALESCE($4,unidade),
-        estoque_minimo=$5, estoque_ideal=$6, fornecedor_preferido_id=$7,
-        pode_contar=COALESCE($8,pode_contar), pode_comprar=COALESCE($9,pode_comprar), pode_produzir=COALESCE($10,pode_produzir),
-        observacoes=COALESCE($11,observacoes), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$12`,
-        [seg[3], b.nome ? String(b.nome).trim() : null, b.categoria_id || null, b.unidade || null,
-         b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
-         b.fornecedor_preferido_id || null, typeof b.pode_contar === 'boolean' ? b.pode_contar : null,
-         typeof b.pode_comprar === 'boolean' ? b.pode_comprar : null, typeof b.pode_produzir === 'boolean' ? b.pode_produzir : null,
-         b.observacoes ?? null, TENANT]);
-      return json(res, 200, { ok: true });
+      const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'Informe o nome.' });
+      try {
+        const r = await db.q(`UPDATE est_produto SET nome=$2,categoria_id=$3,unidade=$4,estoque_minimo=$5,estoque_ideal=$6,
+          fornecedor_preferido_id=$7,pode_contar=$8,pode_comprar=$9,pode_produzir=$10,observacoes=$11,
+          subcategoria=$12,marca_preferida=$13,peso_g=$14,ativo=$15,atualizado_em=NOW()
+          WHERE id=$1 AND tenant_id=$16 RETURNING id`, [seg[3],nome,b.categoria_id||null,String(b.unidade||'').trim()||null,
+          b.estoque_minimo!==''&&b.estoque_minimo!=null?Number(b.estoque_minimo):null,b.estoque_ideal!==''&&b.estoque_ideal!=null?Number(b.estoque_ideal):null,
+          b.fornecedor_preferido_id||null,b.pode_contar!==false,b.pode_comprar!==false,!!b.pode_produzir,b.observacoes||null,
+          String(b.subcategoria||'').trim()||null,String(b.marca_preferida||'').trim()||null,b.peso_g!==''&&b.peso_g!=null?Number(b.peso_g):null,b.ativo!==false,TENANT]);
+        if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
+        if (Array.isArray(b.setores)) {
+          await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,seg[3]]);
+          for (const sid of b.setores.map(Number).filter(Boolean)) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,seg[3],sid]);
+        }
+        return json(res, 200, { ok: true });
+      } catch(e) { return json(res,400,{erro:e.code==='23505'?'Já existe um produto com esse nome.':(e.code||e.message)}); }
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {
       await db.q('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
@@ -760,16 +885,29 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar' && req.method === 'POST') {
     const b = await readBody(req);
     if (!b.usuario_id || !b.setor_id) return json(res, 400, { erro: 'informe usuario_id e setor_id' });
-    const u = await db.q('SELECT id, nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [b.usuario_id, TENANT]);
+    if (!(await estPode(b.usuario_id, 'fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para fazer contagem.' });
+    const u = await db.q('SELECT id, nome, setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [b.usuario_id, TENANT]);
     if (!u.rows[0]) return json(res, 403, { erro: 'usuário inválido' });
     const s = await db.q('SELECT id, nome FROM est_setor WHERE id=$1 AND tenant_id=$2', [b.setor_id, TENANT]);
     if (!s.rows[0]) return json(res, 400, { erro: 'setor inválido' });
+    const perfis = [u.rows[0].perfil_principal].concat(u.rows[0].perfis_adicionais || []).map(x => String(x || '').toUpperCase());
+    const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+    const permitidos = (u.rows[0].setores_permitidos || []).map(String);
+    if (!gestor && !permitidos.includes('TUDO') && !permitidos.includes(String(s.rows[0].id)) && !permitidos.includes(s.rows[0].nome))
+      return json(res, 403, { erro: 'Este setor não está atribuído ao colaborador.' });
+    const aberta = await db.q(`SELECT id, setor_nome, usuario_nome, iniciada_em FROM est_contagem
+      WHERE tenant_id=$1 AND setor_id=$2 AND usuario_id=$3 AND status='EM_ANDAMENTO' ORDER BY iniciada_em DESC LIMIT 1`,
+      [TENANT, s.rows[0].id, b.usuario_id]);
+    if (aberta.rows[0]) {
+      const ai = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY geral, produto_nome', [aberta.rows[0].id]);
+      return json(res, 200, { contagem: aberta.rows[0], itens: ai.rows, retomada: true });
+    }
     const itens = await db.q(`SELECT ps.produto_id, ps.obrigatorio, p.nome, p.unidade
       FROM est_produto_setor ps JOIN est_produto p ON p.id=ps.produto_id
       WHERE ps.tenant_id=$1 AND ps.setor_id=$2 AND p.ativo AND p.pode_contar ORDER BY p.nome`, [TENANT, b.setor_id]);
     if (!itens.rows.length) return json(res, 400, { erro: 'Este setor não tem itens. Configure os itens do setor primeiro.' });
     const c = await db.q(`INSERT INTO est_contagem (tenant_id, setor_id, setor_nome, usuario_id, usuario_nome, status, status_auditoria)
-      VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id`, [TENANT, s.rows[0].id, s.rows[0].nome, b.usuario_id, u.rows[0].nome]);
+      VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id, setor_nome, usuario_nome, iniciada_em`, [TENANT, s.rows[0].id, s.rows[0].nome, b.usuario_id, u.rows[0].nome]);
     const cid = c.rows[0].id;
     for (const it of itens.rows)
       await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral) VALUES ($1,$2,$3,$4,$5,$6,'PENDENTE',FALSE)`,
@@ -789,7 +927,7 @@ async function api(req, res, url) {
       }
     }
     const out = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY geral, produto_nome', [cid]);
-    return json(res, 201, { contagem: { id: cid, setor_nome: s.rows[0].nome }, itens: out.rows, geral: geralInfo });
+    return json(res, 201, { contagem: c.rows[0], itens: out.rows, geral: geralInfo });
   }
   // ===== Contagem Geral: config + status + disparo (gestor) =====
   if (sub === 'est' && seg[2] === 'contagem-geral' && (!seg[3] || seg[3] === 'status') && req.method === 'GET') {
@@ -823,8 +961,31 @@ async function api(req, res, url) {
     await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, conf]);
     return json(res, 200, { ok: true, ativa_hoje: estGeralAtivaHoje(cg) });
   }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'item' && seg[5] && req.method === 'PATCH') {
+    const b = await readBody(req); const cid = seg[3], iid = seg[5];
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || (!e.gestor && !e.perms.includes('fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para fazer contagem.' });
+    const c = await db.q('SELECT usuario_id, status FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
+    if (!c.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
+    if (!e.gestor && String(c.rows[0].usuario_id) !== String(b.usuario_id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
+    if (c.rows[0].status !== 'EM_ANDAMENTO') return json(res, 409, { erro: 'Esta contagem já foi encerrada.' });
+    const q = (b.quantidade === '' || b.quantidade == null) ? null : Number(b.quantidade);
+    if (q != null && (!Number.isFinite(q) || q < 0)) return json(res, 400, { erro: 'Informe uma quantidade válida.' });
+    const st = b.status === 'IGNORADO' ? 'IGNORADO' : (q == null ? 'PENDENTE' : 'CONTADO');
+    const up = await db.q(`UPDATE est_contagem_item SET quantidade=$1, status=$2, observacao=$3
+      WHERE id=$4 AND contagem_id=$5 AND tenant_id=$6 RETURNING id, quantidade, status`,
+      [st === 'CONTADO' ? q : null, st, b.observacao || null, iid, cid, TENANT]);
+    if (!up.rows[0]) return json(res, 404, { erro: 'Item da contagem não encontrado.' });
+    return json(res, 200, { ok: true, item: up.rows[0] });
+  }
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'encerrar' && req.method === 'POST') {
     const b = await readBody(req); const cid = seg[3];
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || (!e.gestor && !e.perms.includes('fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para encerrar contagem.' });
+    const owner = await db.q('SELECT usuario_id, status FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
+    if (!owner.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
+    if (!e.gestor && String(owner.rows[0].usuario_id) !== String(b.usuario_id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
+    if (owner.rows[0].status !== 'EM_ANDAMENTO') return json(res, 409, { erro: 'Esta contagem já foi encerrada.' });
     for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
       const q = (it.quantidade === '' || it.quantidade == null) ? null : Number(it.quantidade);
       const st = it.status === 'IGNORADO' ? 'IGNORADO' : (q != null && !Number.isNaN(q) ? 'CONTADO' : 'PENDENTE');
@@ -1168,9 +1329,89 @@ async function api(req, res, url) {
 
   // ---- Produção Interna (ficha técnica + baixa de insumos) ----
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'produzidos' && req.method === 'GET') {
-    const prods = await db.q(`SELECT id, nome, unidade, estoque_atual, estoque_ideal FROM est_produto WHERE tenant_id=$1 AND ativo AND pode_produzir ORDER BY nome`, [TENANT]);
-    const insumos = await db.q(`SELECT id, nome, unidade FROM est_produto WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
+    const prods = await db.q(`SELECT p.id,p.nome,p.unidade,p.estoque_atual,p.estoque_ideal,s.nome AS setor,
+        f.id AS ficha_id,COUNT(DISTINCT po.id)::int AS porcoes,COUNT(pi.id)::int AS ingredientes
+      FROM est_produto p
+      LEFT JOIN est_produto_setor ps ON ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+      LEFT JOIN est_setor s ON s.id=ps.setor_id
+      LEFT JOIN est_ficha_producao f ON f.tenant_id=p.tenant_id AND f.produto_id=p.id AND f.ativo
+      LEFT JOIN est_ficha_porcao po ON po.tenant_id=p.tenant_id AND po.ficha_id=f.id AND po.ativo
+      LEFT JOIN est_ficha_porcao_item pi ON pi.tenant_id=p.tenant_id AND pi.porcao_id=po.id
+      WHERE p.tenant_id=$1 AND p.ativo AND p.pode_produzir
+      GROUP BY p.id,s.nome,f.id ORDER BY s.nome,p.nome`, [TENANT]);
+    const insumos = await db.q(`SELECT id,nome,unidade,peso_g,medio_valor,ultimo_valor FROM est_produto WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
     return json(res, 200, { produzidos: prods.rows, insumos: insumos.rows });
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'ficha' && !seg[4] && req.method === 'GET') {
+    const pid=parseInt(url.searchParams.get('produto_id'),10);
+    const pr=await db.q(`SELECT p.id,p.nome,p.unidade,p.estoque_atual,p.peso_g,p.medio_valor,p.ultimo_valor,
+        f.id AS ficha_id,f.descricao,f.unidade_consumo,f.tipo,f.instrucoes,f.ativo AS ficha_ativa
+      FROM est_produto p LEFT JOIN est_ficha_producao f ON f.tenant_id=p.tenant_id AND f.produto_id=p.id AND f.ativo
+      WHERE p.tenant_id=$1 AND p.id=$2`,[TENANT,pid]);
+    if(!pr.rows[0]) return json(res,404,{erro:'Produto não encontrado.'});
+    const setores=(await db.q(`SELECT s.id,s.nome FROM est_produto_setor ps JOIN est_setor s ON s.id=ps.setor_id WHERE ps.tenant_id=$1 AND ps.produto_id=$2 ORDER BY s.ordem,s.nome`,[TENANT,pid])).rows;
+    let porcoes=[];
+    if(pr.rows[0].ficha_id){
+      const ps=(await db.q(`SELECT id,nome,rendimento,unidade,ordem FROM est_ficha_porcao WHERE tenant_id=$1 AND ficha_id=$2 AND ativo ORDER BY ordem,id`,[TENANT,pr.rows[0].ficha_id])).rows;
+      const its=(await db.q(`SELECT i.id,i.porcao_id,i.insumo_produto_id,p.nome AS insumo,p.unidade AS insumo_unidade,p.peso_g,p.medio_valor,p.ultimo_valor,
+          i.quantidade,i.unidade,i.observacao,i.ordem
+        FROM est_ficha_porcao_item i JOIN est_produto p ON p.id=i.insumo_produto_id
+        WHERE i.tenant_id=$1 AND i.porcao_id=ANY($2::int[]) ORDER BY i.ordem,i.id`,[TENANT,ps.map(x=>x.id)])).rows;
+      porcoes=ps.map(po=>{const itens=its.filter(x=>x.porcao_id===po.id).map(x=>{const custo=estCustoReceita(Number(x.quantidade),x.unidade,x);return {...x,custo_item:custo};});return {...po,itens,custo_total:itens.reduce((n,x)=>n+(x.custo_item||0),0)};});
+    }
+    return json(res,200,{produto:pr.rows[0],setores,porcoes});
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'ficha' && !seg[4] && req.method === 'PUT') {
+    const b=await readBody(req);
+    if(!(await estPode(b.usuario_id,'editar_produtos'))) return json(res,403,{erro:'Sem permissão para editar fichas.'});
+    const pid=parseInt(b.produto_id,10), porcoes=Array.isArray(b.porcoes)?b.porcoes:[];
+    if(!pid) return json(res,400,{erro:'Produto inválido.'});
+    if(!porcoes.length) return json(res,400,{erro:'A ficha precisa ter pelo menos uma porção.'});
+    const client=await db.pool.connect();
+    try{await client.query('BEGIN');
+      const prod=await client.query('SELECT id,nome,unidade FROM est_produto WHERE tenant_id=$1 AND id=$2 AND ativo',[TENANT,pid]);
+      if(!prod.rows[0]){await client.query('ROLLBACK');return json(res,404,{erro:'Produto não encontrado.'});}
+      const f=await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,instrucoes,ativo)
+        VALUES ($1,$2,$3,$4,$5,$6,TRUE) ON CONFLICT (tenant_id,produto_id) DO UPDATE SET descricao=EXCLUDED.descricao,unidade_consumo=EXCLUDED.unidade_consumo,
+        tipo=EXCLUDED.tipo,instrucoes=EXCLUDED.instrucoes,ativo=TRUE,atualizado_em=NOW() RETURNING id`,[TENANT,pid,String(b.descricao||prod.rows[0].nome).trim(),String(b.unidade_consumo||prod.rows[0].unidade).trim(),b.tipo==='INGREDIENTE_BENEFICIADO'?'INGREDIENTE_BENEFICIADO':'PRODUZIDO',String(b.instrucoes||'').trim()||null]);
+      const fichaId=f.rows[0].id, mantidas=[];
+      for(let idx=0;idx<porcoes.length;idx++){
+        const po=porcoes[idx], nome=String(po.nome||('Porção '+(idx+1))).trim(), rend=Number(String(po.rendimento==null?'':po.rendimento).replace(',','.'));
+        if(!(rend>0)) throw new Error('Toda porção precisa de rendimento maior que zero.');
+        let porcaoId=parseInt(po.id,10);
+        if(porcaoId){const own=await client.query('SELECT id FROM est_ficha_porcao WHERE id=$1 AND tenant_id=$2 AND ficha_id=$3',[porcaoId,TENANT,fichaId]);if(!own.rows[0])porcaoId=null;}
+        if(porcaoId) await client.query('UPDATE est_ficha_porcao SET nome=$2,rendimento=$3,unidade=$4,ordem=$5,ativo=TRUE,atualizado_em=NOW() WHERE id=$1',[porcaoId,nome,rend,String(po.unidade||prod.rows[0].unidade).trim(),idx]);
+        else porcaoId=(await client.query('INSERT INTO est_ficha_porcao (tenant_id,ficha_id,nome,rendimento,unidade,ordem,ativo) VALUES ($1,$2,$3,$4,$5,$6,TRUE) RETURNING id',[TENANT,fichaId,nome,rend,String(po.unidade||prod.rows[0].unidade).trim(),idx])).rows[0].id;
+        mantidas.push(porcaoId); await client.query('DELETE FROM est_ficha_porcao_item WHERE tenant_id=$1 AND porcao_id=$2',[TENANT,porcaoId]);
+        const vistos=new Set(), itens=Array.isArray(po.itens)?po.itens:[];
+        for(let j=0;j<itens.length;j++){const it=itens[j],iid=parseInt(it.insumo_produto_id,10),q=Number(String(it.quantidade==null?'':it.quantidade).replace(',','.'));
+          if(!iid||iid===pid||!(q>0)) throw new Error('Revise ingrediente e quantidade na porção “'+nome+'”.');
+          if(vistos.has(iid)) throw new Error('Ingrediente repetido na porção “'+nome+'”.'); vistos.add(iid);
+          const ie=await client.query('SELECT id FROM est_produto WHERE tenant_id=$1 AND id=$2 AND ativo',[TENANT,iid]);if(!ie.rows[0])throw new Error('Um ingrediente não existe ou está inativo.');
+          await client.query(`INSERT INTO est_ficha_porcao_item (tenant_id,porcao_id,insumo_produto_id,quantidade,unidade,observacao,ordem) VALUES ($1,$2,$3,$4,$5,$6,$7)`,[TENANT,porcaoId,iid,q,String(it.unidade||'').trim()||null,String(it.observacao||'').trim()||null,j]);
+        }
+      }
+      await client.query('UPDATE est_ficha_porcao SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND ficha_id=$2 AND NOT(id=ANY($3::int[]))',[TENANT,fichaId,mantidas]);
+      await client.query('UPDATE est_produto SET pode_produzir=TRUE,atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2',[TENANT,pid]);
+      // Espelho da primeira porção para compatibilidade com integrações antigas.
+      await client.query('UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);
+      const primeira=porcoes[0], primeiraId=mantidas[0];
+      const itensPrimeira=await client.query('SELECT insumo_produto_id,quantidade,unidade,observacao FROM est_ficha_porcao_item WHERE tenant_id=$1 AND porcao_id=$2 ORDER BY ordem',[TENANT,primeiraId]);
+      for(const it of itensPrimeira.rows){const ex=await client.query('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3',[TENANT,pid,it.insumo_produto_id]);
+        if(ex.rows[0])await client.query('UPDATE est_producao_receita SET quantidade_por_unidade=$2,unidade=$3,rendimento=$4,observacao=$5,ativo=TRUE WHERE id=$1',[ex.rows[0].id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);
+        else await client.query('INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)',[TENANT,pid,it.insumo_produto_id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);}
+      if(Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
+      await client.query('COMMIT');return json(res,200,{ok:true,ficha_id:fichaId,porcoes:mantidas.length});
+    }catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'ficha' && seg[4] && req.method === 'DELETE') {
+    const b=await readBody(req);if(!(await estPode(b.usuario_id,'editar_produtos')))return json(res,403,{erro:'Sem permissão para excluir fichas.'});
+    const pid=parseInt(seg[4],10),client=await db.pool.connect();try{await client.query('BEGIN');
+      const f=await client.query('UPDATE est_ficha_producao SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND produto_id=$2 RETURNING id',[TENANT,pid]);
+      if(f.rows[0])await client.query('UPDATE est_ficha_porcao SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND ficha_id=$2',[TENANT,f.rows[0].id]);
+      await client.query('UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);
+      await client.query('UPDATE est_produto SET pode_produzir=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2',[TENANT,pid]);
+      await client.query('COMMIT');return json(res,200,{ok:true});}catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
   }
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'receita' && req.method === 'GET') {
     const pid = parseInt(url.searchParams.get('produto_id'), 10);
@@ -1200,43 +1441,64 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'run' && req.method === 'POST') {
     const b = await readBody(req);
     if (!b.usuario_id) return json(res, 403, { erro: 'Faça login.' });
+    if (!(await estPode(b.usuario_id, 'acessar_producao_interna'))) return json(res, 403, { erro: 'Sem permissão para lançar produção.' });
     const u = await db.q('SELECT nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2', [b.usuario_id, TENANT]);
     const uname = u.rows[0] ? u.rows[0].nome : null;
-    const pid = parseInt(b.produto_id, 10); const qtd = Number(b.quantidade);
+    const pid = parseInt(b.produto_id, 10); let qtd = Number(b.quantidade), porcao = null;
+    if (b.porcao_id) {
+      const lotes = Number(String(b.lotes == null ? 1 : b.lotes).replace(',', '.'));
+      const po = await db.q(`SELECT po.id,po.nome,po.rendimento,po.unidade FROM est_ficha_porcao po
+        JOIN est_ficha_producao f ON f.id=po.ficha_id AND f.tenant_id=po.tenant_id
+        WHERE po.id=$1 AND po.tenant_id=$2 AND f.produto_id=$3 AND po.ativo AND f.ativo`, [parseInt(b.porcao_id,10),TENANT,pid]);
+      if (!po.rows[0]) return json(res,400,{erro:'Porção da ficha não encontrada.'});
+      if (!(lotes>0)) return json(res,400,{erro:'Informe a quantidade de porções/lotes.'});
+      porcao=po.rows[0]; qtd=Number(porcao.rendimento)*lotes;
+    }
     if (!pid || !(qtd > 0)) return json(res, 400, { erro: 'produto e quantidade (>0) obrigatórios' });
     // total realmente rendido após o processo (opcional). Se informado e menor que a base, a diferença é PERDA.
     const rendidoIn = (b.rendido === '' || b.rendido == null) ? null : Number(String(b.rendido).replace(',', '.'));
     const rendido = (rendidoIn != null && rendidoIn >= 0 && !Number.isNaN(rendidoIn)) ? rendidoIn : null;
     const entrada = rendido != null ? rendido : qtd;          // o que entra no estoque do produzido
     const perda = (rendido != null && qtd - rendido > 0) ? (qtd - rendido) : 0;
-    const p = await db.q('SELECT nome, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND pode_produzir', [pid, TENANT]);
-    if (!p.rows[0]) return json(res, 404, { erro: 'produto produzido não encontrado' });
-    const rec = await db.q(`SELECT r.insumo_produto_id, i.nome AS insumo, i.estoque_atual, i.peso_g, r.quantidade_por_unidade, r.unidade AS receita_unidade, r.rendimento FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo`, [TENANT, pid]);
-    const run = await db.q(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, rendido, perda, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [TENANT, pid, qtd, rendido, perda || null, b.usuario_id, uname, b.observacao || null]);
-    const runId = run.rows[0].id; const avisos = [];
-    for (const r of rec.rows) {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const p = await client.query('SELECT nome, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND pode_produzir FOR UPDATE', [pid, TENANT]);
+      if (!p.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'produto produzido não encontrado' }); }
+      const rec = porcao
+      ? await client.query(`SELECT r.insumo_produto_id,i.nome AS insumo,i.estoque_atual,i.peso_g,i.unidade AS estoque_unidade,
+          r.quantidade AS quantidade_por_unidade,r.unidade AS receita_unidade,$3::numeric AS rendimento
+        FROM est_ficha_porcao_item r JOIN est_produto i ON i.id=r.insumo_produto_id
+        WHERE r.tenant_id=$1 AND r.porcao_id=$2 ORDER BY r.ordem FOR UPDATE OF i`,[TENANT,porcao.id,porcao.rendimento])
+      : await client.query(`SELECT r.insumo_produto_id,i.nome AS insumo,i.estoque_atual,i.peso_g,i.unidade AS estoque_unidade,
+          r.quantidade_por_unidade,r.unidade AS receita_unidade,r.rendimento
+        FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo FOR UPDATE OF i`, [TENANT, pid]);
+      if (!rec.rows.length) { await client.query('ROLLBACK'); return json(res,400,{erro:'Esta porção ainda não tem ingredientes. Complete a ficha antes de produzir.'}); }
+      const run = await client.query(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, rendido, perda, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [TENANT, pid, qtd, rendido, perda || null, b.usuario_id, uname, b.observacao || null]);
+      const runId = run.rows[0].id; const avisos = [];
+      for (const r of rec.rows) {
       const qpu = r.quantidade_por_unidade != null ? Number(r.quantidade_por_unidade) : 0;
       const rend = r.rendimento != null && Number(r.rendimento) > 0 ? Number(r.rendimento) : 1;
       // por unidade produzida: converte g/kg/ml -> unidade de contagem do bruto via peso_g
-      const baixa = estBaixaEmUnidades(qpu, r.receita_unidade, r.peso_g) * qtd / rend;
+      const baixa = estBaixaEmUnidades(qpu, r.receita_unidade, r.peso_g, r.estoque_unidade) * qtd / rend;
       if (!(baixa > 0)) continue;
       const antes = Number(r.estoque_atual), depois = antes - baixa;
-      await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [r.insumo_produto_id, depois]);
-      await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, b.usuario_id, uname, 'Produção de ' + p.rows[0].nome, runId]);
+      await client.query('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [r.insumo_produto_id, depois, TENANT]);
+      await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, b.usuario_id, uname, 'Produção de ' + p.rows[0].nome, runId]);
       if (depois < 0) avisos.push(r.insumo + ' ficou negativo (' + depois.toFixed(3) + ')');
     }
     const antesP = Number(p.rows[0].estoque_atual), depoisP = antesP + entrada;
-    await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [pid, depoisP]);
-    await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, entrada, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
+    await client.query('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [pid, depoisP, TENANT]);
+    await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, entrada, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
     // Perda de produção (merma): diferença entre a base e o rendido real
     let perda_pct = null, alerta_perda = null;
     if (perda > 0) {
       perda_pct = qtd > 0 ? (perda / qtd * 100) : 0;
-      await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PERDA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`,
+      await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PERDA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`,
         [TENANT, pid, p.rows[0].nome, depoisP, perda, depoisP, b.usuario_id, uname, 'Merma de produção (' + perda_pct.toFixed(1) + '%)', runId]);
       // Alerta se a perda % ficar acima da média das últimas produções deste item
       try {
-        const hist = await db.q(`SELECT AVG(perda / NULLIF(quantidade,0))::float AS media FROM est_producao_run WHERE tenant_id=$1 AND produto_id=$2 AND perda IS NOT NULL AND id<>$3`, [TENANT, pid, runId]);
+        const hist = await client.query(`SELECT AVG(perda / NULLIF(quantidade,0))::float AS media FROM est_producao_run WHERE tenant_id=$1 AND produto_id=$2 AND perda IS NOT NULL AND id<>$3`, [TENANT, pid, runId]);
         const media = hist.rows[0] && hist.rows[0].media != null ? hist.rows[0].media * 100 : null;
         if (media != null && perda_pct > media * 1.3 && perda_pct - media >= 5) {
           alerta_perda = 'Perda de ' + perda_pct.toFixed(1) + '% acima da média (' + media.toFixed(1) + '%) deste item.';
@@ -1244,7 +1506,12 @@ async function api(req, res, url) {
         }
       } catch (e) {}
     }
-    return json(res, 200, { ok: true, avisos, insumos_baixados: rec.rows.length, produzido_depois: depoisP, rendido, perda: perda || 0, perda_pct, alerta_perda });
+      await client.query('COMMIT');
+      return json(res, 200, { ok: true, avisos, insumos_baixados: rec.rows.length, produzido_depois: depoisP, rendido, perda: perda || 0, perda_pct, alerta_perda });
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e.code || e.message });
+    } finally { client.release(); }
   }
   if (sub === 'est' && seg[2] === 'producoes' && req.method === 'GET') {
     const r = await db.q(`SELECT pr.id, pr.quantidade, pr.usuario_nome, pr.observacao, pr.criado_em, p.nome AS produto, p.unidade FROM est_producao_run pr JOIN est_produto p ON p.id=pr.produto_id WHERE pr.tenant_id=$1 ORDER BY pr.criado_em DESC LIMIT 30`, [TENANT]);
@@ -1596,7 +1863,7 @@ async function api(req, res, url) {
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     const alvo = norm(b.login);
     if (!alvo) return json(res, 400, { erro: 'informe o login' });
-    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, pin_hash, pin_must_change FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
+    const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, pin_hash, pin_must_change FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);
     if (!col) return json(res, 404, { ok: false, erro: 'Usuario nao encontrado.' });
     const pin = String(b.pin || '').replace(/\D/g, '');
@@ -1607,7 +1874,7 @@ async function api(req, res, url) {
     }
     const perfis = [col.perfil_principal].concat(col.perfis_adicionais || []);
     const ehGarcom = perfis.includes('GARCOM');
-    const ehGestor = perfis.some(p => ['GESTOR', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
+    const ehGestor = perfis.some(p => ['GESTOR', 'GERENTE', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
     return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login, setores_permitidos: col.setores_permitidos || [],
       pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfis.includes('GESTOR') } });
   }
@@ -1615,7 +1882,7 @@ async function api(req, res, url) {
   if (sub === 'staff' && seg[2] === 'trocar-pin' && req.method === 'POST') {
     const b = await readBody(req);
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    const alvo = norm(b.login); const atual = String(b.pin_atual || '').replace(/\D/g, ''); const novo = String(b.novo_pin || '').replace(/\D/g, '');
+    const alvo = norm(b.login); const atual = String(b.pin_atual || '').replace(/\D/g, ''); const novo = String(b.pin_novo || b.novo_pin || '').replace(/\D/g, '');
     if (novo.length < 4) return json(res, 400, { erro: 'O novo PIN precisa ter ao menos 4 dígitos.' });
     const r = await db.q('SELECT id, apelido_login, nome, pin_hash FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);

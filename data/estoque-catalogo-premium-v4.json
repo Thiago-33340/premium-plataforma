@@ -1,0 +1,82 @@
+{
+  "versao": 4,
+  "descricao": "Fonte operacional confirmada pelo gestor em 17/06/2026. Os totais são derivados dos itens enumerados, não dos títulos históricos.",
+  "setores": {
+    "Gerais": [
+      ["Arroz", "KG"], ["Avental Emborrachado", "UNIDADE"], ["Açúcar", "PACOTE DE 2 KG"],
+      ["Bobina Picotada", "UNIDADE"], ["Bucha Dupla Face", "UNIDADE"], ["Bucha Fibra Verde", "UNIDADE"],
+      ["Café Cajuba", "PACOTE DE 500G"], ["Caixas Fundo G depósito", "CAIXA COM 50 UNIDADES"],
+      ["Caixas Fundo P depósito", "CAIXA COM 60 UNIDADES"], ["Caixas tampa G depósito", "CAIXA COM 50 UNIDADES"],
+      ["Caixas tampas P depósito", "CAIXA COM 60 UNIDADES"], ["Copo Descartável", "PACOTE"],
+      ["Desengordurante", "LITRO"], ["Desinfetante Azulim", "LITRO"], ["Detergente Neutro", "GALÃO 5 L"],
+      ["Escova de Mãos", "UNIDADE"], ["Etiquetas", "UNIDADE"], ["Feijão", "KG"],
+      ["Forro Plástico", "PACOTE COM 100 FOLHAS"], ["Isqueiro", "UNIDADE"], ["Limpa Forno", "LITRO"],
+      ["Luva Verde", "PACOTE"], ["Macarrão", "KG"], ["Pano de Chão", "UNIDADE"],
+      ["Pano Multiuso (Perflex)", "ROLOS"], ["Papel Higiênico", "ROLOS"], ["Papel Toalha Interfolhas", "PACOTE"],
+      ["Pilhas Finas", "UNIDADE"], ["Plástico Filme", "ROLO"], ["Qualifood", "KG"], ["Rodo", "UNIDADE"],
+      ["Sabão em Pó", "KG"], ["Saco de Lixo", "SACO DE 100 L"], ["Touca Branca", "PACOTE COM 100 UNIDADES"],
+      ["Água Sanitária", "LITRO"], ["Álcool 40", "LITRO"], ["Álcool 70", "LITRO"], ["Álcool em Gel", "LITRO"]
+    ],
+    "Borda": [
+      ["Bolinha de muçarela", "PACOTE"], ["Bolinha de muçarela com orégano", "PACOTE"],
+      ["Bolinha de presunto e muçarela", "PACOTE"], ["Calabresa picada 80g", "PACOTE"],
+      ["Catupiry Aberto da Borda", "G"], ["Cheddar Aberto da Borda", "G"],
+      ["Chocolate ao Leite Aberto da Borda", "G"], ["Chocolate Branco Aberto da Borda", "G"],
+      ["Creme Culinário", "LITRO"], ["Creme de Leite", "LITRO"], ["Desmoldante", "UNIDADE"],
+      ["Farinha", "UNIDADE DE 5 KG"], ["Fermento Fleischmann", "PACOTE DE 500G"],
+      ["Rolinho de muçarela", "UNIDADE"], ["Rolinho de presunto e muçarela", "UNIDADE"],
+      ["Sal", "PACOTE DE 1 KG"], ["Óleo de Girassol", "UNIDADE"]
+    ],
+    "Finalização": [
+      ["Avelã", "KG"], ["Avelã 30g", "PACOTE"], ["Azeite Andorinha", "UNIDADE"], ["Azeitona Preta", "BALDE"], ["Batata Palha", "PACOTE"],
+      ["Bisnaga G de Nutella", "UNIDADE"], ["Bisnaga G de Nutella - Aberta", "UNIDADE"],
+      ["Bisnaga P de Nutella", "UNIDADE"], ["Bisnaga P de Nutella - Aberta", "UNIDADE"],
+      ["Bisnaga G de Doce de Leite", "UNIDADE"], ["Bisnaga G de Doce de Leite - Aberta", "UNIDADE"],
+      ["Chocolate ao Leite Bisnaga", "BISNAGA"], ["Chocolate ao Leite - Aberto Finalização", "BISNAGA"],
+      ["Chocolate Branco Bisnaga", "BISNAGA"], ["Chocolate Branco - Aberto Finalização", "BISNAGA"],
+      ["Coco Ralado", "KG"], ["Coco Ralado Floco", "KG"], ["Diamante Negro", "UNIDADE 145G"],
+      ["Doce de Leite", "BALDE"], ["Ferrero Rocher", "UNIDADE"], ["Ferrero Rocher inteiro solto", "UNIDADE"],
+      ["Ferrero Rocher metade", "UNIDADE"], ["Fitas / Fita", "UNIDADE"], ["Gota Chips ao Leite", "KG"],
+      ["Gota Chips Branco", "KG"], ["Leite Condensado", "UNIDADE 395G"], ["Leite em Pó", "KG"],
+      ["Manga Grande", "PACOTE 50 UNIDADES"], ["Manga Pequena", "PACOTE 50 UNIDADES"],
+      ["Nutella", "BALDE DE 3KG"], ["Orégano", "KG"], ["Ouro Branco", "UNIDADE"],
+      ["Ouro Branco inteiro solto", "UNIDADE"], ["Ouro Branco metade", "UNIDADE"], ["Prestígio", "UNIDADE"],
+      ["Prestígio inteiro solto", "UNIDADE"], ["Prestígio metade", "UNIDADE"], ["Raffaello", "UNIDADE"],
+      ["Raffaello inteiro solto", "UNIDADE"], ["Raffaello metade", "UNIDADE"], ["Sonho de Valsa", "UNIDADE"],
+      ["Sonho de Valsa inteiro solto", "UNIDADE"], ["Sonho de Valsa metade", "UNIDADE"]
+    ],
+    "Montagem": [
+      ["Bacon", "KG"], ["Bacon em cubos 110g", "PACOTE"], ["Bacon fatiado 90g", "PACOTE"],
+      ["Calabresa 100g", "PACOTE"], ["Calabresa 175g", "PACOTE"], ["Calabresa Reta", "KG"],
+      ["Caldo Knorr", "KG"], ["Camarão", "KG"], ["Catupiry Aberto da Montagem", "G"],
+      ["Cheddar Aberto da Montagem", "G"], ["Extrato de Tomate", "SACHÊ DE 1,7 KG"], ["File Mignon", "KG"],
+      ["Frango Coxa - Congelado", "KG"], ["Frango cozido sem temperar", "KG"], ["Frango Peito - Congelado", "KG"],
+      ["Frango temperado", "KG"], ["Lombo 150g", "PACOTE"], ["Lombo Canadense", "KG"],
+      ["Lombo Fracionado", "G"], ["Manteiga Sem Sal", "UNIDADE"], ["Mignon 240g", "PACOTE"],
+      ["Milho", "LATA DE 1,7 KG"], ["Molho produzido", "KG"], ["Muçarela", "KG"],
+      ["Muçarela 150g", "PACOTE"], ["Muçarela 175g", "PACOTE"], ["Muçarela 80g", "PACOTE"],
+      ["Palmito", "UNIDADE VIDRO GRANDE"], ["Parmesão", "KG"], ["Pepperoni", "UNIDADE 100 G"],
+      ["Presunto", "PEÇA DE 3,5 KG"], ["Provolone", "KG"], ["Requeijão Catupiry", "UNIDADE DE 1.500 KG"],
+      ["Requeijão Cheddar", "UNIDADE DE 1.500 KG"], ["Óleo de Soja", "UNIDADE"]
+    ],
+    "Recepção": [
+      ["Coca Cola 1.5L", "UNIDADE"], ["Coca Cola 1.5L Zero", "UNIDADE"], ["Coca Cola 1L", "UNIDADE"],
+      ["Coca Cola 2L", "UNIDADE"], ["Coca Cola 2L Zero", "UNIDADE"], ["Coca Cola Zero 1L", "UNIDADE"],
+      ["Coca-Cola Lata 310ml", "UNIDADE"], ["Coca-Cola Lata Zero 310ml", "UNIDADE"],
+      ["Guaraná Antártica Zero 350ml", "UNIDADE"], ["Heineken 330ml", "UNIDADE"], ["Ketchup Heinz", "CAIXA"],
+      ["Maionese Heinz", "CAIXA"], ["Original 300ml", "UNIDADE"], ["Sprite Zero 310ml", "UNIDADE"],
+      ["Suco Del Valle Uva 1L", "UNIDADE"], ["Suco Laranja Copo", "UNIDADE"], ["Suco Morango Copo", "UNIDADE"],
+      ["Água com Gás 500ml", "UNIDADE"], ["Água sem Gás 500ml", "UNIDADE"]
+    ]
+  },
+  "produzidos": {
+    "Borda": ["Bolinha de muçarela", "Bolinha de muçarela com orégano", "Bolinha de presunto e muçarela", "Calabresa picada 80g", "Rolinho de muçarela", "Rolinho de presunto e muçarela"],
+    "Montagem": ["Bacon em cubos 110g", "Bacon fatiado 90g", "Calabresa 100g", "Calabresa 175g", "Camarão", "Frango cozido sem temperar", "Frango temperado", "Lombo 150g", "Lombo Fracionado", "Mignon 240g", "Molho produzido", "Muçarela 150g", "Muçarela 175g", "Muçarela 80g"],
+    "Finalização": ["Avelã 30g", "Bisnaga G de Nutella", "Bisnaga G de Nutella - Aberta", "Bisnaga P de Nutella", "Bisnaga P de Nutella - Aberta", "Bisnaga G de Doce de Leite", "Bisnaga G de Doce de Leite - Aberta", "Coco Ralado Floco", "Chocolate ao Leite - Aberto Finalização", "Chocolate Branco - Aberto Finalização"]
+  },
+  "desativar": ["Calabresa picada 70g", "Chocolate ao Leite Bisnaga - Borda", "Chocolate Branco Bisnaga - Borda"],
+  "renomear": [
+    ["Chocolate ao Leite Bisnaga - Finalização", "Chocolate ao Leite - Aberto Finalização", "BISNAGA"],
+    ["Chocolate Branco Bisnaga - Finalização", "Chocolate Branco - Aberto Finalização", "BISNAGA"]
+  ]
+}
