@@ -118,6 +118,83 @@ const MIGRATIONS = [
 
 const state = { migrationsOk: false, ultimoErro: null };
 
+async function migrarFichasProducaoV2(client) {
+  await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,ativo)
+    SELECT DISTINCT r.tenant_id,r.produto_id,p.nome,p.unidade,'PRODUZIDO',TRUE
+      FROM est_producao_receita r JOIN est_produto p ON p.id=r.produto_id
+     WHERE r.tenant_id=$1 AND r.ativo
+    ON CONFLICT (tenant_id,produto_id) DO NOTHING`, [TENANT]);
+  await client.query(`INSERT INTO est_ficha_porcao (tenant_id,ficha_id,nome,rendimento,unidade,ordem,ativo)
+    SELECT f.tenant_id,f.id,'Receita padrão',COALESCE(MAX(NULLIF(r.rendimento,0)),1),p.unidade,0,TRUE
+      FROM est_ficha_producao f JOIN est_produto p ON p.id=f.produto_id
+      JOIN est_producao_receita r ON r.tenant_id=f.tenant_id AND r.produto_id=f.produto_id AND r.ativo
+     WHERE f.tenant_id=$1 AND NOT EXISTS (SELECT 1 FROM est_ficha_porcao x WHERE x.tenant_id=f.tenant_id AND x.ficha_id=f.id)
+     GROUP BY f.tenant_id,f.id,p.unidade`, [TENANT]);
+  await client.query(`INSERT INTO est_ficha_porcao_item (tenant_id,porcao_id,insumo_produto_id,quantidade,unidade,observacao,ordem)
+    SELECT r.tenant_id,po.id,r.insumo_produto_id,r.quantidade_por_unidade,r.unidade,r.observacao,
+           ROW_NUMBER() OVER (PARTITION BY po.id ORDER BY r.id)::int
+      FROM est_producao_receita r
+      JOIN est_ficha_producao f ON f.tenant_id=r.tenant_id AND f.produto_id=r.produto_id AND f.ativo
+      JOIN est_ficha_porcao po ON po.tenant_id=f.tenant_id AND po.ficha_id=f.id AND po.ativo
+     WHERE r.tenant_id=$1 AND r.ativo AND r.quantidade_por_unidade>0
+    ON CONFLICT (tenant_id,porcao_id,insumo_produto_id) DO NOTHING`, [TENANT]);
+}
+
+async function sincronizarCatalogoEstoqueV4(client) {
+  const arquivo = path.join(__dirname, 'data', 'estoque-catalogo-premium-v4.json');
+  const catalogo = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^\uFEFF/, ''));
+  const produzido = new Set(Object.values(catalogo.produzidos || {}).flat());
+  const ordemSetor = { Gerais: 10, Borda: 20, Finalização: 30, Montagem: 40, Recepção: 50 };
+  await client.query('BEGIN');
+  try {
+    for (const nome of Object.keys(catalogo.setores || {})) {
+      await client.query(`INSERT INTO est_setor (tenant_id,nome,ordem,ativo) VALUES ($1,$2,$3,TRUE)
+        ON CONFLICT (tenant_id,nome) DO UPDATE SET ordem=EXCLUDED.ordem,ativo=TRUE`, [TENANT,nome,ordemSetor[nome] || 99]);
+    }
+    const cat = await client.query(`INSERT INTO est_categoria (tenant_id,nome,ordem,ativo) VALUES ($1,'Produtos produzidos internamente',3,TRUE)
+      ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE RETURNING id`, [TENANT]);
+    const catProduzido = cat.rows[0].id;
+    for (const [antigo, novo, unidade] of catalogo.renomear || []) {
+      const alvo = await client.query('SELECT id FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2)', [TENANT,novo]);
+      if (alvo.rows[0]) await client.query('UPDATE est_produto SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND lower(nome)=lower($2) AND id<>$3', [TENANT,antigo,alvo.rows[0].id]);
+      else await client.query('UPDATE est_produto SET nome=$3,unidade=$4,ativo=TRUE,atualizado_em=NOW() WHERE tenant_id=$1 AND lower(nome)=lower($2)', [TENANT,antigo,novo,unidade]);
+    }
+    for (const nome of catalogo.desativar || []) await client.query('UPDATE est_produto SET ativo=FALSE,atualizado_em=NOW() WHERE tenant_id=$1 AND lower(nome)=lower($2)', [TENANT,nome]);
+    for (const [setor, itens] of Object.entries(catalogo.setores || {})) {
+      const sid = (await client.query('SELECT id FROM est_setor WHERE tenant_id=$1 AND nome=$2',[TENANT,setor])).rows[0].id;
+      for (const [nome, unidade] of itens) {
+        const ehProduzido = produzido.has(nome);
+        let pr = await client.query('SELECT id FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2) ORDER BY ativo DESC,id LIMIT 1',[TENANT,nome]);
+        if (!pr.rows[0]) pr = await client.query(`INSERT INTO est_produto (tenant_id,nome,categoria_id,unidade,pode_contar,pode_comprar,pode_produzir,ativo,legado)
+          VALUES ($1,$2,$3,$4,TRUE,$5,$6,TRUE,$7::jsonb) RETURNING id`,[TENANT,nome,ehProduzido?catProduzido:null,unidade,!ehProduzido,ehProduzido,JSON.stringify({fonte:'catalogo-premium-v4'})]);
+        const pid = pr.rows[0].id;
+        await client.query(`UPDATE est_produto SET nome=$3,unidade=$4,ativo=TRUE,pode_contar=TRUE,
+          pode_produzir=CASE WHEN $5 THEN TRUE ELSE pode_produzir END,
+          pode_comprar=CASE WHEN $5 THEN FALSE ELSE pode_comprar END,
+          categoria_id=CASE WHEN $5 THEN $6 ELSE categoria_id END,atualizado_em=NOW()
+          WHERE tenant_id=$1 AND id=$2`,[TENANT,pid,nome,unidade,ehProduzido,catProduzido]);
+        await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);
+        await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE)',[TENANT,pid,sid]);
+      }
+    }
+    for (const [setor, nomes] of Object.entries(catalogo.produzidos || {})) {
+      const sid=(await client.query('SELECT id FROM est_setor WHERE tenant_id=$1 AND nome=$2',[TENANT,setor])).rows[0].id;
+      for (const nome of nomes) {
+        const p=await client.query('SELECT id,unidade FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2) AND ativo ORDER BY id LIMIT 1',[TENANT,nome]);
+        if(!p.rows[0]) continue;
+        await client.query('UPDATE est_produto SET pode_produzir=TRUE,pode_comprar=FALSE,categoria_id=$3,atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2',[TENANT,p.rows[0].id,catProduzido]);
+        await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING',[TENANT,p.rows[0].id,sid]);
+        const f=await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,ativo)
+          VALUES ($1,$2,$3,$4,'PRODUZIDO',TRUE) ON CONFLICT (tenant_id,produto_id) DO UPDATE SET ativo=TRUE,unidade_consumo=EXCLUDED.unidade_consumo RETURNING id`,[TENANT,p.rows[0].id,nome,p.rows[0].unidade]);
+        await client.query(`INSERT INTO est_ficha_porcao (tenant_id,ficha_id,nome,rendimento,unidade,ordem,ativo)
+          SELECT $1,$2,'Receita padrão',1,$3,0,TRUE WHERE NOT EXISTS (SELECT 1 FROM est_ficha_porcao WHERE tenant_id=$1 AND ficha_id=$2 AND ativo)`,[TENANT,f.rows[0].id,p.rows[0].unidade]);
+      }
+    }
+    await client.query('COMMIT');
+    return catalogo;
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+}
+
 async function init(retries) {
   retries = retries || 8;
   for (let i = 0; i < retries; i++) {
@@ -193,6 +270,17 @@ async function init(retries) {
           console.log('[db] layout de setores Premium aplicado (carga unica v3)');
         } else { console.log('[db] layout de setores ja aplicado - ignorado'); }
       } catch (est) { console.log('[db] seed-setores aviso:', est.code || est.message); }
+      try {
+        await migrarFichasProducaoV2(pool);
+        const mk = await pool.query("SELECT (config->>'estoque_catalogo_premium_v4') AS m FROM tenants WHERE id=$1", [TENANT]);
+        if (!mk.rows[0] || !mk.rows[0].m) {
+          const syncClient = await pool.connect();
+          let cat4; try { cat4 = await sincronizarCatalogoEstoqueV4(syncClient); } finally { syncClient.release(); }
+          await pool.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_catalogo_premium_v4\":true}'::jsonb WHERE id=$1", [TENANT]);
+          const total = Object.values(cat4.setores || {}).reduce((n, itens) => n + itens.length, 0);
+          console.log('[db] catalogo operacional Premium v4 aplicado - vinculos: ' + total);
+        } else { console.log('[db] catalogo operacional Premium v4 ja aplicado - ignorado'); }
+      } catch (ef4) { console.log('[db] catalogo/fichas v4 aviso:', ef4.code || ef4.message); }
       try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);

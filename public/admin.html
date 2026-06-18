@@ -59,6 +59,43 @@
   .fptab th{ padding:4px 8px 4px 0; font-weight:600; }
   .fptab td{ padding:4px 8px 4px 0; vertical-align:top; }
   .fptab .ic{ background:none; border:none; color:#c66; cursor:pointer; font-size:15px; }
+  /* ===== PRODUÇÃO / FICHAS — cockpit operacional ===== */
+  .prod-hero{ display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px; }
+  .prod-hero .eyebrow{ color:var(--laranja);font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:7px; }
+  .prod-hero h2{ font-size:28px;letter-spacing:-.7px;margin:0; }
+  .prod-hero p{ color:var(--mut);font-size:13px;max-width:700px;line-height:1.55;margin:7px 0 0; }
+  .prod-summary{ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px; }
+  .prod-stat{ padding:14px 15px;border:1px solid var(--linha);border-radius:14px;background:linear-gradient(145deg,#17171a,#111113); }
+  .prod-stat strong{ display:block;font-size:24px;letter-spacing:-.5px; }.prod-stat span{ color:var(--mut);font-size:11px; }
+  .prod-tools{ display:flex;align-items:center;gap:10px;margin:0 0 15px;flex-wrap:wrap; }
+  .prod-tools .search{ position:relative;flex:1;min-width:240px;max-width:420px; }.prod-tools .search .field{padding-left:38px;margin:0;}
+  .prod-tools .search:before{content:'⌕';position:absolute;left:14px;top:8px;color:var(--mut);font-size:20px;z-index:1;}
+  .prod-filters{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.prod-filters::-webkit-scrollbar{display:none}
+  .prod-filter{white-space:nowrap;border:1px solid var(--linha2);background:#151518;color:var(--mut);border-radius:999px;padding:8px 12px;font-size:11px;font-weight:700}
+  .prod-filter.on{background:#2a1909;border-color:#78400f;color:#ff9b4f}
+  .prod-grid{ display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px; }
+  .prod-card{ border:1px solid var(--linha);border-radius:15px;background:linear-gradient(145deg,#17171a,#111113);padding:15px;display:flex;gap:12px;align-items:flex-start;transition:.16s; }
+  .prod-card:hover{border-color:#484850;transform:translateY(-1px)}
+  .prod-card .badge{width:42px;height:42px;border-radius:12px;background:#251706;color:var(--laranja);display:grid;place-items:center;font-weight:900;flex:0 0 42px}
+  .prod-card .info{flex:1;min-width:0}.prod-card h4{font-size:14px;margin:1px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prod-card .meta{display:flex;gap:5px;flex-wrap:wrap}.prod-card .meta span{font-size:9px;text-transform:uppercase;letter-spacing:.35px;padding:3px 6px;border-radius:6px;background:#202024;color:#aaaab2}
+  .prod-card .meta .ready{background:#102a19;color:#71d894}.prod-card .meta .pending{background:#30250c;color:#e7bd54}
+  .prod-card .actions{display:flex;gap:5px}.prod-card .edit{width:34px;height:34px;border:1px solid var(--linha2);background:#1c1c20;color:#ddd;border-radius:9px;font-size:15px}
+
+  .fp-modal{padding:16px}.modal.fp-modal .box{width:min(1120px,calc(100vw - 32px));max-width:1120px;padding:0;max-height:95vh;overflow:hidden;border-radius:20px;background:#101012}
+  .fp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px 16px;border-bottom:1px solid var(--linha)}
+  .fp-head .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--laranja);font-weight:800}.fp-head h3{font-size:21px;margin:4px 0}.fp-head p{margin:0}
+  .fp-close{width:36px;height:36px;border:1px solid var(--linha2);background:#19191d;color:#fff;border-radius:10px;font-size:20px}
+  .fp-body{padding:20px 22px 26px;overflow:auto;max-height:calc(95vh - 78px)}
+  .fp-general{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:14px}.fp-label{font-size:11px;color:var(--mut);font-weight:650;display:flex;flex-direction:column;gap:6px}.fp-label .field{margin:0}
+  .fp-help{padding:11px 13px;border-radius:11px;background:#17130d;border:1px solid #3d2b13;color:#d9b486;font-size:11px;line-height:1.45;margin-bottom:15px}
+  .fp-portion{border:1px solid var(--linha);border-radius:16px;background:#151518;margin-bottom:12px;overflow:hidden}
+  .fp-portion-head{display:grid;grid-template-columns:minmax(180px,1fr) 130px 130px 120px 36px;gap:9px;align-items:end;padding:13px 14px;background:#19191d;border-bottom:1px solid var(--linha)}
+  .fp-cost{text-align:right}.fp-cost strong{display:block;color:#86dfaa;font-size:15px}.fp-cost span{font-size:10px;color:var(--mut)}
+  .fp-table-wrap{overflow-x:auto}.fp-table{width:100%;border-collapse:collapse;min-width:760px}.fp-table th{text-align:left;color:var(--mut2);font-size:9px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;border-bottom:1px solid #222228}.fp-table td{padding:7px 10px;border-bottom:1px solid #222228;vertical-align:middle}.fp-table tr:last-child td{border-bottom:0}.fp-table .field{margin:0;padding:9px 10px;font-size:12px}.fp-table .money{white-space:nowrap;color:#bdbdc5;font-size:11px}.fp-table .linecost{color:#81d9a2;font-weight:700}
+  .fp-add{padding:10px 14px;border-top:1px solid var(--linha)}.fp-empty{padding:22px;text-align:center;color:var(--mut);font-size:12px}
+  .fp-sector{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+  .fp-foot{position:sticky;bottom:-26px;margin:20px -22px -26px;padding:14px 22px;background:#101012ee;backdrop-filter:blur(10px);border-top:1px solid var(--linha);display:flex;gap:9px;align-items:center}.fp-foot .status{flex:1;color:var(--mut);font-size:11px}
   .chip.aberta{ background:#0f2a18; color:var(--verde); } .chip.fechada{ background:#2a1414; color:var(--verm); }
   .chip .dot.g{ background:var(--verde); } .chip .dot.r{ background:var(--verm); }
 
@@ -111,6 +148,9 @@
     .tabsm{ display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--linha); position:sticky; top:51px; background:var(--bg); z-index:19; scrollbar-width:none; } .tabsm::-webkit-scrollbar{ display:none; }
     .tabsm button{ flex:0 0 auto; background:var(--card); border:1px solid var(--linha2); color:var(--mut); border-radius:9px; padding:8px 13px; font-weight:700; font-size:13px; } .tabsm button.on{ background:var(--laranja); color:#0b0b0c; border-color:var(--laranja); }
     .content{ padding:16px 14px; }
+    .prod-hero{align-items:flex-start}.prod-hero h2{font-size:23px}.prod-hero .btn{white-space:nowrap}.prod-summary{grid-template-columns:1fr 1fr}.prod-grid{grid-template-columns:1fr}
+    .fp-modal{padding:0;align-items:flex-end}.modal.fp-modal .box{width:100%;max-height:98vh;border-radius:18px 18px 0 0}.fp-body{padding:16px;max-height:calc(98vh - 76px)}.fp-general{grid-template-columns:1fr}.fp-portion-head{grid-template-columns:1fr 1fr}.fp-portion-head .fp-cost{grid-column:1/-1;text-align:left}.fp-foot{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;flex-wrap:wrap}.fp-foot .status{flex-basis:100%}
+    .fp-table{min-width:0}.fp-table thead{display:none}.fp-table,.fp-table tbody,.fp-table tr{display:block}.fp-table tr{padding:10px 12px;border-bottom:1px solid #28282e}.fp-table td{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:8px;padding:5px 0;border:0}.fp-table td:before{color:var(--mut2);font-size:9px;text-transform:uppercase;letter-spacing:.5px}.fp-table td:nth-child(1):before{content:'Ingrediente'}.fp-table td:nth-child(2):before{content:'Un. estoque'}.fp-table td:nth-child(3):before{content:'Custo médio'}.fp-table td:nth-child(4):before{content:'Quantidade'}.fp-table td:nth-child(5):before{content:'Un. consumo'}.fp-table td:nth-child(6):before{content:'Custo'}.fp-table td:nth-child(7){display:flex;justify-content:flex-end}.fp-table td:nth-child(7):before{display:none}
   }
   @media(min-width:821px){ .tabsm{ display:none; } }
 </style>
@@ -278,14 +318,10 @@
 
         <!-- PRODUÇÃO E SETORES -->
         <section class="scr2" id="s_producao">
-          <div class="pagehead"><h2>Fichas técnicas — produção</h2><button class="btn primary" style="margin-left:auto" onclick="novoProduzido()">+ Novo item produzido</button></div>
-          <p class="mut sm" style="margin:0 0 12px">Cada item produzido tem uma <b>ficha</b> com <b>vários ingredientes</b>, o <b>rendimento</b> (quanto a receita produz) e o(s) <b>setor(es)</b>. Editar aqui afeta a baixa real no estoque. Tudo é editável.</p>
-          <input id="vincBusca" class="field" placeholder="Buscar item produzido…" oninput="renderVinc()" style="max-width:300px;margin-bottom:10px">
-          <h3 class="sec">Itens produzidos e fracionados</h3>
-          <div id="vincBox"><div class="mut sm">Carregando…</div></div>
-          <h3 class="sec">Setor dos demais produtos</h3>
-          <input id="setBusca" class="field" placeholder="Buscar produto…" oninput="renderSetorOutros()" style="max-width:280px;margin-bottom:10px">
-          <div id="setOutrosBox"></div>
+          <div class="prod-hero"><div><div class="eyebrow">Estoque · Produção</div><h2>Fichas de produção</h2><p>Transforme insumos brutos em itens prontos, crie porções diferentes e acompanhe o custo de cada receita. A produção baixa os ingredientes e dá entrada no produto automaticamente.</p></div><button class="btn primary" onclick="novoProduzido()">+ Novo produzido</button></div>
+          <div class="prod-summary" id="prodKpis"><div class="prod-stat"><strong>—</strong><span>Carregando fichas</span></div></div>
+          <div class="prod-tools"><div class="search"><input id="vincBusca" class="field" placeholder="Buscar item ou setor…" oninput="renderVinc()"></div><div class="prod-filters" id="prodSectorFilters"></div></div>
+          <div id="vincBox" class="prod-grid"><div class="empty">Carregando fichas…</div></div>
         </section>
 
         <!-- ESTOQUE -->
@@ -535,71 +571,51 @@ async function salvarAparencia(){
   }catch(e){ $('apStatus').textContent='Falha de conexão.'; } }
 
 /* ===== PRODUÇÃO E SETORES (vínculo bruto -> produzido) ===== */
-let _vinc={setores:[],produtos:[],receitas:[]};
-async function loadProducao(){ try{ _vinc=await (await fetch(API+'/api/est/vinculos')).json(); }catch(e){ _vinc={setores:[],produtos:[],receitas:[]}; }
-  renderVinc(); renderSetorOutros(); }
+let _vinc={setores:[],produtos:[],receitas:[]}, _prodData={produzidos:[],insumos:[]}, _prodFilter='Todos';
+async function loadProducao(){
+  try{ const [vr,pr]=await Promise.all([fetch(API+'/api/est/vinculos'),fetch(API+'/api/est/producao/produzidos')]); const v=await vr.json(),p=await pr.json(); if(!vr.ok||!pr.ok)throw new Error(v.erro||p.erro||'Erro ao carregar produção'); _vinc=v;_prodData=p; }
+  catch(e){ _vinc={setores:[],produtos:[],receitas:[]};_prodData={produzidos:[],insumos:[]};toast(e.message||'Erro ao carregar produção'); }
+  _prodFilter='Todos'; renderProdFilters(); renderVinc(); }
 function ehProduzido(p){ return p.pode_produzir || p.categoria==='Produtos produzidos internamente'; }
 function setorChips(p){ return (_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(p.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join(''); }
-function nIngred(pid){ return (_vinc.receitas||[]).filter(r=>r.produto_id===pid).length; }
+function nIngred(pid){ const p=(_prodData.produzidos||[]).find(x=>Number(x.id)===Number(pid));return p?Number(p.ingredientes||0):(_vinc.receitas||[]).filter(r=>r.produto_id===pid).length; }
+function renderProdFilters(){ const setores=['Todos',...new Set((_prodData.produzidos||[]).map(x=>x.setor||'Sem setor'))];const box=$('prodSectorFilters');if(!box)return;box.innerHTML=setores.map(s=>`<button class="prod-filter ${_prodFilter===s?'on':''}" onclick="_prodFilter='${esc(s).replace(/'/g,"\\'")}';renderProdFilters();renderVinc()">${esc(s)}</button>`).join(''); }
 function renderVinc(){ const box=$('vincBox'); const q=(($('vincBusca')&&$('vincBusca').value)||'').toLowerCase();
-  let prod=(_vinc.produtos||[]).filter(ehProduzido); if(q) prod=prod.filter(p=>p.nome.toLowerCase().includes(q));
+  const all=_prodData.produzidos||[];let prod=all.filter(p=>(_prodFilter==='Todos'||(p.setor||'Sem setor')===_prodFilter)&&(!q||(p.nome+' '+(p.setor||'')).toLowerCase().includes(q)));
+  const completos=all.filter(x=>Number(x.ingredientes)>0).length, setores=new Set(all.map(x=>x.setor).filter(Boolean)).size;
+  if($('prodKpis'))$('prodKpis').innerHTML=`<div class="prod-stat"><strong>${all.length}</strong><span>Itens produzidos</span></div><div class="prod-stat"><strong>${completos}</strong><span>Fichas configuradas</span></div><div class="prod-stat"><strong>${all.length-completos}</strong><span>Precisam de ingredientes</span></div><div class="prod-stat"><strong>${setores}</strong><span>Setores envolvidos</span></div>`;
   if(!prod.length){ box.innerHTML='<div class="empty">Nenhum item produzido'+(q?' para "'+esc(q)+'"':'')+'.</div>'; return; }
-  box.innerHTML=prod.map(p=>{ const ni=nIngred(p.id); const setn=(p.setores||[]).map(id=>{const s=(_vinc.setores||[]).find(x=>x.id===id);return s?s.nome:'';}).filter(Boolean).join(', ');
-    return `<div class="row" style="align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:8px">
-      <div class="nm" style="flex:1"><b>${esc(p.nome)}</b> <small class="mut">[${esc(p.unidade||'')}]</small><small class="mut" style="display:block">${ni} ingrediente${ni===1?'':'s'}${setn?(' · '+esc(setn)):' · sem setor'}</small></div>
-      <button class="btn sm" onclick="abrirFichaProd(${p.id})">Editar ficha</button></div>`;
+  box.innerHTML=prod.map(p=>{ const ni=Number(p.ingredientes||0),np=Number(p.porcoes||0);return `<article class="prod-card"><div class="badge">${(p.nome||'?').trim().charAt(0).toUpperCase()}</div><div class="info"><h4>${esc(p.nome)}</h4><div class="meta"><span>${esc(p.unidade||'—')}</span><span>${esc(p.setor||'Sem setor')}</span><span class="${ni?'ready':'pending'}">${ni?`${np} porç${np===1?'ão':'ões'} · ${ni} ingrediente${ni===1?'':'s'}`:'Ficha pendente'}</span></div></div><div class="actions"><button class="edit" title="Editar ficha" onclick="abrirFichaProd(${p.id})">✎</button></div></article>`;
   }).join('');
 }
-/* ===== Editor de ficha de produção (multi-ingrediente, estilo Saipos) ===== */
-let _fp={ pid:null, rows:[], removidos:[] };
+/* ===== Editor de ficha de produção (ficha → porções → ingredientes) ===== */
+let _fp={pid:null,porcoes:[]};
 async function abrirFichaProd(pid){
-  const p=(_vinc.produtos||[]).find(x=>x.id===pid); if(!p) return;
-  let itens=[]; try{ itens=(await (await fetch(API+'/api/est/producao/receita?produto_id='+pid)).json()).itens||[]; }catch(e){}
-  const rend=(itens.find(i=>i.rendimento!=null)||{}).rendimento;
-  _fp={ pid, nome:p.nome, unidade:p.unidade||'', rendimento:(rend!=null?Number(rend):1), setores:(p.setores||[]).slice(),
-    rows: itens.map(i=>({rowId:i.id, insumo_produto_id:i.insumo_produto_id, insumo:i.insumo, qpu:(i.quantidade_por_unidade!=null?Number(i.quantidade_por_unidade):''), unidade:i.unidade||''})), removidos:[] };
-  renderFichaProd();
+  try{const r=await fetch(API+'/api/est/producao/ficha?produto_id='+pid),d=await r.json();if(!r.ok)throw new Error(d.erro||'Erro ao abrir ficha');const p=d.produto;
+    _fp={pid,nome:p.nome,unidade:p.unidade||'',descricao:p.descricao||p.nome,unidade_consumo:p.unidade_consumo||p.unidade||'',tipo:p.tipo||'PRODUZIDO',instrucoes:p.instrucoes||'',setores:(d.setores||[]).map(s=>Number(s.id)),porcoes:(d.porcoes||[]).map(po=>({id:po.id,nome:po.nome,rendimento:Number(po.rendimento),unidade:po.unidade||p.unidade||'',itens:(po.itens||[]).map(i=>({insumo_produto_id:i.insumo_produto_id,quantidade:i.quantidade,unidade:i.unidade||'',observacao:i.observacao||''}))}))};
+    if(!_fp.porcoes.length)_fp.porcoes=[{id:null,nome:'Receita padrão',rendimento:1,unidade:_fp.unidade,itens:[]}];renderFichaProd();
+  }catch(e){toast(e.message||'Erro ao abrir ficha');}
 }
 function fpInsumoOpts(sel){ return '<option value="">— ingrediente —</option>'+(_vinc.produtos||[]).filter(c=>c.id!==_fp.pid).map(c=>`<option value="${c.id}" ${String(sel)===String(c.id)?'selected':''}>${esc(c.nome)}</option>`).join(''); }
-function renderFichaProd(){
-  const rowsHtml=_fp.rows.map((r,i)=>`<tr data-i="${i}">
-    <td><select class="field" data-k="insumo">${fpInsumoOpts(r.insumo_produto_id)}</select></td>
-    <td><input class="field" data-k="qpu" inputmode="decimal" value="${r.qpu!==''&&r.qpu!=null?r.qpu:''}" style="width:90px"></td>
-    <td><input class="field" data-k="un" value="${esc(r.unidade||'')}" placeholder="g, ml, un…" style="width:90px"></td>
-    <td style="text-align:right"><button class="ic" title="Remover" onclick="fpRemove(${i})">🗑</button></td></tr>`).join('');
+function fpInsumo(id){return (_prodData.insumos||[]).find(x=>String(x.id)===String(id));}
+function fpStockUnits(q,u,ins){q=Number(String(q||0).replace(',','.'));u=String(u||'').toUpperCase();const ue=String(ins&&ins.unidade||'').toUpperCase();if(ue==='KG'&&u==='G')return q/1000;if(ue==='G'&&u==='KG')return q*1000;if(ue==='LITRO'&&u==='ML')return q/1000;if(ue==='ML'&&u==='LITRO')return q*1000;if(ins&&Number(ins.peso_g)>0&&(u==='G'||u==='KG'))return (u==='KG'?q*1000:q)/Number(ins.peso_g);return q;}
+function fpLineCost(it){const ins=fpInsumo(it.insumo_produto_id);if(!ins)return null;const c=Number(ins.medio_valor!=null?ins.medio_valor:ins.ultimo_valor);return Number.isFinite(c)?fpStockUnits(it.quantidade,it.unidade,ins)*c:null;}
+function fpMoney(v){return v==null?'—':('R$ '+Number(v).toFixed(2).replace('.',','));}
+function renderFichaProd(skipSync){
+  if(!skipSync&&$('fpModal'))fpSync();
   const ov=document.getElementById('fpModal'); if(ov) ov.remove();
-  const m=document.createElement('div'); m.id='fpModal'; m.className='modal on';
-  m.innerHTML=`<div class="box" style="max-width:720px">
-    <h3 style="margin:0 0 4px">Ficha técnica — ${esc(_fp.nome)}</h3>
-    <p class="mut xs" style="margin:0 0 12px">Ingredientes consumidos para produzir <b>${esc(_fp.rendimento||1)} ${esc(_fp.unidade||'un')}</b> deste item. Pode ter quantos ingredientes precisar.</p>
-    <div class="grid2" style="margin-bottom:10px">
-      <label class="xs mut">Rendimento (quanto a receita produz, em ${esc(_fp.unidade||'un')})<input class="field" id="fpRend" inputmode="decimal" value="${_fp.rendimento!=null?_fp.rendimento:1}"></label>
-      <div></div>
-    </div>
-    <table class="fptab" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left"><th class="xs mut">Ingrediente</th><th class="xs mut">Qtd</th><th class="xs mut">Unidade</th><th></th></tr></thead><tbody id="fpRows">${rowsHtml||''}</tbody></table>
-    <button class="btn ghost sm" style="margin-top:8px" onclick="fpAdd()">+ Adicionar ingrediente</button>
-    <div class="sec" style="margin-top:14px">Setores onde este item é contado</div>
-    <div class="row" style="gap:6px;flex-wrap:wrap" id="fpSetores">${(_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(_fp.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join('')}</div>
-    <div class="mfoot" style="margin-top:16px"><button class="btn ghost" onclick="document.getElementById('fpModal').remove()">Cancelar</button><button class="btn primary" onclick="salvarFichaProd(this)">Salvar ficha</button></div>
-  </div>`;
-  document.body.appendChild(m);
-  m.querySelectorAll('#fpRows [data-k]').forEach(el=> el.addEventListener('change',fpSync));
+  const portions=_fp.porcoes.map((po,pi)=>{const total=(po.itens||[]).reduce((n,it)=>n+(fpLineCost(it)||0),0);const rows=(po.itens||[]).map((it,ii)=>{const ins=fpInsumo(it.insumo_produto_id),custo=fpLineCost(it);return `<tr data-ii="${ii}"><td><select class="field" data-k="insumo" onchange="fpSetInsumo(${pi},${ii},this.value)">${fpInsumoOpts(it.insumo_produto_id)}</select></td><td class="money">${esc(ins&&ins.unidade||'—')}</td><td class="money">${fpMoney(ins&&(ins.medio_valor!=null?ins.medio_valor:ins.ultimo_valor))}</td><td><input class="field" data-k="qtd" inputmode="decimal" value="${it.quantidade!=null?esc(it.quantidade):''}" oninput="fpUpdateCosts()"></td><td><input class="field" data-k="un" value="${esc(it.unidade||'')}" placeholder="G, KG, UN…" oninput="fpUpdateCosts()"></td><td class="linecost" data-linecost>${fpMoney(custo)}</td><td><button class="fp-close" style="width:30px;height:30px;font-size:15px;color:#ef7777" onclick="fpRemove(${pi},${ii})">×</button></td></tr>`;}).join('');return `<section class="fp-portion" data-pi="${pi}"><div class="fp-portion-head"><label class="fp-label">Nome da porção<input class="field" data-k="pnome" value="${esc(po.nome||'')}"></label><label class="fp-label">Rendimento<input class="field" data-k="prend" inputmode="decimal" value="${esc(po.rendimento)}" oninput="fpUpdateCosts()"></label><label class="fp-label">Unidade<input class="field" data-k="pun" value="${esc(po.unidade||_fp.unidade)}"></label><div class="fp-cost"><span>Custo da porção</span><strong data-pcost>${fpMoney(total)}</strong></div><button class="fp-close" title="Excluir porção" onclick="fpRemovePorcao(${pi})">×</button></div><div class="fp-table-wrap">${rows?`<table class="fp-table"><thead><tr><th>Ingrediente</th><th>Un. estoque</th><th>Custo médio</th><th>Quantidade</th><th>Un. consumo</th><th>Custo</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="fp-empty">Nenhum ingrediente nesta porção.</div>'}</div><div class="fp-add"><button class="btn ghost sm" onclick="fpAdd(${pi})">+ Adicionar ingrediente</button></div></section>`;}).join('');
+  const m=document.createElement('div');m.id='fpModal';m.className='modal on fp-modal';m.innerHTML=`<div class="box"><div class="fp-head"><div><div class="eyebrow">Ficha de produção</div><h3>${esc(_fp.nome)}</h3><p>Configure rendimento, porções e ingredientes. O custo é calculado a partir do estoque.</p></div><button class="fp-close" onclick="document.getElementById('fpModal').remove()">×</button></div><div class="fp-body"><div class="fp-general"><label class="fp-label">Descrição da ficha<input class="field" id="fpDesc" value="${esc(_fp.descricao||_fp.nome)}"></label><label class="fp-label">Unidade de consumo<input class="field" id="fpConsumo" value="${esc(_fp.unidade_consumo||_fp.unidade)}"></label><label class="fp-label">Tipo<select class="field" id="fpTipo"><option value="PRODUZIDO" ${_fp.tipo==='PRODUZIDO'?'selected':''}>Produto final</option><option value="INGREDIENTE_BENEFICIADO" ${_fp.tipo==='INGREDIENTE_BENEFICIADO'?'selected':''}>Ingrediente beneficiado</option></select></label></div><div class="fp-help">A quantidade de cada ingrediente corresponde à porção inteira. Ao lançar 3 porções, o Titan baixa 3 vezes os insumos e dá entrada no rendimento real informado.</div>${portions}<button class="btn ghost" onclick="fpAddPorcao()">+ Adicionar porção</button><div class="sec" style="margin-top:18px">Setores onde este item é contado</div><div class="fp-sector" id="fpSetores">${(_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(_fp.setores||[]).includes(Number(s.id))?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join('')}</div><label class="fp-label" style="margin-top:14px">Instruções de preparo<textarea class="field" id="fpInstrucoes" rows="3" placeholder="Opcional: etapas, ponto correto, conservação…">${esc(_fp.instrucoes||'')}</textarea></label><div class="fp-foot"><div class="status" id="fpStatus">Alterações só entram em vigor depois de salvar.</div><button class="btn red sm" onclick="excluirFichaProd()">Excluir ficha</button><button class="btn ghost sm" onclick="document.getElementById('fpModal').remove()">Cancelar</button><button class="btn primary" id="fpSave" onclick="salvarFichaProd(this)">Salvar ficha</button></div></div></div>`;document.body.appendChild(m);
 }
-function fpSync(){ document.querySelectorAll('#fpRows tr').forEach(tr=>{ const i=+tr.dataset.i; const r=_fp.rows[i]; if(!r)return;
-  r.insumo_produto_id=tr.querySelector('[data-k="insumo"]').value; r.qpu=tr.querySelector('[data-k="qpu"]').value; r.unidade=tr.querySelector('[data-k="un"]').value; }); }
-function fpAdd(){ fpSync(); _fp.rows.push({rowId:null,insumo_produto_id:'',qpu:'',unidade:''}); renderFichaProd(); }
-function fpRemove(i){ fpSync(); const r=_fp.rows[i]; if(r&&r.rowId) _fp.removidos.push(r.rowId); _fp.rows.splice(i,1); renderFichaProd(); }
-async function salvarFichaProd(btn){ fpSync();
-  const rend=parseFloat(($('fpRend').value||'').replace(',','.')); const rendimento=(rend>0?rend:1);
-  const setores=[...document.querySelectorAll('#fpSetores [data-setor].on')].map(b=>Number(b.dataset.setor));
-  const linhas=_fp.rows.filter(r=>r.insumo_produto_id);
-  if(btn) btn.disabled=true;
-  try{
-    await fetch(API+'/api/est/produto/'+_fp.pid+'/setores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,setores})});
-    for(const rid of _fp.removidos) await fetch(API+'/api/est/producao/receita/'+rid,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id})});
-    for(const r of linhas) await fetch(API+'/api/est/producao/receita',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,produto_id:_fp.pid,insumo_produto_id:Number(r.insumo_produto_id),quantidade_por_unidade:(r.qpu===''?null:r.qpu),unidade:r.unidade||null,rendimento})});
-    toast('Ficha salva'); const m=document.getElementById('fpModal'); if(m)m.remove(); loadProducao();
-  }catch(e){ toast('Erro ao salvar ficha'); if(btn) btn.disabled=false; } }
+function fpSync(){const m=$('fpModal');if(!m)return;_fp.descricao=$('fpDesc').value;_fp.unidade_consumo=$('fpConsumo').value;_fp.tipo=$('fpTipo').value;_fp.instrucoes=$('fpInstrucoes').value;_fp.setores=[...document.querySelectorAll('#fpSetores [data-setor].on')].map(x=>Number(x.dataset.setor));document.querySelectorAll('.fp-portion').forEach(sec=>{const pi=+sec.dataset.pi,po=_fp.porcoes[pi];po.nome=sec.querySelector('[data-k="pnome"]').value;po.rendimento=sec.querySelector('[data-k="prend"]').value;po.unidade=sec.querySelector('[data-k="pun"]').value;sec.querySelectorAll('tbody tr').forEach(tr=>{const ii=+tr.dataset.ii,it=po.itens[ii];it.insumo_produto_id=tr.querySelector('[data-k="insumo"]').value;it.quantidade=tr.querySelector('[data-k="qtd"]').value;it.unidade=tr.querySelector('[data-k="un"]').value;});});}
+function fpSetInsumo(pi,ii,id){fpSync();const it=_fp.porcoes[pi].itens[ii],ins=fpInsumo(id);it.insumo_produto_id=id;if(ins&&!it.unidade)it.unidade=String(ins.unidade||'').toUpperCase()==='KG'?'G':ins.unidade;renderFichaProd(true);}
+function fpUpdateCosts(){fpSync();document.querySelectorAll('.fp-portion').forEach(sec=>{const po=_fp.porcoes[+sec.dataset.pi];let total=0;sec.querySelectorAll('tbody tr').forEach(tr=>{const it=po.itens[+tr.dataset.ii],c=fpLineCost(it);if(c!=null)total+=c;const el=tr.querySelector('[data-linecost]');if(el)el.textContent=fpMoney(c);});const t=sec.querySelector('[data-pcost]');if(t)t.textContent=fpMoney(total);});}
+function fpAdd(pi){fpSync();_fp.porcoes[pi].itens.push({insumo_produto_id:'',quantidade:'',unidade:'',observacao:''});renderFichaProd(true);}
+function fpRemove(pi,ii){fpSync();_fp.porcoes[pi].itens.splice(ii,1);renderFichaProd(true);}
+function fpAddPorcao(){fpSync();_fp.porcoes.push({id:null,nome:'Nova porção',rendimento:1,unidade:_fp.unidade,itens:[]});renderFichaProd(true);}
+async function fpRemovePorcao(pi){if(_fp.porcoes.length===1)return toast('A ficha precisa ter pelo menos uma porção');if(!await pedirConfirm('Excluir porção','Remover esta porção e todos os ingredientes dela?'))return;fpSync();_fp.porcoes.splice(pi,1);renderFichaProd(true);}
+async function salvarFichaProd(btn){fpSync();if(btn)btn.disabled=true;$('fpStatus').textContent='Validando ficha e custos…';try{const r=await fetch(API+'/api/est/producao/ficha',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,produto_id:_fp.pid,descricao:_fp.descricao,unidade_consumo:_fp.unidade_consumo,tipo:_fp.tipo,instrucoes:_fp.instrucoes,setores:_fp.setores,porcoes:_fp.porcoes})}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.erro||'Erro ao salvar ficha');toast('Ficha salva com sucesso');$('fpModal').remove();loadProducao();}catch(e){$('fpStatus').textContent=e.message||'Erro ao salvar ficha';if(btn)btn.disabled=false;}}
+async function excluirFichaProd(){if(!await pedirConfirm('Excluir ficha técnica','A ficha e suas porções serão desativadas. O produto e todo o histórico de movimentações serão preservados.'))return;try{const r=await fetch(API+'/api/est/producao/ficha/'+_fp.pid,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id})}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.erro||'Erro ao excluir ficha');toast('Ficha excluída; histórico preservado');$('fpModal').remove();loadProducao();}catch(e){toast(e.message||'Erro ao excluir ficha');}}
 async function novoProduzido(){
   await ensureCatsR();
   const v=await pedirForm('Novo item produzido',[
@@ -607,10 +623,10 @@ async function novoProduzido(){
     {key:'unidade',label:'Unidade (ex: KG, UNIDADE, PACOTE, g)',value:'UNIDADE'},
     {key:'categoria_id',label:'Categoria',type:'select',value:'',opts:[{v:'',t:'—'}].concat((_catR||[]).map(c=>({v:c.id,t:c.nome})))}
   ]); if(!v||!v.nome.trim()) return;
-  try{ await fetch(API+'/api/est/produto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,nome:v.nome.trim(),unidade:v.unidade||'UNIDADE',categoria_id:v.categoria_id||null,pode_produzir:true,pode_contar:true,pode_comprar:false})});
+  try{ const r=await fetch(API+'/api/est/produto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,nome:v.nome.trim(),unidade:v.unidade||'UNIDADE',categoria_id:v.categoria_id||null,pode_produzir:true,pode_contar:true,pode_comprar:false})}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.erro||'Erro ao criar item');
     toast('Item criado — abrindo ficha'); await loadProducao();
     const np=(_vinc.produtos||[]).find(x=>x.nome===v.nome.trim()); if(np) abrirFichaProd(np.id);
-  }catch(e){ toast('Erro ao criar'); } }
+  }catch(e){ toast(e.message||'Erro ao criar'); } }
 async function ensureCatsR(){ if(_catR&&_catR.length) return; try{ _catR=(await (await fetch(API+'/api/est/categorias')).json()).categorias||[]; }catch(e){ _catR=[]; } }
 function renderSetorOutros(){ const box=$('setOutrosBox'); if(!box)return; const q=(($('setBusca')&&$('setBusca').value)||'').toLowerCase();
   const outros=(_vinc.produtos||[]).filter(p=>!ehProduzido(p) && (!q||p.nome.toLowerCase().includes(q))).slice(0,80);
