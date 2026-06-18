@@ -56,6 +56,9 @@
   .chip .dot{ width:8px; height:8px; border-radius:50%; }
   .schip{ font-size:12px; font-weight:700; padding:6px 12px; border-radius:8px; border:1px solid #2e2e34; background:#141417; color:#9a9aa3; cursor:pointer; }
   .schip.on{ background:#F97316; color:#160a02; border-color:#F97316; }
+  .fptab th{ padding:4px 8px 4px 0; font-weight:600; }
+  .fptab td{ padding:4px 8px 4px 0; vertical-align:top; }
+  .fptab .ic{ background:none; border:none; color:#c66; cursor:pointer; font-size:15px; }
   .chip.aberta{ background:#0f2a18; color:var(--verde); } .chip.fechada{ background:#2a1414; color:var(--verm); }
   .chip .dot.g{ background:var(--verde); } .chip .dot.r{ background:var(--verm); }
 
@@ -275,8 +278,9 @@
 
         <!-- PRODUÇÃO E SETORES -->
         <section class="scr2" id="s_producao">
-          <div class="pagehead"><h2>Produção e setores</h2></div>
-          <p class="mut sm" style="margin:0 0 12px">Ligue cada item <b>produzido/fracionado</b> ao seu <b>bruto</b> e ao(s) <b>setor(es)</b> corretos. A quantidade por unidade define a baixa do bruto ao produzir. Editar aqui afeta a baixa real.</p>
+          <div class="pagehead"><h2>Fichas técnicas — produção</h2><button class="btn primary" style="margin-left:auto" onclick="novoProduzido()">+ Novo item produzido</button></div>
+          <p class="mut sm" style="margin:0 0 12px">Cada item produzido tem uma <b>ficha</b> com <b>vários ingredientes</b>, o <b>rendimento</b> (quanto a receita produz) e o(s) <b>setor(es)</b>. Editar aqui afeta a baixa real no estoque. Tudo é editável.</p>
+          <input id="vincBusca" class="field" placeholder="Buscar item produzido…" oninput="renderVinc()" style="max-width:300px;margin-bottom:10px">
           <h3 class="sec">Itens produzidos e fracionados</h3>
           <div id="vincBox"><div class="mut sm">Carregando…</div></div>
           <h3 class="sec">Setor dos demais produtos</h3>
@@ -536,23 +540,78 @@ async function loadProducao(){ try{ _vinc=await (await fetch(API+'/api/est/vincu
   renderVinc(); renderSetorOutros(); }
 function ehProduzido(p){ return p.pode_produzir || p.categoria==='Produtos produzidos internamente'; }
 function setorChips(p){ return (_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(p.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join(''); }
-function renderVinc(){ const box=$('vincBox'); const prod=(_vinc.produtos||[]).filter(ehProduzido);
-  if(!prod.length){ box.innerHTML='<div class="empty">Nenhum item produzido.</div>'; return; }
-  const cands=(_vinc.produtos||[]);
-  box.innerHTML=prod.map(p=>{ const rec=(_vinc.receitas||[]).find(r=>r.produto_id===p.id); const cur=rec?rec.bruto_id:'';
-    const opts='<option value="">— bruto —</option>'+cands.filter(c=>c.id!==p.id).map(c=>`<option value="${c.id}" ${String(cur)===String(c.id)?'selected':''}>${esc(c.nome)}</option>`).join('');
-    return `<div class="panel" style="margin-bottom:10px" data-pid="${p.id}"><div class="nm" style="font-weight:600">${esc(p.nome)} <small class="mut">[${esc(p.unidade||'')}]</small></div>
-      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center"><span class="xs mut">Bruto:</span><select class="field" data-bruto style="min-width:170px">${opts}</select><input class="field" data-qpu placeholder="qtd/un" value="${rec&&rec.qpu!=null?Number(rec.qpu):''}" style="width:90px"><input class="field" data-bu placeholder="un" value="${rec?esc(rec.unidade||''):''}" style="width:80px"></div>
-      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center"><span class="xs mut">Setor:</span>${setorChips(p)}</div>
-      <button class="btn sm" style="margin-top:8px" onclick="salvarVinc('${p.id}',this)">Salvar item</button></div>`;
+function nIngred(pid){ return (_vinc.receitas||[]).filter(r=>r.produto_id===pid).length; }
+function renderVinc(){ const box=$('vincBox'); const q=(($('vincBusca')&&$('vincBusca').value)||'').toLowerCase();
+  let prod=(_vinc.produtos||[]).filter(ehProduzido); if(q) prod=prod.filter(p=>p.nome.toLowerCase().includes(q));
+  if(!prod.length){ box.innerHTML='<div class="empty">Nenhum item produzido'+(q?' para "'+esc(q)+'"':'')+'.</div>'; return; }
+  box.innerHTML=prod.map(p=>{ const ni=nIngred(p.id); const setn=(p.setores||[]).map(id=>{const s=(_vinc.setores||[]).find(x=>x.id===id);return s?s.nome:'';}).filter(Boolean).join(', ');
+    return `<div class="row" style="align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:8px">
+      <div class="nm" style="flex:1"><b>${esc(p.nome)}</b> <small class="mut">[${esc(p.unidade||'')}]</small><small class="mut" style="display:block">${ni} ingrediente${ni===1?'':'s'}${setn?(' · '+esc(setn)):' · sem setor'}</small></div>
+      <button class="btn sm" onclick="abrirFichaProd(${p.id})">Editar ficha</button></div>`;
   }).join('');
 }
-async function salvarVinc(pid,btn){ const card=btn.closest('[data-pid]');
-  const bruto=card.querySelector('[data-bruto]').value, qpu=card.querySelector('[data-qpu]').value, bu=card.querySelector('[data-bu]').value;
-  const setores=[...card.querySelectorAll('[data-setor].on')].map(b=>Number(b.dataset.setor));
-  try{ await fetch(API+'/api/est/produto/'+pid+'/setores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,setores})});
-    await fetch(API+'/api/est/produto/'+pid+'/bruto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,insumo_produto_id:bruto||null,quantidade_por_unidade:qpu,unidade:bu})});
-    toast('Item salvo'); loadProducao(); }catch(e){ toast('Erro ao salvar'); } }
+/* ===== Editor de ficha de produção (multi-ingrediente, estilo Saipos) ===== */
+let _fp={ pid:null, rows:[], removidos:[] };
+async function abrirFichaProd(pid){
+  const p=(_vinc.produtos||[]).find(x=>x.id===pid); if(!p) return;
+  let itens=[]; try{ itens=(await (await fetch(API+'/api/est/producao/receita?produto_id='+pid)).json()).itens||[]; }catch(e){}
+  const rend=(itens.find(i=>i.rendimento!=null)||{}).rendimento;
+  _fp={ pid, nome:p.nome, unidade:p.unidade||'', rendimento:(rend!=null?Number(rend):1), setores:(p.setores||[]).slice(),
+    rows: itens.map(i=>({rowId:i.id, insumo_produto_id:i.insumo_produto_id, insumo:i.insumo, qpu:(i.quantidade_por_unidade!=null?Number(i.quantidade_por_unidade):''), unidade:i.unidade||''})), removidos:[] };
+  renderFichaProd();
+}
+function fpInsumoOpts(sel){ return '<option value="">— ingrediente —</option>'+(_vinc.produtos||[]).filter(c=>c.id!==_fp.pid).map(c=>`<option value="${c.id}" ${String(sel)===String(c.id)?'selected':''}>${esc(c.nome)}</option>`).join(''); }
+function renderFichaProd(){
+  const rowsHtml=_fp.rows.map((r,i)=>`<tr data-i="${i}">
+    <td><select class="field" data-k="insumo">${fpInsumoOpts(r.insumo_produto_id)}</select></td>
+    <td><input class="field" data-k="qpu" inputmode="decimal" value="${r.qpu!==''&&r.qpu!=null?r.qpu:''}" style="width:90px"></td>
+    <td><input class="field" data-k="un" value="${esc(r.unidade||'')}" placeholder="g, ml, un…" style="width:90px"></td>
+    <td style="text-align:right"><button class="ic" title="Remover" onclick="fpRemove(${i})">🗑</button></td></tr>`).join('');
+  const ov=document.getElementById('fpModal'); if(ov) ov.remove();
+  const m=document.createElement('div'); m.id='fpModal'; m.className='modal on';
+  m.innerHTML=`<div class="box" style="max-width:720px">
+    <h3 style="margin:0 0 4px">Ficha técnica — ${esc(_fp.nome)}</h3>
+    <p class="mut xs" style="margin:0 0 12px">Ingredientes consumidos para produzir <b>${esc(_fp.rendimento||1)} ${esc(_fp.unidade||'un')}</b> deste item. Pode ter quantos ingredientes precisar.</p>
+    <div class="grid2" style="margin-bottom:10px">
+      <label class="xs mut">Rendimento (quanto a receita produz, em ${esc(_fp.unidade||'un')})<input class="field" id="fpRend" inputmode="decimal" value="${_fp.rendimento!=null?_fp.rendimento:1}"></label>
+      <div></div>
+    </div>
+    <table class="fptab" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left"><th class="xs mut">Ingrediente</th><th class="xs mut">Qtd</th><th class="xs mut">Unidade</th><th></th></tr></thead><tbody id="fpRows">${rowsHtml||''}</tbody></table>
+    <button class="btn ghost sm" style="margin-top:8px" onclick="fpAdd()">+ Adicionar ingrediente</button>
+    <div class="sec" style="margin-top:14px">Setores onde este item é contado</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap" id="fpSetores">${(_vinc.setores||[]).map(s=>`<button type="button" class="schip ${(_fp.setores||[]).includes(s.id)?'on':''}" data-setor="${s.id}" onclick="this.classList.toggle('on')">${esc(s.nome)}</button>`).join('')}</div>
+    <div class="mfoot" style="margin-top:16px"><button class="btn ghost" onclick="document.getElementById('fpModal').remove()">Cancelar</button><button class="btn primary" onclick="salvarFichaProd(this)">Salvar ficha</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  m.querySelectorAll('#fpRows [data-k]').forEach(el=> el.addEventListener('change',fpSync));
+}
+function fpSync(){ document.querySelectorAll('#fpRows tr').forEach(tr=>{ const i=+tr.dataset.i; const r=_fp.rows[i]; if(!r)return;
+  r.insumo_produto_id=tr.querySelector('[data-k="insumo"]').value; r.qpu=tr.querySelector('[data-k="qpu"]').value; r.unidade=tr.querySelector('[data-k="un"]').value; }); }
+function fpAdd(){ fpSync(); _fp.rows.push({rowId:null,insumo_produto_id:'',qpu:'',unidade:''}); renderFichaProd(); }
+function fpRemove(i){ fpSync(); const r=_fp.rows[i]; if(r&&r.rowId) _fp.removidos.push(r.rowId); _fp.rows.splice(i,1); renderFichaProd(); }
+async function salvarFichaProd(btn){ fpSync();
+  const rend=parseFloat(($('fpRend').value||'').replace(',','.')); const rendimento=(rend>0?rend:1);
+  const setores=[...document.querySelectorAll('#fpSetores [data-setor].on')].map(b=>Number(b.dataset.setor));
+  const linhas=_fp.rows.filter(r=>r.insumo_produto_id);
+  if(btn) btn.disabled=true;
+  try{
+    await fetch(API+'/api/est/produto/'+_fp.pid+'/setores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,setores})});
+    for(const rid of _fp.removidos) await fetch(API+'/api/est/producao/receita/'+rid,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id})});
+    for(const r of linhas) await fetch(API+'/api/est/producao/receita',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,produto_id:_fp.pid,insumo_produto_id:Number(r.insumo_produto_id),quantidade_por_unidade:(r.qpu===''?null:r.qpu),unidade:r.unidade||null,rendimento})});
+    toast('Ficha salva'); const m=document.getElementById('fpModal'); if(m)m.remove(); loadProducao();
+  }catch(e){ toast('Erro ao salvar ficha'); if(btn) btn.disabled=false; } }
+async function novoProduzido(){
+  await ensureCatsR();
+  const v=await pedirForm('Novo item produzido',[
+    {key:'nome',label:'Nome do item produzido'},
+    {key:'unidade',label:'Unidade (ex: KG, UNIDADE, PACOTE, g)',value:'UNIDADE'},
+    {key:'categoria_id',label:'Categoria',type:'select',value:'',opts:[{v:'',t:'—'}].concat((_catR||[]).map(c=>({v:c.id,t:c.nome})))}
+  ]); if(!v||!v.nome.trim()) return;
+  try{ await fetch(API+'/api/est/produto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,nome:v.nome.trim(),unidade:v.unidade||'UNIDADE',categoria_id:v.categoria_id||null,pode_produzir:true,pode_contar:true,pode_comprar:false})});
+    toast('Item criado — abrindo ficha'); await loadProducao();
+    const np=(_vinc.produtos||[]).find(x=>x.nome===v.nome.trim()); if(np) abrirFichaProd(np.id);
+  }catch(e){ toast('Erro ao criar'); } }
+async function ensureCatsR(){ if(_catR&&_catR.length) return; try{ _catR=(await (await fetch(API+'/api/est/categorias')).json()).categorias||[]; }catch(e){ _catR=[]; } }
 function renderSetorOutros(){ const box=$('setOutrosBox'); if(!box)return; const q=(($('setBusca')&&$('setBusca').value)||'').toLowerCase();
   const outros=(_vinc.produtos||[]).filter(p=>!ehProduzido(p) && (!q||p.nome.toLowerCase().includes(q))).slice(0,80);
   box.innerHTML=outros.map(p=>`<div class="panel" style="margin-bottom:8px" data-pid="${p.id}"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><div class="nm" style="font-weight:600;min-width:160px;flex:1">${esc(p.nome)} <small class="mut">${esc(p.categoria||'')} ${esc(p.unidade||'')}</small></div><label class="xs mut" title="Peso de 1 unidade de contagem, em gramas. Usado para converter receitas em g/kg na baixa.">peso/un (g)<input class="field" data-peso value="${p.peso_g!=null?Number(p.peso_g):''}" style="width:110px"></label></div><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">${setorChips(p)}<button class="btn sm" style="margin-left:auto" onclick="salvarSetorOnly('${p.id}',this)">Salvar</button></div></div>`).join('')||'<div class="empty">Nenhum produto.</div>'; }
