@@ -592,7 +592,7 @@ async function api(req, res, url) {
   }
 
   if (sub === 'est' && seg[2] === 'categorias' && req.method === 'GET') {
-    const r = await db.q('SELECT id, nome, ordem, ativo FROM est_categoria WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+    const r = await db.q('SELECT id, nome, departamento, ordem, ativo FROM est_categoria WHERE tenant_id=$1 ORDER BY departamento NULLS LAST, ordem, nome', [TENANT]);
     return json(res, 200, { categorias: r.rows });
   }
   if (sub === 'est' && seg[2] === 'fornecedores' && req.method === 'GET') {
@@ -603,16 +603,33 @@ async function api(req, res, url) {
     const r = await db.q('SELECT id, nome, ordem, ativo FROM est_setor WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
     return json(res, 200, { setores: r.rows });
   }
+  if (sub === 'est' && seg[2] === 'locais' && req.method === 'GET') {
+    const r = await db.q('SELECT id, nome, tipo_local, aceita_pereciveis, ativo FROM est_local_fisico WHERE tenant_id=$1 ORDER BY ativo DESC, nome', [TENANT]);
+    return json(res, 200, { locais: r.rows });
+  }
+  if (sub === 'est' && seg[2] === 'conversoes' && req.method === 'GET') {
+    const cat = url.searchParams.get('categoria') || '';
+    const r = await db.q(`SELECT id, categoria_ref, rotulo, unidade_compra, unidade_base, fator, confianca, precisa_revisao, ativo
+      FROM est_conversao_categoria WHERE tenant_id=$1 AND ($2='' OR categoria_ref=$2)
+      ORDER BY categoria_ref, ativo DESC, rotulo`, [TENANT, cat]);
+    return json(res, 200, { conversoes: r.rows });
+  }
   if (sub === 'est' && seg[2] === 'produtos' && req.method === 'GET') {
     const busca = (url.searchParams.get('busca') || '').toLowerCase();
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
-    const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
-        p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo, p.ultimo_valor, p.maior_valor, p.observacoes,
-        p.categoria_id, p.fornecedor_preferido_id, c.nome AS categoria, f.nome AS fornecedor
+    const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
+        p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
+        p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
+        p.marca_preferida, p.ultima_marca, p.categoria_id, p.fornecedor_preferido_id, p.ultimo_fornecedor_id,
+        p.conversao_origem, p.conversao_confianca, p.conversao_precisa_revisao, p.tipo_item, p.nome_nf,
+        p.local_fisico_id, l.nome AS local_fisico,
+        c.nome AS categoria, f.nome AS fornecedor, uf.nome AS ultimo_fornecedor
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
+      LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
+      LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
       WHERE p.tenant_id=$1
         AND ($2='' OR lower(p.nome) LIKE '%'||$2||'%')
         AND ($3='' OR c.nome=$3)
@@ -623,10 +640,19 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
     const pid = parseInt(seg[3], 10);
     if (!pid) return json(res, 400, { erro: 'produto inválido' });
-    const pr = await db.q(`SELECT p.*, c.nome AS categoria, f.nome AS fornecedor
+    const pr = await db.q(`SELECT p.*, c.nome AS categoria, f.nome AS fornecedor, uf.nome AS ultimo_fornecedor,
+        l.nome AS local_fisico, mv.nome AS melhor_fornecedor, mv.menor_valor AS melhor_valor
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
+      LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
+      LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
+      LEFT JOIN LATERAL (
+        SELECT fz.nome, pf.menor_valor
+          FROM est_produto_fornecedor pf JOIN est_fornecedor fz ON fz.id=pf.fornecedor_id
+         WHERE pf.tenant_id=p.tenant_id AND pf.produto_id=p.id AND pf.menor_valor IS NOT NULL
+         ORDER BY pf.menor_valor ASC LIMIT 1
+      ) mv ON TRUE
       WHERE p.id=$1 AND p.tenant_id=$2`, [pid, TENANT]);
     if (!pr.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
     const setores = await db.q(`SELECT s.id, s.nome, ps.obrigatorio
@@ -799,7 +825,7 @@ async function api(req, res, url) {
   }
 
   // estoque v2 — escritas (CRUD) com checagem de gestor/gerente
-  if (sub === 'est' && ['produto', 'fornecedor', 'categoria'].includes(seg[2]) && req.method !== 'GET') {
+  if (sub === 'est' && ['produto', 'fornecedor', 'categoria', 'conversao', 'local'].includes(seg[2]) && req.method !== 'GET') {
     const b = await readBody(req);
     const permNeeded = seg[2] === 'categoria' ? 'editar_categorias' : 'editar_produtos';
     if (!(await estPode(b.usuario_id, permNeeded))) return json(res, 403, { erro: 'Sem permissão para editar.' });
@@ -809,12 +835,16 @@ async function api(req, res, url) {
       const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
       try {
         const r = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal,
-          fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo, subcategoria, marca_preferida, peso_g)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14) RETURNING id`,
+          fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo, subcategoria, marca_preferida, peso_g, unidade_base,
+          conversao_origem, conversao_confianca, conversao_precisa_revisao, tipo_item, nome_nf, local_fisico_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
           [TENANT, nome, b.categoria_id || null, String(b.unidade || '').trim() || null,
            b.estoque_minimo !== '' && b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal !== '' && b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
            b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null,
-           String(b.subcategoria || '').trim() || null, String(b.marca_preferida || '').trim() || null, b.peso_g !== '' && b.peso_g != null ? Number(b.peso_g) : null]);
+           String(b.subcategoria || '').trim() || null, String(b.marca_preferida || '').trim() || null, b.peso_g !== '' && b.peso_g != null ? Number(b.peso_g) : null,
+           String(b.unidade_base || '').trim() || null,
+           String(b.conversao_origem || '').trim() || null, String(b.conversao_confianca || '').trim() || null, !!b.conversao_precisa_revisao,
+           String(b.tipo_item || '').trim() || null, String(b.nome_nf || '').trim() || null, b.local_fisico_id || null]);
         const pid = r.rows[0].id;
         const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean) : [];
         for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT,pid,sid]);
@@ -826,11 +856,15 @@ async function api(req, res, url) {
       try {
         const r = await db.q(`UPDATE est_produto SET nome=$2,categoria_id=$3,unidade=$4,estoque_minimo=$5,estoque_ideal=$6,
           fornecedor_preferido_id=$7,pode_contar=$8,pode_comprar=$9,pode_produzir=$10,observacoes=$11,
-          subcategoria=$12,marca_preferida=$13,peso_g=$14,ativo=$15,atualizado_em=NOW()
+          subcategoria=$12,marca_preferida=$13,peso_g=$14,ativo=$15,unidade_base=$17,
+          conversao_origem=$18,conversao_confianca=$19,conversao_precisa_revisao=$20,tipo_item=$21,local_fisico_id=$22,atualizado_em=NOW()
           WHERE id=$1 AND tenant_id=$16 RETURNING id`, [seg[3],nome,b.categoria_id||null,String(b.unidade||'').trim()||null,
           b.estoque_minimo!==''&&b.estoque_minimo!=null?Number(b.estoque_minimo):null,b.estoque_ideal!==''&&b.estoque_ideal!=null?Number(b.estoque_ideal):null,
           b.fornecedor_preferido_id||null,b.pode_contar!==false,b.pode_comprar!==false,!!b.pode_produzir,b.observacoes||null,
-          String(b.subcategoria||'').trim()||null,String(b.marca_preferida||'').trim()||null,b.peso_g!==''&&b.peso_g!=null?Number(b.peso_g):null,b.ativo!==false,TENANT]);
+          String(b.subcategoria||'').trim()||null,String(b.marca_preferida||'').trim()||null,b.peso_g!==''&&b.peso_g!=null?Number(b.peso_g):null,b.ativo!==false,TENANT,
+          String(b.unidade_base||'').trim()||null,
+          String(b.conversao_origem||'').trim()||null,String(b.conversao_confianca||'').trim()||null,!!b.conversao_precisa_revisao,
+          String(b.tipo_item||'').trim()||null,b.local_fisico_id||null]);
         if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
         if (Array.isArray(b.setores)) {
           await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,seg[3]]);
@@ -868,12 +902,76 @@ async function api(req, res, url) {
     // CATEGORIA
     if (seg[2] === 'categoria' && !seg[3] && req.method === 'POST') {
       const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
-      try { const r = await db.q('INSERT INTO est_categoria (tenant_id, nome, ordem) VALUES ($1,$2,$3) RETURNING id', [TENANT, nome, Number(b.ordem) || 50]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
+      try { const r = await db.q('INSERT INTO est_categoria (tenant_id, nome, departamento, ordem) VALUES ($1,$2,$3,$4) RETURNING id', [TENANT, nome, String(b.departamento || '').trim() || null, Number(b.ordem) || 50]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
       catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Categoria já existe.' : (e.code || e.message) }); }
     }
     if (seg[2] === 'categoria' && seg[3] && req.method === 'PATCH') {
-      await db.q('UPDATE est_categoria SET nome=COALESCE($2,nome), ordem=COALESCE($3,ordem), ativo=COALESCE($4,ativo) WHERE id=$1 AND tenant_id=$5',
-        [seg[3], b.nome ? String(b.nome).trim() : null, b.ordem != null ? Number(b.ordem) : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      await db.q('UPDATE est_categoria SET nome=COALESCE($2,nome), departamento=COALESCE($3,departamento), ordem=COALESCE($4,ordem), ativo=COALESCE($5,ativo) WHERE id=$1 AND tenant_id=$6',
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.departamento != null ? String(b.departamento).trim() : null, b.ordem != null ? Number(b.ordem) : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'categoria' && seg[3] && req.method === 'DELETE') {
+      const usados = await db.q('SELECT COUNT(*)::int n FROM est_produto WHERE tenant_id=$1 AND categoria_id=$2', [TENANT, seg[3]]);
+      if (usados.rows[0].n > 0) { await db.q('UPDATE est_categoria SET ativo=FALSE WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]); return json(res, 200, { ok: true, inativado: true, em_uso: usados.rows[0].n }); }
+      await db.q('DELETE FROM est_categoria WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // SUGESTÃO DE CONVERSÃO POR CATEGORIA (hortifruti etc.) — confirmável, com confiança/revisão.
+    if (seg[2] === 'conversao' && !seg[3] && req.method === 'POST') {
+      const rotulo = String(b.rotulo || '').trim(); const categoria = String(b.categoria_ref || '').trim();
+      const revisao = !!b.precisa_revisao;
+      const fator = b.fator != null && b.fator !== '' ? Number(String(b.fator).replace(',', '.')) : null;
+      if (!categoria) return json(res, 400, { erro: 'Informe a categoria da sugestão.' });
+      if (!rotulo) return json(res, 400, { erro: 'Informe o rótulo da conversão.' });
+      if (!revisao && !(fator > 0)) return json(res, 400, { erro: 'Informe um fator maior que zero (ou marque "precisa revisão").' });
+      try {
+        const r = await db.q(`INSERT INTO est_conversao_categoria (tenant_id, categoria_ref, rotulo, unidade_compra, unidade_base, fator, confianca, precisa_revisao)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+          [TENANT, categoria, rotulo, String(b.unidade_compra || '').trim().toUpperCase() || null, String(b.unidade_base || '').trim() || null,
+           fator, String(b.confianca || '').trim() || null, revisao]);
+        return json(res, 201, { ok: true, id: r.rows[0].id });
+      } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe uma sugestão com esse rótulo nessa categoria.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'conversao' && seg[3] && req.method === 'PATCH') {
+      const fator = b.fator != null && b.fator !== '' ? Number(String(b.fator).replace(',', '.')) : null;
+      if (b.fator != null && b.fator !== '' && !(fator > 0)) return json(res, 400, { erro: 'Informe um fator maior que zero.' });
+      try {
+        await db.q(`UPDATE est_conversao_categoria SET categoria_ref=COALESCE($2,categoria_ref), rotulo=COALESCE($3,rotulo),
+          unidade_compra=COALESCE($4,unidade_compra), unidade_base=COALESCE($5,unidade_base), fator=COALESCE($6,fator),
+          confianca=COALESCE($7,confianca), precisa_revisao=COALESCE($8,precisa_revisao), ativo=COALESCE($9,ativo) WHERE id=$1 AND tenant_id=$10`,
+          [seg[3], b.categoria_ref ? String(b.categoria_ref).trim() : null, b.rotulo ? String(b.rotulo).trim() : null,
+           b.unidade_compra != null ? String(b.unidade_compra).trim().toUpperCase() : null, b.unidade_base != null ? String(b.unidade_base).trim() : null,
+           fator, b.confianca != null ? String(b.confianca).trim() : null, typeof b.precisa_revisao === 'boolean' ? b.precisa_revisao : null,
+           typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+        return json(res, 200, { ok: true });
+      } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe uma sugestão com esse rótulo nessa categoria.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'conversao' && seg[3] && req.method === 'DELETE') {
+      await db.q('DELETE FROM est_conversao_categoria WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
+      return json(res, 200, { ok: true });
+    }
+
+    // LOCAL FÍSICO (onde o item fica guardado)
+    if (seg[2] === 'local' && !seg[3] && req.method === 'POST') {
+      const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'Informe o nome do local.' });
+      try {
+        const r = await db.q(`INSERT INTO est_local_fisico (tenant_id, nome, tipo_local, aceita_pereciveis) VALUES ($1,$2,$3,$4) RETURNING id`,
+          [TENANT, nome, String(b.tipo_local || '').trim() || null, b.aceita_pereciveis !== false]);
+        return json(res, 201, { ok: true, id: r.rows[0].id });
+      } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe um local com esse nome.' : (e.code || e.message) }); }
+    }
+    if (seg[2] === 'local' && seg[3] && req.method === 'PATCH') {
+      await db.q(`UPDATE est_local_fisico SET nome=COALESCE($2,nome), tipo_local=COALESCE($3,tipo_local),
+        aceita_pereciveis=COALESCE($4,aceita_pereciveis), ativo=COALESCE($5,ativo) WHERE id=$1 AND tenant_id=$6`,
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.tipo_local != null ? String(b.tipo_local).trim() : null,
+         typeof b.aceita_pereciveis === 'boolean' ? b.aceita_pereciveis : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      return json(res, 200, { ok: true });
+    }
+    if (seg[2] === 'local' && seg[3] && req.method === 'DELETE') {
+      const usados = await db.q('SELECT COUNT(*)::int n FROM est_produto WHERE tenant_id=$1 AND local_fisico_id=$2', [TENANT, seg[3]]);
+      if (usados.rows[0].n > 0) { await db.q('UPDATE est_local_fisico SET ativo=FALSE WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]); return json(res, 200, { ok: true, inativado: true }); }
+      await db.q('DELETE FROM est_local_fisico WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
       return json(res, 200, { ok: true });
     }
     return json(res, 404, { erro: 'rota est nao encontrada' });

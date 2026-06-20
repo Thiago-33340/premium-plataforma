@@ -111,6 +111,7 @@ const MIGRATIONS = [
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
+  "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS unidade_base TEXT",
   "ALTER TABLE est_contagem_item ADD COLUMN IF NOT EXISTS geral BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS rendido NUMERIC(14,3)",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS perda NUMERIC(14,3)"
@@ -267,6 +268,88 @@ async function init(retries) {
           console.log('[db] est_produto ja populado (' + rep.rows[0].n + ') - seed estoque ignorado');
         }
       } catch (ee) { console.log('[db] estoque-v2 aviso:', ee.code || ee.message); }
+      try {
+        // Sugestões de conversão POR CATEGORIA (maço/talo/folha de hortifruti). Só semeia se vazio —
+        // depois editável pelo gestor. Genérico: vive no banco por tenant. Baixa confiança entra com
+        // precisa_revisao=true (alho-poró: NF diz "maço", default é por talo limpo — gestor confirma).
+        const rc = await pool.query('SELECT COUNT(*)::int AS n FROM est_conversao_categoria WHERE tenant_id=$1', [TENANT]);
+        if (rc.rows[0].n === 0) {
+          const defaults = [
+            ['Hortifruti', 'Rúcula hidropônica', 'MAÇO', 'g', 200, 'media', false],
+            ['Hortifruti', 'Rúcula de terra', 'MAÇO', 'g', 250, 'media', false],
+            ['Hortifruti', 'Manjericão (folha)', 'FOLHA', 'g', 1.25, 'media', false],
+            ['Hortifruti', 'Alho-poró (talo limpo)', 'TALO', 'g', 105, 'baixa', true]
+          ];
+          for (const [cat, rotulo, uc, ub, fator, conf, rev] of defaults)
+            await pool.query(`INSERT INTO est_conversao_categoria (tenant_id,categoria_ref,rotulo,unidade_compra,unidade_base,fator,confianca,precisa_revisao)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (tenant_id,categoria_ref,rotulo) DO NOTHING`, [TENANT, cat, rotulo, uc, ub, fator, conf, rev]);
+          console.log('[db] sugestões de conversão por categoria semeadas (' + defaults.length + ')');
+        } else { console.log('[db] conversões por categoria já populadas (' + rc.rows[0].n + ') - seed ignorado'); }
+      } catch (ec) { console.log('[db] conversões por categoria aviso:', ec.code || ec.message); }
+      try {
+        // Biblioteca de categorias sugeridas de restaurante (ADENDO §3 / SEED §2). Pré-ativadas para
+        // o tenant, EDITÁVEIS e EXCLUÍVEIS. Guardada por flag p/ que exclusões NÃO ressuscitem no boot.
+        const mk = await pool.query("SELECT (config->>'estoque_categorias_lib_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+        if (!mk.rows[0] || !mk.rows[0].m) {
+          const lib = [
+            ['Alimentos', 'Hortifruti', 10], ['Alimentos', 'Laticínios', 11], ['Alimentos', 'Proteínas', 12],
+            ['Alimentos', 'Secos e mercearia', 13], ['Alimentos', 'Óleos e gorduras', 14], ['Alimentos', 'Molhos e condimentos', 15],
+            ['Alimentos', 'Temperos e condimentos', 16], ['Alimentos', 'Confeitaria', 17], ['Alimentos', 'Conservas', 18],
+            ['Bebidas', 'Refrigerantes', 20], ['Bebidas', 'Gelo', 21],
+            ['Embalagens', 'Embalagens de delivery', 30], ['Embalagens', 'Descartáveis', 31],
+            ['Limpeza e higiene', 'Produtos de limpeza', 40], ['Limpeza e higiene', 'Higiene operacional', 41],
+            ['Produção interna', 'Massas (produção)', 50], ['Produção interna', 'Molhos (produção)', 51], ['Produção interna', 'Recheios (produção)', 52]
+          ];
+          for (const [dep, nome, ordem] of lib)
+            await pool.query(`INSERT INTO est_categoria (tenant_id, nome, departamento, ordem, ativo) VALUES ($1,$2,$3,$4,TRUE)
+              ON CONFLICT (tenant_id, nome) DO UPDATE SET departamento=COALESCE(est_categoria.departamento, EXCLUDED.departamento)`, [TENANT, nome, dep, ordem]);
+          await pool.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_categorias_lib_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+          console.log('[db] biblioteca de categorias sugeridas aplicada (carga única, ' + lib.length + ')');
+        } else { console.log('[db] biblioteca de categorias já aplicada - ignorada'); }
+      } catch (ecl) { console.log('[db] categorias sugeridas aviso:', ecl.code || ecl.message); }
+      try {
+        // Seed real da Premium a partir das NFs (dados reais, não adivinhação). Guardado por flag —
+        // roda uma vez; não clobbera edições do gestor depois. ALTA: fator preenchido. BAIXA:
+        // precisa_revisao=true e fator em branco quando a NF não suporta. Idempotente (ON CONFLICT).
+        const mk = await pool.query("SELECT (config->>'estoque_seed_nfs_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+        if (!mk.rows[0] || !mk.rows[0].m) {
+          const seedNF = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'seed-premium-nfs-v1.json'), 'utf8').replace(/^﻿/, ''));
+          const fornId = {};
+          for (const f of seedNF.fornecedores) {
+            const r = await pool.query(`INSERT INTO est_fornecedor (tenant_id,nome,tipo) VALUES ($1,$2,$3)
+              ON CONFLICT (tenant_id,nome) DO UPDATE SET tipo=COALESCE(est_fornecedor.tipo,EXCLUDED.tipo) RETURNING id`, [TENANT, f.nome, f.tipo || null]);
+            fornId[f.nome] = r.rows[0].id;
+          }
+          let n = 0;
+          for (const p of seedNF.produtos) {
+            const cat = await pool.query('SELECT id FROM est_categoria WHERE tenant_id=$1 AND nome=$2', [TENANT, p.categoria]);
+            const catId = cat.rows[0] ? cat.rows[0].id : null;
+            const fid = p.forn ? (fornId[p.forn] || null) : null;
+            const pr = await pool.query(`INSERT INTO est_produto
+              (tenant_id,nome,nome_nf,categoria_id,subcategoria,tipo_item,unidade,unidade_base,peso_g,ultimo_valor,
+               fornecedor_preferido_id,ultimo_fornecedor_id,conversao_origem,conversao_confianca,conversao_precisa_revisao,pode_comprar,ativo)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11,'NF',$12,$13,TRUE,TRUE)
+              ON CONFLICT (tenant_id,nome) DO UPDATE SET nome_nf=EXCLUDED.nome_nf, categoria_id=EXCLUDED.categoria_id,
+                subcategoria=EXCLUDED.subcategoria, tipo_item=EXCLUDED.tipo_item, unidade=EXCLUDED.unidade, unidade_base=EXCLUDED.unidade_base,
+                peso_g=EXCLUDED.peso_g, ultimo_valor=EXCLUDED.ultimo_valor, fornecedor_preferido_id=EXCLUDED.fornecedor_preferido_id,
+                ultimo_fornecedor_id=EXCLUDED.ultimo_fornecedor_id, conversao_origem='NF', conversao_confianca=EXCLUDED.conversao_confianca,
+                conversao_precisa_revisao=EXCLUDED.conversao_precisa_revisao, atualizado_em=NOW()
+              RETURNING id`,
+              [TENANT, p.nome, p.nome_nf || null, catId, p.sub || null, p.tipo || null, p.unidade || null, p.base || null,
+               p.fator != null ? p.fator : null, p.ultimo != null ? p.ultimo : null, fid, p.conf || null, !!p.rev]);
+            const pid = pr.rows[0].id; n++;
+            for (const pv of (p.precos || [])) {
+              const pfid = fornId[pv.forn]; if (!pfid) continue;
+              await pool.query(`INSERT INTO est_produto_fornecedor (tenant_id,produto_id,fornecedor_id,ultimo_valor,menor_valor,maior_valor)
+                VALUES ($1,$2,$3,$4,$4,$4) ON CONFLICT (tenant_id,produto_id,fornecedor_id) DO UPDATE SET ultimo_valor=EXCLUDED.ultimo_valor,
+                  menor_valor=LEAST(est_produto_fornecedor.menor_valor,EXCLUDED.menor_valor), maior_valor=GREATEST(est_produto_fornecedor.maior_valor,EXCLUDED.maior_valor)`,
+                [TENANT, pid, pfid, pv.valor]);
+            }
+          }
+          await pool.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_seed_nfs_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+          console.log('[db] seed real Premium NFs aplicado (' + n + ' produtos, ' + seedNF.fornecedores.length + ' fornecedores)');
+        } else { console.log('[db] seed Premium NFs já aplicado - ignorado'); }
+      } catch (enf) { console.log('[db] seed Premium NFs aviso:', enf.code || enf.message); }
       try {
         const seedProd = fs.readFileSync(path.join(__dirname, 'seed-produzidos-rp.sql'), 'utf8');
         await pool.query(seedProd);

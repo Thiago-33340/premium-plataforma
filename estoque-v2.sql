@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS est_categoria (
   nome TEXT NOT NULL, ordem INT DEFAULT 99, ativo BOOLEAN NOT NULL DEFAULT TRUE,
   UNIQUE (tenant_id, nome)
 );
+-- Hierarquia Departamento > Categoria (a subcategoria fica em est_produto.subcategoria).
+ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS departamento TEXT;
 CREATE TABLE IF NOT EXISTS est_fornecedor (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -22,6 +24,18 @@ CREATE TABLE IF NOT EXISTS est_setor (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   nome TEXT NOT NULL, ordem INT DEFAULT 99, ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE (tenant_id, nome)
+);
+-- Local físico (ADENDO §3.1): onde o item fica guardado. Conceito separado de categoria/setor/tipo.
+-- Aceita a realidade atual (estoques misturados) — não obriga organização perfeita.
+CREATE TABLE IF NOT EXISTS est_local_fisico (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  tipo_local TEXT,                       -- seco | refrigerado | congelado | produção | …
+  aceita_pereciveis BOOLEAN NOT NULL DEFAULT TRUE,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (tenant_id, nome)
 );
 CREATE TABLE IF NOT EXISTS est_produto (
@@ -49,6 +63,45 @@ CREATE TABLE IF NOT EXISTS est_produto (
   UNIQUE (tenant_id, nome)
 );
 CREATE INDEX IF NOT EXISTS idx_est_prod_cat ON est_produto(tenant_id, categoria_id);
+-- Sessão 1 (pendência): garantir colunas em tabelas que podem ter sido criadas por uma versão
+-- anterior do schema (CREATE TABLE IF NOT EXISTS não adiciona colunas a uma tabela já existente).
+-- Todas aditivas e idempotentes — seguras contra o banco real.
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS subcategoria TEXT;
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS marca_preferida TEXT;
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS ultima_marca TEXT;
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS ultimo_valor NUMERIC(14,4);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS maior_valor NUMERIC(14,4);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS menor_valor NUMERIC(14,4);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS medio_valor NUMERIC(14,4);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS fornecedor_preferido_id INT REFERENCES est_fornecedor(id);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS ultimo_fornecedor_id INT REFERENCES est_fornecedor(id);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS unidade_base TEXT;
+-- Conversão é PROPRIEDADE DO PRODUTO (1 unidade de compra deste produto = peso_g na unidade_base),
+-- com origem/confiança/revisão. Nunca o fator de outro produto. (ADENDO §3.3)
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS conversao_origem TEXT;           -- NF | default_categoria | manual
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS conversao_confianca TEXT;        -- alta | media | baixa
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS conversao_precisa_revisao BOOLEAN NOT NULL DEFAULT FALSE;
+-- Classificação por comportamento (ADENDO §3.1) e nome bruto da NF vs nome padronizado (§3.2).
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS tipo_item TEXT;   -- insumo|produzido internamente|semiacabado|embalagem|bebida|material de limpeza|higiene|utensílio|revenda|outro
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS nome_nf TEXT;     -- texto cru da nota, read-only depois de importado
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS local_fisico_id INT REFERENCES est_local_fisico(id);
+-- Sugestões de conversão POR CATEGORIA (substitui o preset global). Mostradas só em produtos da
+-- categoria correspondente e sempre confirmáveis — nunca aplicadas automaticamente a outra categoria.
+CREATE TABLE IF NOT EXISTS est_conversao_categoria (
+  id SERIAL PRIMARY KEY,
+  tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  categoria_ref TEXT NOT NULL,          -- casa com est_categoria.nome (ex.: 'Hortifruti')
+  rotulo TEXT NOT NULL,                 -- ex.: 'Rúcula hidropônica', 'Manjericão (folha)'
+  unidade_compra TEXT,                  -- ex.: 'MAÇO', 'FOLHA', 'TALO'
+  unidade_base TEXT,                    -- 'g' | 'ml' | 'un'
+  fator NUMERIC(14,3),                  -- pode ser NULL quando precisa_revisao (não inventar)
+  confianca TEXT,                       -- alta | media | baixa
+  precisa_revisao BOOLEAN NOT NULL DEFAULT FALSE,
+  ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (tenant_id, categoria_ref, rotulo)
+);
 CREATE TABLE IF NOT EXISTS est_produto_setor (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -68,6 +121,10 @@ CREATE TABLE IF NOT EXISTS est_produto_fornecedor (
   frequencia NUMERIC(6,2), ultima_visita_em TIMESTAMPTZ,
   UNIQUE (tenant_id, produto_id, fornecedor_id)
 );
+-- Sessão 1 (pendência): garantir as colunas de valor (caso a tabela já existisse sem elas).
+ALTER TABLE est_produto_fornecedor ADD COLUMN IF NOT EXISTS ultimo_valor NUMERIC(14,4);
+ALTER TABLE est_produto_fornecedor ADD COLUMN IF NOT EXISTS menor_valor NUMERIC(14,4);
+ALTER TABLE est_produto_fornecedor ADD COLUMN IF NOT EXISTS maior_valor NUMERIC(14,4);
 CREATE TABLE IF NOT EXISTS est_movimento (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

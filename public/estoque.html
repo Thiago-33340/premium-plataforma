@@ -160,6 +160,16 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .sector-chip.on{ border-color:var(--lar); color:#fff; background:var(--accent-soft); }
 .stock-readout{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(120deg,var(--accent-soft),transparent); margin-bottom:18px; }
 .stock-readout strong{ display:block; font-size:28px; }.stock-readout small{ color:var(--mut); }
+.norm-readout{ padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(120deg,var(--accent-soft),transparent); font-size:13px; line-height:1.7; }
+.norm-readout b{ font-weight:700; }
+.hist-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+.hist-grid > div{ padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
+.hist-grid small{ display:block; color:var(--mut); font-size:11px; margin-bottom:3px; }
+.hist-grid b{ font-size:15px; }
+.preset-row{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 2px; }
+.sugestao-wrap{ margin-top:4px; }
+.sugestao-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; font-size:13px; }
+.badge-rev{ display:inline-block; padding:1px 8px; border-radius:999px; background:#7a3b00; color:#ffd9a6; font-size:11px; font-weight:700; vertical-align:middle; }
 .recipe-table{ width:100%; border-collapse:separate; border-spacing:0 7px; }
 .recipe-table th{ color:var(--mut); font-size:10px; text-transform:uppercase; letter-spacing:.6px; text-align:left; padding:0 7px; }
 .recipe-table td{ padding:7px; background:#19191d; }.recipe-table td:first-child{ border-radius:10px 0 0 10px; }.recipe-table td:last-child{ border-radius:0 10px 10px 0; }
@@ -233,7 +243,7 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
     </section>
 
     <section id="v-produtos" class="hide">
-      <div class="vhead"><div><h2 class="tit">Produtos</h2></div><div class="product-toolbar"><button class="btn ghost sm secondary-action" onclick="gerenciarCategorias()">Categorias</button><button class="btn primary sm" onclick="novoProduto()">+ Novo produto</button></div></div>
+      <div class="vhead"><div><h2 class="tit">Produtos</h2></div><div class="product-toolbar"><button class="btn ghost sm secondary-action" onclick="gerenciarCategorias()">Categorias</button><button class="btn ghost sm secondary-action" onclick="gerenciarConversoes()">Conversões</button><button class="btn ghost sm secondary-action" onclick="gerenciarLocais()">Locais</button><button class="btn primary sm" onclick="novoProduto()">+ Novo produto</button></div></div>
       <div id="prodSummary" class="product-summary">Carregando cadastro…</div>
       <div class="searchbar">
         <input id="busca" class="field" placeholder="Buscar produto…" oninput="buscaDebounce()">
@@ -279,11 +289,12 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 <script>
 const API = location.origin;
 const $ = id => document.getElementById(id);
-let user = null, _pinCtx = null, _cats = [], _forns = [], _catSel = '', _prodMap = {}, _fornMap = {};
+let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _prodMap = {}, _fornMap = {};
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('on'),2600); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function fmt(n){ n=Number(n); return Number.isInteger(n)? n : Number(n.toFixed(2)); }
+function brl(n,dec){ if(n==null||n===''||!isFinite(Number(n))) return '—'; return 'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:dec||2}); }
 document.addEventListener('focusin', e=>{ if(e.target.matches('input,select,textarea')){ setTimeout(()=>{ try{ e.target.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){} },250); } });
 
 function irPin(){ const u=$('usuario').value.trim(); if(!u){ $('lgErr').textContent='Digite o usuário.'; return; }
@@ -352,6 +363,8 @@ let _bt=null;
 function buscaDebounce(){ clearTimeout(_bt); _bt=setTimeout(loadProdutos,300); }
 async function ensureCats(){ if(!_cats.length){ try{ _cats=(await (await fetch(API+'/api/est/categorias')).json()).categorias||[]; }catch(e){} } }
 async function ensureForns(){ if(!_forns.length){ try{ _forns=(await (await fetch(API+'/api/est/fornecedores')).json()).fornecedores||[]; }catch(e){} } }
+async function ensureConversoes(force){ if(force)_conversoes=[]; if(!_conversoes.length){ try{ _conversoes=(await (await fetch(API+'/api/est/conversoes')).json()).conversoes||[]; }catch(e){} } }
+async function ensureLocais(force){ if(force)_locais=[]; if(!_locais.length){ try{ _locais=(await (await fetch(API+'/api/est/locais')).json()).locais||[]; }catch(e){} } }
 async function loadProdutos(){
   await ensureCats(); renderChips();
   const busca=encodeURIComponent($('busca').value.trim()); const cat=encodeURIComponent(_catSel);
@@ -426,7 +439,7 @@ function pedirForm(titulo,campos,okLabel='Criar',comExcluir=false){ return new P
   document.body.appendChild(ov); const f=ov.querySelector('input,select,textarea'); if(f) setTimeout(()=>f.focus(),60);
 }); }
 function pedirConfirm(titulo,msg){ return new Promise(resolve=>{
-  const ov=document.createElement('div'); ov.className='modal on';
+  const ov=document.createElement('div'); ov.className='modal on'; ov.style.zIndex='120';
   ov.innerHTML=`<div class="box"><h3 style="margin:0 0 6px">${titulo}</h3><p class="mut sm" style="margin:0 0 12px">${msg}</p>
     <div class="mfoot"><button class="btn ghost" data-act="c">Cancelar</button><button class="btn danger" data-act="d">Excluir</button></div></div>`;
   ov.querySelector('[data-act="c"]').onclick=()=>{ document.body.removeChild(ov); resolve(false); };
@@ -825,12 +838,12 @@ let _pe={id:null,produto:{},setores:[],selecionados:[],ficha:[],produtos:[],rend
 let _setores=[];
 async function ensureSetores(){ if(!_setores.length){ const r=await fetch(API+'/api/est/setores'); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Erro ao carregar setores'); _setores=d.setores||[]; } }
 async function abrirEditorProduto(id){
-  await Promise.all([ensureCats(),ensureForns(),ensureSetores()]).catch(e=>toast(e.message));
+  await Promise.all([ensureCats(),ensureForns(),ensureSetores(),ensureConversoes(),ensureLocais()]).catch(e=>toast(e.message));
   let p={nome:'',unidade:'UNIDADE',estoque_atual:0,pode_contar:true,pode_comprar:true,pode_produzir:false,ativo:true}, setores=[], ficha=[];
   try{
     if(id){ const r=await fetch(API+'/api/est/produto/'+id); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Produto não encontrado'); p=d.produto; setores=d.setores||[]; ficha=d.ficha||[]; }
     const rp=await fetch(API+'/api/est/produtos'); const dp=await rp.json();
-    _pe={id:id||null,produto:p,setores:_setores.slice(),selecionados:setores.map(s=>Number(s.id)),produtos:(dp.produtos||[]).filter(x=>Number(x.id)!==Number(id)),rendimento:Number((ficha[0]&&ficha[0].rendimento)||1),ficha:ficha.map(x=>({insumo_produto_id:x.insumo_produto_id,quantidade:x.quantidade_por_unidade,unidade:x.unidade||'',observacao:x.observacao||''}))};
+    _pe={id:id||null,produto:p,setores:_setores.slice(),selecionados:setores.map(s=>Number(s.id)),produtos:(dp.produtos||[]).filter(x=>Number(x.id)!==Number(id)),rendimento:Number((ficha[0]&&ficha[0].rendimento)||1),ficha:ficha.map(x=>({insumo_produto_id:x.insumo_produto_id,quantidade:x.quantidade_por_unidade,unidade:x.unidade||'',observacao:x.observacao||''})),conversao:{origem:p.conversao_origem||null,confianca:p.conversao_confianca||null,precisa_revisao:!!p.conversao_precisa_revisao}};
     renderEditorProduto();
   }catch(e){ toast(e.message||'Erro ao abrir produto'); }
 }
@@ -842,8 +855,10 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
     <div class="editor-tabs"><button class="editor-tab on" data-tab="geral" onclick="peTab('geral')">Dados gerais</button><button class="editor-tab" data-tab="estoque" onclick="peTab('estoque')">Estoque</button><button class="editor-tab" data-tab="operacao" onclick="peTab('operacao')">Operação</button><button class="editor-tab" data-tab="ficha" onclick="peTab('ficha')">Ficha técnica <span id="peFichaCount">${_pe.ficha.length}</span></button></div>
     <div class="editor-body">
       <section class="editor-pane on" data-pane="geral"><div class="form-grid">
-        <label class="label span2">Nome do produto *<input class="field" id="peNome" value="${esc(p.nome||'')}" placeholder="Ex.: Muçarela, Molho produzido, Massa 480g"></label>
-        <label class="label">Categoria<select class="field" id="peCategoria">${opts(_cats,p.categoria_id)}</select></label>
+        <label class="label span2">Nome do produto *<input class="field" id="peNome" value="${esc(p.nome||'')}" placeholder="Ex.: Muçarela, Molho produzido, Massa 480g"><span class="help">Nome padronizado, editável.</span></label>
+        ${p.nome_nf?`<label class="label span2">Nome na nota (NF)<input class="field" value="${esc(p.nome_nf)}" disabled><span class="help">Texto cru da nota — read-only, preservado como veio.</span></label>`:''}
+        <label class="label">Tipo de item<select class="field" id="peTipoItem">${['insumo','produzido internamente','semiacabado','embalagem','bebida','material de limpeza','higiene','utensílio','revenda','outro'].map(t=>`<option value="${t}" ${String(p.tipo_item||'')===t?'selected':''}>${t}</option>`).join('')}<option value="" ${!p.tipo_item?'selected':''}>— não definido —</option></select><span class="help">Classificação por comportamento (dirige UI, contagem, venda).</span></label>
+        <label class="label">Categoria<select class="field" id="peCategoria" onchange="peRenderSugestoes()">${opts(_cats,p.categoria_id)}</select></label>
         <label class="label">Subcategoria<input class="field" id="peSubcategoria" value="${esc(p.subcategoria||'')}" placeholder="Opcional"></label>
         <label class="label">Unidade de controle *<input class="field" id="peUnidade" value="${esc(p.unidade||'UNIDADE')}" list="peUnidades" placeholder="KG, UNIDADE, PACOTE…"><span class="help">É a unidade usada em contagens e movimentações.</span></label>
         <datalist id="peUnidades"><option>UNIDADE</option><option>KG</option><option>G</option><option>LITRO</option><option>ML</option><option>PACOTE</option><option>CAIXA</option><option>BANDEJA</option><option>MAÇO</option></datalist>
@@ -854,8 +869,29 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
         <div class="stock-readout"><div><small>Saldo atual</small><strong>${fmt(p.estoque_atual||0)} ${esc(p.unidade||'')}</strong><small>O saldo só muda por compra, contagem ou movimentação — preservando o histórico.</small></div>${_pe.id?`<button class="btn ghost sm" onclick="abrirMovProduto(${_pe.id})">Movimentar saldo</button>`:''}</div>
         <div class="form-grid"><label class="label">Estoque mínimo<input class="field" id="peMin" inputmode="decimal" value="${p.estoque_minimo!=null?esc(p.estoque_minimo):''}" placeholder="Sem limite"><span class="help">Dispara alerta crítico e sugestão de compra.</span></label>
         <label class="label">Estoque ideal<input class="field" id="peIdeal" inputmode="decimal" value="${p.estoque_ideal!=null?esc(p.estoque_ideal):''}" placeholder="Sem meta"><span class="help">Meta usada para calcular quanto comprar.</span></label>
-        <label class="label">Peso/volume por unidade (g ou ml)<input class="field" id="pePeso" inputmode="decimal" value="${p.peso_g!=null?esc(p.peso_g):''}" placeholder="Ex.: 900"><span class="help">Converte a ficha em gramas/ml para a unidade comprada.</span></label>
-        <label class="label">Fornecedor preferido<select class="field" id="peFornecedor">${opts(_forns,p.fornecedor_preferido_id)}</select></label></div>
+        <label class="label">Fornecedor preferido<select class="field" id="peFornecedor">${opts(_forns,p.fornecedor_preferido_id)}</select><span class="help">Quem você prefere comprar este item.</span></label>
+        <label class="label">Local físico<select class="field" id="peLocal">${opts(_locais,p.local_fisico_id)}</select><span class="help">Onde o item fica guardado (geladeira, estoque seco…).</span></label></div>
+
+        <div class="sec">Normalização (conversão deste produto)</div>
+        <div class="form-grid">
+          <label class="label">Base canônica<select class="field" id="peUnidadeBase" onchange="peConvManual();peNormaliza()"><option value="">— selecione —</option><option value="g" ${p.unidade_base==='g'?'selected':''}>g (massa)</option><option value="ml" ${p.unidade_base==='ml'?'selected':''}>ml (volume)</option><option value="un" ${p.unidade_base==='un'?'selected':''}>un (discreto)</option></select><span class="help">Uma fonte de preço por unidade-base; kg/L são vista derivada.</span></label>
+          <label class="label">Peso/volume por unidade-base (fator)<input class="field" id="pePeso" inputmode="decimal" value="${p.peso_g!=null?esc(p.peso_g):''}" placeholder="Ex.: 900" oninput="peConvManual();peNormaliza()"><span class="help">Quanto vale 1 ${esc((p.unidade||'unidade').toLowerCase())} na base (ex.: 1 PT = 5000 g; 1 maço = 200 g). É o fator <b>deste</b> produto.</span></label>
+        </div>
+        <label class="switch-card" style="margin:8px 0"><input type="checkbox" id="peRevisao" ${p.conversao_precisa_revisao?'checked':''} onchange="peNormaliza()"><span><b>Conversão precisa de revisão</b><small>Marque quando a NF não deixa o fator claro. Sem fator confirmado não há preço derivado — nada é inventado.</small></span></label>
+        <div class="norm-readout" id="peNormReadout"></div>
+        <div id="peSugestoes" class="sugestao-wrap"></div>
+
+        <div class="sec">Histórico de valor & fornecedor</div>
+        <div class="hist-grid">
+          <div><small>Última compra</small><b>${brl(p.ultimo_valor)}</b></div>
+          <div><small>Maior já pago</small><b>${brl(p.maior_valor)}</b></div>
+          <div><small>Menor já pago</small><b>${brl(p.menor_valor)}</b></div>
+          <div><small>Custo médio</small><b>${brl(p.medio_valor,4)}</b></div>
+          <div><small>Última marca</small><b>${esc(p.ultima_marca||'—')}</b></div>
+          <div><small>Último fornecedor</small><b>${esc(p.ultimo_fornecedor||'—')}</b></div>
+          <div><small>Fornecedor melhor valor</small><b>${esc(p.melhor_fornecedor||'—')}${p.melhor_valor!=null?' · '+brl(p.melhor_valor):''}</b></div>
+        </div>
+        <span class="help">Preenchidos automaticamente por Compras e Visitas a fornecedor — não são editados aqui (zero dado inventado).</span>
       </section>
       <section class="editor-pane" data-pane="operacao"><div class="sec" style="margin-top:0">Comportamento</div><div class="switch-grid">
         <label class="switch-card"><input type="checkbox" id="peContar" ${p.pode_contar!==false?'checked':''}><span><b>Entra nas contagens</b><small>Disponível para os setores selecionados.</small></span></label>
@@ -870,7 +906,7 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
       </section>
       <div class="editor-foot"><div class="status" id="peStatus">${_pe.id?'Última configuração carregada do banco.':'Preencha os campos obrigatórios.'}</div>${_pe.id?'<button class="btn danger sm" onclick="peDelete()">Inativar</button>':''}<button class="btn ghost sm" onclick="peClose()">Cancelar</button><button class="btn primary sm" id="peSave" onclick="peSave()">Salvar produto</button></div>
     </div></div>`;
-  document.body.appendChild(m); peRenderRecipe(); setTimeout(()=>$('peNome').focus(),60);
+  document.body.appendChild(m); peRenderRecipe(); peRenderSugestoes(); peNormaliza(); setTimeout(()=>$('peNome').focus(),60);
 }
 function peTab(tab){ document.querySelectorAll('.editor-tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===tab)); document.querySelectorAll('.editor-pane').forEach(x=>x.classList.toggle('on',x.dataset.pane===tab)); }
 function peClose(){ const m=$('productEditor'); if(m)m.remove(); }
@@ -882,7 +918,49 @@ function peRenderRecipe(){ const body=$('peRecipeRows'); if(!body)return; const 
 function peAddRecipe(){ peSyncRecipe(); _pe.ficha.push({insumo_produto_id:'',quantidade:'',unidade:'',observacao:''}); if($('peProduzir'))$('peProduzir').checked=true; peRenderRecipe(); }
 function peRemoveRecipe(i){ peSyncRecipe(); _pe.ficha.splice(i,1); peRenderRecipe(); }
 function peNum(id){ const v=($(id).value||'').trim().replace(',','.'); return v===''?null:Number(v); }
-function pePayload(){ _pe.selecionados=[...document.querySelectorAll('.sector-chip.on')].map(x=>Number(x.dataset.sid)); return {nome:$('peNome').value.trim(),categoria_id:$('peCategoria').value||null,subcategoria:$('peSubcategoria').value.trim(),unidade:$('peUnidade').value.trim().toUpperCase(),marca_preferida:$('peMarca').value.trim(),observacoes:$('peObs').value.trim(),estoque_minimo:peNum('peMin'),estoque_ideal:peNum('peIdeal'),peso_g:peNum('pePeso'),fornecedor_preferido_id:$('peFornecedor').value||null,pode_contar:$('peContar').checked,pode_comprar:$('peComprar').checked,pode_produzir:$('peProduzir').checked,ativo:$('peAtivo').checked,setores:_pe.selecionados}; }
+// Marca a conversão como editada manualmente (o gestor mexeu na base/fator deste produto).
+function peConvManual(){ _pe.conversao=_pe.conversao||{}; _pe.conversao.origem='manual'; }
+// Sugestões da categoria do produto (ex.: hortifruti). Mostradas SÓ se a categoria casar — nunca de outra.
+function peRenderSugestoes(){ const wrap=$('peSugestoes'); if(!wrap)return;
+  const catId=$('peCategoria')&&$('peCategoria').value; const cat=_cats.find(c=>String(c.id)===String(catId)); const nome=cat?cat.nome:'';
+  const list=(_conversoes||[]).filter(c=>c.ativo!==false && nome && c.categoria_ref===nome);
+  if(!list.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="sec">Sugestões da categoria “${esc(nome)}” — confirmar</div>`+list.map(c=>{
+    const ftxt=c.fator!=null?`1 ${esc(c.unidade_compra||'')} = ${fmt(c.fator)} ${esc(c.unidade_base||'g')}`:'fator a confirmar';
+    const rev=c.precisa_revisao?' <span class="badge-rev">precisa revisão</span>':'';
+    return `<div class="sugestao-row"><div><b>${esc(c.rotulo)}</b> · ${ftxt}${rev}</div><button type="button" class="btn ghost sm" onclick="peAplicarSugestao(${c.id})">Aplicar</button></div>`;
+  }).join('');
+}
+function peAplicarSugestao(id){ const c=(_conversoes||[]).find(x=>x.id===id); if(!c)return;
+  if(c.unidade_compra&&$('peUnidade'))$('peUnidade').value=String(c.unidade_compra).toUpperCase();
+  if($('peUnidadeBase'))$('peUnidadeBase').value=c.unidade_base||'g';
+  if($('pePeso'))$('pePeso').value=c.fator!=null?c.fator:'';
+  if($('peRevisao'))$('peRevisao').checked=!!c.precisa_revisao;
+  _pe.conversao={origem:'default_categoria',confianca:c.confianca||null,precisa_revisao:!!c.precisa_revisao};
+  peNormaliza(); }
+// Mostra a normalização: base, fator e preço derivado — usando o fator DESTE produto. Sem fator
+// confirmado (ou "precisa revisão"), não deriva preço; nada é inventado.
+function peNormaliza(){ const out=$('peNormReadout'); if(!out)return;
+  const unidade=(($('peUnidade')&&$('peUnidade').value)||'').trim().toUpperCase()||'UNIDADE';
+  const base=(($('peUnidadeBase')&&$('peUnidadeBase').value)||'').trim();
+  const fator=Number(((($('pePeso')&&$('pePeso').value)||'').replace(',','.')));
+  const revisao=!!($('peRevisao')&&$('peRevisao').checked);
+  const p=_pe.produto||{}; const conv=_pe.conversao||{}; const preco=p.medio_valor!=null?Number(p.medio_valor):(p.ultimo_valor!=null?Number(p.ultimo_valor):null);
+  const grande=base==='g'?'kg':(base==='ml'?'L':''); const linhas=[];
+  if(revisao) linhas.push('<span class="badge-rev">precisa revisão</span> confirme o fator desta conversão antes de usar no custo.');
+  if(base==='un'){ linhas.push('Base: <b>unidade</b> — item discreto, sem conversão de peso.'); }
+  else if(!base){ linhas.push('<span class="mut">Defina a base canônica (g, ml ou un) para ver a normalização.</span>'); }
+  else if(fator>0){ linhas.push(`Fator: <b>1 ${esc(unidade)} = ${fmt(fator)} ${base}</b>`); }
+  else { linhas.push(`Base: <b>${base}</b> — informe o peso/volume por 1 ${esc(unidade)} para normalizar.`); }
+  const podeDerivar = !revisao && fator>0 && base && base!=='un';
+  if(preco==null){ linhas.push('<span class="mut">Precificação por medida: <b>—</b> · aguardando 1ª compra (preenchida por Compras/Visitas).</span>'); }
+  else if(base==='un' && !revisao){ linhas.push(`Precificação: <b>${brl(preco)}</b> / unidade.`); }
+  else if(podeDerivar){ const pb=preco/fator; linhas.push(`Precificação por medida: ${esc(unidade)} <b>${brl(preco)}</b> · /${grande} <b>${brl(pb*1000,2)}</b> · /${base} <b>${brl(pb,4)}</b>`); }
+  else { linhas.push('<span class="mut">Precificação por medida: <b>—</b> (sem fator confirmado).</span>'); }
+  const meta=[]; if(conv.origem) meta.push('origem: '+esc(conv.origem)); if(conv.confianca) meta.push('confiança: '+esc(conv.confianca));
+  if(meta.length) linhas.push('<span class="mut xs">'+meta.join(' · ')+'</span>');
+  out.innerHTML=linhas.map(l=>`<div>${l}</div>`).join(''); }
+function pePayload(){ _pe.selecionados=[...document.querySelectorAll('.sector-chip.on')].map(x=>Number(x.dataset.sid)); return {nome:$('peNome').value.trim(),categoria_id:$('peCategoria').value||null,subcategoria:$('peSubcategoria').value.trim(),tipo_item:($('peTipoItem')&&$('peTipoItem').value)||null,unidade:$('peUnidade').value.trim().toUpperCase(),marca_preferida:$('peMarca').value.trim(),observacoes:$('peObs').value.trim(),estoque_minimo:peNum('peMin'),estoque_ideal:peNum('peIdeal'),peso_g:peNum('pePeso'),unidade_base:($('peUnidadeBase')&&$('peUnidadeBase').value)||null,conversao_origem:(_pe.conversao&&_pe.conversao.origem)||null,conversao_confianca:(_pe.conversao&&_pe.conversao.confianca)||null,conversao_precisa_revisao:!!($('peRevisao')&&$('peRevisao').checked),fornecedor_preferido_id:$('peFornecedor').value||null,local_fisico_id:($('peLocal')&&$('peLocal').value)||null,pode_contar:$('peContar').checked,pode_comprar:$('peComprar').checked,pode_produzir:$('peProduzir').checked,ativo:$('peAtivo').checked,setores:_pe.selecionados}; }
 async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus'), btn=$('peSave');
   if(!b.nome){ peTab('geral'); $('peNome').focus(); status.textContent='Informe o nome do produto.'; return; } if(!b.unidade){ peTab('geral'); $('peUnidade').focus(); status.textContent='Informe a unidade de controle.'; return; }
   if((b.estoque_minimo!=null&&!Number.isFinite(b.estoque_minimo))||(b.estoque_ideal!=null&&!Number.isFinite(b.estoque_ideal))){ peTab('estoque'); status.textContent='Revise os valores de estoque.'; return; }
@@ -895,10 +973,76 @@ async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus
 async function peDelete(){ if(!await pedirConfirm('Inativar produto','O item some das rotinas, mas todo o histórico é preservado.'))return; try{ await estFetch('/api/est/produto/'+_pe.id,'DELETE'); toast('Produto inativado'); peClose(); loadProdutos(); }catch(e){} }
 async function abrirMovProduto(id){ const p=_prodMap[id]||_pe.produto; peClose(); nav('mais'); await movTela(); if($('movProd'))$('movProd').value=p.nome||''; }
 
-async function gerenciarCategorias(){ await ensureCats(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
-  m.innerHTML=`<div class="box" style="max-width:620px"><div class="editor-head"><div><h3>Categorias</h3><p>Organize o cadastro sem sair do estoque.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div id="catRows">${_cats.map(c=>`<div class="row" style="gap:8px;margin-bottom:8px"><input class="field" style="margin:0" id="cat-${c.id}" value="${esc(c.nome)}"><button class="btn ghost sm" onclick="salvarCategoria(${c.id})">Salvar</button></div>`).join('')}</div><div class="sec">Nova categoria</div><div class="row" style="gap:8px"><input class="field" id="catNova" placeholder="Nome da categoria"><button class="btn primary sm" onclick="novaCategoria()">Adicionar</button></div></div></div>`; document.body.appendChild(m); }
-async function salvarCategoria(id){ const nome=$('cat-'+id).value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria/'+id,'PATCH',{nome}); _cats=[]; await ensureCats(); renderChips(); toast('Categoria atualizada'); }catch(e){} }
-async function novaCategoria(){ const nome=$('catNova').value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria','POST',{nome}); _cats=[]; await ensureCats(); const m=$('catEditor'); if(m)m.remove(); gerenciarCategorias(); renderChips(); toast('Categoria criada'); }catch(e){} }
+function catRow(c){ return `<div class="row" style="gap:8px;margin-bottom:6px;align-items:flex-end">
+  <label class="label" style="flex:1;margin:0">Nome<input class="field" id="cat-${c.id}" value="${esc(c.nome)}"></label>
+  <label class="label" style="width:170px;margin:0">Departamento<input class="field" id="catdep-${c.id}" value="${esc(c.departamento||'')}" placeholder="—"></label>
+  <button class="btn ghost sm" onclick="salvarCategoria(${c.id})">Salvar</button>
+  <button class="icon-btn" onclick="excluirCategoria(${c.id})" title="Excluir">×</button></div>`; }
+async function gerenciarCategorias(){ _cats=[]; await ensureCats(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
+  const groups={}; _cats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
+  const body=Object.keys(groups).map(d=>`<div class="sec">${esc(d)}</div>`+groups[d].map(catRow).join('')).join('')||'<div class="empty">Sem categorias.</div>';
+  m.innerHTML=`<div class="box" style="max-width:760px"><div class="editor-head"><div><h3>Categorias</h3><p>Biblioteca sugerida de restaurante — pré-ativada, editável e excluível. Organizada por departamento.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div id="catRows">${body}</div><div class="sec">Nova categoria</div><div class="form-grid"><label class="label">Nome<input class="field" id="catNovaNome" placeholder="Ex.: Hortifruti"></label><label class="label">Departamento<input class="field" id="catNovaDep" placeholder="Ex.: Alimentos"></label></div><button class="btn primary sm" style="margin-top:10px" onclick="novaCategoria()">+ Adicionar categoria</button></div></div>`; document.body.appendChild(m); }
+async function salvarCategoria(id){ const nome=$('cat-'+id).value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria/'+id,'PATCH',{nome,departamento:$('catdep-'+id).value.trim()}); _cats=[]; await ensureCats(); renderChips(); toast('Categoria atualizada'); }catch(e){} }
+async function novaCategoria(){ const nome=$('catNovaNome').value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria','POST',{nome,departamento:$('catNovaDep').value.trim()}); _cats=[]; await ensureCats(); const m=$('catEditor'); if(m)m.remove(); gerenciarCategorias(); renderChips(); toast('Categoria criada'); }catch(e){} }
+async function excluirCategoria(id){ if(!await pedirConfirm('Excluir categoria','Se houver produtos nela, é apenas inativada (histórico preservado).'))return; try{ const r=await estFetch('/api/est/categoria/'+id,'DELETE'); _cats=[]; await ensureCats(); const m=$('catEditor'); if(m)m.remove(); gerenciarCategorias(); renderChips(); toast(r&&r.inativado?'Categoria inativada (em uso)':'Categoria excluída'); }catch(e){} }
+
+/* ===== SUGESTÕES DE CONVERSÃO POR CATEGORIA (hortifruti etc.) ===== */
+function convBaseOpts(cur){ return ['g','ml','un'].map(b=>`<option value="${b}" ${cur===b?'selected':''}>${b}</option>`).join(''); }
+function convRow(c){ return `<div class="row" style="gap:8px;margin-bottom:8px;align-items:flex-end">
+  <label class="label" style="width:120px;margin:0">Categoria<input class="field" id="conv-cat-${c.id}" value="${esc(c.categoria_ref||'')}"></label>
+  <label class="label" style="flex:1;margin:0">Rótulo<input class="field" id="conv-rot-${c.id}" value="${esc(c.rotulo)}"></label>
+  <label class="label" style="width:96px;margin:0">Un. compra<input class="field" id="conv-uc-${c.id}" value="${esc(c.unidade_compra||'')}"></label>
+  <label class="label" style="width:70px;margin:0">Base<select class="field" id="conv-base-${c.id}">${convBaseOpts(c.unidade_base)}</select></label>
+  <label class="label" style="width:80px;margin:0">Fator<input class="field" id="conv-fat-${c.id}" inputmode="decimal" value="${c.fator!=null?esc(c.fator):''}" placeholder="—"></label>
+  <label class="label" style="width:70px;margin:0" title="Marque quando o fator não é confiável">Revisar<input type="checkbox" id="conv-rev-${c.id}" ${c.precisa_revisao?'checked':''}></label>
+  <button class="btn ghost sm" onclick="salvarConversao(${c.id})">Salvar</button>
+  <button class="icon-btn" onclick="excluirConversao(${c.id})" title="Excluir">×</button></div>`; }
+async function gerenciarConversoes(){ await ensureConversoes(true); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='convEditor';
+  m.innerHTML=`<div class="box" style="max-width:880px"><div class="editor-head"><div><h3>Sugestões de conversão por categoria</h3><p>Aparecem só em produtos da categoria correspondente, sempre confirmáveis. O fator de cada produto continua no cadastro dele.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div>
+  <div class="editor-body"><div id="convRows">${_conversoes.map(convRow).join('')||'<div class="empty">Nenhuma sugestão cadastrada.</div>'}</div>
+  <div class="sec">Nova sugestão</div>
+  <div class="form-grid"><label class="label">Categoria<input class="field" id="convNovoCat" placeholder="Ex.: Hortifruti"></label>
+    <label class="label">Rótulo<input class="field" id="convNovoRotulo" placeholder="Ex.: Rúcula hidropônica"></label>
+    <label class="label">Unidade de compra<input class="field" id="convNovoUC" placeholder="MAÇO, TALO, FOLHA"></label>
+    <label class="label">Base<select class="field" id="convNovoBase">${convBaseOpts('g')}</select></label>
+    <label class="label">Fator (na base)<input class="field" id="convNovoFator" inputmode="decimal" placeholder="Ex.: 200 (vazio se revisar)"></label>
+    <label class="switch-card" style="margin:0"><input type="checkbox" id="convNovoRev"><span><b>Precisa revisão</b><small>Fator em branco; o gestor confirma depois.</small></span></label></div>
+  <button class="btn primary sm" style="margin-top:10px" onclick="novaConversao()">+ Adicionar sugestão</button></div></div>`;
+  document.body.appendChild(m); }
+async function salvarConversao(id){ const categoria_ref=$('conv-cat-'+id).value.trim(), rotulo=$('conv-rot-'+id).value.trim();
+  const fatorRaw=$('conv-fat-'+id).value.trim(), rev=$('conv-rev-'+id).checked;
+  if(!categoria_ref)return toast('Informe a categoria'); if(!rotulo)return toast('Informe o rótulo');
+  if(!rev&&!(Number(fatorRaw.replace(',','.'))>0))return toast('Fator deve ser maior que zero (ou marque revisar)');
+  try{ await estFetch('/api/est/conversao/'+id,'PATCH',{categoria_ref,rotulo,unidade_compra:$('conv-uc-'+id).value.trim(),unidade_base:$('conv-base-'+id).value,fator:rev?'':fatorRaw,precisa_revisao:rev}); await ensureConversoes(true); toast('Sugestão atualizada'); }catch(e){} }
+async function novaConversao(){ const categoria_ref=$('convNovoCat').value.trim(), rotulo=$('convNovoRotulo').value.trim();
+  const fatorRaw=$('convNovoFator').value.trim(), rev=$('convNovoRev').checked;
+  if(!categoria_ref)return toast('Informe a categoria'); if(!rotulo)return toast('Informe o rótulo');
+  if(!rev&&!(Number(fatorRaw.replace(',','.'))>0))return toast('Fator deve ser maior que zero (ou marque revisar)');
+  try{ await estFetch('/api/est/conversao','POST',{categoria_ref,rotulo,unidade_compra:$('convNovoUC').value.trim(),unidade_base:$('convNovoBase').value,fator:rev?'':fatorRaw,precisa_revisao:rev}); await ensureConversoes(true); const m=$('convEditor'); if(m)m.remove(); gerenciarConversoes(); toast('Sugestão criada'); }catch(e){} }
+async function excluirConversao(id){ if(!await pedirConfirm('Excluir sugestão','Some das sugestões da categoria. Os produtos mantêm o fator já salvo.'))return; try{ await estFetch('/api/est/conversao/'+id,'DELETE'); await ensureConversoes(true); const m=$('convEditor'); if(m)m.remove(); gerenciarConversoes(); toast('Sugestão excluída'); }catch(e){} }
+
+/* ===== LOCAIS FÍSICOS (onde o item fica guardado) ===== */
+function locTipoOpts(cur){ return '<option value="">—</option>'+['seco','refrigerado','congelado','produção','outro'].map(t=>`<option value="${t}" ${cur===t?'selected':''}>${t}</option>`).join(''); }
+function locRow(l){ return `<div class="row" style="gap:8px;margin-bottom:8px;align-items:flex-end">
+  <label class="label" style="flex:1;margin:0">Nome<input class="field" id="loc-nome-${l.id}" value="${esc(l.nome)}"></label>
+  <label class="label" style="width:130px;margin:0">Tipo<select class="field" id="loc-tipo-${l.id}">${locTipoOpts(l.tipo_local)}</select></label>
+  <label class="label" style="width:96px;margin:0" title="Aceita itens perecíveis?">Perecíveis<input type="checkbox" id="loc-per-${l.id}" ${l.aceita_pereciveis!==false?'checked':''}></label>
+  <button class="btn ghost sm" onclick="salvarLocal(${l.id})">Salvar</button>
+  <button class="icon-btn" onclick="excluirLocal(${l.id})" title="Excluir">×</button></div>`; }
+async function gerenciarLocais(){ await ensureLocais(true); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='locEditor';
+  m.innerHTML=`<div class="box" style="max-width:720px"><div class="editor-head"><div><h3>Locais físicos</h3><p>Onde o item fica guardado. Aceita a realidade atual — não precisa de organização perfeita.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div>
+  <div class="editor-body"><div id="locRows">${_locais.map(locRow).join('')||'<div class="empty">Nenhum local cadastrado.</div>'}</div>
+  <div class="sec">Novo local</div>
+  <div class="form-grid"><label class="label">Nome<input class="field" id="locNovoNome" placeholder="Ex.: Geladeira da cozinha"></label>
+    <label class="label">Tipo<select class="field" id="locNovoTipo">${locTipoOpts('')}</select></label>
+    <label class="switch-card" style="margin:0"><input type="checkbox" id="locNovoPer" checked><span><b>Aceita perecíveis</b><small>Refrigerado/congelado costuma aceitar.</small></span></label></div>
+  <button class="btn primary sm" style="margin-top:10px" onclick="novoLocal()">+ Adicionar local</button></div></div>`;
+  document.body.appendChild(m); }
+async function salvarLocal(id){ const nome=$('loc-nome-'+id).value.trim(); if(!nome)return toast('Informe o nome');
+  try{ await estFetch('/api/est/local/'+id,'PATCH',{nome,tipo_local:$('loc-tipo-'+id).value,aceita_pereciveis:$('loc-per-'+id).checked}); await ensureLocais(true); toast('Local atualizado'); }catch(e){} }
+async function novoLocal(){ const nome=$('locNovoNome').value.trim(); if(!nome)return toast('Informe o nome');
+  try{ await estFetch('/api/est/local','POST',{nome,tipo_local:$('locNovoTipo').value,aceita_pereciveis:$('locNovoPer').checked}); await ensureLocais(true); const m=$('locEditor'); if(m)m.remove(); gerenciarLocais(); toast('Local criado'); }catch(e){} }
+async function excluirLocal(id){ if(!await pedirConfirm('Excluir local','Se houver produtos neste local, ele é apenas inativado (histórico preservado).'))return; try{ await estFetch('/api/est/local/'+id,'DELETE'); await ensureLocais(true); const m=$('locEditor'); if(m)m.remove(); gerenciarLocais(); toast('Local removido'); }catch(e){} }
 
 /* mantém logado: restaura sessão ao abrir */
 (function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
