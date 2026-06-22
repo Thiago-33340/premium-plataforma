@@ -2107,21 +2107,62 @@ async function api(req, res, url) {
         [seg[3], body.perfil_principal ?? null, body.setores_permitidos ?? null, body.apelido_login ? String(body.apelido_login).toLowerCase() : null, typeof body.ativo === 'boolean' ? body.ativo : null, TENANT]);
       return json(res, 200, { ok: true });
     }
+    // Compatibilidade do admin antigo: a rota permanece, mas a fonte oficial agora é est_produto.
     if (seg[2] === 'estoque-itens' && req.method === 'GET') {
-      const r = await db.q(`SELECT id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal, ordem, ativo, exige_contagem FROM estoque_itens_definicao WHERE tenant_id=$1 ORDER BY setor_nome, ordem, nome`, [TENANT]);
-      return json(res, 200, { itens: r.rows });
+      const r = await db.q(`
+        SELECT p.id::text AS id, sx.setor_id, sx.setor_nome, c.nome AS categoria, p.nome, p.unidade,
+          p.estoque_minimo, p.estoque_ideal, COALESCE(c.ordem, 999) AS ordem, p.ativo,
+          p.pode_contar AS exige_contagem, 'est_produto' AS origem
+        FROM est_produto p
+        LEFT JOIN est_categoria c ON c.id=p.categoria_id
+        LEFT JOIN LATERAL (
+          SELECT s.id::text AS setor_id, s.nome AS setor_nome
+          FROM est_produto_setor ps
+          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+          WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+          ORDER BY ps.obrigatorio DESC, s.ordem, s.nome
+          LIMIT 1
+        ) sx ON TRUE
+        WHERE p.tenant_id=$1
+        ORDER BY sx.setor_nome NULLS LAST, COALESCE(c.ordem,999), p.nome`, [TENANT]);
+      return json(res, 200, { itens: r.rows, origem: 'est_produto' });
     }
     if (seg[2] === 'estoque-item' && !seg[3] && req.method === 'POST') {
-      const id = body.id || ('ITM' + Date.now());
-      await db.q(`INSERT INTO estoque_itens_definicao (id, tenant_id, setor_id, setor_nome, categoria, nome, unidade, estoque_minimo, estoque_ideal, exige_contagem, ordem, ativo, origem)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,TRUE),$11,TRUE,'admin')
-        ON CONFLICT (id) DO UPDATE SET setor_id=EXCLUDED.setor_id, setor_nome=EXCLUDED.setor_nome, categoria=EXCLUDED.categoria, nome=EXCLUDED.nome, unidade=EXCLUDED.unidade, estoque_minimo=EXCLUDED.estoque_minimo, estoque_ideal=EXCLUDED.estoque_ideal, exige_contagem=EXCLUDED.exige_contagem, ordem=EXCLUDED.ordem, updated_at=NOW()`,
-        [id, TENANT, body.setor_id || 'SET000', body.setor_nome || 'Geral', body.categoria || null, body.nome || '', body.unidade || 'un', Number(body.estoque_minimo) || 0, body.estoque_ideal != null ? Number(body.estoque_ideal) : null, typeof body.exige_contagem === 'boolean' ? body.exige_contagem : null, Number(body.ordem) || 999]);
-      return json(res, 200, { ok: true, id });
+      const nome = String(body.nome || '').trim();
+      if (!nome) return json(res, 400, { erro: 'informe o nome' });
+      let categoriaId = null;
+      if (body.categoria) {
+        const cat = await db.q('SELECT id FROM est_categoria WHERE tenant_id=$1 AND lower(nome)=lower($2) LIMIT 1', [TENANT, String(body.categoria).trim()]);
+        categoriaId = cat.rows[0]?.id || null;
+      }
+      const minimo = body.estoque_minimo !== '' && body.estoque_minimo != null ? Number(body.estoque_minimo) : null;
+      const ideal = body.estoque_ideal !== '' && body.estoque_ideal != null ? Number(body.estoque_ideal) : null;
+      const exige = typeof body.exige_contagem === 'boolean' ? body.exige_contagem : true;
+      let id = parseInt(body.id, 10);
+      if (id) {
+        const up = await db.q(`UPDATE est_produto SET nome=$2, categoria_id=COALESCE($3,categoria_id), unidade=$4,
+            estoque_minimo=$5, estoque_ideal=$6, pode_contar=$7, ativo=TRUE, atualizado_em=NOW()
+          WHERE id=$1 AND tenant_id=$8 RETURNING id`,
+          [id, nome, categoriaId, String(body.unidade || '').trim() || null, minimo, ideal, exige, TENANT]);
+        if (!up.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
+      } else {
+        const ins = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal, pode_contar, pode_comprar, pode_produzir, ativo)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,FALSE,TRUE) RETURNING id`,
+          [TENANT, nome, categoriaId, String(body.unidade || '').trim() || null, minimo, ideal, exige]);
+        id = ins.rows[0].id;
+      }
+      const setorId = parseInt(body.setor_id, 10) || (body.setor_nome ? (await db.q('SELECT id FROM est_setor WHERE tenant_id=$1 AND lower(nome)=lower($2) AND ativo ORDER BY ordem,nome LIMIT 1', [TENANT, String(body.setor_nome).trim()])).rows[0]?.id : null);
+      if (setorId) {
+        await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, id]);
+        await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT, id, setorId]);
+      }
+      return json(res, 200, { ok: true, id, origem: 'est_produto' });
     }
     if (seg[2] === 'estoque-item' && seg[3] && req.method === 'DELETE') {
-      await db.q(`UPDATE estoque_itens_definicao SET ativo=FALSE WHERE id=$1 AND tenant_id=$2`, [seg[3], TENANT]);
-      return json(res, 200, { ok: true });
+      const id = parseInt(seg[3], 10);
+      if (!id) return json(res, 400, { erro: 'produto inválido' });
+      await db.q('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [id, TENANT]);
+      return json(res, 200, { ok: true, origem: 'est_produto' });
     }
     if (seg[2] === 'preco' && req.method === 'POST') {
       if (body.tipo === 'produto') await db.q('UPDATE produtos SET preco_base=$2 WHERE id=$1 AND tenant_id=$3', [body.id, money(body.preco), TENANT]);
@@ -2335,19 +2376,24 @@ async function api(req, res, url) {
     }
 
     if (seg[2] === 'setores' && req.method === 'GET') {
-      const r = await db.q(`SELECT d.setor_id, d.setor_nome, count(*)::int itens,
-          (SELECT c.colaborador_nome FROM estoque_contagens c WHERE c.tenant_id=d.tenant_id AND c.setor_nome=d.setor_nome ORDER BY c.finalizada_em DESC LIMIT 1) AS ultimo_responsavel,
-          (SELECT c.finalizada_em FROM estoque_contagens c WHERE c.tenant_id=d.tenant_id AND c.setor_nome=d.setor_nome ORDER BY c.finalizada_em DESC LIMIT 1) AS ultima_contagem
-        FROM estoque_itens_definicao d WHERE d.tenant_id=$1 AND d.ativo
-        GROUP BY d.setor_id, d.setor_nome ORDER BY d.setor_nome`, [TENANT]);
+      const r = await db.q(`SELECT s.id::text AS setor_id, s.nome AS setor_nome, count(p.id)::int itens,
+          (SELECT c.usuario_nome FROM est_contagem c WHERE c.tenant_id=s.tenant_id AND c.setor_id=s.id ORDER BY c.encerrada_em DESC NULLS LAST, c.iniciada_em DESC LIMIT 1) AS ultimo_responsavel,
+          (SELECT c.encerrada_em FROM est_contagem c WHERE c.tenant_id=s.tenant_id AND c.setor_id=s.id ORDER BY c.encerrada_em DESC NULLS LAST, c.iniciada_em DESC LIMIT 1) AS ultima_contagem
+        FROM est_setor s
+        LEFT JOIN est_produto_setor ps ON ps.tenant_id=s.tenant_id AND ps.setor_id=s.id
+        LEFT JOIN est_produto p ON p.tenant_id=ps.tenant_id AND p.id=ps.produto_id AND p.ativo
+        WHERE s.tenant_id=$1 AND s.ativo
+        GROUP BY s.id, s.nome, s.tenant_id, s.ordem
+        ORDER BY s.ordem, s.nome`, [TENANT]);
       return json(res, 200, { setores: r.rows });
     }
-    if (seg[2] === 'setor' && seg[3] === 'rename' && req.method === 'POST') {
+    if (seg[2] === 'setor' && (seg[3] === 'rename' || seg[4] === 'rename') && req.method === 'POST') {
       const novo = String(body.novo_nome || '').trim();
-      if (!body.setor_id || !novo) return json(res, 400, { erro: 'informe setor_id e novo_nome' });
-      await db.q(`UPDATE estoque_itens_definicao SET setor_nome=$2, updated_at=NOW() WHERE setor_id=$1 AND tenant_id=$3`, [body.setor_id, novo, TENANT]);
-      await db.q(`UPDATE estoque_contagens SET setor_nome=$2 WHERE setor_id=$1 AND tenant_id=$3`, [body.setor_id, novo, TENANT]).catch(() => {});
-      return json(res, 200, { ok: true, setor_id: body.setor_id, novo_nome: novo });
+      const setorId = parseInt(seg[4] === 'rename' ? seg[3] : body.setor_id, 10);
+      if (!setorId || !novo) return json(res, 400, { erro: 'informe setor_id e novo_nome' });
+      const r = await db.q('UPDATE est_setor SET nome=$2 WHERE id=$1 AND tenant_id=$3 RETURNING id', [setorId, novo, TENANT]);
+      if (!r.rows[0]) return json(res, 404, { erro: 'Setor não encontrado.' });
+      return json(res, 200, { ok: true, setor_id: String(setorId), novo_nome: novo, origem: 'est_setor' });
     }
     return json(res, 404, { erro: 'rota admin nao encontrada' });
   }

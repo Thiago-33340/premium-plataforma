@@ -45,6 +45,7 @@ Cada tabela deve ser tratada em uma destas classes:
 - `est_producao_receita` é uma ponte de compatibilidade para ficha simples antiga; nova evolução deve priorizar `est_ficha_producao`, `est_ficha_porcao` e `est_ficha_porcao_item`.
 - Rotas `/api/est/*` são o caminho oficial novo do estoque.
 - Rotas `/api/estoque/*` são legado de contagem/estoque antigo.
+- Rotas `/api/admin/estoque-*` e `/api/admin/setor/*/rename` são compatibilidade de admin antigo e devem ler/escrever `est_produto`/`est_setor`.
 
 ## Zonas de risco
 
@@ -57,8 +58,8 @@ Cada tabela deve ser tratada em uma destas classes:
 3. **Duas camadas de ficha técnica**
    Cardápio usa `ficha_itens`; produção interna usa `est_ficha_*`. Elas se conectam no consumo/baixa, mas não são substitutas diretas.
 
-4. **Admin ainda tem rotas legadas**
-   `public/admin.html` ainda consulta algumas rotas `/api/admin/estoque-*` que usam `estoque_itens_definicao`. Esse fluxo deve ser migrado gradualmente para `/api/est/*`.
+4. **Admin ainda tem nomes de rota antigos**
+   `public/admin.html` usa `/api/est/*` para estoque. As rotas `/api/admin/estoque-*` permanecem apenas como compatibilidade e não devem voltar a escrever em `estoque_*`.
 
 ## Próximo passo técnico
 

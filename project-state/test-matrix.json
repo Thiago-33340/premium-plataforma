@@ -86,5 +86,16 @@
     "expected": "gestor vê tudo; colaborador vê apenas abas/itens permitidos; não há conflitos de permissão de contagem",
     "script": "npm run audit:rbac",
     "mutates_data": false
+  },
+  {
+    "id": "smoke-admin-estoque-compat",
+    "module": "admin-gestor",
+    "type": "compat/read-only",
+    "priority": "alta",
+    "covers": ["GET /api/admin/estoque-itens", "GET /api/admin/setores"],
+    "preconditions": ["admin_id de gestor", "deploy da ponte de compatibilidade"],
+    "expected": "rotas antigas respondem a partir de est_produto/est_setor sem acessar estoque_* para escrita",
+    "script": "pendente: rodar após deploy com usuário gestor",
+    "mutates_data": false
   }
 ]

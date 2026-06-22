@@ -10,8 +10,12 @@
         "tables": ["est_produto", "est_setor", "est_produto_setor", "est_contagem", "est_contagem_item", "est_movimento"]
       },
       "legado": {
-        "routes": ["/api/estoque/*", "/api/admin/estoque-*"],
+        "routes": ["/api/estoque/*"],
         "tables": ["estoque_itens_definicao", "estoque_contagens", "estoque_itens", "estoque_movimentos"]
+      },
+      "compatibilidade": {
+        "routes": ["/api/admin/estoque-*", "/api/admin/setores", "/api/admin/setor/:id/rename"],
+        "tables": ["est_produto", "est_setor", "est_produto_setor", "est_contagem"]
       },
       "rule": "Nova funcionalidade de estoque deve nascer em /api/est/* e tabelas est_*."
     },

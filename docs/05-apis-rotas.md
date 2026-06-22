@@ -28,7 +28,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 
 - `/api/est/*` é o caminho oficial novo do estoque, produção, contagem, compras, visitas e permissões do estoque.
 - `/api/estoque/*` é legado. Usa `estoque_itens_definicao`, `estoque_contagens`, `estoque_itens` e `estoque_movimentos`.
-- `/api/admin/estoque-*` ainda é misto/legado porque usa tabelas `estoque_*`. Não deve receber expansão funcional nova.
+- `/api/admin/estoque-*` é compatibilidade para clientes/código antigo; a tela nova deve usar `/api/est/*` e essas rotas não devem receber expansão funcional nova.
 - `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
@@ -49,7 +49,7 @@ DELETE /api/admin/estoque-item/:id
 POST /api/admin/setor/:id/rename
 ```
 
-Essas rotas só devem ser mantidas para compatibilidade/migração até o admin antigo ser substituído pelo fluxo `/api/est/*`.
+As rotas `/api/admin/estoque-*` e `/api/admin/setor/*/rename` são mantidas apenas como compatibilidade e devem escrever/ler `est_produto`/`est_setor`. Toda UI nova deve usar `/api/est/*` diretamente.
 
 ## Pendência de contrato
 

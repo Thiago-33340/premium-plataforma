@@ -45,7 +45,8 @@
       "`est_setor` é setor dinâmico por tenant; `estoque_itens_definicao.setor_id` com SETxxx é legado.",
       "`est_ficha_*` é ficha técnica oficial de produção interna; `ficha_itens` continua como ficha do cardápio e baixa por pedido.",
       "`est_producao_receita` é compatibilidade para ficha simples antiga; novas evoluções devem priorizar `est_ficha_*`.",
-      "`/api/est/*` é fluxo oficial novo do estoque; `/api/estoque/*` é legado."
+      "`/api/est/*` é fluxo oficial novo do estoque; `/api/estoque/*` é legado.",
+      "`/api/admin/estoque-*` e `/api/admin/setor/*/rename` são compatibilidade de admin antigo sobre `est_produto`/`est_setor`."
     ],
     "zonas_de_risco": [
       {
@@ -62,13 +63,13 @@
       },
       {
         "id": "db-risk-admin-misto",
-        "descricao": "Algumas rotas `/api/admin/estoque-*` ainda usam tabelas legadas `estoque_*`."
+        "descricao": "Rotas `/api/admin/estoque-*` têm nomes antigos; devem permanecer como ponte para `est_produto` e não voltar a escrever em `estoque_*`."
       }
     ],
     "pendencias": [
       "Confirmar banco real em produção sem ler DATABASE_URL",
-      "Criar smoke específico para mesas/caixa",
-      "Migrar admin antigo de estoque para `/api/est/*`",
+      "Criar smoke mutável de mesas/caixa em staging",
+      "Descontinuar chamadas diretas às rotas `/api/admin/estoque-*` quando não houver mais cliente antigo",
       "Criar política de descontinuação para `/api/estoque/*`",
       "Completar diagrama módulo -> rota -> tabela"
     ]

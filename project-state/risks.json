@@ -24,7 +24,7 @@
     "status": "mitigado_parcial",
     "modulos_afetados": ["estoque-v2", "producao-fichas", "mesas-caixa"],
     "impacto": "Risco de duplicidade de regra, escrita na tabela errada ou migração incompleta.",
-    "mitigacao": "Classificação inicial registrada em docs/04-banco-de-dados.md e project-state/databases.json. Falta migrar rotas admin legadas."
+    "mitigacao": "Classificação inicial registrada em docs/04-banco-de-dados.md e project-state/databases.json. Rotas admin antigas de estoque foram convertidas em compatibilidade sobre est_produto/est_setor."
   },
   {
     "id": "risk-004",
@@ -46,11 +46,11 @@
   },
   {
     "id": "risk-006",
-    "titulo": "Admin ainda possui fluxo de estoque legado",
+    "titulo": "Admin ainda possui nomes antigos de rota de estoque",
     "severidade": "alta",
-    "status": "aberto",
+    "status": "mitigado_parcial",
     "modulos_afetados": ["admin-gestor", "estoque-v2"],
-    "impacto": "Gestor pode alterar itens em tabelas estoque_* antigas enquanto o colaborador usa /api/est e est_*.",
-    "mitigacao": "Migrar /api/admin/estoque-* para /api/est/* ou esconder fluxo legado até migração."
+    "impacto": "Código externo pode continuar chamando URLs antigas; se alguém reverter a ponte, pode voltar a escrever em estoque_*.",
+    "mitigacao": "Rotas /api/admin/estoque-* e /api/admin/setor/*/rename agora usam est_produto/est_setor. Próximo passo é descontinuar os nomes antigos quando for seguro."
   }
 ]

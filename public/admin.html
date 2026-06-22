@@ -883,11 +883,6 @@ async function salvarItemEst(rowEl){ const id=Number(rowEl.dataset.id); const p=
 function pedirTexto(titulo,sub,valor){ return new Promise(resolve=>{ $('mInTit').textContent=titulo; $('mInSub').textContent=sub||''; const f=$('mInField'); f.value=valor||''; $('mInput').classList.add('on'); setTimeout(()=>f.focus(),80);
   const fim=v=>{ $('mInput').classList.remove('on'); $('mInOk').onclick=null; $('mInCancel').onclick=null; f.onkeydown=null; resolve(v); };
   $('mInOk').onclick=()=>fim(f.value); $('mInCancel').onclick=()=>fim(null); f.onkeydown=e=>{ if(e.key==='Enter')fim(f.value); if(e.key==='Escape')fim(null); }; }); }
-async function salvarItem(rowEl){ const id=rowEl.dataset.id; const all=(await (await fetch(API+'/api/admin/estoque-itens?admin_id='+user.id)).json()).itens; const it=all.find(x=>x.id===id);
-  const body={admin_id:user.id,id,setor_id:it.setor_id,setor_nome:it.setor_nome,categoria:it.categoria,nome:it.nome,unidade:it.unidade,ordem:it.ordem};
-  rowEl.querySelectorAll('[data-f]').forEach(f=> body[f.dataset.f]= f.value===''?null:parseFloat(f.value));
-  await fetch(API+'/api/admin/estoque-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); toast('Item salvo'); }
-
 /* ===== EQUIPE ===== */
 function setorNome(sid){ const key=String(sid); const s=SETORES.find(x=>x.setor_id===key); return s?s.setor_nome+(s.ativo===false?' (inativo)':''):sid; }
 async function loadEquipe(){ if(!SETORES.length){ try{ const ss=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; SETORES=ss.map(s=>({setor_id:String(s.id), setor_nome:s.nome, ativo:s.ativo!==false})); }catch(e){} }
