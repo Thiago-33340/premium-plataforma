@@ -279,12 +279,12 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 30,
+    "progresso": 45,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
     "aprovador": "Thiago",
-    "ambiente": "dev/producao_a_publicar",
+    "ambiente": "producao",
     "online": true,
     "repositorio": "Thiago-33340/premium-plataforma",
     "container": "a_definir",
@@ -292,12 +292,11 @@
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["mapper-state"],
     "pendencias": [
-      "Publicar /mapper em produção",
       "Adicionar login integrado ao admin/estoque",
-      "Permitir filtro por módulo e ferramenta atuante"
+      "Permitir filtro por módulo e ferramenta atuante",
+      "Criar visão específica do estoque após a entrega do Claude"
     ],
     "proximos_passos": [
-      "Validar /mapper com Thiago",
       "Adicionar visão específica do estoque depois da entrega do Claude",
       "Registrar cada avanço relevante em project-state"
     ]

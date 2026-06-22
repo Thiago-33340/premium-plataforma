@@ -18,5 +18,26 @@
       "GET /estoque servindo HTML novo de setores dinâmicos"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets."
+  },
+  {
+    "id": "deploy-2026-06-22-titan-mapper",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "29b0b4c8fbaab721bfc7e86a0c58d82d5fe9c3d8",
+    "pull_request": "https://github.com/Thiago-33340/premium-plataforma/pull/9",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://pedido.titanatende.com.br"
+    ],
+    "validacoes": [
+      "GET /mapper OK",
+      "GET /api/mapper/state OK com gestor",
+      "Smoke read-only produção OK: 16/16"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Mapper mantido como fonte visual de progresso, riscos, rotas e tarefas. Não foram registrados secrets."
   }
 ]
