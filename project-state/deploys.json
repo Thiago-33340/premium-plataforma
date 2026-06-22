@@ -86,5 +86,27 @@
       "Fichas 1:1 seguras corrigidas para Lombo Fracionado e itens abertos de bisnaga/chocolate"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Ajustes de dados reais foram feitos via API oficial com usuario_id=thiago. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
+  },
+  {
+    "id": "deploy-2026-06-22-command-actions",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "d343838",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Histórico do EasyPanel mostrou: Deploy service: Implementa acoes auditadas no Command Center",
+      "Smoke read-only produção/tools OK: 19/19",
+      "GET /command-center abre Titan Command Center com usuário Thiago",
+      "Aba Execução mostra Registrar no Command, Atualizar tarefa e Últimas ações auditadas",
+      "POST /api/mapper/action sem sessão retorna 401 e não grava dados"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
   }
 ]

@@ -359,7 +359,7 @@ Próximo passo:
 
 ## Marco 09 — Command Center ganha ações graváveis auditadas
 
-Status: implementado localmente, pendente de deploy/validação visual
+Status: implantado e validado em produção
 
 O Command Center deixou de ser apenas leitura de `project-state` e ganhou a primeira versão de ações graváveis na aba **Execução**.
 
@@ -381,6 +381,20 @@ Limites conscientes:
 - Não edita arquivos fora da whitelist.
 - Não manipula secrets.
 - Ainda não faz commit/PR automático; versionamento externo virou próxima etapa.
+
+Validações pós-deploy:
+
+- Commit implantado: `d343838 Implementa acoes auditadas no Command Center`.
+- Smoke read-only produção/tools: 19/19 OK.
+- Aba **Execução** validada no Chrome com sessão de Thiago.
+- A UI mostrou:
+  - Registrar no Command;
+  - Nova tarefa;
+  - Novo risco;
+  - Nova decisão;
+  - Atualizar tarefa;
+  - Últimas ações auditadas.
+- A rota `POST /api/mapper/action` sem sessão retornou 401 no smoke, sem gravar dados.
 
 Arquivos principais:
 

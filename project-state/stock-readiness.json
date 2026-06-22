@@ -99,7 +99,7 @@
   "smokes": {
     "read_only": {
       "status": "ok",
-      "executed": 18,
+      "executed": 19,
       "failed": 0,
       "command_center": "ok",
       "mapper_state": "ok"
