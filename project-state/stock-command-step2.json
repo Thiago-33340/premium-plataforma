@@ -92,6 +92,18 @@
     "Validar visual no Chrome: Command mostra passo 2 e Estoque permite abrir ficha avançada.",
     "Registrar resultado no diário e deploys.json."
   ],
+  "resultado_pos_deploy": {
+    "deploy": "deploy-2026-06-22-command-step2-estoque",
+    "readiness": "project-state/stock-readiness.json",
+    "smoke_read_only": "18/18",
+    "smoke_mutavel_controlado": "OK",
+    "catalogo_premium": "setores e unidades sem divergência",
+    "pendencias_de_conteudo": [
+      "Camarão precisa de receita real",
+      "Molho produzido precisa de receita real",
+      "Coco Ralado Floco precisa de regra operacional real"
+    ]
+  },
   "nao_fazer_sem_nova_decisao": [
     "Migrar estoque legado agora.",
     "Rodar teste mutável usando produto real da Premium.",

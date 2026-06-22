@@ -64,5 +64,27 @@
       "api/mapper/state retorna 401 sem sessão"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Variável TITAN_TOOL_BOOTSTRAP_EMAILS configurada no ambiente do serviço para autorizar os dois sócios. Não foram registrados valores de secrets."
+  },
+  {
+    "id": "deploy-2026-06-22-command-step2-estoque",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "c121cb3",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Histórico do EasyPanel mostrou: Deploy service: Conclui passo 2 do Command e reforca estoque",
+      "Smoke read-only produção/tools OK: 18/18",
+      "Smoke mutável controlado OK: compra + ficha avançada + produção + cleanup",
+      "Catálogo Premium v4 auditado: setores/unidades sem divergência",
+      "Fichas 1:1 seguras corrigidas para Lombo Fracionado e itens abertos de bisnaga/chocolate"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Ajustes de dados reais foram feitos via API oficial com usuario_id=thiago. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
   }
 ]

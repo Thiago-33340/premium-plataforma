@@ -1,0 +1,121 @@
+{
+  "id": "stock-readiness-premium-2026-06-22",
+  "generated_at": "2026-06-22T15:23:05.3165898-03:00",
+  "status": "motor_validado_catalogo_ok_3_fichas_dependem_receita_real",
+  "base_url": "https://premium.titanatende.com.br",
+  "tools_base_url": "https://tools.titanatende.com.br",
+  "catalog_source": "data/estoque-catalogo-premium-v4.json",
+  "catalog_audit": {
+    "produtos_ativos": 201,
+    "setores": ["Gerais", "Borda", "Finalização", "Montagem", "Recepção"],
+    "por_setor": {
+      "Gerais": { "esperado": 38, "faltando": 0, "fora_do_setor": 0, "unidade_diferente": 0 },
+      "Borda": { "esperado": 17, "faltando": 0, "fora_do_setor": 0, "unidade_diferente": 0 },
+      "Finalização": { "esperado": 43, "faltando": 0, "fora_do_setor": 0, "unidade_diferente": 0 },
+      "Montagem": { "esperado": 35, "faltando": 0, "fora_do_setor": 0, "unidade_diferente": 0 },
+      "Recepção": { "esperado": 19, "faltando": 0, "fora_do_setor": 0, "unidade_diferente": 0 }
+    }
+  },
+  "produced_audit": {
+    "esperados_no_catalogo": 30,
+    "retornados_na_api": 30,
+    "faltando_na_api": 0,
+    "com_ficha_e_ingrediente": 27,
+    "sem_ingrediente": 3
+  },
+  "real_data_corrections": [
+    {
+      "tipo": "unidade",
+      "produto": "Molho produzido",
+      "antes": "Litro",
+      "depois": "KG",
+      "origem": "Lista enviada por Thiago"
+    },
+    {
+      "tipo": "unidade",
+      "produto": "Bisnaga G de Nutella - Aberta",
+      "antes": "GRAMAS",
+      "depois": "UNIDADE",
+      "origem": "Lista enviada por Thiago"
+    },
+    {
+      "tipo": "unidade",
+      "produto": "Bisnaga G de Doce de Leite - Aberta",
+      "antes": "G",
+      "depois": "UNIDADE",
+      "origem": "Lista enviada por Thiago"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Lombo Fracionado",
+      "ingrediente": "Lombo Canadense",
+      "regra": "1 g produzido baixa 1 g do bruto"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Bisnaga G de Nutella - Aberta",
+      "ingrediente": "Bisnaga G de Nutella",
+      "regra": "1 unidade aberta baixa 1 unidade fechada"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Bisnaga P de Nutella - Aberta",
+      "ingrediente": "Bisnaga P de Nutella",
+      "regra": "1 unidade aberta baixa 1 unidade fechada"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Bisnaga G de Doce de Leite - Aberta",
+      "ingrediente": "Bisnaga G de Doce de Leite",
+      "regra": "1 unidade aberta baixa 1 unidade fechada"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Chocolate ao Leite - Aberto Finalização",
+      "ingrediente": "Chocolate ao Leite Bisnaga",
+      "regra": "1 bisnaga aberta baixa 1 bisnaga fechada"
+    },
+    {
+      "tipo": "ficha_1_para_1",
+      "produto": "Chocolate Branco - Aberto Finalização",
+      "ingrediente": "Chocolate Branco Bisnaga",
+      "regra": "1 bisnaga aberta baixa 1 bisnaga fechada"
+    }
+  ],
+  "remaining_recipe_gaps": [
+    {
+      "produto": "Camarão",
+      "motivo": "Não há insumo bruto separado nem fórmula segura registrada na base para montar a ficha sem inventar baixa."
+    },
+    {
+      "produto": "Molho produzido",
+      "motivo": "A receita real do molho produzido não está registrada na base; precisa da composição da cozinha."
+    },
+    {
+      "produto": "Coco Ralado Floco",
+      "motivo": "Não há regra operacional segura dizendo que Coco Ralado comum vira Coco Ralado Floco."
+    }
+  ],
+  "smokes": {
+    "read_only": {
+      "status": "ok",
+      "executed": 18,
+      "failed": 0,
+      "command_center": "ok",
+      "mapper_state": "ok"
+    },
+    "mutating_controlled": {
+      "status": "ok",
+      "escopo": "produtos SMOKE_TESTE_* inativados ao final",
+      "validou": [
+        "criação de insumo de teste",
+        "compra manual e entrada",
+        "criação e edição de produzido",
+        "ficha avançada com porção",
+        "produção com baixa de 0.2 KG e entrada de 2 UNIDADE",
+        "cleanup lógico"
+      ]
+    }
+  },
+  "veredito": "O motor de estoque, compra, ficha avançada, produção e Command/Mapper está validado em produção. O catálogo Premium está batendo por setor e unidade. Para declarar 100% de conteúdo de ficha, faltam as receitas reais de Camarão, Molho produzido e Coco Ralado Floco."
+}

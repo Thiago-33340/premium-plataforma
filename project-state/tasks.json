@@ -220,7 +220,7 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-002", "task-f2-006", "task-f2-014", "task-f2-015"],
-    "proximo_passo": "Deployar correções de compra/produção/Command, rodar smoke read-only e executar smoke mutável controlado com produtos de teste."
+    "proximo_passo": "Motor, catálogo, setores, unidades, compra, ficha avançada e produção foram validados. Faltam apenas receitas reais de Camarão, Molho produzido e Coco Ralado Floco para encerrar 100% do conteúdo."
   },
   {
     "id": "task-f2-018",
@@ -233,6 +233,24 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014", "task-f2-015", "task-f2-017"],
-    "proximo_passo": "Usar project-state/stock-command-step2.json e docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md como referência para validação final do estoque."
+    "proximo_passo": "Usar project-state/stock-command-step2.json, project-state/stock-readiness.json e docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md como referência para validação final do estoque."
+  },
+  {
+    "id": "task-f2-019",
+    "titulo": "Preencher receitas reais das 3 fichas pendentes",
+    "modulo": "producao-fichas",
+    "status": "bloqueado_dados_operacionais",
+    "prioridade": "alta",
+    "categoria": "produto",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": true,
+    "dependencias": ["task-f2-017", "task-f2-018"],
+    "bloqueios": [
+      "Fórmula real de Camarão",
+      "Fórmula real de Molho produzido",
+      "Regra operacional de Coco Ralado Floco"
+    ],
+    "proximo_passo": "Thiago confirmar os ingredientes, quantidades, unidade e rendimento dessas 3 fichas; depois Codex grava via editor avançado e roda smoke mutável."
   }
 ]

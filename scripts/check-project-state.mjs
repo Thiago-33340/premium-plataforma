@@ -25,7 +25,8 @@ const required = [
   'api-contracts-critical.json',
   'test-matrix.json',
   'agent-workflow.json',
-  'stock-command-step2.json'
+  'stock-command-step2.json',
+  'stock-readiness.json'
 ];
 
 const errors = [];
@@ -154,6 +155,17 @@ if (!health || typeof health !== 'object' || Array.isArray(health)) {
   }
   if (!Array.isArray(health.checks)) errors.push('health-checks.json precisa ter checks como lista.');
   if (health.mutates_data !== false) errors.push('health-checks.json deve representar apenas smoke read-only.');
+}
+
+const stockReadiness = data['stock-readiness.json'];
+if (!stockReadiness || typeof stockReadiness !== 'object' || Array.isArray(stockReadiness)) {
+  errors.push('stock-readiness.json deveria ser um objeto.');
+} else {
+  for (const field of ['id', 'status', 'catalog_source', 'smokes', 'remaining_recipe_gaps']) {
+    if (stockReadiness[field] == null) errors.push(`stock-readiness.json sem campo ${field}.`);
+  }
+  if (!Array.isArray(stockReadiness.remaining_recipe_gaps)) errors.push('stock-readiness.json precisa ter remaining_recipe_gaps como lista.');
+  if (!Array.isArray(stockReadiness.real_data_corrections)) errors.push('stock-readiness.json precisa ter real_data_corrections como lista.');
 }
 
 const rbacAudit = data['rbac-audit.json'];

@@ -168,3 +168,29 @@ O Claude, ao voltar, deve:
 - Revisar cálculos e critérios, não reimplementar o mesmo editor.
 - Usar o smoke mutável controlado como critério de aceite do fluxo produto → compra → ficha → produção.
 - Apontar fichas reais da Premium que ainda precisam de ingredientes, mas sem alterar dados em produção sem autorização.
+
+## Atualização — Validação pós-deploy e prontidão do estoque
+
+Data: 2026-06-22
+
+O Codex implantou o passo 2/estoque, rodou as blindagens e criou o artefato `project-state/stock-readiness.json`.
+
+Resultado:
+
+- Smoke read-only produção/tools: 18/18 OK.
+- Smoke mutável controlado: OK.
+- Catálogo Premium v4 bate com produção por setor e unidade.
+- Itens produzidos: 30/30 existem; 27/30 têm ficha com ingrediente.
+
+Correções reais feitas:
+
+- Unidade de `Molho produzido`, `Bisnaga G de Nutella - Aberta` e `Bisnaga G de Doce de Leite - Aberta`.
+- Fichas 1:1 seguras para `Lombo Fracionado` e itens abertos de Nutella, Doce de Leite e Chocolate.
+
+O Claude deve focar somente nas 3 fichas que exigem receita real:
+
+1. `Camarão`
+2. `Molho produzido`
+3. `Coco Ralado Floco`
+
+Não inventar fórmulas. Se não houver composição real, responder com pergunta objetiva para Thiago.

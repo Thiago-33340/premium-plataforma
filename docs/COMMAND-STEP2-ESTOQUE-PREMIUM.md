@@ -101,3 +101,37 @@ O estoque só deve ser chamado de pronto quando:
 - smoke read-only passar;
 - smoke mutável controlado passar com produtos de teste;
 - tudo estiver registrado no diário e no project-state.
+
+## Resultado pós-deploy
+
+Em 2026-06-22, o Codex implantou o commit `c121cb3`, rodou as validações em produção e criou `project-state/stock-readiness.json`.
+
+Validações:
+
+- Smoke read-only produção/tools: 18/18 OK.
+- Smoke mutável controlado: OK.
+- Catálogo Premium v4: setores e unidades sem divergência.
+- Itens produzidos: 30/30 retornando na API.
+- Fichas com ingrediente: 27/30.
+
+Correções de dados reais:
+
+- Unidades corrigidas conforme lista de Thiago:
+  - `Molho produzido`: `KG`.
+  - `Bisnaga G de Nutella - Aberta`: `UNIDADE`.
+  - `Bisnaga G de Doce de Leite - Aberta`: `UNIDADE`.
+- Fichas 1:1 criadas para vínculos seguros:
+  - `Lombo Fracionado` ← `Lombo Canadense`.
+  - `Bisnaga G de Nutella - Aberta` ← `Bisnaga G de Nutella`.
+  - `Bisnaga P de Nutella - Aberta` ← `Bisnaga P de Nutella`.
+  - `Bisnaga G de Doce de Leite - Aberta` ← `Bisnaga G de Doce de Leite`.
+  - `Chocolate ao Leite - Aberto Finalização` ← `Chocolate ao Leite Bisnaga`.
+  - `Chocolate Branco - Aberto Finalização` ← `Chocolate Branco Bisnaga`.
+
+Pendências bloqueadas por dado operacional:
+
+- `Camarão`
+- `Molho produzido`
+- `Coco Ralado Floco`
+
+Essas fichas não devem ser preenchidas por suposição. Precisam de ingredientes, quantidades, unidade e rendimento confirmados pela operação.

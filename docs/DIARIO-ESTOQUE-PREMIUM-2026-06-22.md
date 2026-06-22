@@ -297,3 +297,62 @@ Próximo passo:
 - Deployar.
 - Rodar smoke read-only.
 - Rodar smoke mutável controlado em produção com produtos de teste, usando confirmação explícita.
+
+## Marco 08 — Deploy, smoke real e prontidão do estoque
+
+Status: motor validado em produção; conteúdo com 3 receitas reais pendentes
+
+Deploy:
+
+- Commit implantado pelo EasyPanel: `c121cb3 Conclui passo 2 do Command e reforca estoque`.
+- O histórico do EasyPanel mostrou o commit novo no topo.
+- Nenhum token, gatilho de deploy ou secret foi copiado para os registros.
+
+Validações pós-deploy:
+
+- Smoke read-only produção/tools: 18/18 OK.
+- Smoke mutável controlado: OK.
+- O smoke mutável criou produtos `SMOKE_TESTE_*`, lançou compra, salvou ficha avançada, lançou produção, conferiu baixa de `0.2 KG` e entrada de `2 UNIDADE`, depois inativou os itens de teste.
+
+Correções reais feitas via API oficial com `usuario_id=thiago`:
+
+- `Molho produzido`: unidade corrigida de `Litro` para `KG`.
+- `Bisnaga G de Nutella - Aberta`: unidade corrigida de `GRAMAS` para `UNIDADE`.
+- `Bisnaga G de Doce de Leite - Aberta`: unidade corrigida de `G` para `UNIDADE`.
+- `Lombo Fracionado`: ficha 1:1 criada, 1 g produzido baixa 1 g de `Lombo Canadense`.
+- `Bisnaga G de Nutella - Aberta`: ficha 1:1 criada, 1 unidade aberta baixa 1 `Bisnaga G de Nutella`.
+- `Bisnaga P de Nutella - Aberta`: ficha 1:1 criada, 1 unidade aberta baixa 1 `Bisnaga P de Nutella`.
+- `Bisnaga G de Doce de Leite - Aberta`: ficha 1:1 criada, 1 unidade aberta baixa 1 `Bisnaga G de Doce de Leite`.
+- `Chocolate ao Leite - Aberto Finalização`: ficha 1:1 criada, 1 aberta baixa 1 `Chocolate ao Leite Bisnaga`.
+- `Chocolate Branco - Aberto Finalização`: ficha 1:1 criada, 1 aberta baixa 1 `Chocolate Branco Bisnaga`.
+
+Auditoria de catálogo:
+
+- Setores ativos: Gerais, Borda, Finalização, Montagem e Recepção.
+- Produtos ativos na API: 201.
+- Catálogo Premium v4 bateu por setor e unidade:
+  - Gerais: 38/38.
+  - Borda: 17/17.
+  - Finalização: 43/43.
+  - Montagem: 35/35.
+  - Recepção: 19/19.
+- Itens produzidos esperados: 30/30 retornando na API.
+- Produzidos com ficha e ingrediente: 27/30.
+
+Pendências que não devem ser inventadas:
+
+- `Camarão`: falta insumo bruto separado ou regra real.
+- `Molho produzido`: falta receita real do molho.
+- `Coco Ralado Floco`: falta regra operacional real.
+
+Artefatos:
+
+- `project-state/stock-readiness.json`
+- `project-state/health-checks.json`
+- `project-state/stock-command-step2.json`
+- `docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md`
+
+Próximo passo:
+
+- Thiago confirmar ingredientes, quantidade, unidade e rendimento das 3 fichas pendentes.
+- Depois disso, gravar fichas pelo editor avançado e repetir smoke mutável controlado.

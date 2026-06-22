@@ -309,7 +309,8 @@
         routes: file(data, 'routes.json', {}),
         services: file(data, 'services.json', []),
         people: file(data, 'people.json', []),
-        stockStep2: file(data, 'stock-command-step2.json', {})
+        stockStep2: file(data, 'stock-command-step2.json', {}),
+        stockReadiness: file(data, 'stock-readiness.json', {})
       };
     }
 
@@ -436,6 +437,9 @@
       const contracts = p.contracts.filter(c => String(c.module || '').includes('estoque') || String(c.module || '').includes('producao') || String(c.module || '').includes('contagem'));
       const tests = p.tests.filter(t => stockIds.includes(t.module));
       const step2 = p.stockStep2 || {};
+      const readiness = p.stockReadiness || {};
+      const gaps = Array.isArray(readiness.remaining_recipe_gaps) ? readiness.remaining_recipe_gaps : [];
+      const readyOk = readiness.smokes?.read_only?.status === 'ok' && readiness.smokes?.mutating_controlled?.status === 'ok';
       return `
         <div class="hero">
           <div class="card pad callout">
@@ -466,6 +470,30 @@
             </div>
           </div>
         </div>
+        <div class="card pad callout" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Validação final do estoque Premium</h2><span class="pill ${readyOk ? 'ok' : 'warn'}">${readyOk ? 'smokes OK' : 'atenção'}</span></div>
+          <div class="sub">${esc(readiness.veredito || 'Validação final ainda não registrada.')}</div>
+          <div class="split3" style="margin-top:13px">
+            <div>
+              <h3 style="margin-bottom:8px">Catálogo</h3>
+              <div class="list">
+                <div class="item"><b>${esc(readiness.catalog_audit?.produtos_ativos || '—')} produtos ativos</b><small>${esc((readiness.catalog_audit?.setores || []).join(' · ') || 'setores não auditados')}</small></div>
+                <div class="item"><b>Setores/unidades</b><small>faltando=0 · fora do setor=0 · unidade divergente=0</small></div>
+              </div>
+            </div>
+            <div>
+              <h3 style="margin-bottom:8px">Fichas produzidas</h3>
+              <div class="list">
+                <div class="item"><b>${esc(readiness.produced_audit?.retornados_na_api || 0)}/${esc(readiness.produced_audit?.esperados_no_catalogo || 0)} produzidos</b><small>${esc(readiness.produced_audit?.com_ficha_e_ingrediente || 0)} com ingredientes · ${esc(readiness.produced_audit?.sem_ingrediente || 0)} dependem de receita real</small></div>
+                <div class="item"><b>Smoke mutável</b><small>${esc(readiness.smokes?.mutating_controlled?.status || '—')} · compra + ficha + produção + cleanup</small></div>
+              </div>
+            </div>
+            <div>
+              <h3 style="margin-bottom:8px">Pendências reais</h3>
+              <div class="list">${gaps.map(gapItem).join('') || empty('Sem pendências de receita.')}</div>
+            </div>
+          </div>
+        </div>
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad">
             <div class="sectionTitle"><h2>Tarefas do estoque</h2><span class="pill">${stockTasks.filter(t => norm(t.status) !== 'concluido').length} abertas</span></div>
@@ -491,6 +519,7 @@
     function renderAgentes(p){
       const brief = buildClaudeBrief(p);
       const step2 = p.stockStep2 || {};
+      const readiness = p.stockReadiness || {};
       return `
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad">
@@ -512,6 +541,7 @@
           <div class="list">
             <div class="item"><b>${esc(step2.titulo || 'Arquitetura e cálculo')}</b><small>${esc(step2.motivo || '')}</small></div>
             <div class="item"><b>Fontes</b><small>${esc((step2.fontes_usadas || []).slice(0,8).join(' · '))}</small></div>
+            <div class="item"><b>Validação de estoque</b><small>${esc(readiness.status || 'sem readiness')} · pendências de receita: ${esc((readiness.remaining_recipe_gaps || []).length || 0)}</small></div>
           </div>
         </div>`;
     }
@@ -701,6 +731,10 @@
       return `<div class="item"><span class="tag ${esc(norm(a.tipo || 'achado'))}">${esc(a.tipo || 'achado')}</span><b>${esc(a.titulo || 'Achado')}</b><small>${esc(a.detalhe || '')}</small><small>${esc(a.acao || '')}</small></div>`;
     }
 
+    function gapItem(g){
+      return `<div class="item"><b>${esc(g.produto || 'Pendente')}</b><small>${esc(g.motivo || '')}</small></div>`;
+    }
+
     function roleCard(r){
       return `<div class="item"><span class="tag ${esc(norm(r.id))}">${esc(r.name || r.id)}</span><b>${esc(r.label || '')}</b><small>${esc((r.primary_duties || []).join(' · '))}</small><small><b>Não fazer:</b> ${esc((r.must_not || []).join(' · '))}</small></div>`;
     }
@@ -815,8 +849,10 @@
       const risks = p.risks.slice().sort((a,b)=>riskWeight(b)-riskWeight(a)).slice(0,6).map(r => `- ${r.id}: ${r.titulo} [${r.severidade}/${r.status}] -> ${r.mitigacao || r.impacto || ''}`).join('\n');
       const wf = p.workflow.handoff_to_claude || {};
       const step2 = p.stockStep2 || {};
+      const readiness = p.stockReadiness || {};
       const calculos = (step2.calculos_oficiais || []).slice(0,5).map(c => `- ${c.nome}: ${c.formula}`).join('\n');
       const aceite = (step2.criterios_de_aceite_estoque || []).slice(0,10).map(x => `- ${x}`).join('\n');
+      const gaps = (readiness.remaining_recipe_gaps || []).map(g => `- ${g.produto}: ${g.motivo}`).join('\n');
       return `${wf.prompt || 'Você atua como revisor/arquiteto do Titan.'}
 
 Missão atual:
@@ -844,6 +880,13 @@ ${calculos || '- Sem cálculos registrados.'}
 
 Critérios de aceite do estoque:
 ${aceite || '- Sem critérios registrados.'}
+
+Validação atual do estoque Premium:
+- Status: ${readiness.status || 'sem readiness'}
+- Smokes: read-only ${readiness.smokes?.read_only?.status || '—'}; mutável controlado ${readiness.smokes?.mutating_controlled?.status || '—'}.
+- Catálogo: setores/unidades batendo com ${readiness.catalog_source || 'fonte não registrada'}.
+- Pendências que exigem receita real:
+${gaps || '- Nenhuma pendência de receita registrada.'}
 
 Entregue para Thiago e Codex:
 1. Lacunas de regra/UX.

@@ -156,7 +156,7 @@ const PROJECT_STATE_FILES = [
   'tasks.json', 'risks.json', 'dependencies.json', 'decisions.json', 'roadmap.json',
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
-  'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json'
+  'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json'
 ];
 async function gestorBasico(uid) {
   if (!uid) return null;

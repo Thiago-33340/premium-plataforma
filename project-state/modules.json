@@ -84,7 +84,7 @@
     "id": "estoque-v2",
     "nome": "Estoque operacional v2",
     "status": "em_andamento",
-    "progresso": 92,
+    "progresso": 96,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -98,13 +98,13 @@
     "rotas_relacionadas": ["estoque-v2-cadastros-operacao"],
     "tabelas_relacionadas": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor"],
     "pendencias": [
-      "Testar conversões de unidade",
       "Documentar catálogo Premium v4 como fonte inicial",
-      "Rodar smoke mutável controlado depois do deploy das correções críticas"
+      "Acompanhar 3 fichas que dependem de receita real da cozinha",
+      "Validar visual final no navegador com gestor"
     ],
     "proximos_passos": [
+      "Preencher receitas reais de Camarão, Molho produzido e Coco Ralado Floco quando Thiago confirmar",
       "Validar no navegador: produto -> setor -> ficha -> compra -> produção",
-      "Rodar smoke mutável controlado com itens de teste",
       "Classificar rotas antigas de estoque como legado"
     ]
   },
@@ -112,7 +112,7 @@
     "id": "producao-fichas",
     "nome": "Produção e fichas técnicas",
     "status": "em_andamento",
-    "progresso": 86,
+    "progresso": 92,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -126,15 +126,14 @@
     "rotas_relacionadas": ["producao-fichas"],
     "tabelas_relacionadas": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run", "est_producao_receita"],
     "pendencias": [
-      "Completar fichas pendentes",
+      "Completar 3 fichas pendentes com receita real da cozinha",
       "Documentar baixa de insumos por produção",
-      "Validar editor avançado no estoque após deploy",
-      "Rodar smoke mutável de ficha avançada e produção"
+      "Validar editor avançado no estoque após deploy"
     ],
     "proximos_passos": [
-      "Listar itens produzidos sem ficha completa",
-      "Testar salvar/excluir ficha em ambiente controlado",
-      "Usar smoke mutável para confirmar baixa/entrada transacional"
+      "Confirmar receita real de Camarão, Molho produzido e Coco Ralado Floco",
+      "Testar salvar/excluir ficha no navegador com gestor",
+      "Manter smoke mutável como teste obrigatório antes de deploys"
     ]
   },
   {
@@ -280,7 +279,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 84,
+    "progresso": 88,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -297,11 +296,11 @@
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
       "Transformar ações do Command Center em registros graváveis auditados",
-      "Criar visão de estoque com métricas reais depois do smoke mutável"
+      "Usar stock-readiness.json como painel de prontidão do estoque"
     ],
     "proximos_passos": [
       "Usar /command-center ou /login no host tools.titanatende.com.br",
-      "Acompanhar o Passo 2 do estoque na aba Estoque",
+      "Acompanhar o Passo 2 e a prontidão do estoque na aba Estoque",
       "Registrar cada avanço relevante em project-state"
     ]
   }
