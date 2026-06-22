@@ -873,7 +873,14 @@ async function estBaixaPedido(orderRef, itens, opts) {
     const sels = [].concat(item.selecoes || [], item.sabores || [], item.adicionais || [], (item.borda ? [item.borda] : []));
     for (const s of sels) {
       const nm = s && (s.nome || s.opcao || s.label); if (!nm) continue;
-      const fr = (await db.q(`SELECT fi.insumo_nome, fi.est_produto_id, fi.quantidade FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)`, [TENANT, nm])).rows;
+      const opId = s && (s.opcao_id || s.opcaoId || s.id);
+      const fr = (opId && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(opId)))
+        ? (await db.q(`SELECT insumo_nome, est_produto_id, quantidade FROM ficha_itens WHERE tenant_id=$1 AND opcao_id=$2`, [TENANT, opId])).rows
+        : (await db.q(`SELECT DISTINCT ON (lower(fi.insumo_nome), COALESCE(fi.est_produto_id::text,''), fi.quantidade)
+              fi.insumo_nome, fi.est_produto_id, fi.quantidade
+             FROM ficha_itens fi JOIN opcoes o ON o.id=fi.opcao_id
+            WHERE fi.tenant_id=$1 AND lower(o.nome)=lower($2)
+            ORDER BY lower(fi.insumo_nome), COALESCE(fi.est_produto_id::text,''), fi.quantidade, fi.id`, [TENANT, nm])).rows;
       for (const r of fr) await resolve(r.insumo_nome, (Number(r.quantidade) || 0) * Q, 0, r.est_produto_id);
     }
   }

@@ -309,17 +309,29 @@
     "id": "task-f2-024",
     "titulo": "Configurar webhook seguro de deploy no ambiente",
     "modulo": "infra-deploy",
-    "status": "bloqueado_configuracao_segura",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "devops",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
-    "bloqueada": true,
+    "bloqueada": false,
     "dependencias": ["task-f2-023"],
     "bloqueios": [
-      "Definir variável TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL no ambiente do serviço",
       "Não salvar webhook/token no repositório, project-state ou documentação"
     ],
-    "proximo_passo": "Configurar a variável segura diretamente no EasyPanel; depois o botão Executor externo do Command deixa de aparecer como não configurado."
+    "proximo_passo": "TITAN_DEPLOY_WEBHOOK_URL configurada no ambiente do serviço EasyPanel em 2026-06-22; valor não registrado no Git/docs/Command. Validar o botão de deploy externo pelo Command após o próximo deploy."
+  },
+  {
+    "id": "task-f2-025",
+    "titulo": "Importar fichas técnicas do cardápio Premium",
+    "modulo": "producao-fichas",
+    "status": "em_validacao",
+    "prioridade": "alta",
+    "categoria": "estoque-cardapio",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-019"],
+    "proximo_passo": "Deployar import idempotente de data/fichas-premium-cardapio-v1.json; produção deve sair de ficha_itens=0 para fichas de sabores/adicionais/extras sem sobrescrever edições do gestor."
   }
 ]

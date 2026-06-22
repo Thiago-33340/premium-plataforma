@@ -578,3 +578,66 @@ Arquivos principais:
 - `project-state/decisions.json`
 - `project-state/api-contracts-critical.json`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+
+## Marco 14 — Relatório Claude: frescos e fichas do cardápio
+
+Status: implementado localmente, aguardando validação/deploy desta etapa
+
+Fonte:
+
+- `C:\Users\Thiago Ribeiro\Titan\workspace\entrega-fichas-premium\RELATORIO-PARA-CODEX.md`
+- `C:\Users\Thiago Ribeiro\Titan\workspace\entrega-fichas-premium\fichas-premium.data.json`
+
+Diagnóstico read-only confirmado em produção:
+
+- `opcoes=309`
+- `ficha_itens=0`
+- o cardápio já existe; o problema é a ausência das fichas de baixa por venda.
+
+O que foi implementado:
+
+- Criado `data/fichas-premium-cardapio-v1.json`, base compacta e versionada com:
+  - 35 sabores de pizza;
+  - 9 adicionais;
+  - 1 extra;
+  - 261 linhas de consumo.
+- `db.js` ganhou import idempotente `fichas_premium_cardapio_v1`:
+  - insere ficha somente quando a opção ainda não tem ficha;
+  - não sobrescreve edição do gestor;
+  - converte `Molho Premium` para 35 g quando o dataset traz `equivalente_g`;
+  - registra resumo em `tenants.config`;
+  - reporta opções/insumos não casados no log.
+- `db.js` ganhou seed resiliente `estoque_insumos_frescos_v1` para:
+  - `Pimentão Verde`;
+  - `Pimentão Vermelho`;
+  - `Pimentão Amarelo`;
+  - `Rúcula`;
+  - `Manjericão`;
+  - `Uva`.
+- `server-pg.js` passou a deduplicar ficha por nome na baixa automática, evitando baixa multiplicada quando a mesma opção existe em vários produtos/grupos.
+
+Limite consciente:
+
+- Bordas combinadas do relatório não foram importadas nesta etapa, porque o cardápio atual representa borda como combinação de estilo + recheio. Importar nomes como `Borda Vulcão - Catupiry` sem modelo combinatório poderia gerar baixa errada.
+
+Validações locais:
+
+- `node --check db.js`
+- `node --check server-pg.js`
+- `npm run check:project-state`
+- simulação read-only contra produção: 45/45 fichas casadas com opções existentes.
+
+## Marco 15 — Command: webhook seguro de deploy configurado
+
+Status: configurado no ambiente do serviço
+
+O que foi feito:
+
+- Configurada a variável `TITAN_DEPLOY_WEBHOOK_URL` diretamente no ambiente do serviço no EasyPanel.
+- O valor sensível não foi registrado no Git, documentação, project-state ou logs de trabalho.
+- As variáveis existentes do serviço foram preservadas.
+
+Próximo uso esperado:
+
+- Após o próximo deploy, o Executor externo do Command deve deixar de aparecer como "não configurado".
+- A ação de deploy via Command deve registrar resultado em `deploys.json`, `command-audit-log.json` e `titan_command_actions`, sem expor o webhook.

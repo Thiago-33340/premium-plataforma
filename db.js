@@ -163,6 +163,196 @@ const MIGRATIONS = [
 
 const state = { migrationsOk: false, ultimoErro: null };
 
+function normSeed(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function uniqById(rows) {
+  const out = [], seen = new Set();
+  for (const r of rows || []) {
+    const id = String(r && r.id || '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(r);
+  }
+  return out;
+}
+function fichaPremiumAliases(nome, aliases) {
+  const all = [nome].concat(Array.isArray(aliases) ? aliases : []);
+  if (/^adicional\s*-/i.test(String(nome || ''))) all.push(String(nome).replace(/^adicional\s*-\s*/i, '').trim());
+  const key = normSeed(nome);
+  const extras = {
+    'cinco queijos': ['5 Queijos'],
+    'sexta santa': ['Sexta-Santa'],
+    'prestigio': ['Prestigio'],
+    'raffaello': ['Rafaello'],
+    'heinz ketchup e maionese': ['Heinz Ketchup + Maionese 12un', 'Heinz Ketchup e Maionese  12 un']
+  };
+  if (extras[key]) all.push.apply(all, extras[key]);
+  return Array.from(new Set(all.map(x => String(x || '').trim()).filter(Boolean)));
+}
+function componenteEstoqueAliases(nome) {
+  const all = [nome];
+  const key = normSeed(nome);
+  const map = {
+    'molho premium': ['Molho produzido'],
+    'mussarela': ['Muçarela'],
+    'mucarela': ['Muçarela'],
+    'chips ao leite': ['Gota Chips ao Leite'],
+    'chips branco': ['Gota Chips Branco'],
+    'leite ninho': ['Leite em Pó'],
+    'batata palha': ['Batata Palha'],
+    'coco chips': ['Coco Ralado Floco'],
+    'coco ralado': ['Coco Ralado'],
+    'avela triturada': ['Avelã', 'Avelã 30g'],
+    'frango': ['Frango temperado'],
+    'file mignon preparado': ['Mignon 240g', 'File Mignon'],
+    'camarao preparado': ['Camarão'],
+    'bacon cubos': ['Bacon em cubos 110g', 'Bacon'],
+    'bacon fatiado': ['Bacon'],
+    'calabresa ralada': ['Calabresa Reta', 'Calabresa picada 80g'],
+    'presunto picado': ['Presunto'],
+    'chocolate ao leite': ['Chocolate ao Leite - Aberto Finalização', 'Chocolate ao Leite Bisnaga'],
+    'chocolate branco': ['Chocolate Branco - Aberto Finalização', 'Chocolate Branco Bisnaga'],
+    'nutella': ['Nutella'],
+    'doce de leite': ['Doce de Leite'],
+    'ketchup e maionese': ['Ketchup Heinz', 'Maionese Heinz'],
+    'rucula picada': ['Rúcula'],
+    'pimentao vermelho': ['Pimentão Vermelho'],
+    'pimentao amarelo': ['Pimentão Amarelo'],
+    'pimentao verde': ['Pimentão Verde'],
+    'manjericao': ['Manjericão'],
+    'uva': ['Uva']
+  };
+  if (map[key]) all.push.apply(all, map[key]);
+  return Array.from(new Set(all.map(x => String(x || '').trim()).filter(Boolean)));
+}
+
+async function seedInsumosFrescosPremiumV1(client) {
+  const mk = await client.query("SELECT (config->>'estoque_insumos_frescos_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+  if (mk.rows[0] && mk.rows[0].m) {
+    console.log('[db] insumos frescos Premium já aplicados - ignorado');
+    return;
+  }
+  await client.query('BEGIN');
+  try {
+    await client.query(`INSERT INTO est_setor (tenant_id,nome,ordem,ativo) VALUES ($1,'Montagem',30,TRUE)
+      ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE`, [TENANT]);
+    await client.query(`INSERT INTO est_categoria (tenant_id,nome,departamento,ordem,ativo) VALUES ($1,'Hortifruti','Alimentos',10,TRUE)
+      ON CONFLICT (tenant_id,nome) DO UPDATE SET departamento=COALESCE(est_categoria.departamento,EXCLUDED.departamento), ativo=TRUE`, [TENANT]);
+    const cat = await client.query("SELECT id FROM est_categoria WHERE tenant_id=$1 AND nome='Hortifruti' LIMIT 1", [TENANT]);
+    const setor = await client.query("SELECT id FROM est_setor WHERE tenant_id=$1 AND nome='Montagem' LIMIT 1", [TENANT]);
+    const catId = cat.rows[0] ? cat.rows[0].id : null;
+    const setorId = setor.rows[0] ? setor.rows[0].id : null;
+    const itens = [
+      ['Pimentão Verde', 'KG', 'g', 1000],
+      ['Pimentão Vermelho', 'KG', 'g', 1000],
+      ['Pimentão Amarelo', 'KG', 'g', 1000],
+      ['Rúcula', 'MAÇO', 'g', 200],
+      ['Manjericão', 'MAÇO', 'g', 50],
+      ['Uva', 'KG', 'g', 1000]
+    ];
+    let n = 0;
+    for (const [nome, unidade, base, peso] of itens) {
+      const r = await client.query(`INSERT INTO est_produto
+        (tenant_id,nome,categoria_id,tipo_item,unidade,unidade_base,peso_g,pode_contar,pode_comprar,pode_produzir,ativo,conversao_origem,conversao_confianca,conversao_precisa_revisao)
+        VALUES ($1,$2,$3,'insumo',$4,$5,$6,TRUE,TRUE,FALSE,TRUE,'seed_frescos','media',FALSE)
+        ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE,
+          categoria_id=COALESCE(est_produto.categoria_id,EXCLUDED.categoria_id),
+          unidade=COALESCE(est_produto.unidade,EXCLUDED.unidade),
+          unidade_base=COALESCE(est_produto.unidade_base,EXCLUDED.unidade_base),
+          peso_g=COALESCE(est_produto.peso_g,EXCLUDED.peso_g),
+          pode_contar=TRUE,pode_comprar=TRUE,atualizado_em=NOW()
+        RETURNING id`, [TENANT, nome, catId, unidade, base, peso]);
+      const pid = r.rows[0] && r.rows[0].id;
+      if (!pid) {
+        console.error('[db] FALHA insumos frescos: produto sem id após upsert - ' + nome);
+        continue;
+      }
+      if (setorId) await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
+        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING`, [TENANT, pid, setorId]);
+      n++;
+    }
+    await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_insumos_frescos_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+    await client.query('COMMIT');
+    console.log('[db] insumos frescos Premium semeados (' + n + ' produtos, setor Montagem)');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  }
+}
+
+async function importarFichasPremiumCardapioV1(client) {
+  const arquivo = path.join(__dirname, 'data', 'fichas-premium-cardapio-v1.json');
+  if (!fs.existsSync(arquivo)) return { ok: false, motivo: 'arquivo_ausente' };
+  const mk = await client.query("SELECT (config->>'fichas_premium_cardapio_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+  if (mk.rows[0] && mk.rows[0].m) {
+    console.log('[db] fichas Premium cardápio v1 já aplicadas - ignorado');
+    return { ok: true, ignorado: true };
+  }
+  const data = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^\uFEFF/, ''));
+  const fichas = Array.isArray(data.fichas) ? data.fichas : [];
+  const opRows = (await client.query(`SELECT o.id,o.nome,g.nome AS grupo_nome,p.nome AS produto_nome
+    FROM opcoes o JOIN opcao_grupos g ON g.id=o.grupo_id JOIN produtos p ON p.id=g.produto_id
+    WHERE o.tenant_id=$1 AND o.status<>'OCULTO'`, [TENANT])).rows;
+  const opByNorm = {};
+  for (const o of opRows) (opByNorm[normSeed(o.nome)] || (opByNorm[normSeed(o.nome)] = [])).push(o);
+  const estRows = (await client.query('SELECT id,nome FROM est_produto WHERE tenant_id=$1 AND ativo', [TENANT])).rows;
+  const estByNorm = {};
+  for (const p of estRows) if (!estByNorm[normSeed(p.nome)]) estByNorm[normSeed(p.nome)] = p;
+  const resolveEst = (nome) => {
+    for (const alias of componenteEstoqueAliases(nome)) {
+      const hit = estByNorm[normSeed(alias)];
+      if (hit) return hit.id;
+    }
+    return null;
+  };
+  const semOpcao = [], semInsumo = new Set();
+  let alvosInseridos = 0, linhasInseridas = 0, alvosIgnorados = 0;
+  await client.query('BEGIN');
+  try {
+    for (const ficha of fichas) {
+      const ops = uniqById(fichaPremiumAliases(ficha.nome, ficha.aliases).flatMap(a => opByNorm[normSeed(a)] || []));
+      if (!ops.length) {
+        semOpcao.push(ficha.nome);
+        continue;
+      }
+      for (const op of ops) {
+        const ja = await client.query('SELECT COUNT(*)::int AS n FROM ficha_itens WHERE tenant_id=$1 AND opcao_id=$2', [TENANT, op.id]);
+        if (ja.rows[0].n > 0) {
+          alvosIgnorados++;
+          continue;
+        }
+        let ordem = 0;
+        for (const item of (ficha.itens || [])) {
+          const qtd = item.equivalente_g != null ? Number(item.equivalente_g) : Number(item.quantidade);
+          const unidade = item.equivalente_g != null ? 'g' : String(item.unidade || '').trim();
+          if (!(qtd > 0)) continue;
+          const estId = resolveEst(item.componente);
+          if (!estId) semInsumo.add(item.componente);
+          const obs = [item.observacao, item.confianca ? 'confiança: ' + item.confianca : null].filter(Boolean).join(' | ') || null;
+          await client.query(`INSERT INTO ficha_itens
+            (tenant_id,opcao_id,insumo_nome,est_produto_id,quantidade,unidade,base_medida,fonte,meta)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)`,
+            [TENANT, op.id, item.componente, estId, qtd, unidade || null, '1 porção = 1/2 pizza grande ou 1 pizza pequena', item.fonte || null,
+             JSON.stringify({ importado_de: data.versao || 'premium-cardapio-v1', ficha: ficha.nome, grupo: ficha.grupo, chave: ficha.chave, tipo: item.tipo || null, receita_ref: item.receita_ref || null, ordem: ordem++ })]);
+          linhasInseridas++;
+        }
+        alvosInseridos++;
+      }
+    }
+    await client.query('UPDATE tenants SET config=COALESCE(config,\'{}\'::jsonb)||jsonb_build_object(\'fichas_premium_cardapio_v1\',true,\'fichas_premium_cardapio_v1_resumo\',jsonb_build_object(\'alvos_inseridos\',$2,\'linhas_inseridas\',$3,\'alvos_ignorados\',$4,\'sem_opcao\',$5::jsonb,\'sem_insumo\',$6::jsonb)) WHERE id=$1',
+      [TENANT, alvosInseridos, linhasInseridas, alvosIgnorados, JSON.stringify(semOpcao), JSON.stringify(Array.from(semInsumo).slice(0, 80))]);
+    await client.query('COMMIT');
+    console.log('[db] fichas Premium cardápio v1 importadas - alvos: ' + alvosInseridos + ', linhas: ' + linhasInseridas + ', ignorados: ' + alvosIgnorados + ', sem opção: ' + semOpcao.length + ', sem insumo direto: ' + semInsumo.size);
+    if (semOpcao.length) console.log('[db] fichas Premium sem opção no cardápio: ' + semOpcao.slice(0, 20).join(', '));
+    if (semInsumo.size) console.log('[db] fichas Premium sem insumo direto no estoque: ' + Array.from(semInsumo).slice(0, 20).join(', '));
+    return { ok: true, alvosInseridos, linhasInseridas, alvosIgnorados, semOpcao, semInsumo: Array.from(semInsumo) };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  }
+}
+
 async function migrarFichasProducaoV2(client) {
   await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,ativo)
     SELECT DISTINCT r.tenant_id,r.produto_id,p.nome,p.unidade,'PRODUZIDO',TRUE
@@ -305,13 +495,17 @@ async function init(retries) {
       try {
         const rf = await pool.query('SELECT COUNT(*)::int AS n FROM ficha_itens WHERE tenant_id=$1', [TENANT]);
         if (rf.rows[0].n === 0) {
-          const seed3 = fs.readFileSync(path.join(__dirname, 'seed-fase3.sql'), 'utf8');
-          await pool.query(seed3);
-          console.log('[db] seed fase3 (fichas tecnicas) aplicado');
+          if (fs.existsSync(path.join(__dirname, 'data', 'fichas-premium-cardapio-v1.json'))) {
+            console.log('[db] seed fase3 legado adiado: import Premium v1 será usado após estoque/catalogo');
+          } else {
+            const seed3 = fs.readFileSync(path.join(__dirname, 'seed-fase3.sql'), 'utf8');
+            await pool.query(seed3);
+            console.log('[db] seed fase3 (fichas tecnicas) aplicado');
+          }
         } else {
           console.log('[db] fichas ja populadas (' + rf.rows[0].n + ') - seed fase3 ignorado');
         }
-      } catch (es3) { console.log('[db] seed-fase3 aviso:', es3.code || es3.message); }
+      } catch (es3) { console.error('[db] seed-fase3 aviso:', es3.stack || es3.message); }
       try {
         const seed4 = fs.readFileSync(path.join(__dirname, 'seed-fase4-pizzagrande.sql'), 'utf8');
         await pool.query(seed4);
@@ -439,6 +633,14 @@ async function init(retries) {
           console.log('[db] catalogo operacional Premium v4 aplicado - vinculos: ' + total);
         } else { console.log('[db] catalogo operacional Premium v4 ja aplicado - ignorado'); }
       } catch (ef4) { console.log('[db] catalogo/fichas v4 aviso:', ef4.code || '', ef4.message || ''); }
+      try {
+        const freshClient = await pool.connect();
+        try { await seedInsumosFrescosPremiumV1(freshClient); } finally { freshClient.release(); }
+      } catch (eif) { console.error('[db] FALHA insumos frescos Premium:', eif.stack || eif.message); }
+      try {
+        const fichaClient = await pool.connect();
+        try { await importarFichasPremiumCardapioV1(fichaClient); } finally { fichaClient.release(); }
+      } catch (efp) { console.error('[db] FALHA fichas Premium cardápio v1:', efp.stack || efp.message); }
       try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');
         await pool.query(seedp);

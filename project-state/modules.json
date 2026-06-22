@@ -84,7 +84,7 @@
     "id": "estoque-v2",
     "nome": "Estoque operacional v2",
     "status": "em_andamento",
-    "progresso": 96,
+    "progresso": 97,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -94,12 +94,13 @@
     "repositorio": "Thiago-33340/premium-plataforma",
     "container": "premium-plataforma-node",
     "banco": "postgres-principal",
-    "arquivos_chave": ["public/estoque.html", "estoque-v2.sql", "data/estoque-catalogo-premium-v4.json", "db.js", "server-pg.js"],
+    "arquivos_chave": ["public/estoque.html", "estoque-v2.sql", "data/estoque-catalogo-premium-v4.json", "data/fichas-premium-cardapio-v1.json", "db.js", "server-pg.js"],
     "rotas_relacionadas": ["estoque-v2-cadastros-operacao"],
     "tabelas_relacionadas": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor"],
     "pendencias": [
       "Documentar catálogo Premium v4 como fonte inicial",
       "Acompanhar 3 fichas que dependem de receita real da cozinha",
+      "Validar pós-deploy a importação de fichas do cardápio em ficha_itens",
       "Validar visual final no navegador com gestor"
     ],
     "proximos_passos": [
@@ -112,7 +113,7 @@
     "id": "producao-fichas",
     "nome": "Produção e fichas técnicas",
     "status": "em_andamento",
-    "progresso": 92,
+    "progresso": 94,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -122,16 +123,18 @@
     "repositorio": "Thiago-33340/premium-plataforma",
     "container": "premium-plataforma-node",
     "banco": "postgres-principal",
-    "arquivos_chave": ["public/admin.html", "public/estoque.html", "estoque-v2.sql", "server-pg.js"],
+    "arquivos_chave": ["public/admin.html", "public/estoque.html", "estoque-v2.sql", "server-pg.js", "data/fichas-premium-cardapio-v1.json"],
     "rotas_relacionadas": ["producao-fichas"],
     "tabelas_relacionadas": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run", "est_producao_receita"],
     "pendencias": [
       "Completar 3 fichas pendentes com receita real da cozinha",
+      "Validar import idempotente das fichas de cardápio Premium após deploy",
       "Documentar baixa de insumos por produção",
       "Validar editor avançado no estoque após deploy"
     ],
     "proximos_passos": [
       "Confirmar receita real de Camarão, Molho produzido e Coco Ralado Floco",
+      "Conferir ficha_itens, fichas-cardapio e baixa por pedido após deploy do import",
       "Testar salvar/excluir ficha no navegador com gestor",
       "Manter smoke mutável como teste obrigatório antes de deploys"
     ]

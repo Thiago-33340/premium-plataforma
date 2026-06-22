@@ -1,0 +1,3392 @@
+{
+  "versao": "premium-cardapio-v1",
+  "origem": "entrega-fichas-premium/fichas-premium.data.json",
+  "estrategia": "insert-if-absent por opcao; nao sobrescreve fichas existentes",
+  "gerado_em": "2026-06-22T23:40:13.349Z",
+  "fichas": [
+    {
+      "grupo": "pizza",
+      "chave": "bacon-com-batata-palha",
+      "nome": "Bacon com Batata Palha",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Bacon com Batata Palha"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "fatias",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Batata palha",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 60,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "calabacon",
+      "nome": "Calabacon",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Calabacon"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola Roxa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "calabresa",
+      "nome": "Calabresa",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Calabresa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola Roxa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "camarao-rosa",
+      "nome": "Camarão Rosa",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Camarão Rosa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Pimentão vermelho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 10,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Pimentão amarelo",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 10,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Alho-poró",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 15,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Camarão preparado",
+          "tipo": "produzido",
+          "receita_ref": "camarao",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Camarão",
+          "observacao": "Preparo por porção; montagem visual indica camarão na pizza. Conferir se usa 200g ou porção completa de 240g.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate cereja",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "ml",
+          "fonte": "Manual de preparo - Camarão",
+          "observacao": "Conversão gerencial: 1 fio ≈ 1 colher de chá ≈ 5ml ou aproximadamente 4g.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Limão siciliano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "ml",
+          "fonte": "Manual de preparo - Camarão",
+          "observacao": "Conversão gerencial: 1 colher de chá de suco de limão siciliano ≈ 5ml.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Sal",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 2.25,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Camarão",
+          "observacao": "Conversão gerencial: 1/2 colher de chá ≈ 2,5ml; peso médio estimado 2,25g.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "cinco-queijos",
+      "nome": "Cinco Queijos",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Cinco Queijos"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Provolone",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cheddar",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Parmesão",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "do-cheff",
+      "nome": "Do Cheff",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Do Cheff"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Palmito",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "frango-com-bacon",
+      "nome": "Frango com Bacon",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Frango com Bacon"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Frango",
+          "tipo": "produzido",
+          "receita_ref": "frango_temperado",
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": null,
+          "confianca": "confirmado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeitona",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 6,
+          "unidade": "rodelas",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização para pizzas com azeitona",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "frango-com-catupiry",
+      "nome": "Frango com Catupiry",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Frango com Catupiry"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Frango",
+          "tipo": "produzido",
+          "receita_ref": "frango_temperado",
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": null,
+          "confianca": "confirmado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeitona",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 6,
+          "unidade": "rodelas",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização para pizzas com azeitona",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "frango-cremoso",
+      "nome": "Frango Cremoso",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Frango Cremoso"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Frango",
+          "tipo": "produzido",
+          "receita_ref": "frango_temperado",
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": null,
+          "confianca": "confirmado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "fatias",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 110,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "lombo-cremoso",
+      "nome": "Lombo Cremoso",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Lombo",
+        "Lombo Cremoso"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Lombo fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Alho-poró",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 15,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "margherita",
+      "nome": "Margherita",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Margherita"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 120,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Manjericão",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 3,
+          "unidade": "g",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "Base do gestor: maco 50 g (~16 g de folhas) -> fixado 3 g/porcao.",
+          "confianca": "confirmado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mignon",
+      "nome": "Mignon",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mignon"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Filé Mignon preparado",
+          "tipo": "produzido",
+          "receita_ref": "mignon",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Porção do preparo",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Manteiga",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 25,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Sal",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 2.4,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate cereja",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Parmesão",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mignon-com-fritas",
+      "nome": "Mignon com Fritas",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mignon com Fritas"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Filé Mignon preparado",
+          "tipo": "produzido",
+          "receita_ref": "mignon",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Porção do preparo",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Manteiga",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 25,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Sal",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 2.4,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 110,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Batata frita",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mignon-cremosa",
+      "nome": "Mignon Cremosa",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mignon Cremosa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Filé Mignon preparado",
+          "tipo": "produzido",
+          "receita_ref": "mignon",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Porção do preparo",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Manteiga",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 25,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Sal",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 2.4,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Mignon",
+          "observacao": "Preparo mignon",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate cereja",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mr-pig",
+      "nome": "Mr. Pig",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mr Pig",
+        "Mr. Pig"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "fatias",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon em cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 110,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mussarela",
+      "nome": "Mussarela",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mussarela"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 120,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "mussarela-com-bacon",
+      "nome": "Mussarela com Bacon",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Mussarela com Bacon"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 120,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "palmito-cremoso",
+      "nome": "Palmito Cremoso",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Palmito Cremoso"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Palmito",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 75,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "pepperoni",
+      "nome": "Pepperoni",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Pepperoni"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 160,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Imagem mostra mussarela 80g em duas linhas; total considerado 160g.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Pepperoni",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 50,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate cereja",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "portuguesa",
+      "nome": "Portuguesa",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Portuguesa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 80,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Presunto picado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Ovo",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 2,
+          "unidade": "fatiados",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Cebola",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeitona",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 6,
+          "unidade": "rodelas",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização para pizzas com azeitona",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "premium",
+      "nome": "Premium",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Coca Cola 1,5 Litros",
+        "Coca Cola 1Lt",
+        "Coca Cola 2 Litros",
+        "Coca Cola Zero 1,5 Litros",
+        "Coca Cola Zero 1Lt",
+        "Coca Cola Zero 2 Litros",
+        "Cola Lata 310mL",
+        "Cola Lata Zero Açúcar 310ml",
+        "Guaraná Antártica Zero 350ml",
+        "Margherita",
+        "Premium",
+        "Sprite 310ml Zero Açucar",
+        "UVA Sem Açúcar",
+        "Água com gás 500ml",
+        "Água sem gás 500ml"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Frango",
+          "tipo": "produzido",
+          "receita_ref": "frango_temperado",
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": null,
+          "confianca": "confirmado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeitona",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 6,
+          "unidade": "rodelas",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização para pizzas com azeitona",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "quatro-queijos",
+      "nome": "Quatro Queijos",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Quatro Queijos"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Provolone",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Parmesão",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "rucula-premium",
+      "nome": "Rúcula Premium",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Rúcula Premium"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Palmito",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Separar em uma vasilha com milho e tomate cereja",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Separar em uma vasilha",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate cereja",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Separar em uma vasilha",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Rúcula picada",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 60,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeitona",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 6,
+          "unidade": "rodelas",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Finalização",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Azeite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 5,
+          "unidade": "ml",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Conversão gerencial: 1 fio ≈ 1 colher de chá ≈ 5ml ou aproximadamente 4g.",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "sexta-santa",
+      "nome": "Sexta Santa",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Santa",
+        "Sexta Santa",
+        "Sexta-Santa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Palmito",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 120,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "suprema",
+      "nome": "Suprema",
+      "tipo": "Pizza salgada",
+      "aliases": [
+        "Suprema"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Molho Premium",
+          "tipo": "produzido",
+          "receita_ref": "molho_premium",
+          "quantidade": 1,
+          "unidade": "concha",
+          "fonte": "Gestor (fotos MANUAL DE PREPARO + CONTEXTO-TITAN-ATENDE.md)",
+          "observacao": "1 concha = 35 g",
+          "confianca": "confirmado",
+          "equivalente_g": 35
+        },
+        {
+          "componente": "Mussarela",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Presunto picado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Calabresa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 175,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Orégano",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 0.75,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Estimativa gerencial: orégano salpicado médio = 0,75g por 1/2 pizza.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "sonho-de-valsa",
+      "nome": "Sonho de Valsa",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Sonho de Valsa"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Sonho de Valsa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Bombom partido ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chips ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "ouro-branco",
+      "nome": "Ouro Branco",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Ouro Branco"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Ouro Branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Bombom partido ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chips branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "diamante-negro",
+      "nome": "Diamante Negro",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Diamante Negro"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Diamante Negro",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 10,
+          "unidade": "quadradinhos",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chips ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "prestigio",
+      "nome": "Prestígio",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Prestigio"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Prestígio",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 10,
+          "unidade": "quadradinhos",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Coco chips",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "sensacao",
+      "nome": "Sensação",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Sensação"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango em cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 40,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chips ao leite",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "raffaello",
+      "nome": "Raffaello",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Raffaello"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Coco chips",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Raffaello",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Bombom partido ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "nutella-com-morango",
+      "nome": "Nutella com Morango",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Nutella com Morango"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Nutella",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango em cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 40,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "choco-premium",
+      "nome": "Choco Premium",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Choco Premium"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Nutella",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 200,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Avelã triturada",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Ferrero Rocher",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Bombom partido ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "ninho-com-nutella",
+      "nome": "Ninho com Nutella",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Ninho com Nutella"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Brigadeiro de Ninho",
+          "tipo": "produzido",
+          "receita_ref": "brigadeiro_de_ninho",
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v4: Ninho com Nutella usa 150g de brigadeiro de ninho por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Nutella",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "3 passadas em arco",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Leite Ninho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 10,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Estimativa gerencial: Ninho polvilhado = 10g por 1/2 pizza/borda.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Uva",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "pizza",
+      "chave": "branco-supremo",
+      "nome": "Branco Supremo",
+      "tipo": "Pizza doce",
+      "aliases": [
+        "Branco Supremo"
+      ],
+      "itens": [
+        {
+          "componente": "Massa preparada",
+          "tipo": "produzido",
+          "receita_ref": "massa",
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Manual de preparo - Massa",
+          "observacao": "Rateio padrão atualizado: 240g por 1/2 pizza grande ou pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chocolate branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 240,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Medida atualizada v3: chocolate em pizzas doces = 240g por 1/2 pizza grande ou 1 pizza pequena.",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 8,
+          "unidade": "metades",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": "Fruta partida ao meio",
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Morango em cubos",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 40,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        },
+        {
+          "componente": "Chips branco",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Guia de Montagem - Pizzas Doces",
+          "observacao": null,
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-bacon",
+      "nome": "Adicional - Bacon",
+      "tipo": "Adicional",
+      "aliases": [
+        "Bacon - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Bacon fatiado",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 90,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão estimado pelo manual",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-batata-palha",
+      "nome": "Adicional - Batata Palha",
+      "tipo": "Adicional",
+      "aliases": [
+        "Batata Palha - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Batata palha",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 60,
+          "unidade": "g",
+          "fonte": "Guia de finalização - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão finalização",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-catupiry",
+      "nome": "Adicional - Catupiry",
+      "tipo": "Adicional",
+      "aliases": [
+        "Catupiry - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Catupiry",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-cebola-roxa",
+      "nome": "Adicional - Cebola Roxa",
+      "tipo": "Adicional",
+      "aliases": [
+        "Cebola Roxa - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Cebola Roxa",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 30,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-cheddar",
+      "nome": "Adicional - Cheddar",
+      "tipo": "Adicional",
+      "aliases": [
+        "Cheddar - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Cheddar",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 150,
+          "unidade": "g",
+          "fonte": "Manual de montagem - recheio pizzas - A4.pdf + estimativa gerencial",
+          "observacao": "Estimativa gerencial: aplicação de queijo cremoso padronizada em 150g por 1/2 pizza grande ou pizza pequena. Adicional mantém a mesma quantidade padrão do produto.",
+          "confianca": "estimado",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-milho",
+      "nome": "Adicional - Milho",
+      "tipo": "Adicional",
+      "aliases": [
+        "Milho  - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Milho",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 65,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-palmito",
+      "nome": "Adicional - Palmito",
+      "tipo": "Adicional",
+      "aliases": [
+        "Palmito - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Palmito",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 100,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-parmesao",
+      "nome": "Adicional - Parmesao",
+      "tipo": "Adicional",
+      "aliases": [
+        "Parmesão - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Parmesão",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 45,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "adicional",
+      "chave": "adicional-tomate",
+      "nome": "Adicional - Tomate",
+      "tipo": "Adicional",
+      "aliases": [
+        "Tomate - Adicional"
+      ],
+      "itens": [
+        {
+          "componente": "Tomate",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 120,
+          "unidade": "g",
+          "fonte": "Manual de Montagem - pizzas salgadas",
+          "observacao": "Adicional 1/2 padrão; algumas receitas usam 5 fatias",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    },
+    {
+      "grupo": "extra",
+      "chave": "heinz-ketchup-e-maionese",
+      "nome": "Heinz Ketchup e Maionese",
+      "tipo": "Extra",
+      "aliases": [
+        "Heinz Ketchup e Maionese  12 un"
+      ],
+      "itens": [
+        {
+          "componente": "Ketchup e Maionese",
+          "tipo": "materia-prima",
+          "receita_ref": null,
+          "quantidade": 12,
+          "unidade": "un",
+          "fonte": "Cardápio",
+          "observacao": "Extra do pedido",
+          "confianca": "firme",
+          "equivalente_g": null
+        }
+      ]
+    }
+  ]
+}

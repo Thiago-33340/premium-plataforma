@@ -262,3 +262,42 @@ O Claude deve interpretar assim:
 - A frase obrigatória é `ACIONAR DEPLOY`.
 - A ação registra resultado em `deploys.json`, `command-audit-log.json` e `titan_command_actions`.
 - O Command é cockpit de governança e acionamento; código continua vindo de commit/push/deploy.
+
+## Atualização — Relatório Claude aplicado pelo Codex
+
+Data: 2026-06-22
+
+O relatório `RELATORIO-PARA-CODEX.md` apontou três problemas: frescos ausentes, `ficha_itens=0` e risco de divergência Git/produção.
+
+O Codex confirmou por diagnóstico read-only que produção tem `opcoes=309` e `ficha_itens=0`. Portanto:
+
+- não é necessário recriar o cardápio;
+- é necessário importar fichas técnicas de baixa por venda;
+- o import deve ser idempotente e não sobrescrever edição do gestor.
+
+Implementação preparada:
+
+- `data/fichas-premium-cardapio-v1.json`;
+- seed `estoque_insumos_frescos_v1`;
+- import `fichas_premium_cardapio_v1`;
+- deduplicação da baixa por nome em `server-pg.js`.
+
+O Claude deve revisar depois do deploy:
+
+1. se as 45 fichas importadas cobrem os sabores/adicionais/extras esperados;
+2. se os insumos sem casamento direto precisam de alias melhor;
+3. como modelar bordas combinadas sem multiplicar baixa;
+4. se o motor de pedido deve passar sempre `opcao_id` para evitar fallback por nome.
+
+## Atualização — Webhook seguro do Command configurado
+
+Data: 2026-06-22
+
+A variável `TITAN_DEPLOY_WEBHOOK_URL` foi configurada diretamente no ambiente do serviço EasyPanel.
+
+Regras para Claude/Codex:
+
+- não procurar nem solicitar o valor do webhook;
+- não registrar token/webhook em Git, docs, project-state ou mensagens;
+- usar o Command como cockpit/auditoria de deploy quando o Executor externo estiver ativo;
+- se o botão de deploy externo ainda aparecer como não configurado, validar primeiro se o deploy atual já carregou a variável de ambiente.
