@@ -27,6 +27,40 @@ const money = n => Math.round(Number(n) * 100) / 100;
 function json(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(b); }
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
 
+const PROJECT_STATE_FILES = [
+  'modules.json', 'routes.json', 'services.json', 'containers.json', 'databases.json',
+  'tasks.json', 'risks.json', 'dependencies.json', 'decisions.json', 'roadmap.json',
+  'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
+  'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
+  'test-matrix.json'
+];
+async function gestorBasico(uid) {
+  if (!uid) return null;
+  try {
+    const r = await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais
+      FROM rbac_contacts
+      WHERE id=$1 AND tenant_id=$2 AND ativo
+        AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal
+          OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}'))
+          OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]);
+    return r.rows[0] || null;
+  } catch (e) { return null; }
+}
+function lerProjectStateSeguro() {
+  const base = path.join(ROOT, 'project-state');
+  const out = {};
+  for (const file of PROJECT_STATE_FILES) {
+    try {
+      const full = path.join(base, file);
+      if (!full.startsWith(base)) continue;
+      out[file] = JSON.parse(fs.readFileSync(full, 'utf8'));
+    } catch (e) {
+      out[file] = { erro: e.message };
+    }
+  }
+  return out;
+}
+
 /* ===== Permissões do Estoque (configuráveis por usuário) ===== */
 const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
 const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
@@ -495,6 +529,19 @@ async function api(req, res, url) {
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }); return res.end(); }
 
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
+
+  if (sub === 'mapper' && seg[2] === 'state' && req.method === 'GET') {
+    const adminId = url.searchParams.get('admin_id') || url.searchParams.get('usuario_id');
+    const gestor = await gestorBasico(adminId);
+    if (!gestor) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+    return json(res, 200, {
+      ok: true,
+      tenant: TENANT,
+      generated_at: new Date().toISOString(),
+      usuario: { id: gestor.id, nome: gestor.nome, perfil_principal: gestor.perfil_principal },
+      files: lerProjectStateSeguro()
+    });
+  }
 
   if (sub === '_diag') {
     const out = { tenant: TENANT, cardapio_fonte: cardapioCacheFonte, tabelas: {} };
@@ -2433,6 +2480,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
+    if (p === '/mapper' || p === '/mapper/') return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);
     if (fp.startsWith(path.join(ROOT, 'public'))) return serveStatic(res, fp);

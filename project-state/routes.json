@@ -19,7 +19,8 @@
     { "method": "GET", "path": "/mesas", "module": "mesas-caixa", "target": "public/mesas.html" },
     { "method": "GET", "path": "/admin", "module": "admin-gestor", "target": "public/admin.html" },
     { "method": "GET", "path": "/caixa", "module": "mesas-caixa", "target": "public/caixa.html" },
-    { "method": "GET", "path": "/gestor", "module": "admin-gestor", "target": "public/gestor/index.html" }
+    { "method": "GET", "path": "/gestor", "module": "admin-gestor", "target": "public/gestor/index.html" },
+    { "method": "GET", "path": "/mapper", "module": "command-center", "target": "public/mapper.html" }
   ],
   "api_groups": [
     { "id": "saude-diagnostico", "module": "core-http", "base": "/api", "status": "ativo", "routes": ["GET /api/health", "GET /api/_diag"] },
@@ -32,6 +33,7 @@
     { "id": "estoque-legado", "module": "estoque-v2", "base": "/api/estoque", "status": "legado", "routes": ["POST /api/estoque/login", "GET /api/estoque/itens", "POST /api/estoque/contagem", "POST /api/estoque/importar-definicao", "GET /api/estoque/contagens", "POST /api/estoque/movimento", "GET /api/estoque/movimentos"] },
     { "id": "staff-mesas-caixa", "module": "mesas-caixa", "base": "/api", "status": "ativo_em_validacao", "notes": "GET /api/mesas, GET /api/caixa e GET /api/entregadores cobertos por smoke read-only; escritas de mesa/caixa/entregador ainda precisam de staging.", "routes": ["POST /api/staff/login", "POST /api/staff/trocar-pin", "GET /api/mesas", "POST /api/mesas/:numero/abrir", "GET /api/mesas/:numero", "POST /api/mesas/:numero/item", "DELETE /api/mesas/:numero/item/:itemId", "POST /api/mesas/:numero/fechar", "GET /api/caixa", "POST /api/caixa/abrir", "POST /api/caixa/fechar", "GET /api/entregadores", "POST /api/entregadores", "PATCH /api/entregadores/:id"] },
     { "id": "admin", "module": "admin-gestor", "base": "/api/admin", "status": "misto", "notes": "Admin de catálogo/equipe/config é ativo. Rotas antigas de estoque/setor são compatibilidade sobre `est_produto`/`est_setor`; UI nova deve usar `/api/est/*`.", "routes": ["GET /api/admin/usuarios", "POST /api/admin/usuario", "POST /api/admin/usuario/:id/pin", "PATCH /api/admin/usuario/:id", "GET /api/admin/estoque-itens", "POST /api/admin/estoque-item", "DELETE /api/admin/estoque-item/:id", "POST /api/admin/preco", "GET /api/admin/config", "POST /api/admin/config", "GET /api/admin/tema", "POST /api/admin/tema", "GET /api/admin/impressao", "POST /api/admin/impressao", "GET /api/admin/catalogo", "POST /api/admin/categoria", "PATCH /api/admin/categoria/:id", "DELETE /api/admin/categoria/:id", "POST /api/admin/produto", "PATCH /api/admin/produto/:id", "DELETE /api/admin/produto/:id", "GET /api/admin/setores", "POST /api/admin/setor/:id/rename"] },
-    { "id": "config-global", "module": "core-http", "base": "/api", "status": "ativo", "routes": ["GET /api/config", "POST /api/config"] }
+    { "id": "config-global", "module": "core-http", "base": "/api", "status": "ativo", "routes": ["GET /api/config", "POST /api/config"] },
+    { "id": "mapper-state", "module": "command-center", "base": "/api/mapper", "status": "ativo_em_validacao", "notes": "Read-only, restrito a gestor por admin_id. Não expõe secrets; lê somente project-state permitido.", "routes": ["GET /api/mapper/state"] }
   ]
 }

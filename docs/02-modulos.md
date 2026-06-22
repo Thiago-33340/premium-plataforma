@@ -16,7 +16,7 @@ Os módulos oficiais iniciais estão em `project-state/modules.json`.
 | Mesas, comandas e caixa | detectado | 45 | operação de salão/caixa |
 | Usuários, PIN, equipe e permissões | detectado | 45 | acesso e responsabilidade |
 | Infraestrutura e deploy | parcial | 50 | publicação e ambiente |
-| Titan Command Center | planejado | 5 | centro de comando |
+| Titan Command Center | em_andamento | 30 | mapper/progresso |
 
 ## Relação módulo → rota → banco → serviço
 
@@ -32,7 +32,7 @@ Os módulos oficiais iniciais estão em `project-state/modules.json`.
 | mesas-caixa | `staff-mesas-caixa` | `mesas`, `comandas`, `caixa` | `premium-plataforma-node` |
 | permissoes-staff | `usuarios-permissoes-ia`, `staff` | `est_permissao` e RBAC | `premium-plataforma-node` |
 | infra-deploy | health/deploy | não aplicável | EasyPanel/Docker |
-| command-center | a definir | `project-state/*.json` | a definir |
+| command-center | `/mapper`, `mapper-state` | `project-state/*.json` | `premium-plataforma-node` |
 
 ## Próxima revisão
 

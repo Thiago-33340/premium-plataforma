@@ -55,15 +55,15 @@
     "id": "task-f2-005",
     "titulo": "Desenhar Command Center inicial",
     "modulo": "command-center",
-    "status": "nao_iniciado",
+    "status": "em_andamento",
     "prioridade": "media",
     "categoria": "ux_ui",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
-    "bloqueada": true,
+    "bloqueada": false,
     "dependencias": ["task-f2-001", "task-f2-002", "task-f2-003"],
-    "bloqueios": ["Aguardar estabilização da base project-state"],
-    "proximo_passo": "Criar wireframe depois que módulos/rotas/banco forem validados."
+    "bloqueios": [],
+    "proximo_passo": "Validar /mapper com Thiago e evoluir filtros/visões específicas depois que o Claude entregar o estoque."
   },
   {
     "id": "task-f2-006",
@@ -156,5 +156,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-010"],
     "proximo_passo": "Depois de validar produção, buscar clientes/código que ainda chamem `/api/admin/estoque-*` e remover a ponte quando for seguro."
+  },
+  {
+    "id": "task-f2-013",
+    "titulo": "Criar Titan Mapper visual",
+    "modulo": "command-center",
+    "status": "concluido",
+    "prioridade": "alta",
+    "categoria": "ux_ui",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-003", "task-f2-006", "task-f2-008"],
+    "proximo_passo": "Publicar /mapper, validar com gestor e adicionar visão de estoque após a entrega atual do Claude."
   }
 ]

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Titan Mapper — progresso</title>
+  <style>
+    :root{
+      --bg:#09090b; --panel:#121216; --panel2:#18181d; --line:#2a2a31;
+      --txt:#f6f6f7; --mut:#aaaab4; --mut2:#777783;
+      --orange:#ff6a00; --orange2:#ff8a2a; --green:#49d17d; --red:#ff5a68;
+      --yellow:#f7c948; --blue:#5aa7ff; --violet:#a78bfa;
+      --shadow:0 18px 70px rgba(0,0,0,.38);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:
+      radial-gradient(circle at 18% 0%,rgba(255,106,0,.22),transparent 32%),
+      radial-gradient(circle at 85% 8%,rgba(90,167,255,.12),transparent 28%),
+      var(--bg);color:var(--txt);font:14px/1.45 Inter,Segoe UI,system-ui,-apple-system,sans-serif}
+    a{color:inherit;text-decoration:none}
+    button,input{font:inherit}
+    .wrap{max-width:1440px;margin:0 auto;padding:24px}
+    .top{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+    .brand{display:flex;gap:14px;align-items:center}
+    .mark{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--orange),#ffb14b);display:grid;place-items:center;color:#111;font-weight:950;box-shadow:0 10px 32px rgba(255,106,0,.24)}
+    h1{font-size:30px;line-height:1.05;margin:0}
+    .sub{color:var(--mut);margin-top:6px;max-width:780px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:1px solid var(--line);background:#17171c;color:var(--txt);border-radius:14px;padding:11px 14px;font-weight:750;cursor:pointer}
+    .btn:hover{border-color:#42424c;transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(135deg,var(--orange),var(--orange2));border-color:transparent;color:#140800}
+    .grid{display:grid;gap:14px}
+    .kpis{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:14px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015)),var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+    .pad{padding:18px}
+    .kpi strong{font-size:28px;display:block;letter-spacing:-.02em}
+    .kpi span{color:var(--mut);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .kpi small{display:block;color:var(--mut2);margin-top:6px}
+    .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-bottom:14px}
+    .sectionTitle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .sectionTitle h2{font-size:17px;margin:0}
+    .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#1b1b21;border:1px solid var(--line);color:var(--mut);font-size:12px;font-weight:800}
+    .pill.ok{color:#b8ffd1;border-color:rgba(73,209,125,.35);background:rgba(73,209,125,.09)}
+    .pill.warn{color:#ffe6a4;border-color:rgba(247,201,72,.35);background:rgba(247,201,72,.09)}
+    .pill.bad{color:#ffbac0;border-color:rgba(255,90,104,.35);background:rgba(255,90,104,.09)}
+    .progress{height:10px;background:#222229;border-radius:999px;overflow:hidden;margin-top:10px}
+    .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--green));border-radius:999px}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .module{padding:13px;border:1px solid #26262d;border-radius:16px;background:rgba(255,255,255,.025)}
+    .module h3{margin:0 0 5px;font-size:14px}
+    .module .meta{display:flex;gap:7px;flex-wrap:wrap;color:var(--mut);font-size:12px}
+    .module .bar{height:7px;background:#26262d;border-radius:99px;margin:10px 0 0;overflow:hidden}
+    .module .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--blue))}
+    .list{display:flex;flex-direction:column;gap:9px}
+    .item{padding:12px;border-radius:15px;background:rgba(255,255,255,.026);border:1px solid #25252d}
+    .item b{display:block;margin-bottom:3px}
+    .item small{color:var(--mut);display:block}
+    .tag{display:inline-flex;margin:0 5px 5px 0;padding:4px 8px;border-radius:99px;background:#202027;border:1px solid #31313a;color:var(--mut);font-size:11px;font-weight:800}
+    .tag.alta,.tag.critica{color:#ffccd1;border-color:rgba(255,90,104,.4);background:rgba(255,90,104,.08)}
+    .tag.concluido{color:#c6ffd9;border-color:rgba(73,209,125,.4);background:rgba(73,209,125,.08)}
+    .tag.em_andamento,.tag.ativo{color:#cbe2ff;border-color:rgba(90,167,255,.4);background:rgba(90,167,255,.08)}
+    .tag.planejado,.tag.parcial{color:#ffeab1;border-color:rgba(247,201,72,.4);background:rgba(247,201,72,.08)}
+    .timeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .phase{padding:13px;border-radius:16px;border:1px solid #27272e;background:#131318}
+    .phase .num{width:28px;height:28px;border-radius:10px;background:#24242c;display:grid;place-items:center;color:var(--orange);font-weight:900;margin-bottom:9px}
+    .phase h3{margin:0;font-size:14px}
+    .phase p{margin:5px 0 0;color:var(--mut);font-size:12px}
+    .gate{max-width:560px;margin:10vh auto 0}
+    .gate h1{font-size:28px}
+    .field{width:100%;background:#111116;color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:13px 14px;outline:0;margin:12px 0}
+    .empty{color:var(--mut2);padding:14px;border:1px dashed #303038;border-radius:16px;text-align:center}
+    .err{color:#ffb8bf;margin-top:10px}
+    .split3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:#cfcfd6}
+    @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.hero,.cols,.split3{grid-template-columns:1fr}.timeline{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:680px){.wrap{padding:14px}.top{flex-direction:column}.actions{justify-content:flex-start}.kpis,.modules,.timeline{grid-template-columns:1fr}h1{font-size:24px}}
+  </style>
+</head>
+<body>
+  <main class="wrap" id="app"></main>
+
+  <script>
+    const $app = document.getElementById('app');
+    const API = location.origin;
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const fmt = d => d ? new Date(d).toLocaleString('pt-BR') : '—';
+    const norm = s => String(s || '').toLowerCase();
+    const statusLabel = s => String(s || '—').replace(/_/g,' ');
+    const file = (state, name, fallback) => state.files?.[name] ?? fallback;
+    const pct = n => Math.max(0, Math.min(100, Number(n || 0)));
+
+    function storedAdminId(){
+      const q = new URLSearchParams(location.search).get('admin_id');
+      if(q) return q;
+      try{
+        const u = JSON.parse(localStorage.getItem('est_u') || 'null');
+        if(u && u.id) return u.id;
+      }catch(e){}
+      return localStorage.getItem('mapper_admin_id') || '';
+    }
+
+    function gate(msg=''){
+      $app.innerHTML = `
+        <section class="card pad gate">
+          <div class="brand" style="margin-bottom:16px"><div class="mark">T</div><div><h1>Titan Mapper</h1><div class="sub">Acesso restrito ao gestor. Informe seu ID para carregar o progresso operacional.</div></div></div>
+          <input class="field" id="adminId" placeholder="ID do gestor" value="${esc(storedAdminId())}">
+          <button class="btn primary" id="enter">Carregar mapper</button>
+          ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+          <div class="sub" style="margin-top:14px">Dica: se você já entrou no estoque como gestor, o mapper tenta reaproveitar esse acesso automaticamente.</div>
+        </section>`;
+      document.getElementById('enter').onclick = () => {
+        const id = document.getElementById('adminId').value.trim();
+        if(!id) return gate('Informe o ID do gestor.');
+        localStorage.setItem('mapper_admin_id', id);
+        load(id);
+      };
+      document.getElementById('adminId').onkeydown = e => { if(e.key === 'Enter') document.getElementById('enter').click(); };
+    }
+
+    async function load(adminId = storedAdminId()){
+      if(!adminId) return gate();
+      $app.innerHTML = '<section class="card pad gate"><h1>Carregando mapper…</h1><div class="sub">Lendo project-state e calculando progresso.</div></section>';
+      try{
+        const res = await fetch(`${API}/api/mapper/state?admin_id=${encodeURIComponent(adminId)}`);
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.erro || 'Falha ao carregar mapper.');
+        localStorage.setItem('mapper_admin_id', adminId);
+        render(data);
+      }catch(e){ gate(e.message || 'Falha ao carregar mapper.'); }
+    }
+
+    function render(data){
+      const modules = file(data, 'modules.json', []);
+      const tasks = file(data, 'tasks.json', []);
+      const risks = file(data, 'risks.json', []);
+      const roadmap = file(data, 'roadmap.json', []);
+      const weekly = file(data, 'weekly-focus.json', {});
+      const health = file(data, 'health-checks.json', {});
+      const rbac = file(data, 'rbac-audit.json', {});
+      const deploys = file(data, 'deploys.json', []);
+      const decisions = file(data, 'decisions.json', []);
+      const map = file(data, 'module-route-table-map.json', {});
+      const tests = file(data, 'test-matrix.json', []);
+
+      const avg = Math.round(modules.reduce((s,m)=>s+Number(m.progresso||0),0) / Math.max(1, modules.length));
+      const doneTasks = tasks.filter(t => norm(t.status) === 'concluido').length;
+      const openTasks = tasks.filter(t => norm(t.status) !== 'concluido').length;
+      const blocked = tasks.filter(t => t.bloqueada).length;
+      const highRisks = risks.filter(r => ['alta','critica'].includes(norm(r.severidade)) && !['mitigado','fechado','resolvido'].includes(norm(r.status))).length;
+      const activeModules = modules.filter(m => ['em_andamento','parcial','detectado'].includes(norm(m.status))).length;
+      const healthOk = health.ok === true;
+      const rbacOk = rbac.ok !== false && Number(rbac.users_audited || 0) > 0;
+      const criticalTests = tests.filter(t => ['alta','critica'].includes(norm(t.priority)));
+
+      $app.innerHTML = `
+        <div class="top">
+          <div class="brand">
+            <div class="mark">T</div>
+            <div>
+              <h1>Titan Mapper</h1>
+              <div class="sub">Mapa vivo do progresso do Titan. Fonte: <span class="mono">project-state/*.json</span>. Gestor: ${esc(data.usuario?.nome || '—')} · atualizado ${fmt(data.generated_at)}</div>
+            </div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="/admin">Admin</a>
+            <a class="btn" href="/estoque">Estoque</a>
+            <button class="btn primary" id="refresh">Atualizar</button>
+          </div>
+        </div>
+
+        <section class="grid kpis">
+          ${kpi('Progresso', avg + '%', `${modules.length} módulos mapeados`)}
+          ${kpi('Módulos ativos', activeModules, 'em andamento/detectados')}
+          ${kpi('Tarefas', `${doneTasks}/${tasks.length}`, `${openTasks} abertas · ${blocked} bloqueadas`)}
+          ${kpi('Riscos altos', highRisks, highRisks ? 'exigem atenção' : 'sem alerta alto aberto')}
+          ${kpi('Smoke', healthOk ? 'OK' : 'Atenção', `${health.executed || 0}/${health.total || 0} checks`)}
+          ${kpi('RBAC', rbacOk ? 'OK' : 'Pendente', `${rbac.users_audited || 0} usuários auditados`)}
+        </section>
+
+        <section class="hero">
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Resumo executivo</h2><span class="pill ${healthOk ? 'ok' : 'warn'}">${healthOk ? 'produção saudável' : 'verificar smoke'}</span></div>
+            <div class="sub">Objetivo da semana</div>
+            <h2 style="margin:6px 0 10px">${esc(weekly.objetivo || 'Sem objetivo definido')}</h2>
+            <div class="progress"><i style="width:${avg}%"></i></div>
+            <div style="margin-top:14px">${(weekly.prioridades || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>
+            <div class="item" style="margin-top:12px;border-color:rgba(255,106,0,.35);background:rgba(255,106,0,.07)">
+              <b>Divisão de trabalho agora</b>
+              <small>Claude pode atuar no estoque; Codex mantém o mapper, riscos, rotas, tarefas e deploys para você não perder a visão do todo.</small>
+            </div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Não fazer agora</h2><span class="pill warn">proteção de foco</span></div>
+            <div class="list">${(weekly.nao_fazer_agora || []).map(x => `<div class="item"><b>${esc(x)}</b></div>`).join('') || '<div class="empty">Sem restrições registradas.</div>'}</div>
+          </div>
+        </section>
+
+        <section class="card pad" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Módulos e progresso</h2><span class="pill">${modules.length} módulos</span></div>
+          <div class="modules">${modules.map(moduleCard).join('')}</div>
+        </section>
+
+        <section class="cols" style="margin-bottom:14px">
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Próximas tarefas</h2><span class="pill">${openTasks} abertas</span></div>
+            <div class="list">${tasks.filter(t => norm(t.status) !== 'concluido').slice(0,8).map(taskItem).join('') || '<div class="empty">Nada aberto.</div>'}</div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Riscos que importam</h2><span class="pill ${highRisks ? 'bad' : 'ok'}">${highRisks} altos</span></div>
+            <div class="list">${risks.slice().sort((a,b)=>riskWeight(b)-riskWeight(a)).slice(0,8).map(riskItem).join('') || '<div class="empty">Sem riscos registrados.</div>'}</div>
+          </div>
+        </section>
+
+        <section class="card pad" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Roadmap</h2><span class="pill">fases</span></div>
+          <div class="timeline">${roadmap.map(phaseItem).join('')}</div>
+        </section>
+
+        <section class="split3" style="margin-bottom:14px">
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Blindagem</h2><span class="pill ${healthOk ? 'ok' : 'warn'}">smoke</span></div>
+            <div class="item"><b>Read-only</b><small>${healthOk ? 'OK' : 'Atenção'} · ${health.executed || 0}/${health.total || 0} executados · ${health.failed || 0} falhas</small></div>
+            <div class="item"><b>RBAC</b><small>${rbac.users_found || 0} usuários encontrados · ${rbac.users_audited || 0} auditados</small></div>
+            <div style="margin-top:10px">${criticalTests.map(t => `<span class="tag ${esc(norm(t.priority))}">${esc(t.id)}</span>`).join('')}</div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Deploys</h2><span class="pill">histórico</span></div>
+            <div class="list">${deploys.slice(-4).reverse().map(d => `<div class="item"><b>${esc(d.titulo || d.id || 'Deploy')}</b><small>${esc(d.status || '—')} · ${esc(d.ambiente || d.alvo || '—')}</small></div>`).join('') || '<div class="empty">Sem deploys registrados.</div>'}</div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Decisões recentes</h2><span class="pill">governança</span></div>
+            <div class="list">${decisions.slice(-4).reverse().map(d => `<div class="item"><b>${esc(d.decisao || d.id)}</b><small>${esc(d.data || '')} · ${esc(d.status || '')}</small></div>`).join('') || '<div class="empty">Sem decisões registradas.</div>'}</div>
+          </div>
+        </section>
+
+        <section class="card pad">
+          <div class="sectionTitle"><h2>Fronteiras críticas do sistema</h2><span class="pill">evita retrabalho</span></div>
+          <div class="list">${(map.classification_boundaries || []).map(boundaryItem).join('') || '<div class="empty">Sem fronteiras registradas.</div>'}</div>
+        </section>
+      `;
+      document.getElementById('refresh').onclick = () => load();
+    }
+
+    function kpi(label, value, detail){ return `<div class="card pad kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></div>`; }
+    function moduleCard(m){
+      const p = pct(m.progresso);
+      return `<article class="module">
+        <h3>${esc(m.nome || m.id)}</h3>
+        <div class="meta"><span class="tag ${esc(norm(m.status))}">${esc(statusLabel(m.status))}</span><span>${p}%</span><span>${esc(m.ferramenta_atuante || '—')}</span></div>
+        <div class="bar"><i style="width:${p}%"></i></div>
+        <small style="color:var(--mut);display:block;margin-top:9px">${esc((m.proximos_passos || [])[0] || (m.pendencias || [])[0] || '')}</small>
+      </article>`;
+    }
+    function taskItem(t){
+      return `<div class="item">
+        <span class="tag ${esc(norm(t.status))}">${esc(statusLabel(t.status))}</span><span class="tag ${esc(norm(t.prioridade))}">${esc(t.prioridade)}</span>
+        <b>${esc(t.titulo || t.id)}</b>
+        <small>${esc(t.modulo || '—')} · ${esc(t.proximo_passo || '')}</small>
+      </div>`;
+    }
+    function riskWeight(r){ return ({critica:4, alta:3, media:2, baixa:1}[norm(r.severidade)] || 0) + (norm(r.status).includes('aberto') ? 1 : 0); }
+    function riskItem(r){
+      const cls = ['alta','critica'].includes(norm(r.severidade)) ? 'bad' : 'warn';
+      return `<div class="item">
+        <span class="tag ${esc(norm(r.severidade))}">${esc(r.severidade)}</span><span class="tag ${esc(norm(r.status))}">${esc(statusLabel(r.status))}</span>
+        <b>${esc(r.titulo || r.id)}</b>
+        <small>${esc(r.mitigacao || r.impacto || '')}</small>
+      </div>`;
+    }
+    function phaseItem(p){
+      return `<div class="phase"><div class="num">${esc(p.fase)}</div><h3>${esc(p.nome)}</h3><p>${esc(statusLabel(p.status))}</p><p>${(p.entregas || []).slice(0,3).map(esc).join(' · ')}</p></div>`;
+    }
+    function boundaryItem(b){
+      return `<div class="item">
+        <b>${esc(b.id)}</b>
+        <small>${esc(b.rule || '')}</small>
+        <div style="margin-top:8px">${Object.entries(b).filter(([k,v]) => v && typeof v === 'object' && k !== 'id').map(([k,v]) => `<span class="tag">${esc(k)}: ${esc((v.routes || v.tables || []).slice(0,3).join(', '))}</span>`).join('')}</div>
+      </div>`;
+    }
+
+    load();
+  </script>
+</body>
+</html>

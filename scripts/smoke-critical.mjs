@@ -65,9 +65,11 @@ await check('entregadores', '/api/entregadores', (j) => Array.isArray(j?.entrega
 if (userId) {
   await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms), '/api/est/permissoes?usuario_id=<usuario>');
   await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens), '/api/est/meus-itens?usuario_id=<usuario>');
+  await check('mapper state', `/api/mapper/state?admin_id=${encodeURIComponent(userId)}`, (j) => j?.ok === true && j.files && Array.isArray(j.files['modules.json']), '/api/mapper/state?admin_id=<gestor>');
 } else {
   checks.push({ name: 'permissoes usuário', path: '/api/est/permissoes?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
   checks.push({ name: 'meus itens usuário', path: '/api/est/meus-itens?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
+  checks.push({ name: 'mapper state', path: '/api/mapper/state?admin_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
 }
 
 const failed = checks.filter((c) => !c.ok);
