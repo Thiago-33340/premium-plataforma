@@ -59,7 +59,7 @@
     "module": "core-http",
     "type": "smoke",
     "priority": "alta",
-    "covers": ["GET /api/health", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens"],
+    "covers": ["GET /api/health", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens", "GET /api/mesas", "GET /api/caixa", "GET /api/entregadores"],
     "preconditions": ["API rodando"],
     "expected": "rotas críticas respondem JSON válido sem modificar dados",
     "script": "npm run smoke:read",

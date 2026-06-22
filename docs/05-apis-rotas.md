@@ -31,7 +31,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/admin/estoque-*` ainda é misto/legado porque usa tabelas `estoque_*`. Não deve receber expansão funcional nova.
 - `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
-- `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos, mas precisam de smoke específico antes de virar contrato fechado.
+- `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
 
 ## Rotas que devem ser evitadas em implementação nova
 

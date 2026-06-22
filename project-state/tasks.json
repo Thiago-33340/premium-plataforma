@@ -135,13 +135,13 @@
     "id": "task-f2-011",
     "titulo": "Criar smoke read-only para mesas e caixa",
     "modulo": "mesas-caixa",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "testes",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-003"],
-    "proximo_passo": "Adicionar ao smoke crítico checks seguros para /api/mesas, /api/caixa e /api/entregadores sem abrir/fechar caixa ou mesa."
+    "proximo_passo": "Criar smoke mutável em staging para abrir/fechar mesa, lançar item, abrir/fechar caixa e editar entregador sem afetar produção."
   }
 ]
