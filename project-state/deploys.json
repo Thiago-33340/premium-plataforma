@@ -1,0 +1,22 @@
+[
+  {
+    "id": "deploy-2026-06-22-setores-dinamicos",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "fdf060216534b3fe328c301e47157bfc2e7bfae8",
+    "pull_request": "https://github.com/Thiago-33340/premium-plataforma/pull/4",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://pedido.titanatende.com.br"
+    ],
+    "validacoes": [
+      "GET /api/health OK",
+      "GET /estoque servindo HTML novo de setores dinâmicos"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets."
+  }
+]

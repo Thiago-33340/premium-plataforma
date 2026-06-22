@@ -1,0 +1,302 @@
+{
+  "generated_at": "2026-06-22T06:15:38.046Z",
+  "base_url": "https://premium.titanatende.com.br",
+  "mode": "read_only_rbac_audit",
+  "mutates_data": false,
+  "manager_id_used": "57cd305a-a3ca-4a09-890b-b7fdac650ef5",
+  "user_listing_ok": true,
+  "user_listing_error": null,
+  "manager_login_probe": null,
+  "manager_id_note": null,
+  "users_found": 8,
+  "users_audited": 6,
+  "ok": true,
+  "audited": [
+    {
+      "id": "57cd305a-a3ca-4a09-890b-b7fdac650ef5",
+      "nome": "Thiago Ribeiro",
+      "apelido_login": "thiago",
+      "perfil_principal": "GESTOR",
+      "gestor": true,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_produtos",
+        "acessar_categorias",
+        "acessar_fornecedores",
+        "acessar_visitas",
+        "acessar_mapa_comparativo_fornecedores",
+        "acessar_lista_compras_inteligente",
+        "acessar_contagem",
+        "acessar_auditoria",
+        "acessar_producao_interna",
+        "acessar_lancamentos",
+        "acessar_configuracoes",
+        "ver_valores",
+        "ver_maior_valor_pago",
+        "editar_produtos",
+        "editar_categorias",
+        "registrar_compra",
+        "registrar_visita",
+        "fazer_contagem",
+        "auditar_contagem",
+        "aprovar_contagem",
+        "reprovar_contagem",
+        "exportar_dados",
+        "criar_usuarios",
+        "editar_permissoes"
+      ],
+      "setores_permitidos_api": [
+        "TUDO"
+      ],
+      "ve_tudo": true,
+      "itens_visiveis": 169,
+      "setores_com_itens": [
+        "Borda",
+        "Finalização",
+        "Gerais",
+        "Montagem",
+        "Recepção"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": true,
+          "contagem": true,
+          "fornecedores": true,
+          "mais": true
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        },
+        {
+          "id": "gestor-nav-total",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    },
+    {
+      "id": "d3b447fb-c0ce-4953-a978-2f5ae3c2fe4d",
+      "nome": "Cristina",
+      "apelido_login": "cristina",
+      "perfil_principal": "COLABORADOR",
+      "gestor": false,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_contagem",
+        "fazer_contagem"
+      ],
+      "setores_permitidos_api": [
+        "2"
+      ],
+      "ve_tudo": false,
+      "itens_visiveis": 52,
+      "setores_com_itens": [
+        "Montagem"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": false,
+          "contagem": true,
+          "fornecedores": false,
+          "mais": false
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    },
+    {
+      "id": "aa3c857b-3b44-454d-b84e-e271f4cf2902",
+      "nome": "Dany",
+      "apelido_login": "dany",
+      "perfil_principal": "COLABORADOR",
+      "gestor": false,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_contagem",
+        "fazer_contagem"
+      ],
+      "setores_permitidos_api": [
+        "1"
+      ],
+      "ve_tudo": false,
+      "itens_visiveis": 17,
+      "setores_com_itens": [
+        "Borda"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": false,
+          "contagem": true,
+          "fornecedores": false,
+          "mais": false
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    },
+    {
+      "id": "cf60ef43-884d-440a-b35f-d5edb8c90113",
+      "nome": "Geane",
+      "apelido_login": "geane",
+      "perfil_principal": "COLABORADOR",
+      "gestor": false,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_contagem",
+        "fazer_contagem"
+      ],
+      "setores_permitidos_api": [
+        "3"
+      ],
+      "ve_tudo": false,
+      "itens_visiveis": 43,
+      "setores_com_itens": [
+        "Finalização"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": false,
+          "contagem": true,
+          "fornecedores": false,
+          "mais": false
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    },
+    {
+      "id": "996d2a4c-b3d3-4743-81f1-874eac142da2",
+      "nome": "Maria",
+      "apelido_login": "maria",
+      "perfil_principal": "COLABORADOR",
+      "gestor": false,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_contagem",
+        "fazer_contagem"
+      ],
+      "setores_permitidos_api": [
+        "2"
+      ],
+      "ve_tudo": false,
+      "itens_visiveis": 52,
+      "setores_com_itens": [
+        "Montagem"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": false,
+          "contagem": true,
+          "fornecedores": false,
+          "mais": false
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    },
+    {
+      "id": "7c1c99bc-563a-40cb-97c0-ad7de52f18d7",
+      "nome": "Sophia",
+      "apelido_login": "sophia",
+      "perfil_principal": "OPERADOR_ATENDIMENTO",
+      "gestor": false,
+      "perms": [
+        "acessar_estoque_premium_rp",
+        "acessar_contagem",
+        "fazer_contagem"
+      ],
+      "setores_permitidos_api": [
+        "TUDO"
+      ],
+      "ve_tudo": true,
+      "itens_visiveis": 169,
+      "setores_com_itens": [
+        "Borda",
+        "Finalização",
+        "Gerais",
+        "Montagem",
+        "Recepção"
+      ],
+      "visualizacao_esperada_estoque_html": {
+        "abas_visiveis": {
+          "inicio": true,
+          "produtos": false,
+          "contagem": true,
+          "fornecedores": false,
+          "mais": false
+        },
+        "observacao": "Calculado a partir das regras do public/estoque.html: gestores veem tudo; colaboradores dependem de permissões."
+      },
+      "checks": [
+        {
+          "id": "permissoes-endpoint",
+          "ok": true
+        },
+        {
+          "id": "meus-itens-endpoint",
+          "ok": true
+        }
+      ],
+      "ok": true,
+      "failures": []
+    }
+  ]
+}

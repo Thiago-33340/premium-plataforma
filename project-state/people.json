@@ -1,0 +1,20 @@
+[
+  {
+    "id": "thiago",
+    "nome": "Thiago",
+    "papel": "dono do produto, arquiteto de visão e aprovador final",
+    "responsabilidades": ["prioridades", "aprovação", "visão operacional", "decisões de negócio"]
+  },
+  {
+    "id": "codex",
+    "nome": "Codex",
+    "papel": "executor local, auditor técnico e organizador",
+    "responsabilidades": ["inspeção", "documentação", "implementação autorizada", "validação técnica"]
+  },
+  {
+    "id": "claude-opus",
+    "nome": "Claude Opus",
+    "papel": "arquiteto/revisor complementar",
+    "responsabilidades": ["revisão estratégica", "riscos", "planejamento alto nível"]
+  }
+]

@@ -1,10 +1,31 @@
 [
   {
+    "id": "incident-estoque-ux-fichas",
+    "data": "2026-06-17",
+    "modulo": "estoque-v2",
+    "status": "resolvido_parcialmente",
+    "titulo": "Tela de estoque/fichas não atendia operação real",
+    "impacto": "Cadastro de produto, ficha técnica e contagem eram frágeis e geravam retrabalho.",
+    "resolucao": "Reformulação inicial de estoque, fichas de produção e catálogo Premium v4.",
+    "pendencias": ["Criar testes", "Completar fichas", "Documentar contratos"]
+  },
+  {
     "id": "incident-rbac-setores-contagem-2026-06-21",
     "data": "2026-06-21",
-    "titulo": "Colaboradores com setores legados nao viam corretamente a contagem",
-    "causa_raiz": "Usuarios estavam com setores_permitidos no padrao legado SET001/SET002/SET003, enquanto o fluxo novo /api/est usa est_setor.id numerico ou nome do setor.",
-    "resolucao": "Ajuste de dados da Premium para IDs reais do tenant e evolucao do painel para setores dinamicos por cliente. O de/para da Premium nao deve ser tratado como regra fixa do SaaS.",
-    "prevencao": "Novas atribuicoes devem usar setores ativos vindos de /api/est/setores. IDs legados SETxxx nao devem ser usados no fluxo novo."
+    "modulo": "contagem-auditoria",
+    "status": "resolvido",
+    "titulo": "Colaboradores com permissão de contagem viam zero itens",
+    "impacto": "Cristina, Dany, Geane e Maria conseguiam acessar a aba de contagem, mas a API /api/est/meus-itens retornava zero itens para elas.",
+    "causa_raiz": "Os usuários estavam com setores_permitidos no padrão legado SET001/SET002/SET003, enquanto o fluxo novo /api/est/meus-itens filtra por est_setor.id numérico ou nome do setor.",
+    "resolucao": "Atualizado setores_permitidos dos colaboradores da Premium para os IDs reais de est_setor naquele tenant: Dany -> 1/Borda; Cristina -> 2/Montagem; Maria -> 2/Montagem; Geane -> 3/Finalização. Este de/para é específico da Premium e não deve ser tratado como regra fixa do SaaS.",
+    "acoes_relacionadas": [
+      "Thiago Ribeiro alterado de CHEFE_COZINHA para GESTOR, com setores_permitidos TUDO.",
+      "Evandro desativado com ativo=false, preservando histórico/auditoria."
+    ],
+    "validacao": "scripts/rbac-audit.mjs executado contra https://premium.titanatende.com.br; resultado final OK para Thiago, Cristina, Dany, Geane, Maria e Sophia.",
+    "pendencias": [
+      "Padronizar tela/admin para impedir novos vínculos com IDs legados SETxxx no fluxo novo de contagem.",
+      "Documentar de/para definitivo entre estoque_itens_definicao legado e est_setor novo."
+    ]
   }
 ]

@@ -1,0 +1,38 @@
+[
+  {
+    "from": "command-center",
+    "to": "project-state",
+    "type": "leitura",
+    "description": "O Command Center deve ler project-state/*.json como fonte de verdade operacional inicial."
+  },
+  {
+    "from": "estoque-v2",
+    "to": "postgres-principal",
+    "type": "dados",
+    "description": "Estoque depende das tabelas est_* e movimentos."
+  },
+  {
+    "from": "producao-fichas",
+    "to": "estoque-v2",
+    "type": "baixa",
+    "description": "Produção consome insumos e gera produto produzido no estoque."
+  },
+  {
+    "from": "contagem-auditoria",
+    "to": "estoque-v2",
+    "type": "conferencia",
+    "description": "Contagem audita e corrige quantidades de itens do estoque."
+  },
+  {
+    "from": "loja-pedidos",
+    "to": "estoque-v2",
+    "type": "baixa_automatica",
+    "description": "Pedidos podem gerar baixa automática de estoque."
+  },
+  {
+    "from": "infra-deploy",
+    "to": "easypanel",
+    "type": "deploy",
+    "description": "Deploy real roda via EasyPanel/containers."
+  }
+]

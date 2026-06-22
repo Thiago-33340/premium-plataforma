@@ -1,0 +1,31 @@
+{
+  "generated_by": "Codex Fase 2",
+  "source": "_titan_map/project-state/routes.json",
+  "note": "Mapa oficial inicial de rotas. Backend usa roteamento manual em server-pg.js.",
+  "public_pages": [
+    { "method": "GET", "path": "/", "module": "loja-pedidos", "target": "redirect:/loja" },
+    { "method": "GET", "path": "/loja", "module": "loja-pedidos", "target": "public/loja2.html" },
+    { "method": "GET", "path": "/loja-antiga", "module": "loja-pedidos", "target": "public/loja/index.html" },
+    { "method": "GET", "path": "/loja2", "module": "loja-pedidos", "target": "public/loja2.html" },
+    { "method": "GET", "path": "/disponibilidade", "module": "loja-pedidos", "target": "public/disponibilidade.html" },
+    { "method": "GET", "path": "/estoque", "module": "estoque-v2", "target": "public/estoque.html" },
+    { "method": "GET", "path": "/imprimir", "module": "loja-pedidos", "target": "public/imprimir.html" },
+    { "method": "GET", "path": "/mesas", "module": "mesas-caixa", "target": "public/mesas.html" },
+    { "method": "GET", "path": "/admin", "module": "admin-gestor", "target": "public/admin.html" },
+    { "method": "GET", "path": "/caixa", "module": "mesas-caixa", "target": "public/caixa.html" },
+    { "method": "GET", "path": "/gestor", "module": "admin-gestor", "target": "public/gestor/index.html" }
+  ],
+  "api_groups": [
+    { "id": "saude-diagnostico", "module": "core-http", "base": "/api", "status": "ativo", "routes": ["GET /api/health", "GET /api/_diag"] },
+    { "id": "loja-cardapio-pedidos", "module": "loja-pedidos", "base": "/api", "status": "ativo", "routes": ["GET /api/cardapio", "GET /api/sistema", "GET /api/tema", "GET /api/loja-config", "GET /api/catalogo", "POST /api/auth", "GET /api/wa-link", "POST /api/pedidos", "GET /api/pedidos", "GET /api/meus-pedidos", "GET /api/pedidos/:id", "PATCH /api/pedidos/:id", "POST /api/disponibilidade"] },
+    { "id": "estoque-v2-cadastros-operacao", "module": "estoque-v2", "base": "/api/est", "status": "ativo", "routes": ["GET /api/est/resumo", "GET /api/est/categorias", "GET /api/est/fornecedores", "GET /api/est/setores", "GET /api/est/locais", "GET /api/est/conversoes", "GET /api/est/produtos", "GET /api/est/produto/:id", "GET /api/est/dashboard", "GET /api/est/meus-itens", "GET /api/est/movimentos", "GET /api/est/vinculos", "POST /api/est/produto", "PATCH /api/est/produto/:id", "DELETE /api/est/produto/:id", "POST /api/est/movimento", "POST /api/est/baixa-pedido"] },
+    { "id": "contagem-auditoria", "module": "contagem-auditoria", "base": "/api/est", "status": "ativo", "routes": ["POST /api/est/contagem/iniciar", "GET /api/est/contagem-geral/status", "POST /api/est/contagem-geral/config", "POST /api/est/contagem-geral/iniciar-agora", "POST /api/est/contagem-geral/parar", "PATCH /api/est/contagem/:id/item/:itemId", "POST /api/est/contagem/:id/encerrar", "GET /api/est/contagens", "GET /api/est/contagem/:id", "POST /api/est/contagem/:id/auditar", "GET /api/est/setor/:id/config", "POST /api/est/setor/:id/config", "POST /api/est/setor", "PATCH /api/est/setor/:id"] },
+    { "id": "compras-listas-visitas", "module": "compras-fornecedores", "base": "/api/est", "status": "a_validar", "routes": ["POST /api/est/compra/foto", "POST /api/est/compra", "GET /api/est/compras", "POST /api/est/visita/iniciar", "POST /api/est/visita/:id/finalizar", "GET /api/est/visitas", "GET /api/est/mapa", "POST /api/est/lista/interpretar", "POST /api/est/lista/gerar", "GET /api/est/lista-auto/preview", "GET /api/est/lista-auto/config", "POST /api/est/lista-auto/config", "POST /api/est/lista-auto/run"] },
+    { "id": "producao-fichas", "module": "producao-fichas", "base": "/api/est", "status": "ativo", "routes": ["GET /api/est/producao/produzidos", "GET /api/est/producao/ficha", "PUT /api/est/producao/ficha", "DELETE /api/est/producao/ficha/:id", "GET /api/est/producao/receita", "POST /api/est/producao/receita", "DELETE /api/est/producao/receita/:id", "POST /api/est/producao/run", "GET /api/est/producoes", "GET /api/est/fichas-cardapio", "GET /api/est/ficha-cardapio", "PUT /api/est/ficha-cardapio"] },
+    { "id": "usuarios-permissoes-ia", "module": "permissoes-staff", "base": "/api/est", "status": "a_validar", "routes": ["GET /api/est/usuarios", "GET /api/est/permissoes", "POST /api/est/permissoes", "POST /api/est/jessica", "POST /api/est/whatsapp/inbound"] },
+    { "id": "estoque-legado", "module": "estoque-v2", "base": "/api/estoque", "status": "legado", "routes": ["POST /api/estoque/login", "GET /api/estoque/itens", "POST /api/estoque/contagem", "POST /api/estoque/importar-definicao", "GET /api/estoque/contagens", "POST /api/estoque/movimento", "GET /api/estoque/movimentos"] },
+    { "id": "staff-mesas-caixa", "module": "mesas-caixa", "base": "/api", "status": "a_validar", "routes": ["POST /api/staff/login", "POST /api/staff/trocar-pin", "GET /api/mesas", "POST /api/mesas/:numero/abrir", "GET /api/mesas/:numero", "POST /api/mesas/:numero/item", "DELETE /api/mesas/:numero/item/:itemId", "POST /api/mesas/:numero/fechar", "GET /api/caixa", "POST /api/caixa/abrir", "POST /api/caixa/fechar", "GET /api/entregadores", "POST /api/entregadores", "PATCH /api/entregadores/:id"] },
+    { "id": "admin", "module": "admin-gestor", "base": "/api/admin", "status": "ativo", "routes": ["GET /api/admin/usuarios", "POST /api/admin/usuario", "POST /api/admin/usuario/:id/pin", "PATCH /api/admin/usuario/:id", "GET /api/admin/estoque-itens", "POST /api/admin/estoque-item", "DELETE /api/admin/estoque-item/:id", "POST /api/admin/preco", "GET /api/admin/config", "POST /api/admin/config", "GET /api/admin/tema", "POST /api/admin/tema", "GET /api/admin/impressao", "POST /api/admin/impressao", "GET /api/admin/catalogo", "POST /api/admin/categoria", "PATCH /api/admin/categoria/:id", "DELETE /api/admin/categoria/:id", "POST /api/admin/produto", "PATCH /api/admin/produto/:id", "DELETE /api/admin/produto/:id", "GET /api/admin/setores", "POST /api/admin/setor/:id/rename"] },
+    { "id": "config-global", "module": "core-http", "base": "/api", "status": "ativo", "routes": ["GET /api/config", "POST /api/config"] }
+  ]
+}

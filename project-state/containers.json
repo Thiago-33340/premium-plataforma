@@ -1,0 +1,12 @@
+[
+  {
+    "id": "premium-plataforma-node",
+    "nome": "App Node principal",
+    "ambiente": "producao_a_confirmar",
+    "status": "a_confirmar",
+    "porta": "8080",
+    "modulo_relacionado": "core-http",
+    "painel": "EasyPanel",
+    "observacoes": "Detectado por Dockerfile. Nome real do container ainda precisa ser confirmado no EasyPanel."
+  }
+]

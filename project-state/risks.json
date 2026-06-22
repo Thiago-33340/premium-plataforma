@@ -1,0 +1,47 @@
+[
+  {
+    "id": "risk-001",
+    "titulo": "Backend monolítico com roteamento manual grande",
+    "severidade": "alta",
+    "status": "aberto",
+    "modulos_afetados": ["core-http", "estoque-v2", "loja-pedidos", "admin-gestor"],
+    "impacto": "Alterações em uma área podem afetar outras e dificultar trabalho de IA ou devs futuros.",
+    "mitigacao": "Documentar rotas, criar testes de smoke e separar handlers gradualmente."
+  },
+  {
+    "id": "risk-002",
+    "titulo": "Git local com alterações e arquivos não rastreados",
+    "severidade": "media",
+    "status": "aberto",
+    "modulos_afetados": ["infra-deploy"],
+    "impacto": "Estado local pode divergir da main/produção.",
+    "mitigacao": "Revisar status antes de qualquer commit, separar trabalho por branch e commit intencional."
+  },
+  {
+    "id": "risk-003",
+    "titulo": "Banco mistura estruturas atuais e legadas",
+    "severidade": "alta",
+    "status": "aberto",
+    "modulos_afetados": ["estoque-v2", "producao-fichas", "mesas-caixa"],
+    "impacto": "Risco de duplicidade de regra, escrita na tabela errada ou migração incompleta.",
+    "mitigacao": "Classificar tabelas como oficial, legado, compatibilidade ou rascunho."
+  },
+  {
+    "id": "risk-004",
+    "titulo": "EasyPanel ainda não documentado como estado operacional",
+    "severidade": "alta",
+    "status": "aberto",
+    "modulos_afetados": ["infra-deploy", "command-center"],
+    "impacto": "GitHub pode não representar 100% do estado real online.",
+    "mitigacao": "Criar inventário de serviços, containers, deploys e variáveis por nome, sem valores secretos."
+  },
+  {
+    "id": "risk-005",
+    "titulo": "Testes automatizados ainda insuficientes",
+    "severidade": "media",
+    "status": "aberto",
+    "modulos_afetados": ["core-http", "estoque-v2", "producao-fichas", "contagem-auditoria"],
+    "impacto": "Correções podem voltar quebradas em deploys futuros.",
+    "mitigacao": "Criar smoke tests e validações de sintaxe/contratos antes de refatorações."
+  }
+]
