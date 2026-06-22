@@ -1,6 +1,7 @@
 {
-  "generated_at": "2026-06-22T07:44:15.619Z",
+  "generated_at": "2026-06-22T15:40:24.508Z",
   "base_url": "https://premium.titanatende.com.br",
+  "tools_base_url": "https://mayaproject-github.yrbgh5.easypanel.host",
   "mode": "read_only",
   "mutates_data": false,
   "total": 17,
@@ -13,103 +14,103 @@
       "name": "health",
       "path": "/api/health",
       "ok": true,
-      "ms": 508
-    },
-    {
-      "name": "command center html",
-      "path": "/command-center",
-      "ok": true,
-      "ms": 302
+      "ms": 545
     },
     {
       "name": "estoque dashboard",
       "path": "/api/est/dashboard",
       "ok": true,
-      "ms": 174
+      "ms": 162
     },
     {
       "name": "produtos",
       "path": "/api/est/produtos",
       "ok": true,
-      "ms": 455
+      "ms": 637
     },
     {
       "name": "setores",
       "path": "/api/est/setores",
       "ok": true,
-      "ms": 152
+      "ms": 158
     },
     {
       "name": "categorias",
       "path": "/api/est/categorias",
       "ok": true,
-      "ms": 151
+      "ms": 159
     },
     {
       "name": "fornecedores",
       "path": "/api/est/fornecedores",
       "ok": true,
-      "ms": 151
+      "ms": 159
     },
     {
       "name": "produzidos",
       "path": "/api/est/producao/produzidos",
       "ok": true,
-      "ms": 159
+      "ms": 165
     },
     {
       "name": "producoes recentes",
       "path": "/api/est/producoes",
       "ok": true,
-      "ms": 154
+      "ms": 160
     },
     {
       "name": "movimentos recentes",
       "path": "/api/est/movimentos?limit=3",
       "ok": true,
-      "ms": 152
+      "ms": 161
     },
     {
       "name": "contagens recentes",
       "path": "/api/est/contagens",
       "ok": true,
-      "ms": 150
+      "ms": 160
     },
     {
       "name": "mesas",
       "path": "/api/mesas",
       "ok": true,
-      "ms": 155
+      "ms": 164
     },
     {
       "name": "caixa",
       "path": "/api/caixa",
       "ok": true,
-      "ms": 150
+      "ms": 160
     },
     {
       "name": "entregadores",
       "path": "/api/entregadores",
       "ok": true,
-      "ms": 153
+      "ms": 162
+    },
+    {
+      "name": "command center html",
+      "path": "/command-center",
+      "ok": true,
+      "ms": 613
     },
     {
       "name": "permissoes usuário",
       "path": "/api/est/permissoes?usuario_id=<usuario>",
       "ok": true,
-      "ms": 153
+      "ms": 160
     },
     {
       "name": "meus itens usuário",
       "path": "/api/est/meus-itens?usuario_id=<usuario>",
       "ok": true,
-      "ms": 156
+      "ms": 168
     },
     {
       "name": "mapper state",
       "path": "/api/mapper/state?admin_id=<gestor>",
       "ok": true,
-      "ms": 159
+      "ms": 303
     }
   ]
 }
