@@ -108,5 +108,26 @@
       "POST /api/mapper/action sem sessão retorna 401 e não grava dados"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
+  },
+  {
+    "id": "deploy-2026-06-22-command-actions-db",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "d4f6738",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Histórico do EasyPanel mostrou: Deploy service: Persiste acoes do Command no Postgres",
+      "Smoke read-only produção/tools OK: 19/19",
+      "POST /api/mapper/action sem sessão retorna 401 e não grava dados",
+      "Command Center mantém ações em project-state e tenta persistir em titan_command_actions"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
   }
 ]
