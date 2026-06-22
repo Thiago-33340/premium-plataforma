@@ -2,6 +2,47 @@
   "generated_by": "Codex Fase 2.1",
   "scope": ["estoque-v2", "producao-fichas", "contagem-auditoria"],
   "source_files": ["server-pg.js", "public/estoque.html", "public/admin.html", "estoque-v2.sql"],
+  "classification_boundaries": [
+    {
+      "id": "estoque-oficial-vs-legado",
+      "oficial": {
+        "routes": ["/api/est/*"],
+        "tables": ["est_produto", "est_setor", "est_produto_setor", "est_contagem", "est_contagem_item", "est_movimento"]
+      },
+      "legado": {
+        "routes": ["/api/estoque/*", "/api/admin/estoque-*"],
+        "tables": ["estoque_itens_definicao", "estoque_contagens", "estoque_itens", "estoque_movimentos"]
+      },
+      "rule": "Nova funcionalidade de estoque deve nascer em /api/est/* e tabelas est_*."
+    },
+    {
+      "id": "cardapio-vs-estoque",
+      "cardapio": {
+        "routes": ["/api/catalogo", "/api/admin/catalogo", "/api/admin/produto", "/api/admin/grupo", "/api/admin/opcao"],
+        "tables": ["menu_categorias", "produtos", "opcao_grupos", "opcoes", "cupons"]
+      },
+      "estoque": {
+        "routes": ["/api/est/produtos", "/api/est/produto/:id"],
+        "tables": ["est_produto"]
+      },
+      "rule": "`produtos` é cardápio; `est_produto` é estoque. Integração passa por ficha/mapeamento."
+    },
+    {
+      "id": "ficha-cardapio-vs-ficha-producao",
+      "cardapio": {
+        "routes": ["/api/admin/ficha", "/api/admin/ficha-item", "/api/est/ficha-cardapio"],
+        "tables": ["ficha_itens", "preparos", "preparo_itens"]
+      },
+      "producao_interna": {
+        "routes": ["/api/est/producao/ficha", "/api/est/producao/run"],
+        "tables": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run"]
+      },
+      "compatibilidade": {
+        "tables": ["est_producao_receita"]
+      },
+      "rule": "Ficha do cardápio e ficha de produção interna são camadas diferentes."
+    }
+  ],
   "modules": [
     {
       "id": "estoque-v2",

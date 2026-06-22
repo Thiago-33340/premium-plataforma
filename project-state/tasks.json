@@ -29,14 +29,14 @@
     "id": "task-f2-003",
     "titulo": "Classificar tabelas oficiais e legadas",
     "modulo": "postgres-principal",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "alta",
     "categoria": "banco_de_dados",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": [],
-    "proximo_passo": "Gerar documento módulo -> tabela -> rota em docs/04-banco-de-dados.md."
+    "proximo_passo": "Usar docs/04-banco-de-dados.md e project-state/databases.json como fronteira antes de novas mudanças."
   },
   {
     "id": "task-f2-004",
@@ -117,5 +117,31 @@
     "bloqueada": false,
     "dependencias": ["task-f2-006"],
     "proximo_passo": "Rodar audit:rbac com usuario_id de gestor e salvar em project-state/rbac-audit.json."
+  },
+  {
+    "id": "task-f2-010",
+    "titulo": "Migrar admin de estoque legado para /api/est",
+    "modulo": "admin-gestor",
+    "status": "planejado",
+    "prioridade": "alta",
+    "categoria": "refatoracao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-003"],
+    "proximo_passo": "Mapear chamadas /api/admin/estoque-* em public/admin.html e substituir por rotas /api/est/* quando houver equivalência."
+  },
+  {
+    "id": "task-f2-011",
+    "titulo": "Criar smoke read-only para mesas e caixa",
+    "modulo": "mesas-caixa",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "testes",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-003"],
+    "proximo_passo": "Adicionar ao smoke crítico checks seguros para /api/mesas, /api/caixa e /api/entregadores sem abrir/fechar caixa ou mesa."
   }
 ]

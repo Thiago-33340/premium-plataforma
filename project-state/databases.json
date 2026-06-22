@@ -2,24 +2,75 @@
   {
     "id": "postgres-principal",
     "nome": "PostgreSQL principal",
-    "status": "inferido",
+    "status": "documentado_parcial",
     "drivers": ["pg"],
-    "schema_files": ["estoque-v2.sql", "modelo-completo-v1.sql", "sql/modelo-completo-v1.sql"],
+    "schema_files": ["estoque-v2.sql", "modelo-completo-v1.sql", "sql/modelo-completo-v1.sql", "db.js"],
     "modules": ["estoque-v2", "producao-fichas", "contagem-auditoria", "compras-fornecedores", "loja-pedidos", "mesas-caixa", "permissoes-staff"],
+    "classificacao_tabelas": {
+      "oficial": {
+        "estoque-v2": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor", "est_produto_fornecedor", "est_local_fisico", "est_conversao_categoria"],
+        "producao-fichas": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run"],
+        "contagem-auditoria": ["est_contagem", "est_contagem_item", "est_auditoria"],
+        "permissoes-staff": ["rbac_contacts", "est_permissao"],
+        "loja-cardapio": ["menu_categorias", "produtos", "opcao_grupos", "opcoes", "cupons"],
+        "mesas-caixa": ["mesas", "comandas", "comanda_itens", "caixa", "entregadores"],
+        "tenant-config": ["tenants"]
+      },
+      "oficial_em_validacao": {
+        "compras-fornecedores": ["est_compra", "est_compra_item", "est_lista_compra", "est_lista_compra_item", "est_lista_auto", "est_visita", "est_visita_item"],
+        "integracoes-estoque": ["est_notificacao", "est_whatsapp_msg", "est_titan_evento", "est_integracao_log"]
+      },
+      "compatibilidade": {
+        "ponte-producao-simples": ["est_producao_receita"],
+        "fichas-cardapio-baixa-pedido": ["ficha_itens", "preparos", "preparo_itens"],
+        "manual-cardapio": ["manual_montagem"]
+      },
+      "legado": {
+        "estoque-antigo": ["estoque_itens_definicao", "estoque_contagens", "estoque_itens", "estoque_movimentos"],
+        "custos-antigos": ["fornecedores", "insumo_custos"]
+      }
+    },
     "tabelas_por_area": {
       "estoque-v2": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor", "est_produto_fornecedor", "est_local_fisico", "est_conversao_categoria"],
       "producao-fichas": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run", "est_producao_receita"],
       "contagem-auditoria": ["est_contagem", "est_contagem_item", "est_auditoria"],
-      "compras-fornecedores": ["est_compra", "est_compra_item", "est_lista_compra", "est_lista_compra_item", "est_visita", "est_visita_item"],
+      "compras-fornecedores": ["est_compra", "est_compra_item", "est_lista_compra", "est_lista_compra_item", "est_lista_auto", "est_visita", "est_visita_item", "est_fornecedor"],
       "mesas-caixa": ["mesas", "comandas", "comanda_itens", "caixa", "entregadores"],
-      "loja-pedidos": ["produtos", "opcao_grupos", "opcoes", "cupons"],
-      "permissoes-staff": ["est_permissao"]
+      "loja-pedidos": ["menu_categorias", "produtos", "opcao_grupos", "opcoes", "cupons", "ficha_itens", "preparos", "preparo_itens"],
+      "permissoes-staff": ["rbac_contacts", "est_permissao"],
+      "legado-estoque": ["estoque_itens_definicao", "estoque_contagens", "estoque_itens", "estoque_movimentos"]
     },
+    "regras_de_fronteira": [
+      "`est_produto` é item de estoque; `produtos` é item de cardápio.",
+      "`est_setor` é setor dinâmico por tenant; `estoque_itens_definicao.setor_id` com SETxxx é legado.",
+      "`est_ficha_*` é ficha técnica oficial de produção interna; `ficha_itens` continua como ficha do cardápio e baixa por pedido.",
+      "`est_producao_receita` é compatibilidade para ficha simples antiga; novas evoluções devem priorizar `est_ficha_*`.",
+      "`/api/est/*` é fluxo oficial novo do estoque; `/api/estoque/*` é legado."
+    ],
+    "zonas_de_risco": [
+      {
+        "id": "db-risk-produtos-vs-est-produto",
+        "descricao": "Confundir cardápio (`produtos`) com estoque (`est_produto`) gera baixa errada e cadastro duplicado."
+      },
+      {
+        "id": "db-risk-setores-legados",
+        "descricao": "Usar SET001/SET002 como regra global quebra clientes com setores próprios."
+      },
+      {
+        "id": "db-risk-duas-fichas",
+        "descricao": "Cardápio usa `ficha_itens`; produção interna usa `est_ficha_*`. São camadas relacionadas, mas não equivalentes."
+      },
+      {
+        "id": "db-risk-admin-misto",
+        "descricao": "Algumas rotas `/api/admin/estoque-*` ainda usam tabelas legadas `estoque_*`."
+      }
+    ],
     "pendencias": [
       "Confirmar banco real em produção sem ler DATABASE_URL",
-      "Documentar tabelas oficiais vs legadas",
-      "Criar política de migração",
-      "Criar diagrama módulo -> tabela -> rota"
+      "Criar smoke específico para mesas/caixa",
+      "Migrar admin antigo de estoque para `/api/est/*`",
+      "Criar política de descontinuação para `/api/estoque/*`",
+      "Completar diagrama módulo -> rota -> tabela"
     ]
   }
 ]
