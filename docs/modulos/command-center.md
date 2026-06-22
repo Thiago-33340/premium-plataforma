@@ -102,13 +102,19 @@ O Command Center e o Mapper são ferramentas internas de criação/governança d
 - Não devem aparecer em `pedido.titanatende.com.br`.
 - Devem rodar em um host técnico, configurável por `TITAN_TOOLS_HOSTS`.
 - Enquanto um domínio definitivo não existir, o host técnico padrão do EasyPanel pode ser usado.
-- Domínio recomendado: `tools.titanatende.com.br` ou `studio.titanatende.com.br`.
+- Domínio definitivo: `tools.titanatende.com.br`.
 
 Em 2026-06-22, o host técnico temporário em produção ficou como:
 
 - `https://mayaproject-github.yrbgh5.easypanel.host`
 
 Observação operacional: no EasyPanel, esse host precisa apontar para `http://mayaproject_github:8080/`. Ele chegou a estar em `:80`, o que causava `502` somente no domínio técnico. `premium.titanatende.com.br` e `pedido.titanatende.com.br` já apontavam corretamente para `:8080`.
+
+Também em 2026-06-22, foi configurado o domínio definitivo:
+
+- Cloudflare: `tools.titanatende.com.br` como registro `A` para `2.24.97.168`, `DNS only`, TTL automático.
+- EasyPanel: `https://tools.titanatende.com.br/` apontando para `http://mayaproject_github:8080/`.
+- Backend: `tools.titanatende.com.br` incluído na lista padrão de hosts técnicos autorizados.
 
 Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys, fronteiras críticas e divisão de responsabilidades enquanto outras ferramentas atuam nos módulos.
 

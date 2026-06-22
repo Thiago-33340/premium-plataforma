@@ -127,6 +127,9 @@
     ],
     "operacional_2026_06_22": {
       "host_tecnico_temporario": "https://mayaproject-github.yrbgh5.easypanel.host",
+      "host_tecnico_definitivo": "https://tools.titanatende.com.br",
+      "dns_cloudflare": "Registro A tools.titanatende.com.br -> 2.24.97.168, DNS only, TTL Auto.",
+      "easypanel": "Domínio tools.titanatende.com.br criado no serviço github apontando para http://mayaproject_github:8080/.",
       "dominios_cliente_bloqueados": ["https://premium.titanatende.com.br", "https://pedido.titanatende.com.br"],
       "ajuste_easypanel": "O host técnico temporário estava apontando para http://mayaproject_github:80/ e foi ajustado para http://mayaproject_github:8080/, igual aos domínios operacionais.",
       "validacao": "Smoke read-only 17/17 em 2026-06-22 com base_url Premium e tools_base_url no host técnico."
