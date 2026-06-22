@@ -39,5 +39,30 @@
       "Smoke read-only produção OK: 16/16"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Mapper mantido como fonte visual de progresso, riscos, rotas e tarefas. Não foram registrados secrets."
+  },
+  {
+    "id": "deploy-2026-06-22-titan-tools-login",
+    "data": "2026-06-22",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "c7e5a80",
+    "pull_request": "https://github.com/Thiago-33340/premium-plataforma/pull/18",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://pedido.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Smoke read-only produção/tools OK: 16/18 executados, 2 skips esperados sem TITAN_SMOKE_USER_ID",
+      "premium.titanatende.com.br/command-center retorna 404",
+      "tools.titanatende.com.br/login retorna HTML do Titan Command Center",
+      "e-mail do Thiago autorizado para primeiro acesso",
+      "e-mail do Tassiano autorizado para primeiro acesso",
+      "api/mapper/state retorna 401 sem sessão"
+    ],
+    "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Variável TITAN_TOOL_BOOTSTRAP_EMAILS configurada no ambiente do serviço para autorizar os dois sócios. Não foram registrados valores de secrets."
   }
 ]
