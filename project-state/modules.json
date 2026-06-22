@@ -293,6 +293,7 @@
     "rotas_relacionadas": ["mapper-state"],
     "pendencias": [
       "Adicionar login integrado ao admin/estoque",
+      "Apontar domínio definitivo de ferramentas, ex: tools.titanatende.com.br",
       "Transformar ações do Command Center em registros graváveis auditados",
       "Criar visão de estoque com métricas reais depois da entrega do Claude"
     ],

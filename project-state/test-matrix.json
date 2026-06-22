@@ -60,7 +60,7 @@
     "type": "smoke",
     "priority": "alta",
     "covers": ["GET /api/health", "GET /command-center", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens", "GET /api/mesas", "GET /api/caixa", "GET /api/entregadores", "GET /api/mapper/state"],
-    "preconditions": ["API rodando"],
+    "preconditions": ["API rodando", "TITAN_TOOLS_BASE_URL configurado para validar ferramentas internas"],
     "expected": "rotas críticas respondem JSON válido sem modificar dados",
     "script": "npm run smoke:read",
     "mutates_data": false
@@ -104,7 +104,7 @@
     "type": "smoke/read-only",
     "priority": "alta",
     "covers": ["GET /command-center", "GET /mapper", "GET /api/mapper/state"],
-    "preconditions": ["admin_id de gestor"],
+    "preconditions": ["admin_id de gestor", "host técnico liberado em TITAN_TOOLS_HOSTS ou host EasyPanel padrão"],
     "expected": "mapper carrega project-state permitido e exibe progresso sem expor secrets",
     "script": "pendente: validar após deploy com usuário gestor",
     "mutates_data": false

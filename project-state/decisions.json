@@ -109,5 +109,21 @@
       "Claude não deve implementar no mesmo arquivo em paralelo quando Codex estiver executando a entrega.",
       "Toda mudança relevante continua registrada em project-state."
     ]
+  },
+  {
+    "id": "decision-009",
+    "data": "2026-06-22",
+    "decisao": "Separar Command Center e Mapper dos domínios operacionais de clientes",
+    "motivo": "Command Center e Mapper são ferramentas internas de criação, governança e desenvolvimento do Titan; não devem fazer parte da experiência pública/operacional da Premium.",
+    "impacto": "As rotas `/command-center`, `/mapper`, `/mapper.html` e `/api/mapper/state` passam a responder apenas em host técnico autorizado. `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.",
+    "modulos_afetados": ["command-center", "infra-deploy", "core-http"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "Domínios de cliente não exibem ferramentas de criação do Titan.",
+      "O host técnico pode ser configurado por `TITAN_TOOLS_HOSTS`.",
+      "Enquanto o domínio definitivo não existir, o host técnico padrão do EasyPanel pode ser usado para acesso interno.",
+      "A blindagem deve testar o produto no domínio do cliente e as ferramentas no domínio técnico."
+    ]
   }
 ]
