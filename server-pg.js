@@ -161,10 +161,7 @@ const PROJECT_STATE_FILES = [
 async function gestorBasico(uid) {
   if (!uid) return null;
   try {
-    const r = await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais
-      FROM rbac_contacts
-      WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT]);
-    const u = r.rows[0] || null;
+    const u = await rbacUserByRef(uid);
     return u && perfilGestor(u) ? u : null;
   } catch (e) { return null; }
 }
@@ -193,13 +190,31 @@ function setoresPermitidosLista(v) {
   if (v == null) return [];
   return String(v).replace(/[{}"]/g, '').split(',').map(s => s.trim()).filter(Boolean);
 }
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function rbacUserByRef(ref) {
+  const v = String(ref || '').trim();
+  if (!v) return null;
+  const cols = 'id, nome, apelido_login, setores_permitidos, perfil_principal, perfis_adicionais';
+  const r = UUID_RE.test(v)
+    ? await db.q(`SELECT ${cols}
+        FROM rbac_contacts
+        WHERE tenant_id=$2 AND ativo AND (id=$1::uuid OR lower(COALESCE(apelido_login,''))=lower($1) OR lower(split_part(COALESCE(nome,''),' ',1))=lower($1))
+        ORDER BY CASE WHEN id=$1::uuid THEN 0 WHEN lower(COALESCE(apelido_login,''))=lower($1) THEN 1 ELSE 2 END, nome
+        LIMIT 1`, [v, TENANT])
+    : await db.q(`SELECT ${cols}
+        FROM rbac_contacts
+        WHERE tenant_id=$2 AND ativo AND (lower(COALESCE(apelido_login,''))=lower($1) OR lower(split_part(COALESCE(nome,''),' ',1))=lower($1))
+        ORDER BY CASE WHEN lower(COALESCE(apelido_login,''))=lower($1) THEN 0 ELSE 1 END, nome
+        LIMIT 1`, [v, TENANT]);
+  return r.rows[0] || null;
+}
 async function estPermsEfetivas(uid) {
   if (!uid) return { user: null, perms: [], gestor: false };
-  let u; try { u = (await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT])).rows[0]; } catch (e) { return { user: null, perms: [], gestor: false }; }
+  let u; try { u = await rbacUserByRef(uid); } catch (e) { return { user: null, perms: [], gestor: false }; }
   if (!u) return { user: null, perms: [], gestor: false };
   const gestor = perfilGestor(u);
   if (gestor) return { user: u, perms: EST_PERMS.slice(), gestor: true };
-  let ex = []; try { ex = (await db.q(`SELECT permissao FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, uid])).rows; } catch (e) {}
+  let ex = []; try { ex = (await db.q(`SELECT permissao FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, u.id])).rows; } catch (e) {}
   if (ex.some(r => r.permissao === '__configured__')) return { user: u, perms: ex.map(r => r.permissao).filter(p => p !== '__configured__'), gestor: false };
   return { user: u, perms: EST_PERMS_COLAB.slice(), gestor: false };
 }
@@ -1007,7 +1022,7 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'meus-itens' && req.method === 'GET') {
     try {
       const uid = url.searchParams.get('usuario_id');
-      const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
+      const u = await rbacUserByRef(uid);
       if (!u) return json(res, 403, { erro: 'usuário inválido' });
       const gestor = perfilGestor(u);
       const setp = setoresPermitidosLista(u.setores_permitidos);
@@ -1317,23 +1332,23 @@ async function api(req, res, url) {
   }
 
   // ===== CONTAGEM POR SETOR + AUDITORIA =====
-  const estGestor = async (uid) => { if (!uid) return null; try { const r = await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT]); const u = r.rows[0] || null; return u && perfilGestor(u) ? u : null; } catch (e) { return null; } };
+  const estGestor = async (uid) => { if (!uid) return null; try { const u = await rbacUserByRef(uid); return u && perfilGestor(u) ? u : null; } catch (e) { return null; } };
 
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar' && req.method === 'POST') {
     const b = await readBody(req);
     if (!b.usuario_id || !b.setor_id) return json(res, 400, { erro: 'informe usuario_id e setor_id' });
     if (!(await estPode(b.usuario_id, 'fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para fazer contagem.' });
-    const u = await db.q('SELECT id, nome, setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [b.usuario_id, TENANT]);
-    if (!u.rows[0]) return json(res, 403, { erro: 'usuário inválido' });
+    const uref = await rbacUserByRef(b.usuario_id);
+    if (!uref) return json(res, 403, { erro: 'usuário inválido' });
     const s = await db.q('SELECT id, nome FROM est_setor WHERE id=$1 AND tenant_id=$2', [b.setor_id, TENANT]);
     if (!s.rows[0]) return json(res, 400, { erro: 'setor inválido' });
-    const gestor = perfilGestor(u.rows[0]);
-    const permitidos = setoresPermitidosLista(u.rows[0].setores_permitidos);
+    const gestor = perfilGestor(uref);
+    const permitidos = setoresPermitidosLista(uref.setores_permitidos);
     if (!gestor && !permitidos.includes('TUDO') && !permitidos.includes(String(s.rows[0].id)) && !permitidos.includes(s.rows[0].nome))
       return json(res, 403, { erro: 'Este setor não está atribuído ao colaborador.' });
     const aberta = await db.q(`SELECT id, setor_nome, usuario_nome, iniciada_em FROM est_contagem
       WHERE tenant_id=$1 AND setor_id=$2 AND usuario_id=$3 AND status='EM_ANDAMENTO' ORDER BY iniciada_em DESC LIMIT 1`,
-      [TENANT, s.rows[0].id, b.usuario_id]);
+      [TENANT, s.rows[0].id, uref.id]);
     if (aberta.rows[0]) {
       const ai = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY geral, produto_nome', [aberta.rows[0].id]);
       return json(res, 200, { contagem: aberta.rows[0], itens: ai.rows, retomada: true });
@@ -1343,7 +1358,7 @@ async function api(req, res, url) {
       WHERE ps.tenant_id=$1 AND ps.setor_id=$2 AND p.ativo AND p.pode_contar ORDER BY p.nome`, [TENANT, b.setor_id]);
     if (!itens.rows.length) return json(res, 400, { erro: 'Este setor não tem itens. Configure os itens do setor primeiro.' });
     const c = await db.q(`INSERT INTO est_contagem (tenant_id, setor_id, setor_nome, usuario_id, usuario_nome, status, status_auditoria)
-      VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id, setor_nome, usuario_nome, iniciada_em`, [TENANT, s.rows[0].id, s.rows[0].nome, b.usuario_id, u.rows[0].nome]);
+      VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id, setor_nome, usuario_nome, iniciada_em`, [TENANT, s.rows[0].id, s.rows[0].nome, uref.id, uref.nome]);
     const cid = c.rows[0].id;
     for (const it of itens.rows)
       await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral) VALUES ($1,$2,$3,$4,$5,$6,'PENDENTE',FALSE)`,
@@ -2424,8 +2439,8 @@ async function api(req, res, url) {
   if (sub === 'admin') {
     const body = (req.method !== 'GET') ? await readBody(req) : {};
     const adminId = (req.method === 'GET') ? url.searchParams.get('admin_id') : body.admin_id;
-    const g = await db.q(`SELECT id, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [adminId, TENANT]);
-    if (!g.rows[0] || !perfilGestor(g.rows[0])) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+    const g = await rbacUserByRef(adminId);
+    if (!g || !perfilGestor(g)) return json(res, 403, { erro: 'acesso restrito ao gestor' });
 
     if (seg[2] === 'usuarios' && req.method === 'GET') {
       const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, ativo, (pin_hash IS NOT NULL) AS tem_pin FROM rbac_contacts WHERE tenant_id=$1 ORDER BY ativo DESC, nome`, [TENANT]);
