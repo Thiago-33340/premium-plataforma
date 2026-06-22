@@ -63,5 +63,20 @@
       "est_produto é estoque; produtos é cardápio.",
       "est_ficha_* é produção interna; ficha_itens é ficha do cardápio/baixa por pedido."
     ]
+  },
+  {
+    "id": "decision-006",
+    "data": "2026-06-22",
+    "decisao": "Transformar rotas antigas do admin de estoque em ponte para o estoque oficial",
+    "motivo": "Ainda existiam endpoints `/api/admin/estoque-*` e `/api/admin/setor/*/rename` capazes de apontar para tabelas `estoque_*`, enquanto a operação nova usa `est_*`.",
+    "impacto": "Mesmo chamadas antigas passam a ler/escrever `est_produto`, `est_setor`, `est_produto_setor` e `est_contagem`. A UI nova continua usando `/api/est/*` diretamente.",
+    "modulos_afetados": ["admin-gestor", "estoque-v2", "contagem-auditoria"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "Nenhuma UI nova deve chamar `/api/admin/estoque-*`.",
+      "A ponte de compatibilidade não pode voltar a escrever em `estoque_itens_definicao`.",
+      "A remoção definitiva das rotas antigas exige verificar se ainda existe cliente/código chamando esses endpoints."
+    ]
   }
 ]

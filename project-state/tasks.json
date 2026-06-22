@@ -122,14 +122,14 @@
     "id": "task-f2-010",
     "titulo": "Migrar admin de estoque legado para /api/est",
     "modulo": "admin-gestor",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "alta",
     "categoria": "refatoracao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-003"],
-    "proximo_passo": "Mapear chamadas /api/admin/estoque-* em public/admin.html e substituir por rotas /api/est/* quando houver equivalência."
+    "proximo_passo": "Manter `/api/admin/estoque-*` apenas como compatibilidade sobre `est_produto`/`est_setor`; UI nova deve usar `/api/est/*`."
   },
   {
     "id": "task-f2-011",
@@ -143,5 +143,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-003"],
     "proximo_passo": "Criar smoke mutável em staging para abrir/fechar mesa, lançar item, abrir/fechar caixa e editar entregador sem afetar produção."
+  },
+  {
+    "id": "task-f2-012",
+    "titulo": "Planejar descontinuação das rotas admin antigas de estoque",
+    "modulo": "admin-gestor",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "refatoracao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-010"],
+    "proximo_passo": "Depois de validar produção, buscar clientes/código que ainda chamem `/api/admin/estoque-*` e remover a ponte quando for seguro."
   }
 ]
