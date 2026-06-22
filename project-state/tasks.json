@@ -168,6 +168,6 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-003", "task-f2-006", "task-f2-008"],
-    "proximo_passo": "Publicar /mapper, validar com gestor e adicionar visão de estoque após a entrega atual do Claude."
+    "proximo_passo": "Mapper publicado e validado em produção. Próximo passo: adicionar visão específica do estoque após a entrega atual do Claude."
   }
 ]
