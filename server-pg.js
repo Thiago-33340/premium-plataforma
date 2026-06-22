@@ -65,7 +65,91 @@ const validWA = p => { p = soPhone(p); return p.length === 12 || p.length === 13
 const waToken = phone => crypto.createHmac('sha256', WA_SECRET).update(soPhone(phone)).digest('hex').slice(0, 16);
 const money = n => Math.round(Number(n) * 100) / 100;
 function json(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(b); }
+function jsonComHeaders(res, code, obj, headers) {
+  const b = JSON.stringify(obj);
+  res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }, headers || {}));
+  res.end(b);
+}
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
+
+const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'gerenciar_usuarios'];
+const TITAN_TOOL_SESSION_COOKIE = 'tt_session';
+function normEmail(v) { return String(v || '').trim().toLowerCase(); }
+function emailValido(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normEmail(v)); }
+function senhaForte(s) { return typeof s === 'string' && s.length >= 8 && /[A-ZÁÀÂÃÉÈÊÍÓÔÕÚÇ]/.test(s) && /\d/.test(s) && /[^A-Za-z0-9]/.test(s); }
+function senhaMsg() { return 'A senha precisa ter no mínimo 8 caracteres, com pelo menos uma letra maiúscula, um número e um símbolo.'; }
+function parseCookies(req) {
+  const out = {};
+  String(req.headers.cookie || '').split(';').forEach(part => {
+    const i = part.indexOf('=');
+    if (i > -1) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  });
+  return out;
+}
+function cookieSeguro(req) {
+  return String(req.headers['x-forwarded-proto'] || '').includes('https') || !['localhost', '127.0.0.1'].includes(reqHost(req));
+}
+function sessionCookie(req, token, maxAge) {
+  const parts = [`${TITAN_TOOL_SESSION_COOKIE}=${encodeURIComponent(token)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax'];
+  if (cookieSeguro(req)) parts.push('Secure');
+  if (maxAge) parts.push(`Max-Age=${maxAge}`);
+  return parts.join('; ');
+}
+function clearSessionCookie(req) {
+  const parts = [`${TITAN_TOOL_SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
+  if (cookieSeguro(req)) parts.push('Secure');
+  return parts.join('; ');
+}
+function tokenHash(token) { return crypto.createHash('sha256').update(String(token || '')).digest('hex'); }
+function userPublico(u) {
+  if (!u) return null;
+  return { id: u.id, email: u.email, nome: u.nome || '', permissoes: u.permissoes || [], acesso_total: (u.permissoes || []).includes('acesso_total') };
+}
+function titanTemPerm(u, perm) {
+  const perms = u && Array.isArray(u.permissoes) ? u.permissoes : [];
+  return perms.includes('acesso_total') || perms.includes(perm);
+}
+function titanPermissoes(raw) {
+  const src = Array.isArray(raw) ? raw : [];
+  let out = src.map(p => String(p || '').trim()).filter(p => TITAN_TOOL_PERMS.includes(p));
+  out = Array.from(new Set(out));
+  if (out.includes('acesso_total')) return TITAN_TOOL_PERMS.slice();
+  return out.length ? out : ['command_center', 'mapper', 'ver_project_state'];
+}
+async function titanToolSession(req) {
+  const token = parseCookies(req)[TITAN_TOOL_SESSION_COOKIE];
+  if (!token) return null;
+  try {
+    const r = await db.q(`SELECT u.id,u.email,u.nome,u.permissoes,s.id AS session_id
+      FROM titan_tool_sessions s
+      JOIN titan_tool_users u ON u.id=s.user_id AND u.tenant_id=s.tenant_id
+      WHERE s.tenant_id=$1::varchar AND s.token_hash=$2 AND s.expira_em>NOW() AND u.ativo`, [TENANT, tokenHash(token)]);
+    const u = r.rows[0];
+    if (!u) return null;
+    db.q('UPDATE titan_tool_sessions SET visto_em=NOW() WHERE id=$1', [u.session_id]).catch(() => {});
+    return u;
+  } catch (e) { return null; }
+}
+async function criarTitanSession(req, user, remember) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  const dias = remember ? 30 : 0;
+  const horas = remember ? 24 * 30 : 12;
+  await db.q(`INSERT INTO titan_tool_sessions (tenant_id,user_id,token_hash,remember,ip,user_agent,expira_em)
+    VALUES ($1::varchar,$2,$3,$4,$5,$6,NOW()+($7 || ' hours')::interval)`, [
+      TENANT, user.id, tokenHash(token), !!remember,
+      String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').slice(0, 120),
+      String(req.headers['user-agent'] || '').slice(0, 240),
+      String(horas)
+    ]);
+  return { token, cookie: sessionCookie(req, token, dias ? dias * 24 * 60 * 60 : null) };
+}
+async function requerTitanSession(req, res, perm) {
+  if (!hostFerramentasPermitido(req)) { notFound(res); return null; }
+  const u = await titanToolSession(req);
+  if (!u) { json(res, 401, { erro: 'Faça login no Titan Tools.' }); return null; }
+  if (perm && !titanTemPerm(u, perm)) { json(res, 403, { erro: 'Sem permissão para esta ferramenta.' }); return null; }
+  return u;
+}
 
 const PROJECT_STATE_FILES = [
   'modules.json', 'routes.json', 'services.json', 'containers.json', 'databases.json',
@@ -570,18 +654,149 @@ async function api(req, res, url) {
 
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
 
-  if (sub === 'mapper' && seg[2] === 'state' && req.method === 'GET') {
+  if (sub === 'titan' && seg[2] === 'auth') {
     if (!hostFerramentasPermitido(req)) {
       return json(res, 404, { erro: 'ferramenta interna disponível apenas no domínio técnico do Titan' });
     }
-    const adminId = url.searchParams.get('admin_id') || url.searchParams.get('usuario_id');
-    const gestor = await gestorBasico(adminId);
-    if (!gestor) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+    const action = seg[3] || '';
+
+    if (action === 'me' && req.method === 'GET') {
+      const u = await titanToolSession(req);
+      return json(res, 200, { ok: true, usuario: userPublico(u) });
+    }
+
+    if (action === 'logout' && req.method === 'POST') {
+      const token = parseCookies(req)[TITAN_TOOL_SESSION_COOKIE];
+      if (token) await db.q('DELETE FROM titan_tool_sessions WHERE tenant_id=$1::varchar AND token_hash=$2', [TENANT, tokenHash(token)]).catch(() => {});
+      return jsonComHeaders(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie(req) });
+    }
+
+    if (action === 'login' && req.method === 'POST') {
+      const b = await readBody(req);
+      const email = normEmail(b.email);
+      const senha = String(b.senha || '');
+      const remember = !!b.remember;
+      if (!emailValido(email) || !senha) return json(res, 400, { erro: 'Informe e-mail e senha.' });
+      const r = await db.q(`SELECT id,email,nome,permissoes,senha_hash
+        FROM titan_tool_users
+        WHERE tenant_id=$1::varchar AND lower(email)=lower($2) AND ativo`, [TENANT, email]);
+      const u = r.rows[0];
+      if (!u || !u.senha_hash) return json(res, 401, { erro: 'E-mail ou senha inválidos. Se for seu primeiro acesso, use o botão Primeiro acesso.' });
+      const v = await db.q('SELECT ($1 = crypt($2, $1)) AS ok', [u.senha_hash, senha]);
+      if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { erro: 'E-mail ou senha inválidos.' });
+      await db.q('UPDATE titan_tool_users SET ultimo_login_em=NOW(), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2::varchar', [u.id, TENANT]);
+      const s = await criarTitanSession(req, u, remember);
+      return jsonComHeaders(res, 200, { ok: true, usuario: userPublico(u) }, { 'Set-Cookie': s.cookie });
+    }
+
+    if (action === 'first-access' && seg[4] === 'check' && req.method === 'POST') {
+      const b = await readBody(req);
+      const email = normEmail(b.email);
+      if (!emailValido(email)) return json(res, 400, { erro: 'Informe um e-mail válido.' });
+      const r = await db.q(`SELECT id,email,nome,(senha_hash IS NOT NULL) AS senha_definida
+        FROM titan_tool_users
+        WHERE tenant_id=$1::varchar AND lower(email)=lower($2) AND ativo`, [TENANT, email]);
+      const u = r.rows[0];
+      if (!u) return json(res, 404, { erro: 'Este e-mail ainda não foi autorizado para o Titan Tools.' });
+      return json(res, 200, { ok: true, autorizado: true, ja_configurado: !!u.senha_definida, usuario: { email: u.email, nome: u.nome || '' } });
+    }
+
+    if (action === 'first-access' && req.method === 'POST') {
+      const b = await readBody(req);
+      const email = normEmail(b.email);
+      const senha = String(b.senha || '');
+      const confirmar = String(b.confirmar || b.confirmacao || '');
+      const remember = !!b.remember;
+      if (!emailValido(email)) return json(res, 400, { erro: 'Informe um e-mail válido.' });
+      if (senha !== confirmar) return json(res, 400, { erro: 'As senhas precisam ser iguais.' });
+      if (!senhaForte(senha)) return json(res, 400, { erro: senhaMsg() });
+      const atual = await db.q(`SELECT id,email,nome,permissoes,senha_hash
+        FROM titan_tool_users
+        WHERE tenant_id=$1::varchar AND lower(email)=lower($2) AND ativo`, [TENANT, email]);
+      const existente = atual.rows[0];
+      if (!existente) return json(res, 404, { erro: 'Este e-mail ainda não foi autorizado para o Titan Tools.' });
+      if (existente.senha_hash) return json(res, 409, { erro: 'Este e-mail já concluiu o primeiro acesso. Use o login normal.' });
+      const r = await db.q(`UPDATE titan_tool_users
+          SET senha_hash=crypt($2, gen_salt('bf',10)),
+              primeiro_acesso_em=COALESCE(primeiro_acesso_em,NOW()),
+              ultimo_login_em=NOW(),
+              atualizado_em=NOW()
+        WHERE id=$1 AND tenant_id=$3::varchar
+        RETURNING id,email,nome,permissoes`, [existente.id, senha, TENANT]);
+      const u = r.rows[0];
+      const s = await criarTitanSession(req, u, remember);
+      return jsonComHeaders(res, 200, { ok: true, usuario: userPublico(u) }, { 'Set-Cookie': s.cookie });
+    }
+
+    if (action === 'users' && req.method === 'GET') {
+      const gestor = await requerTitanSession(req, res, 'gerenciar_usuarios');
+      if (!gestor) return;
+      const r = await db.q(`SELECT id,email,nome,permissoes,ativo,
+          (senha_hash IS NOT NULL) AS senha_definida,
+          primeiro_acesso_em,ultimo_login_em,criado_em,atualizado_em
+        FROM titan_tool_users
+        WHERE tenant_id=$1::varchar
+        ORDER BY ativo DESC, lower(email)`, [TENANT]);
+      return json(res, 200, { ok: true, usuarios: r.rows });
+    }
+
+    if (action === 'users' && req.method === 'PATCH' && seg[4]) {
+      const gestor = await requerTitanSession(req, res, 'gerenciar_usuarios');
+      if (!gestor) return;
+      const b = await readBody(req);
+      const perms = titanPermissoes(b.acesso_total || b.perfil === 'acesso_total' ? TITAN_TOOL_PERMS : b.permissoes);
+      const nome = typeof b.nome === 'string' ? b.nome.trim().slice(0, 120) : null;
+      const ativo = typeof b.ativo === 'boolean' ? b.ativo : null;
+      const r = await db.q(`UPDATE titan_tool_users
+          SET nome=COALESCE($3,nome),
+              permissoes=$4::TEXT[],
+              ativo=COALESCE($5,ativo),
+              autorizado_por=$6,
+              atualizado_em=NOW()
+        WHERE tenant_id=$1::varchar AND id=$2
+        RETURNING id,email,nome,permissoes,ativo,(senha_hash IS NOT NULL) AS senha_definida,primeiro_acesso_em,ultimo_login_em,criado_em,atualizado_em`,
+        [TENANT, seg[4], nome, perms, ativo, gestor.id]);
+      if (!r.rows[0]) return json(res, 404, { erro: 'Usuário não encontrado.' });
+      return json(res, 200, { ok: true, usuario: r.rows[0] });
+    }
+
+    if (action === 'authorize-email' && req.method === 'POST') {
+      const gestor = await requerTitanSession(req, res, 'gerenciar_usuarios');
+      if (!gestor) return;
+      const b = await readBody(req);
+      const email = normEmail(b.email);
+      if (!emailValido(email)) return json(res, 400, { erro: 'Informe um e-mail válido.' });
+      const nome = String(b.nome || '').trim().slice(0, 120) || email.split('@')[0];
+      const perms = titanPermissoes(b.acesso_total || b.perfil === 'acesso_total' ? TITAN_TOOL_PERMS : b.permissoes);
+      const ativo = b.ativo !== false;
+      const atual = await db.q(`SELECT id FROM titan_tool_users WHERE tenant_id=$1::varchar AND lower(email)=lower($2)`, [TENANT, email]);
+      let r;
+      if (atual.rows[0]) {
+        r = await db.q(`UPDATE titan_tool_users
+            SET email=$3,nome=$4,permissoes=$5::TEXT[],ativo=$6,autorizado_por=$7,atualizado_em=NOW()
+          WHERE tenant_id=$1::varchar AND id=$2
+          RETURNING id,email,nome,permissoes,ativo,(senha_hash IS NOT NULL) AS senha_definida,primeiro_acesso_em,ultimo_login_em,criado_em,atualizado_em`,
+          [TENANT, atual.rows[0].id, email, nome, perms, ativo, gestor.id]);
+      } else {
+        r = await db.q(`INSERT INTO titan_tool_users (tenant_id,email,nome,permissoes,ativo,autorizado_por)
+          VALUES ($1::varchar,$2,$3,$4::TEXT[],$5,$6)
+          RETURNING id,email,nome,permissoes,ativo,(senha_hash IS NOT NULL) AS senha_definida,primeiro_acesso_em,ultimo_login_em,criado_em,atualizado_em`,
+          [TENANT, email, nome, perms, ativo, gestor.id]);
+      }
+      return json(res, 200, { ok: true, usuario: r.rows[0] });
+    }
+
+    return json(res, 404, { erro: 'rota de autenticação não encontrada' });
+  }
+
+  if (sub === 'mapper' && seg[2] === 'state' && req.method === 'GET') {
+    const gestor = await requerTitanSession(req, res, 'ver_project_state');
+    if (!gestor) return;
     return json(res, 200, {
       ok: true,
       tenant: TENANT,
       generated_at: new Date().toISOString(),
-      usuario: { id: gestor.id, nome: gestor.nome, perfil_principal: gestor.perfil_principal },
+      usuario: userPublico(gestor),
       files: lerProjectStateSeguro()
     });
   }
@@ -2523,7 +2738,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
-    if (p === '/mapper' || p === '/mapper/' || p === '/mapper.html' || p === '/command-center' || p === '/command-center/') {
+    if (p === '/mapper' || p === '/mapper/' || p === '/mapper.html' || p === '/command-center' || p === '/command-center/' || p === '/login' || p === '/login/') {
       if (!hostFerramentasPermitido(req)) return notFound(res);
       return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
     }

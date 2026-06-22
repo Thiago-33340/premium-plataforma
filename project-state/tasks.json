@@ -187,14 +187,14 @@
     "id": "task-f2-015",
     "titulo": "Integrar login real ao Command Center",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "em_andamento",
     "prioridade": "media",
     "categoria": "seguranca",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014"],
-    "proximo_passo": "Remover dependência de admin_id na URL e reaproveitar a sessão/autenticação oficial do gestor."
+    "proximo_passo": "Deployar a mudança, informar os dois e-mails dos sócios e validar primeiro acesso em tools.titanatende.com.br."
   },
   {
     "id": "task-f2-016",

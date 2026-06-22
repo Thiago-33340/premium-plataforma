@@ -23,6 +23,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 | `staff-mesas-caixa` | mesas-caixa | `/api` | ativo_em_validacao |
 | `admin` | admin-gestor | `/api/admin` | misto |
 | `config-global` | core-http | `/api` | ativo |
+| `titan-tools-auth` | command-center | `/api/titan/auth` | ativo_em_validacao |
 | `mapper-state` | command-center | `/api/mapper` | ativo_em_validacao |
 
 ## Decisões de fronteira
@@ -33,10 +34,11 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
-- `/command-center` é a rota oficial da central operacional interna do Titan. `/mapper` continua como atalho/compatibilidade.
-- `/command-center`, `/mapper`, `/mapper.html` e `/api/mapper/state` são ferramentas internas e devem responder apenas em host técnico autorizado.
+- `/command-center` é a rota oficial da central operacional interna do Titan. `/mapper` continua como atalho/compatibilidade e `/login` aponta para a mesma tela de autenticação.
+- `/command-center`, `/mapper`, `/mapper.html`, `/login`, `/api/titan/auth/*` e `/api/mapper/state` são ferramentas internas e devem responder apenas em host técnico autorizado.
 - `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.
-- `/api/mapper/state` é read-only, restrito a gestor por `admin_id` e por host técnico, e expõe somente arquivos permitidos de `project-state`.
+- `/api/titan/auth/*` gerencia login real das ferramentas Titan: e-mail autorizado, primeiro acesso, senha com hash e sessão por cookie HttpOnly.
+- `/api/mapper/state` é read-only, restrito a sessão Titan Tools com permissão `ver_project_state` e por host técnico, e expõe somente arquivos permitidos de `project-state`.
 
 ## Rotas que devem ser evitadas em implementação nova
 

@@ -28,7 +28,36 @@ pool.on('connect', function (c) { c.query('SET search_path TO khardela, public')
 
 const MIGRATIONS = [
   "SET search_path TO khardela, public",
+  "CREATE EXTENSION IF NOT EXISTS pgcrypto",
   "ALTER TABLE rbac_contacts ADD COLUMN IF NOT EXISTS senha_hash TEXT",
+  `CREATE TABLE IF NOT EXISTS titan_tool_users (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     email TEXT NOT NULL,
+     nome TEXT,
+     senha_hash TEXT,
+     permissoes TEXT[] NOT NULL DEFAULT ARRAY['command_center','mapper','ver_project_state']::TEXT[],
+     ativo BOOLEAN NOT NULL DEFAULT TRUE,
+     autorizado_por UUID,
+     primeiro_acesso_em TIMESTAMPTZ,
+     ultimo_login_em TIMESTAMPTZ,
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_titan_tool_users_email ON titan_tool_users(tenant_id, lower(email))",
+  `CREATE TABLE IF NOT EXISTS titan_tool_sessions (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     user_id UUID NOT NULL REFERENCES titan_tool_users(id) ON DELETE CASCADE,
+     token_hash TEXT NOT NULL UNIQUE,
+     remember BOOLEAN NOT NULL DEFAULT FALSE,
+     ip TEXT,
+     user_agent TEXT,
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     visto_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     expira_em TIMESTAMPTZ NOT NULL
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_titan_tool_sessions_user ON titan_tool_sessions(tenant_id, user_id, expira_em DESC)",
   `CREATE TABLE IF NOT EXISTS mesas (
      id SERIAL PRIMARY KEY,
      tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
@@ -218,6 +247,25 @@ async function init(retries) {
         await pool.query(modelo);
         console.log('[db] modelo completo de restaurante aplicado');
       } catch (em) { console.log('[db] modelo-completo aviso:', em.code || em.message); }
+      try {
+        const emails = String(process.env.TITAN_TOOL_BOOTSTRAP_EMAILS || '')
+          .split(',')
+          .map(function (e) { return e.trim().toLowerCase(); })
+          .filter(function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); });
+        for (const email of emails) {
+          await pool.query(`INSERT INTO titan_tool_users (tenant_id,email,nome,permissoes,ativo)
+            SELECT $1::varchar,$2,$3,ARRAY['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']::TEXT[],TRUE
+            WHERE NOT EXISTS (SELECT 1 FROM titan_tool_users WHERE tenant_id=$1::varchar AND lower(email)=lower($2))`,
+            [TENANT, email, email.split('@')[0]]);
+          await pool.query(`UPDATE titan_tool_users
+              SET ativo=TRUE,
+                  permissoes=ARRAY['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']::TEXT[],
+                  atualizado_em=NOW()
+            WHERE tenant_id=$1::varchar AND lower(email)=lower($2)`,
+            [TENANT, email]);
+        }
+        if (emails.length) console.log('[db] titan tools bootstrap emails autorizados: ' + emails.length);
+      } catch (et) { console.log('[db] titan tools bootstrap aviso:', et.code || et.message); }
       try {
         const r = await pool.query('SELECT COUNT(*)::int AS n FROM produtos WHERE tenant_id=$1', [TENANT]);
         if (r.rows[0].n === 0) {
