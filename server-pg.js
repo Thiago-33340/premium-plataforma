@@ -1012,8 +1012,19 @@ async function api(req, res, url) {
     const setp = setoresPermitidosLista(u.setores_permitidos);
     const tudo = gestor || setp.includes('TUDO');
     const r = tudo
-      ? await db.q(`SELECT DISTINCT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor FROM est_produto p JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id JOIN est_setor s ON s.id=ps.setor_id WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar ORDER BY s.nome, p.nome`, [TENANT])
-      : await db.q(`SELECT DISTINCT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor FROM est_produto p JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id JOIN est_setor s ON s.id=ps.setor_id WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar AND (s.id::text = ANY($2) OR s.nome = ANY($2)) ORDER BY s.nome, p.nome`, [TENANT, setp]);
+      ? await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
+          FROM est_produto p
+          JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+         WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
+         ORDER BY s.nome, p.nome`, [TENANT])
+      : await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
+          FROM est_produto p
+          JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+         WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
+           AND (s.id::text = ANY($2::text[]) OR s.nome = ANY($2::text[]))
+         ORDER BY s.nome, p.nome`, [TENANT, setp]);
     return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
   }
   if (sub === 'est' && seg[2] === 'movimentos' && req.method === 'GET') {
