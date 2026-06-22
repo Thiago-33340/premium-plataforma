@@ -35,6 +35,7 @@
     .btn:hover{border-color:#444450;transform:translateY(-1px)}
     .btn.primary{background:linear-gradient(135deg,var(--orange),var(--orange2));border-color:transparent;color:#140800}
     .btn.ghost{background:transparent}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
     .tabs{display:flex;gap:8px;overflow:auto;margin-top:14px;padding-bottom:2px}
     .tab{white-space:nowrap;border:1px solid var(--line);background:#111116;color:var(--mut);border-radius:999px;padding:9px 12px;font-weight:850}
     .tab.active{background:rgba(255,106,0,.13);border-color:rgba(255,106,0,.46);color:#ffd7bd}
@@ -71,6 +72,24 @@
     .filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
     .field{width:100%;background:#111116;color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:12px 13px;outline:0}
     .field:focus{border-color:rgba(255,106,0,.55);box-shadow:0 0 0 3px rgba(255,106,0,.1)}
+    .fieldLabel{display:block;color:var(--mut);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin:0 0 7px 2px}
+    .formRow{display:grid;gap:10px;margin-top:14px}
+    .authShell{min-height:calc(100vh - 44px);display:grid;place-items:center;padding:24px 0}
+    .authCard{width:min(1060px,100%);display:grid;grid-template-columns:1fr .9fr;overflow:hidden}
+    .authHero{padding:38px;background:
+      radial-gradient(circle at 20% 12%,rgba(255,146,43,.35),transparent 33%),
+      linear-gradient(145deg,rgba(255,106,0,.16),rgba(97,168,255,.06));border-right:1px solid var(--line)}
+    .authHero h1{font-size:42px;max-width:520px}
+    .authHero p{color:#d6d6de;max-width:520px}
+    .authPanel{padding:32px;background:rgba(17,17,22,.92)}
+    .check{display:flex;align-items:center;gap:9px;color:var(--mut);font-weight:750}
+    .check input{width:17px;height:17px;accent-color:var(--orange)}
+    .rules{display:grid;gap:6px;margin-top:10px}
+    .rule{color:var(--mut2);font-size:12px}
+    .rule.ok{color:#bfffd5}
+    .userChip{display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:#111116;color:var(--mut)}
+    .userChip b{color:var(--txt)}
+    .inlineActions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
     .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .module{padding:14px;border:1px solid #292932;border-radius:18px;background:rgba(255,255,255,.025)}
     .module h3{margin-bottom:7px}
@@ -90,8 +109,8 @@
     th,td{text-align:left;border-bottom:1px solid #292932;padding:11px;vertical-align:top}
     th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.08em;background:#15151b}
     tr:last-child td{border-bottom:0}
-    @media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.hero,.cols,.split3,.split4{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:720px){.wrap{padding:14px}.top{margin:-14px -14px 14px;padding:14px}.topRow{flex-direction:column}.actions{justify-content:flex-start}.kpis,.cards,.timeline,.filters{grid-template-columns:1fr}h1{font-size:25px}.mark{width:44px;height:44px;border-radius:15px}}
+    @media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.hero,.cols,.split3,.split4{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(3,1fr)}.authCard{grid-template-columns:1fr}.authHero{border-right:0;border-bottom:1px solid var(--line)}}
+    @media(max-width:720px){.wrap{padding:14px}.top{margin:-14px -14px 14px;padding:14px}.topRow{flex-direction:column}.actions{justify-content:flex-start}.kpis,.cards,.timeline,.filters{grid-template-columns:1fr}h1{font-size:25px}.authHero h1{font-size:30px}.authHero,.authPanel{padding:22px}.mark{width:44px;height:44px;border-radius:15px}}
   </style>
 </head>
 <body>
@@ -108,51 +127,167 @@
     const file = (state, name, fallback) => state.files?.[name] ?? fallback;
 
     let STATE = null;
+    let AUTH = null;
+    let TOOL_USERS = null;
+    let ACCESS_MSG = '';
     let ACTIVE = 'visao';
     let FILTER = { q:'', module:'', status:'', tool:'' };
 
-    function storedAdminId(){
-      const q = new URLSearchParams(location.search).get('admin_id');
-      if(q) return q;
-      try{
-        const u = JSON.parse(localStorage.getItem('est_u') || 'null');
-        if(u && u.id) return u.id;
-      }catch(e){}
-      return localStorage.getItem('mapper_admin_id') || '';
+    const temPerm = perm => (AUTH?.permissoes || []).includes('acesso_total') || (AUTH?.permissoes || []).includes(perm);
+    const senhaOk = s => String(s || '').length >= 8 && /[A-ZÁÀÂÃÉÈÊÍÓÔÕÚÇ]/.test(s) && /\d/.test(s) && /[^A-Za-z0-9]/.test(s);
+
+    async function apiPost(path, payload){
+      const res = await fetch(`${API}${path}`, {
+        method:'POST',
+        credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload || {})
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.erro || 'Falha na comunicação com o Titan.');
+      return data;
     }
 
-    function gate(msg=''){
+    async function authMe(){
+      const res = await fetch(`${API}/api/titan/auth/me`, { credentials:'same-origin' });
+      return await res.json().catch(() => ({ok:false, usuario:null}));
+    }
+
+    function authShell(inner){
       $app.innerHTML = `
-        <section class="card pad gate">
-          <div class="brand" style="margin-bottom:16px">
-            <div class="mark">T</div>
-            <div><h1>Titan Command Center</h1><div class="sub">Acesso restrito ao gestor. Informe seu ID para carregar a central operacional.</div></div>
+        <section class="authShell">
+          <div class="card authCard">
+            <div class="authHero">
+              <div class="brand" style="margin-bottom:26px"><div class="mark">T</div><div><h2>Titan Tools</h2><div class="sub">Command Center + Mapper</div></div></div>
+              <h1>Central de criação e controle do Titan.</h1>
+              <p>Área técnica separada dos domínios operacionais. Entre com seu e-mail autorizado para acompanhar progresso, mapper, blindagem e próximos passos sem expor ferramentas para clientes.</p>
+              <div style="margin-top:22px">
+                <span class="tag ok">sessão segura</span>
+                <span class="tag">primeiro acesso controlado</span>
+                <span class="tag codex">permissões por e-mail</span>
+              </div>
+            </div>
+            <div class="authPanel">${inner}</div>
           </div>
-          <input class="field" id="adminId" placeholder="ID do gestor" value="${esc(storedAdminId())}">
-          <button class="btn primary" id="enter">Carregar Command Center</button>
-          ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
-          <div class="sub" style="margin-top:14px">Se você já entrou no estoque como gestor, a central tenta reaproveitar esse acesso automaticamente.</div>
         </section>`;
-      document.getElementById('enter').onclick = () => {
-        const id = document.getElementById('adminId').value.trim();
-        if(!id) return gate('Informe o ID do gestor.');
-        localStorage.setItem('mapper_admin_id', id);
-        load(id);
-      };
-      document.getElementById('adminId').onkeydown = e => { if(e.key === 'Enter') document.getElementById('enter').click(); };
     }
 
-    async function load(adminId = storedAdminId()){
-      if(!adminId) return gate();
+    function renderLogin(msg=''){
+      authShell(`
+        <h1>Entrar</h1>
+        <div class="sub">Use o e-mail e senha cadastrados no primeiro acesso.</div>
+        <div class="formRow">
+          <label><span class="fieldLabel">E-mail</span><input class="field" id="loginEmail" type="email" autocomplete="email" placeholder="voce@empresa.com.br"></label>
+          <label><span class="fieldLabel">Senha</span><input class="field" id="loginSenha" type="password" autocomplete="current-password" placeholder="Sua senha"></label>
+          <label class="check"><input id="remember" type="checkbox"> Manter conectado neste dispositivo</label>
+          <button class="btn primary" id="loginBtn">Entrar</button>
+          <button class="btn ghost" id="firstBtn">Primeiro acesso</button>
+          ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+        </div>`);
+      const entrar = async () => {
+        try{
+          const data = await apiPost('/api/titan/auth/login', {
+            email:document.getElementById('loginEmail').value,
+            senha:document.getElementById('loginSenha').value,
+            remember:document.getElementById('remember').checked
+          });
+          AUTH = data.usuario;
+          await load();
+        }catch(e){ renderLogin(e.message); }
+      };
+      document.getElementById('loginBtn').onclick = entrar;
+      document.getElementById('firstBtn').onclick = () => renderFirstAccessEmail();
+      ['loginEmail','loginSenha'].forEach(id => document.getElementById(id).onkeydown = e => { if(e.key === 'Enter') entrar(); });
+    }
+
+    function renderFirstAccessEmail(msg=''){
+      authShell(`
+        <h1>Primeiro acesso</h1>
+        <div class="sub">Informe o e-mail autorizado pelo gestor. Se ele estiver liberado, você cria sua senha na próxima etapa.</div>
+        <div class="formRow">
+          <label><span class="fieldLabel">E-mail autorizado</span><input class="field" id="firstEmail" type="email" autocomplete="email" placeholder="voce@empresa.com.br"></label>
+          <button class="btn primary" id="continueFirst">Continuar</button>
+          <button class="btn ghost" id="backLogin">Voltar ao login</button>
+          ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+        </div>`);
+      const seguir = async () => {
+        const email = document.getElementById('firstEmail').value.trim();
+        try{
+          const data = await apiPost('/api/titan/auth/first-access/check', { email });
+          if(data.ja_configurado) return renderLogin('Este e-mail já tem senha. Use o login normal.');
+          renderFirstAccessPassword(email);
+        }catch(e){ renderFirstAccessEmail(e.message); }
+      };
+      document.getElementById('continueFirst').onclick = seguir;
+      document.getElementById('backLogin').onclick = () => renderLogin();
+      document.getElementById('firstEmail').onkeydown = e => { if(e.key === 'Enter') seguir(); };
+    }
+
+    function renderFirstAccessPassword(email, msg=''){
+      authShell(`
+        <h1>Criar senha</h1>
+        <div class="sub">E-mail autorizado: <b>${esc(email)}</b>. A senha fica criptografada no banco e será usada nos próximos logins.</div>
+        <div class="formRow">
+          <label><span class="fieldLabel">Senha</span><input class="field" id="newPass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></label>
+          <label><span class="fieldLabel">Confirmar senha</span><input class="field" id="newPass2" type="password" autocomplete="new-password" placeholder="Digite novamente"></label>
+          <div class="rules" id="rules"></div>
+          <label class="check"><input id="rememberFirst" type="checkbox"> Manter conectado neste dispositivo</label>
+          <button class="btn primary" id="createPass" disabled>Criar senha e entrar</button>
+          <button class="btn ghost" id="backFirstEmail">Trocar e-mail</button>
+          ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+        </div>`);
+      const update = () => {
+        const s = document.getElementById('newPass').value;
+        const c = document.getElementById('newPass2').value;
+        const rules = [
+          ['8 caracteres ou mais', s.length >= 8],
+          ['pelo menos 1 letra maiúscula', /[A-ZÁÀÂÃÉÈÊÍÓÔÕÚÇ]/.test(s)],
+          ['pelo menos 1 número', /\d/.test(s)],
+          ['pelo menos 1 símbolo', /[^A-Za-z0-9]/.test(s)],
+          ['as duas senhas iguais', s && s === c]
+        ];
+        document.getElementById('rules').innerHTML = rules.map(r => `<div class="rule ${r[1] ? 'ok' : ''}">• ${esc(r[0])}</div>`).join('');
+        document.getElementById('createPass').disabled = !(senhaOk(s) && s === c);
+      };
+      const criar = async () => {
+        try{
+          const data = await apiPost('/api/titan/auth/first-access', {
+            email,
+            senha:document.getElementById('newPass').value,
+            confirmar:document.getElementById('newPass2').value,
+            remember:document.getElementById('rememberFirst').checked
+          });
+          AUTH = data.usuario;
+          await load();
+        }catch(e){ renderFirstAccessPassword(email, e.message); }
+      };
+      document.getElementById('newPass').oninput = update;
+      document.getElementById('newPass2').oninput = update;
+      document.getElementById('createPass').onclick = criar;
+      document.getElementById('backFirstEmail').onclick = () => renderFirstAccessEmail();
+      update();
+    }
+
+    async function load(){
       $app.innerHTML = '<section class="card pad gate"><h1>Carregando Command Center…</h1><div class="sub">Lendo project-state, checks, riscos, tarefas e workflow dos agentes.</div></section>';
       try{
-        const res = await fetch(`${API}/api/mapper/state?admin_id=${encodeURIComponent(adminId)}`);
+        const res = await fetch(`${API}/api/mapper/state`, { credentials:'same-origin' });
         const data = await res.json();
         if(!res.ok) throw new Error(data.erro || 'Falha ao carregar Command Center.');
-        localStorage.setItem('mapper_admin_id', adminId);
         STATE = data;
+        AUTH = data.usuario || AUTH;
         render();
-      }catch(e){ gate(e.message || 'Falha ao carregar Command Center.'); }
+      }catch(e){ renderLogin(e.message || 'Falha ao carregar Command Center.'); }
+    }
+
+    async function boot(){
+      $app.innerHTML = '<section class="card pad gate"><h1>Carregando Titan Tools…</h1><div class="sub">Verificando sessão deste dispositivo.</div></section>';
+      try{
+        const me = await authMe();
+        if(!me.usuario) return renderLogin();
+        AUTH = me.usuario;
+        await load();
+      }catch(e){ renderLogin(); }
     }
 
     function dataPack(){
@@ -196,14 +331,16 @@
               <div class="mark">T</div>
               <div>
                 <h1>Titan Command Center</h1>
-                <div class="sub">Fonte viva: <span class="mono">project-state/*.json</span>. Gestor: ${esc(STATE.usuario?.nome || '—')} · atualizado ${fmt(STATE.generated_at)}</div>
+                <div class="sub">Fonte viva: <span class="mono">project-state/*.json</span>. Acesso: ${esc(AUTH?.nome || AUTH?.email || '—')} · atualizado ${fmt(STATE.generated_at)}</div>
               </div>
             </div>
             <div class="actions">
+              <div class="userChip"><span>Conta</span><b>${esc(AUTH?.email || '—')}</b></div>
               <a class="btn ghost" href="/mapper">Mapper</a>
               <a class="btn ghost" href="/admin">Admin</a>
               <a class="btn ghost" href="/estoque">Estoque</a>
               <button class="btn primary" id="refresh">Atualizar</button>
+              <button class="btn ghost" id="logout">Sair</button>
             </div>
           </div>
           <nav class="tabs">${tabs().map(t => `<button class="tab ${ACTIVE === t.id ? 'active' : ''}" data-tab="${esc(t.id)}">${esc(t.label)}</button>`).join('')}</nav>
@@ -225,16 +362,22 @@
         <section id="qualidade" class="section ${ACTIVE === 'qualidade' ? 'active' : ''}">${renderQualidade(p)}</section>
         <section id="deploys" class="section ${ACTIVE === 'deploys' ? 'active' : ''}">${renderDeploys(p)}</section>
         <section id="mapa" class="section ${ACTIVE === 'mapa' ? 'active' : ''}">${renderMapa(p)}</section>
+        ${temPerm('gerenciar_usuarios') ? `<section id="acessos" class="section ${ACTIVE === 'acessos' ? 'active' : ''}">${renderAcessos()}</section>` : ''}
       `;
 
       document.getElementById('refresh').onclick = () => load();
+      document.getElementById('logout').onclick = async () => {
+        try{ await apiPost('/api/titan/auth/logout', {}); }catch(e){}
+        AUTH = null; STATE = null; TOOL_USERS = null; ACTIVE = 'visao'; renderLogin();
+      };
       document.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { ACTIVE = btn.dataset.tab; render(); });
       bindFilters();
       bindCopy(p);
+      bindAcessos();
     }
 
     function tabs(){
-      return [
+      const out = [
         {id:'visao', label:'Visão geral'},
         {id:'estoque', label:'Estoque'},
         {id:'agentes', label:'Agentes'},
@@ -243,6 +386,8 @@
         {id:'deploys', label:'Deploys'},
         {id:'mapa', label:'Mapa técnico'}
       ];
+      if(temPerm('gerenciar_usuarios')) out.push({id:'acessos', label:'Acessos'});
+      return out;
     }
 
     function renderVisao(p, meta){
@@ -434,6 +579,49 @@
         </div>`;
     }
 
+    function renderAcessos(){
+      const users = TOOL_USERS || [];
+      const rows = users.map(u => `<tr>
+        <td><b>${esc(u.nome || '—')}</b><br><small>${esc(u.email)}</small></td>
+        <td>${(u.permissoes || []).map(p => `<span class="tag ${p === 'acesso_total' ? 'ok' : ''}">${esc(p)}</span>`).join('')}</td>
+        <td><span class="pill ${u.ativo ? 'ok' : 'bad'}">${u.ativo ? 'ativo' : 'inativo'}</span></td>
+        <td>${u.senha_definida ? '<span class="pill ok">senha criada</span>' : '<span class="pill warn">aguarda 1º acesso</span>'}</td>
+        <td><small>${fmt(u.ultimo_login_em)}</small></td>
+      </tr>`).join('');
+      return `
+        <div class="cols" style="margin-bottom:14px">
+          <div class="card pad callout">
+            <div class="sectionTitle"><h2>Autorizar novo e-mail</h2><span class="pill ok">Titan Tools</span></div>
+            <div class="sub">Cadastre o e-mail autorizado e escolha o nível de acesso. Depois a pessoa usa “Primeiro acesso” para criar a própria senha.</div>
+            <div class="formRow">
+              <label><span class="fieldLabel">Nome</span><input class="field" id="accessName" placeholder="Nome da pessoa"></label>
+              <label><span class="fieldLabel">E-mail</span><input class="field" id="accessEmail" type="email" placeholder="pessoa@empresa.com.br"></label>
+              <label><span class="fieldLabel">Permissão</span><select class="field" id="accessProfile">
+                <option value="total">Acesso total — gestor/criador</option>
+                <option value="tecnico">Command Center + Mapper</option>
+              </select></label>
+              <button class="btn primary" id="authorizeAccess">Autorizar e-mail</button>
+              ${ACCESS_MSG ? `<div class="sub">${esc(ACCESS_MSG)}</div>` : ''}
+            </div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Regras deste login</h2><span class="pill">sem senha no chat</span></div>
+            <div class="list">
+              <div class="item"><b>Primeiro acesso</b><small>Só funciona para e-mail previamente autorizado nesta aba ou no bootstrap seguro do servidor.</small></div>
+              <div class="item"><b>Senha forte</b><small>Mínimo de 8 caracteres, com maiúscula, número e símbolo.</small></div>
+              <div class="item"><b>Manter conectado</b><small>Desmarcado por padrão. Se marcado, mantém sessão por até 30 dias neste dispositivo.</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="card pad">
+          <div class="sectionTitle">
+            <h2>Usuários autorizados</h2>
+            <div class="inlineActions"><span class="pill">${users.length} registros</span><button class="btn ghost" id="reloadAccess">Recarregar</button></div>
+          </div>
+          ${TOOL_USERS ? `<div class="table"><table><thead><tr><th>Usuário</th><th>Permissões</th><th>Status</th><th>Primeiro acesso</th><th>Último login</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Nenhum usuário autorizado.</td></tr>'}</tbody></table></div>` : empty('Carregando usuários autorizados...')}
+        </div>`;
+    }
+
     function kpi(label, value, detail){ return `<div class="card pad kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></div>`; }
     function empty(text){ return `<div class="empty">${esc(text)}</div>`; }
     function option(value, label, selected){ return `<option value="${esc(value)}" ${selected === value ? 'selected' : ''}>${esc(label)}</option>`; }
@@ -544,6 +732,48 @@
       tool.onchange = e => { FILTER.tool = e.target.value; render(); };
     }
 
+    async function carregarAcessos(){
+      const res = await fetch(`${API}/api/titan/auth/users`, { credentials:'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.erro || 'Falha ao carregar acessos.');
+      TOOL_USERS = data.usuarios || [];
+    }
+
+    function bindAcessos(){
+      if(ACTIVE !== 'acessos' || !temPerm('gerenciar_usuarios')) return;
+      if(!TOOL_USERS){
+        carregarAcessos().then(() => render()).catch(e => { ACCESS_MSG = e.message; TOOL_USERS = []; render(); });
+        return;
+      }
+      const reload = document.getElementById('reloadAccess');
+      if(reload) reload.onclick = async () => {
+        ACCESS_MSG = '';
+        TOOL_USERS = null;
+        render();
+      };
+      const btn = document.getElementById('authorizeAccess');
+      if(!btn) return;
+      btn.onclick = async () => {
+        const perfil = document.getElementById('accessProfile').value;
+        const permissoes = perfil === 'total'
+          ? ['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']
+          : ['command_center','mapper','ver_project_state'];
+        try{
+          await apiPost('/api/titan/auth/authorize-email', {
+            nome:document.getElementById('accessName').value,
+            email:document.getElementById('accessEmail').value,
+            permissoes
+          });
+          ACCESS_MSG = 'E-mail autorizado/atualizado. A pessoa já pode usar Primeiro acesso.';
+          TOOL_USERS = null;
+          render();
+        }catch(e){
+          ACCESS_MSG = e.message;
+          render();
+        }
+      };
+    }
+
     function buildClaudeBrief(p){
       const open = p.tasks.filter(t => norm(t.status) !== 'concluido').slice(0,8).map(t => `- ${t.id}: ${t.titulo} [${t.modulo}/${t.prioridade}] -> ${t.proximo_passo || ''}`).join('\n');
       const risks = p.risks.slice().sort((a,b)=>riskWeight(b)-riskWeight(a)).slice(0,6).map(r => `- ${r.id}: ${r.titulo} [${r.severidade}/${r.status}] -> ${r.mitigacao || r.impacto || ''}`).join('\n');
@@ -590,7 +820,7 @@ Entregue para Thiago e Codex:
       };
     }
 
-    load();
+    boot();
   </script>
 </body>
 </html>

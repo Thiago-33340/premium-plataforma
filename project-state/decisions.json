@@ -134,5 +134,22 @@
       "ajuste_easypanel": "O host técnico temporário estava apontando para http://mayaproject_github:80/ e foi ajustado para http://mayaproject_github:8080/, igual aos domínios operacionais.",
       "validacao": "Smoke read-only 17/17 em 2026-06-22 com base_url Premium e tools_base_url no host técnico."
     }
+  },
+  {
+    "id": "decision-010",
+    "data": "2026-06-22",
+    "decisao": "Trocar acesso do Command Center por admin_id para login real por e-mail e senha",
+    "motivo": "O Command Center e o Mapper são ferramentas internas de criação/governança; abrir project-state por admin_id na URL era frágil para operar remotamente e para liberar novos usuários com segurança.",
+    "impacto": "As ferramentas Titan passam a usar sessão própria em titan_tool_users/titan_tool_sessions, primeiro acesso por e-mail autorizado, senha criptografada e permissão granular. /api/mapper/state exige sessão com ver_project_state.",
+    "modulos_afetados": ["command-center", "mapper", "infra-deploy", "core-http"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "O primeiro acesso só cria senha para e-mail previamente autorizado.",
+      "Senha não deve ser passada por chat nem salva em código.",
+      "A opção Manter conectado fica desmarcada por padrão e, quando marcada, cria sessão persistente do dispositivo.",
+      "Usuários com gerenciar_usuarios podem autorizar novos e-mails e definir permissões pelo Command Center.",
+      "O bootstrap inicial dos sócios deve ser feito por TITAN_TOOL_BOOTSTRAP_EMAILS ou por usuário já autorizado com acesso total."
+    ]
   }
 ]

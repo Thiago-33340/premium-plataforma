@@ -59,7 +59,7 @@
     "module": "core-http",
     "type": "smoke",
     "priority": "alta",
-    "covers": ["GET /api/health", "GET /command-center", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens", "GET /api/mesas", "GET /api/caixa", "GET /api/entregadores", "GET /api/mapper/state"],
+    "covers": ["GET /api/health", "GET /command-center", "GET /api/titan/auth/me", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens", "GET /api/mesas", "GET /api/caixa", "GET /api/entregadores", "GET /api/mapper/state protegido sem sessão"],
     "preconditions": ["API rodando", "TITAN_TOOLS_BASE_URL configurado para validar ferramentas internas"],
     "expected": "rotas críticas respondem JSON válido sem modificar dados",
     "script": "npm run smoke:read",
@@ -103,10 +103,21 @@
     "module": "command-center",
     "type": "smoke/read-only",
     "priority": "alta",
-    "covers": ["GET /command-center", "GET /mapper", "GET /api/mapper/state"],
-    "preconditions": ["admin_id de gestor", "host técnico liberado em TITAN_TOOLS_HOSTS ou host EasyPanel padrão"],
-    "expected": "mapper carrega project-state permitido e exibe progresso sem expor secrets",
-    "script": "pendente: validar após deploy com usuário gestor",
+    "covers": ["GET /command-center", "GET /mapper", "GET /login", "GET /api/titan/auth/me", "GET /api/mapper/state"],
+    "preconditions": ["host técnico liberado em TITAN_TOOLS_HOSTS ou host EasyPanel padrão", "para abrir project-state, usuário Titan Tools com ver_project_state"],
+    "expected": "sem sessão, mapper-state retorna 401; com sessão válida, mapper carrega project-state permitido e exibe progresso sem expor secrets",
+    "script": "npm run smoke:read para proteção anônima; validação autenticada após bootstrap dos sócios",
     "mutates_data": false
+  },
+  {
+    "id": "smoke-titan-tools-login-primeiro-acesso",
+    "module": "command-center",
+    "type": "auth/integration",
+    "priority": "alta",
+    "covers": ["POST /api/titan/auth/first-access/check", "POST /api/titan/auth/first-access", "POST /api/titan/auth/login", "POST /api/titan/auth/authorize-email"],
+    "preconditions": ["ambiente de teste isolado", "e-mail autorizado sem senha definida"],
+    "expected": "e-mail autorizado cria senha forte uma única vez; login normal cria sessão; e-mail não autorizado é bloqueado",
+    "script": "pendente: exige banco de teste ou e-mail descartável autorizado",
+    "mutates_data": true
   }
 ]

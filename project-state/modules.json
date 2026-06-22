@@ -84,7 +84,7 @@
     "id": "estoque-v2",
     "nome": "Estoque operacional v2",
     "status": "em_andamento",
-    "progresso": 70,
+    "progresso": 82,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -293,14 +293,15 @@
     "host_tecnico_temporario": "https://mayaproject-github.yrbgh5.easypanel.host",
     "dominios_operacionais_bloqueados": ["premium.titanatende.com.br", "pedido.titanatende.com.br"],
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
-    "rotas_relacionadas": ["mapper-state"],
+    "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
-      "Adicionar login integrado ao admin/estoque",
+      "Fazer bootstrap dos e-mails dos sócios em produção",
+      "Validar primeiro acesso autenticado após deploy",
       "Transformar ações do Command Center em registros graváveis auditados",
       "Criar visão de estoque com métricas reais depois da entrega do Claude"
     ],
     "proximos_passos": [
-      "Usar /command-center como rota oficial da central",
+      "Usar /command-center ou /login no host tools.titanatende.com.br",
       "Entregar briefing do Claude pela aba Agentes",
       "Registrar cada avanço relevante em project-state"
     ]

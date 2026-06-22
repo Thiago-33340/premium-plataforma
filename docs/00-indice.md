@@ -21,7 +21,7 @@ Este é o ponto de entrada oficial para qualquer pessoa, IA ou ferramenta trabal
 
 A pasta `project-state/` passa a ser a base operacional inicial do Titan.
 
-A primeira visão visual dessa base evoluiu para o **Titan Command Center**. Ele deve rodar fora dos domínios operacionais de clientes. A rota `/command-center` é liberada apenas em host técnico autorizado; `/mapper` continua como atalho técnico. Ele lê `project-state` via `GET /api/mapper/state`, com acesso restrito a gestor e ao host técnico do Titan.
+A primeira visão visual dessa base evoluiu para o **Titan Command Center**. Ele deve rodar fora dos domínios operacionais de clientes. A rota `/command-center` é liberada apenas em host técnico autorizado; `/mapper` continua como atalho técnico e `/login` abre a mesma tela. Ele lê `project-state` via `GET /api/mapper/state`, com acesso restrito a sessão Titan Tools com permissão `ver_project_state` e ao host técnico do Titan.
 
 Arquivos principais:
 
