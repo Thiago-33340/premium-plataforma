@@ -20,6 +20,8 @@ O Command Center deve ler:
 - `project-state/health-checks.json`
 - `project-state/rbac-audit.json`
 - `project-state/agent-workflow.json`
+- `project-state/command-audit-log.json`
+- `titan_command_actions` no Postgres para ações vivas feitas pela tela
 
 ## Telas iniciais
 
@@ -99,10 +101,11 @@ A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Tita
 - atalho/compatibilidade: `/mapper`;
 - atalho de login: `/login`;
 - arquivo: `public/mapper.html`;
-- API read-only: `GET /api/mapper/state`;
+- API de leitura: `GET /api/mapper/state`;
+- API de ações auditadas: `POST /api/mapper/action`;
 - API de autenticação: `/api/titan/auth/*`;
 - acesso: restrito a sessão Titan Tools com permissão adequada e a host técnico autorizado;
-- fonte: arquivos permitidos de `project-state/`.
+- fonte: arquivos permitidos de `project-state/` com overlay de `titan_command_actions`.
 
 ## Separação de domínio
 
@@ -146,6 +149,28 @@ Também em 2026-06-22, foi configurado o domínio definitivo:
 
 Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys, fronteiras críticas e divisão de responsabilidades enquanto outras ferramentas atuam nos módulos.
 
+## Ações auditadas
+
+A aba **Execução** permite, para usuários com `editar_project_state` ou `acesso_total`:
+
+- criar tarefa;
+- atualizar tarefa;
+- criar risco;
+- criar decisão.
+
+Cada ação:
+
+- grava somente arquivos permitidos de `project-state`;
+- registra auditoria em `project-state/command-audit-log.json`;
+- tenta persistir o mesmo evento em `titan_command_actions`;
+- é reaplicada por `GET /api/mapper/state` como overlay sobre o estado versionado.
+
+Limite consciente:
+
+- o Command Center não altera código sozinho;
+- Git continua sendo a trilha definitiva para código, documentação versionada e deploy;
+- PR/commit/deploy acionados pelo Command ficam para etapa futura com confirmação humana.
+
 ## Regra operacional entre agentes
 
 - Thiago define prioridade e aprova fluxo operacional.
@@ -167,8 +192,9 @@ Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompa
 - mostra briefing copiável para Claude;
 - mostra visão dedicada do estoque;
 - mostra aba de acessos para usuários com permissão;
+- permite criar tarefa, risco, decisão e atualizar tarefa com auditoria;
+- persiste ações vivas em `titan_command_actions`;
 - possui filtros por módulo/status/ferramenta;
 - não expõe secrets;
 - exige sessão Titan Tools para dados internos;
-- exige host técnico autorizado;
-- pode evoluir depois para ações graváveis auditadas.
+- exige host técnico autorizado.

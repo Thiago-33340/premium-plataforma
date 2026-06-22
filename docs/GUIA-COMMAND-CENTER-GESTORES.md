@@ -105,6 +105,8 @@ Toda ação gravável gera auditoria em `project-state/command-audit-log.json`, 
 - ID criado ou atualizado;
 - resumo da mudança.
 
+Além do arquivo versionado, a ação também tenta gravar uma cópia auditada no banco Postgres, na tabela `titan_command_actions`. A tela mostra a quantidade de ações persistidas e, ao registrar algo, indica se voltou como **Postgres OK**.
+
 Regra prática:
 
 - use **Nova tarefa** quando algo precisa ser executado;
@@ -112,7 +114,13 @@ Regra prática:
 - use **Nova decisão** quando Thiago/Tassiano definirem uma regra do produto ou do processo;
 - use **Atualizar tarefa** quando algo andou, travou ou foi concluído.
 
-Importante: essa primeira versão grava o `project-state` do ambiente onde o Command roda. Mudanças de código, deploy e sincronização definitiva com Git continuam exigindo commit/push/deploy explícito.
+Importante: o Command Center gerencia progresso, riscos, tarefas e decisões. Ele não altera código sozinho. Mudanças de código, interface, banco operacional e deploy continuam exigindo commit/push/deploy explícito.
+
+Como pensar a persistência:
+
+- `project-state/*.json`: trilha versionada no Git, boa para documentação e handoff entre ferramentas.
+- `titan_command_actions`: trilha viva do que foi registrado pela tela em produção, boa para sobreviver a deploys.
+- Git/commit: fonte definitiva para código, documentação versionada e mudanças publicáveis.
 
 ### Qualidade
 

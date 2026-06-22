@@ -194,3 +194,27 @@ O Claude deve focar somente nas 3 fichas que exigem receita real:
 3. `Coco Ralado Floco`
 
 Não inventar fórmulas. Se não houver composição real, responder com pergunta objetiva para Thiago.
+
+## Atualização — Command com ações auditadas persistentes
+
+Data: 2026-06-22
+
+O Command Center agora permite, na aba **Execução**, registrar:
+
+- tarefas;
+- riscos;
+- decisões;
+- atualização de status/próximo passo de tarefa.
+
+Essas ações:
+
+- gravam somente arquivos whitelistados de `project-state`;
+- registram auditoria em `project-state/command-audit-log.json`;
+- persistem o evento vivo em `titan_command_actions`;
+- são reaplicadas por `GET /api/mapper/state` como overlay sobre o estado versionado.
+
+Como o Claude deve usar isso:
+
+- Ler a aba **Execução** e as tarefas/riscos antes de sugerir próximos passos.
+- Tratar o Command como governança e trilha de decisão, não como executor automático de código.
+- Não assumir que uma tarefa registrada no Command já foi implantada; deploy continua exigindo commit/push/deploy explícito.

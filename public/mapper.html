@@ -312,7 +312,8 @@
         people: file(data, 'people.json', []),
         stockStep2: file(data, 'stock-command-step2.json', {}),
         stockReadiness: file(data, 'stock-readiness.json', {}),
-        audit: file(data, 'command-audit-log.json', [])
+        audit: file(data, 'command-audit-log.json', []),
+        dbActions: file(data, 'command-db-actions.json', [])
       };
     }
 
@@ -590,11 +591,12 @@
       const moduleOptions = p.modules.map(m => `<option value="${esc(m.id)}">${esc(m.nome || m.id)}</option>`).join('');
       const taskOptions = p.tasks.slice().reverse().map(t => `<option value="${esc(t.id)}">${esc(t.id)} · ${esc(t.titulo)}</option>`).join('');
       const audit = (p.audit || []).slice(-5).reverse();
+      const dbActions = Array.isArray(p.dbActions) ? p.dbActions : [];
       return `
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad callout">
             <div class="sectionTitle"><h2>Registrar no Command</h2><span class="pill ok">ação auditada</span></div>
-            <div class="sub">Cria tarefa, risco ou decisão direto no <span class="mono">project-state</span>, com log de quem registrou.</div>
+            <div class="sub">Cria tarefa, risco ou decisão no <span class="mono">project-state</span> e mantém trilha persistente no Postgres para sobreviver a deploys.</div>
             <div class="filters" style="margin-top:12px">
               <select class="field" id="cmdActionType">
                 <option value="create_task">Nova tarefa</option>
@@ -618,6 +620,10 @@
           </div>
           <div class="card pad">
             <div class="sectionTitle"><h2>Atualizar tarefa</h2><span class="pill">status</span></div>
+            <div class="item" style="margin-bottom:12px">
+              <b>Persistência do Command</b>
+              <small>${dbActions.length} ações auditadas no Postgres · overlay ativo sobre o project-state versionado.</small>
+            </div>
             <div class="filters" style="margin-top:12px">
               <select class="field" id="cmdTaskId">${taskOptions}</select>
               <select class="field" id="cmdTaskStatus">
@@ -885,7 +891,7 @@
         }
         try{
           const out = await apiPost('/api/mapper/action', payload);
-          COMMAND_MSG = `Registrado: ${out.target?.id || 'ação'} · ${out.audit?.id || 'auditado'}`;
+          COMMAND_MSG = `Registrado: ${out.target?.id || 'ação'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
           await load();
           ACTIVE = 'execucao';
         }catch(e){
@@ -903,7 +909,7 @@
             proximo_passo:document.getElementById('cmdTaskStep').value,
             bloqueada:document.getElementById('cmdTaskBlocked').checked
           });
-          COMMAND_MSG = `Atualizado: ${out.target?.id || 'tarefa'} · ${out.audit?.id || 'auditado'}`;
+          COMMAND_MSG = `Atualizado: ${out.target?.id || 'tarefa'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
           await load();
           ACTIVE = 'execucao';
         }catch(e){

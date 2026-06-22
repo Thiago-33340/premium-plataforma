@@ -167,5 +167,21 @@
       "Ações do Command não devem expor secrets nem editar arquivos fora da whitelist.",
       "A versão atual grava tarefas, riscos, decisões e status de tarefa; deploy e Git automático ficam para etapa futura."
     ]
+  },
+  {
+    "id": "decision-012",
+    "data": "2026-06-22",
+    "decisao": "Persistir ações vivas do Command no Postgres sem substituir Git",
+    "motivo": "Ações registradas pela tela em produção poderiam ficar apenas no filesystem do container e ser perdidas ou sobrescritas em novo deploy. O Command precisa sobreviver ao ciclo de implantação sem virar executor invisível de código.",
+    "impacto": "POST /api/mapper/action grava nos arquivos permitidos do project-state e também em titan_command_actions. GET /api/mapper/state aplica as ações do banco como overlay sobre o estado versionado. Código, interfaces e deploys continuam exigindo commit/push/deploy explícitos.",
+    "modulos_afetados": ["command-center", "mapper", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "O Command gerencia progresso, tarefas, riscos e decisões; ele não replica automaticamente mudanças de código.",
+      "Git continua sendo a trilha definitiva para código, documentação e estado versionado do projeto.",
+      "O Postgres guarda a trilha viva de ações criadas pela UI entre deploys.",
+      "Ações futuras de PR, commit ou deploy pelo Command exigem permissão e confirmação explícita."
+    ]
   }
 ]

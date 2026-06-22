@@ -402,3 +402,52 @@ Arquivos principais:
 - `public/mapper.html`
 - `project-state/command-audit-log.json`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+
+## Marco 10 — Command Center ganha trilha persistente no Postgres
+
+Status: implementado localmente, aguardando validação/deploy desta etapa
+
+Motivo:
+
+- A primeira versão gravava ações do Command nos arquivos do `project-state`.
+- Isso é bom para Git e handoff, mas ações feitas pela tela em produção poderiam ficar presas no filesystem do container.
+- Um novo deploy poderia sobrescrever esse estado se ele não estivesse commitado.
+
+O que foi implementado:
+
+- Nova tabela `titan_command_actions`.
+- `POST /api/mapper/action` continua gravando nos arquivos permitidos:
+  - `project-state/tasks.json`;
+  - `project-state/risks.json`;
+  - `project-state/decisions.json`;
+  - `project-state/command-audit-log.json`.
+- A mesma ação agora também tenta persistir no Postgres com:
+  - ação;
+  - arquivo alvo;
+  - ID alvo;
+  - payload sem campos sensíveis;
+  - resultado com `target` e `audit`;
+  - usuário/e-mail/nome;
+  - horário.
+- `GET /api/mapper/state` lê `project-state` e aplica overlay das ações em `titan_command_actions`.
+- A tela da aba **Execução** mostra a quantidade de ações persistidas no Postgres.
+- Ao criar/atualizar algo, a confirmação informa `Postgres OK` ou `Postgres pendente`.
+
+Regra de arquitetura:
+
+- O Command Center gerencia progresso, tarefas, riscos e decisões.
+- O Command Center ainda não altera código sozinho.
+- Git continua sendo a trilha definitiva para código, interface, documentação versionada e deploy.
+- Automação de PR/deploy pelo Command ficou como próxima etapa, com confirmação humana obrigatória.
+
+Arquivos principais:
+
+- `db.js`
+- `server-pg.js`
+- `public/mapper.html`
+- `project-state/tasks.json`
+- `project-state/decisions.json`
+- `project-state/api-contracts-critical.json`
+- `project-state/modules.json`
+- `project-state/routes.json`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`

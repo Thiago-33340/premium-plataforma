@@ -207,7 +207,7 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014", "task-f2-015"],
-    "proximo_passo": "Primeira versão implementada: criar tarefa, risco, decisão e atualizar status de tarefa pela aba Execução, com command-audit-log.json. Próximo degrau: persistência/versionamento externo e ações de deploy."
+    "proximo_passo": "Ações graváveis implementadas e persistidas em project-state + titan_command_actions. Próximo degrau: desenhar ações de PR/deploy com confirmação humana."
   },
   {
     "id": "task-f2-017",
@@ -257,13 +257,26 @@
     "id": "task-f2-020",
     "titulo": "Versionar ações do Command em trilha externa segura",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "automacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-016"],
-    "proximo_passo": "Definir se ações gravadas em produção devem abrir PR/commit automático, gravar em banco auditado ou permanecer como project-state runtime exportável."
+    "proximo_passo": "Implementado: ações graváveis do Command também são persistidas em titan_command_actions no Postgres e aplicadas como overlay sobre project-state, preservando histórico após deploy."
+  },
+  {
+    "id": "task-f2-021",
+    "titulo": "Desenhar automação Git/deploy acionada pelo Command",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "automacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-020"],
+    "proximo_passo": "Definir permissões e confirmação humana para o Command abrir PR, registrar deploy ou acionar implantação. Mudanças de código continuam via Git/commit/deploy explícito."
   }
 ]

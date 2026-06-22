@@ -58,6 +58,21 @@ const MIGRATIONS = [
      expira_em TIMESTAMPTZ NOT NULL
    )`,
   "CREATE INDEX IF NOT EXISTS idx_titan_tool_sessions_user ON titan_tool_sessions(tenant_id, user_id, expira_em DESC)",
+  `CREATE TABLE IF NOT EXISTS titan_command_actions (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
+     action TEXT NOT NULL,
+     target_file TEXT,
+     target_id TEXT,
+     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+     result JSONB NOT NULL DEFAULT '{}'::jsonb,
+     usuario_id UUID,
+     usuario_email TEXT,
+     usuario_nome TEXT,
+     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  "CREATE INDEX IF NOT EXISTS idx_titan_command_actions_tenant ON titan_command_actions(tenant_id, criado_em DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_titan_command_actions_target ON titan_command_actions(tenant_id, target_file, target_id)",
   `CREATE TABLE IF NOT EXISTS mesas (
      id SERIAL PRIMARY KEY,
      tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id),
@@ -254,12 +269,12 @@ async function init(retries) {
           .filter(function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); });
         for (const email of emails) {
           await pool.query(`INSERT INTO titan_tool_users (tenant_id,email,nome,permissoes,ativo)
-            SELECT $1::varchar,$2,$3,ARRAY['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']::TEXT[],TRUE
+            SELECT $1::varchar,$2,$3,ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']::TEXT[],TRUE
             WHERE NOT EXISTS (SELECT 1 FROM titan_tool_users WHERE tenant_id=$1::varchar AND lower(email)=lower($2))`,
             [TENANT, email, email.split('@')[0]]);
           await pool.query(`UPDATE titan_tool_users
               SET ativo=TRUE,
-                  permissoes=ARRAY['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']::TEXT[],
+                  permissoes=ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']::TEXT[],
                   atualizado_em=NOW()
             WHERE tenant_id=$1::varchar AND lower(email)=lower($2)`,
             [TENANT, email]);

@@ -168,7 +168,102 @@ async function gestorBasico(uid) {
     return u && perfilGestor(u) ? u : null;
   } catch (e) { return null; }
 }
-function lerProjectStateSeguro() {
+function jsonObjeto(v) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (e) {}
+  }
+  return {};
+}
+function upsertCommandItem(lista, item, substituir) {
+  if (!Array.isArray(lista) || !item || !item.id) return;
+  const idx = lista.findIndex(x => String(x && x.id) === String(item.id));
+  if (idx < 0) lista.push(item);
+  else if (substituir) lista[idx] = Object.assign({}, lista[idx], item);
+}
+function aplicarCommandActionsNoState(files, actions) {
+  if (!files || !Array.isArray(actions) || !actions.length) return files;
+  const tasks = Array.isArray(files['tasks.json']) ? files['tasks.json'] : [];
+  const risks = Array.isArray(files['risks.json']) ? files['risks.json'] : [];
+  const decisions = Array.isArray(files['decisions.json']) ? files['decisions.json'] : [];
+  const auditLog = Array.isArray(files['command-audit-log.json']) ? files['command-audit-log.json'] : [];
+
+  for (const row of actions) {
+    const result = jsonObjeto(row.result);
+    const target = jsonObjeto(result.target);
+    const audit = jsonObjeto(result.audit);
+    if (row.action === 'create_task' && target.id) upsertCommandItem(tasks, target, false);
+    if (row.action === 'update_task' && target.id) upsertCommandItem(tasks, target, true);
+    if (row.action === 'create_risk' && target.id) upsertCommandItem(risks, target, false);
+    if (row.action === 'create_decision' && target.id) upsertCommandItem(decisions, target, false);
+    if (audit.id) upsertCommandItem(auditLog, audit, false);
+  }
+  files['tasks.json'] = tasks;
+  files['risks.json'] = risks;
+  files['decisions.json'] = decisions;
+  files['command-audit-log.json'] = auditLog
+    .sort((a, b) => String(a.criado_em || '').localeCompare(String(b.criado_em || '')))
+    .slice(-500);
+  return files;
+}
+async function lerCommandActionsDb() {
+  try {
+    const r = await db.q(`SELECT id::text, action, target_file, target_id, payload, result,
+             usuario_email, usuario_nome, criado_em
+        FROM titan_command_actions
+       WHERE tenant_id=$1::varchar
+       ORDER BY criado_em ASC, id ASC
+       LIMIT 1000`, [TENANT]);
+    return r.rows.map(row => ({
+      id: row.id,
+      criado_em: row.criado_em,
+      action: row.action,
+      target_file: row.target_file,
+      target_id: row.target_id,
+      usuario_email: row.usuario_email,
+      usuario_nome: row.usuario_nome,
+      payload: jsonObjeto(row.payload),
+      result: jsonObjeto(row.result)
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+function payloadCommandSeguro(payload) {
+  const out = {};
+  for (const [k, v] of Object.entries(payload && typeof payload === 'object' ? payload : {})) {
+    if (/senha|password|token|secret|chave|key|cert/i.test(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+async function persistirCommandActionDb(user, action, payload, targetFile, targetId, target, audit) {
+  try {
+    const r = await db.q(`INSERT INTO titan_command_actions
+        (tenant_id, action, target_file, target_id, payload, result, usuario_id, usuario_email, usuario_nome)
+      VALUES ($1::varchar,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9)
+      RETURNING id::text, criado_em`,
+      [
+        TENANT,
+        action,
+        targetFile,
+        targetId || null,
+        JSON.stringify(payloadCommandSeguro(payload)),
+        JSON.stringify({ target, audit }),
+        user.id,
+        user.email,
+        user.nome || user.email
+      ]);
+    return { ok: true, id: r.rows[0].id, criado_em: r.rows[0].criado_em };
+  } catch (e) {
+    console.warn('[command-action-db] falha ao persistir ação auditada:', e.code || e.message);
+    return { ok: false };
+  }
+}
+async function lerProjectStateSeguro() {
   const out = {};
   for (const file of PROJECT_STATE_FILES) {
     try {
@@ -178,6 +273,9 @@ function lerProjectStateSeguro() {
       out[file] = { erro: e.message };
     }
   }
+  const commandActions = await lerCommandActionsDb();
+  out['command-db-actions.json'] = commandActions;
+  aplicarCommandActionsNoState(out, commandActions);
   return out;
 }
 function projectStatePath(file, writable) {
@@ -879,7 +977,7 @@ async function api(req, res, url) {
       tenant: TENANT,
       generated_at: new Date().toISOString(),
       usuario: userPublico(gestor),
-      files: lerProjectStateSeguro()
+      files: await lerProjectStateSeguro()
     });
   }
 
@@ -890,7 +988,8 @@ async function api(req, res, url) {
     const action = textoLimpo(b.action || b.tipo, 60);
     try {
       if (action === 'create_task') {
-        const tasks = lerProjectJson('tasks.json', []);
+        const state = await lerProjectStateSeguro();
+        const tasks = Array.isArray(state['tasks.json']) ? state['tasks.json'] : lerProjectJson('tasks.json', []);
         const titulo = textoLimpo(b.titulo, 180);
         const modulo = textoLimpo(b.modulo, 80);
         if (!titulo || !modulo) return json(res, 400, { erro: 'Informe título e módulo da tarefa.' });
@@ -912,11 +1011,13 @@ async function api(req, res, url) {
         tasks.push(task);
         gravarProjectJson('tasks.json', tasks);
         const audit = registrarCommandAudit(gestor, action, 'tasks.json', task.id, `Tarefa criada: ${task.titulo}`, { modulo: task.modulo, prioridade: task.prioridade });
-        return json(res, 201, { ok: true, target: task, audit });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'tasks.json', task.id, task, audit);
+        return json(res, 201, { ok: true, target: task, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       if (action === 'update_task') {
-        const tasks = lerProjectJson('tasks.json', []);
+        const state = await lerProjectStateSeguro();
+        const tasks = Array.isArray(state['tasks.json']) ? state['tasks.json'] : lerProjectJson('tasks.json', []);
         const id = textoLimpo(b.id || b.task_id, 80);
         const idx = tasks.findIndex(t => String(t.id) === id);
         if (idx < 0) return json(res, 404, { erro: 'Tarefa não encontrada.' });
@@ -929,11 +1030,13 @@ async function api(req, res, url) {
         tasks[idx].atualizado_em = new Date().toISOString();
         gravarProjectJson('tasks.json', tasks);
         const audit = registrarCommandAudit(gestor, action, 'tasks.json', id, `Tarefa atualizada: ${id}`, { antes, depois: { status: tasks[idx].status, proximo_passo: tasks[idx].proximo_passo, bloqueada: tasks[idx].bloqueada } });
-        return json(res, 200, { ok: true, target: tasks[idx], audit });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'tasks.json', id, tasks[idx], audit);
+        return json(res, 200, { ok: true, target: tasks[idx], audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       if (action === 'create_risk') {
-        const risks = lerProjectJson('risks.json', []);
+        const state = await lerProjectStateSeguro();
+        const risks = Array.isArray(state['risks.json']) ? state['risks.json'] : lerProjectJson('risks.json', []);
         const titulo = textoLimpo(b.titulo, 180);
         if (!titulo) return json(res, 400, { erro: 'Informe o título do risco.' });
         const risk = {
@@ -950,11 +1053,13 @@ async function api(req, res, url) {
         risks.push(risk);
         gravarProjectJson('risks.json', risks);
         const audit = registrarCommandAudit(gestor, action, 'risks.json', risk.id, `Risco criado: ${risk.titulo}`, { severidade: risk.severidade });
-        return json(res, 201, { ok: true, target: risk, audit });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'risks.json', risk.id, risk, audit);
+        return json(res, 201, { ok: true, target: risk, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       if (action === 'create_decision') {
-        const decisions = lerProjectJson('decisions.json', []);
+        const state = await lerProjectStateSeguro();
+        const decisions = Array.isArray(state['decisions.json']) ? state['decisions.json'] : lerProjectJson('decisions.json', []);
         const decisao = textoLimpo(b.decisao || b.titulo, 220);
         if (!decisao) return json(res, 400, { erro: 'Informe a decisão.' });
         const decision = {
@@ -972,7 +1077,8 @@ async function api(req, res, url) {
         decisions.push(decision);
         gravarProjectJson('decisions.json', decisions);
         const audit = registrarCommandAudit(gestor, action, 'decisions.json', decision.id, `Decisão registrada: ${decision.decisao}`, { status: decision.status });
-        return json(res, 201, { ok: true, target: decision, audit });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'decisions.json', decision.id, decision, audit);
+        return json(res, 201, { ok: true, target: decision, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       return json(res, 400, { erro: 'Ação do Command não reconhecida.' });
