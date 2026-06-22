@@ -438,10 +438,10 @@ function pedirForm(titulo,campos,okLabel='Criar',comExcluir=false){ return new P
   ov.querySelector('[data-act="ok"]').onclick=()=>{ const out={}; ov.querySelectorAll('[data-k]').forEach(el=>{ let v= el.type==='checkbox'?el.checked:el.value; if(el.tagName==='SELECT'&&v==='')v=null; out[el.dataset.k]=v; }); if(!String(out.nome||'').trim()){ toast('Informe o nome'); return; } document.body.removeChild(ov); resolve(out); };
   document.body.appendChild(ov); const f=ov.querySelector('input,select,textarea'); if(f) setTimeout(()=>f.focus(),60);
 }); }
-function pedirConfirm(titulo,msg){ return new Promise(resolve=>{
+function pedirConfirm(titulo,msg,confirmLabel='Excluir'){ return new Promise(resolve=>{
   const ov=document.createElement('div'); ov.className='modal on'; ov.style.zIndex='120';
   ov.innerHTML=`<div class="box"><h3 style="margin:0 0 6px">${titulo}</h3><p class="mut sm" style="margin:0 0 12px">${msg}</p>
-    <div class="mfoot"><button class="btn ghost" data-act="c">Cancelar</button><button class="btn danger" data-act="d">Excluir</button></div></div>`;
+    <div class="mfoot"><button class="btn ghost" data-act="c">Cancelar</button><button class="btn danger" data-act="d">${esc(confirmLabel)}</button></div></div>`;
   ov.querySelector('[data-act="c"]').onclick=()=>{ document.body.removeChild(ov); resolve(false); };
   ov.querySelector('[data-act="d"]').onclick=()=>{ document.body.removeChild(ov); resolve(true); };
   document.body.appendChild(ov);
@@ -454,6 +454,7 @@ function cntHora(v){ if(!v)return 'agora'; try{return new Intl.DateTimeFormat('p
 async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem(); return; }
   w.innerHTML='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div><div class="empty">Carregando…</div>';
   let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
+  setores=setores.filter(s=>s.ativo!==false);
   if(!ehGestor()){ const sp=((user&&user.setores_permitidos)||[]).map(String); if(!sp.includes('TUDO')) setores=setores.filter(s=> sp.includes(String(s.id))||sp.includes(s.nome)); }
   let aud=0; try{ aud=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens||[]).length; }catch(e){}
   let h='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div>';
@@ -521,14 +522,22 @@ function loadMais(){ const b=[];
   $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Mais</h2></div>`+(b.join('')||'<div class="empty">Sem itens disponíveis no seu perfil.</div>')
     +`<div class="panel" style="margin-top:6px"><div class="empty">Automações WhatsApp chegam nas próximas fases.</div></div>`; }
 
-let _cfgSetor=null, _cfgItens=[];
+let _cfgSetor=null, _cfgItens=[], _cfgSetores=[];
 async function cfgListaSetores(){ const w=$('maisWrap'); let setores=[]; try{ setores=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; }catch(e){}
+  _cfgSetores=setores;
   let h=`<div class="vhead"><h2 class="tit">Configurar setores</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
-    <p class="mut sm" style="margin:0 0 10px">Defina quais produtos entram na contagem de cada setor e quais são obrigatórios.</p>`;
-  h+=setores.map(s=>`<button class="setor-btn" onclick="cfgAbrirSetor(${s.id},'${esc(s.nome).replace(/'/g,"\\'")}')"><span>${esc(s.nome)}</span><span>Configurar ›</span></button>`).join('')||'<div class="empty">Sem setores.</div>';
+    <p class="mut sm" style="margin:0 0 10px">Cada cliente define seus próprios setores. Crie setores conforme a operação real e depois escolha quais produtos entram na contagem de cada um.</p>
+    <button class="btn primary sm" style="margin-bottom:10px" onclick="novoSetorCfg()">+ Novo setor</button>`;
+  h+=setores.map(s=>`<button class="setor-btn" style="${s.ativo===false?'opacity:.55':''}" onclick="cfgAbrirSetor(${s.id})"><span>${esc(s.nome)} ${s.ativo===false?'<small class="mut">inativo</small>':''}</span><span>Configurar ›</span></button>`).join('')||'<div class="empty">Sem setores. Crie o primeiro setor da operação.</div>';
   w.innerHTML=h; }
-async function cfgAbrirSetor(id,nome){ _cfgSetor={id,nome};
-  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(nome)}</h2><button class="btn ghost sm" onclick="cfgListaSetores()">Voltar</button></div><div class="empty">Carregando…</div>`;
+async function novoSetorCfg(){ const v=await pedirForm('Novo setor',[{key:'nome',label:'Nome do setor',value:''},{key:'ordem',label:'Ordem de exibição',type:'number',value:50}], 'Criar setor'); if(!v)return;
+  try{ await estFetch('/api/est/setor','POST',{nome:v.nome,ordem:v.ordem}); _setores=[]; toast('Setor criado'); cfgListaSetores(); }catch(e){} }
+async function editarSetorCfg(){ if(!_cfgSetor)return; const v=await pedirForm('Editar setor',[{key:'nome',label:'Nome do setor',value:_cfgSetor.nome},{key:'ordem',label:'Ordem de exibição',type:'number',value:_cfgSetor.ordem||50}], 'Salvar setor'); if(!v)return;
+  try{ await estFetch('/api/est/setor/'+_cfgSetor.id,'PATCH',{nome:v.nome,ordem:v.ordem}); _setores=[]; toast('Setor atualizado'); cfgListaSetores(); }catch(e){} }
+async function toggleSetorCfg(){ if(!_cfgSetor)return; const ativar=_cfgSetor.ativo===false; const ok=ativar||await pedirConfirm('Desativar setor','O setor deixa de aparecer para contagem, mas histórico e vínculos ficam preservados.','Desativar'); if(!ok)return;
+  try{ await estFetch('/api/est/setor/'+_cfgSetor.id,'PATCH',{ativo:ativar}); _setores=[]; toast(ativar?'Setor reativado':'Setor desativado'); cfgListaSetores(); }catch(e){} }
+async function cfgAbrirSetor(id){ const s=_cfgSetores.find(x=>Number(x.id)===Number(id))||{id,nome:'Setor',ordem:50,ativo:true}; _cfgSetor={id:s.id,nome:s.nome,ordem:s.ordem,ativo:s.ativo!==false};
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(_cfgSetor.nome)}</h2><button class="btn ghost sm" onclick="cfgListaSetores()">Voltar</button></div><div class="empty">Carregando…</div>`;
   let its=[]; try{ its=(await (await fetch(API+`/api/est/setor/${id}/config`)).json()).itens||[]; }catch(e){}
   _cfgItens=its.map(x=>({produto_id:x.produto_id,nome:x.nome,categoria:x.categoria,no_setor:x.no_setor,obrigatorio:x.obrigatorio})); renderCfg(); }
 function renderCfg(){ let cur=null, body='';
@@ -538,6 +547,8 @@ function renderCfg(){ let cur=null, body='';
       <button class="ig ${it.obrigatorio?'on':''}" onclick="cfgObr(${it.produto_id})" ${it.no_setor?'':'disabled'}>obrig.</button></div></div>`; });
   const sel=_cfgItens.filter(x=>x.no_setor).length;
   $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(_cfgSetor.nome)}</h2><button class="btn ghost sm" onclick="cfgListaSetores()">Voltar</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn ghost sm" onclick="editarSetorCfg()">Editar nome/ordem</button><button class="btn ${_cfgSetor.ativo===false?'primary':'danger'} sm" onclick="toggleSetorCfg()">${_cfgSetor.ativo===false?'Reativar setor':'Desativar setor'}</button></div>
+    ${_cfgSetor.ativo===false?'<div class="empty" style="margin-bottom:10px">Setor inativo: não aparece para o colaborador contar, mas pode ser reativado.</div>':''}
     <div style="padding-bottom:90px">${body||'<div class="empty">Sem produtos.</div>'}</div>
     <div class="cnt-foot"><div class="prog">${sel} produto(s) no setor</div><button class="btn primary sm" onclick="salvarCfg()">Salvar</button></div>`; }
 function cfgItem(id){ return _cfgItens.find(x=>x.produto_id===id); }
@@ -836,7 +847,7 @@ async function fcSave(){fcSync();const btn=$('fcSaveBtn');btn.disabled=true;$('f
 /* ===== CADASTRO COMPLETO DE PRODUTO + FICHA TÉCNICA ===== */
 let _pe={id:null,produto:{},setores:[],selecionados:[],ficha:[],produtos:[],rendimento:1};
 let _setores=[];
-async function ensureSetores(){ if(!_setores.length){ const r=await fetch(API+'/api/est/setores'); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Erro ao carregar setores'); _setores=d.setores||[]; } }
+async function ensureSetores(){ if(!_setores.length){ const r=await fetch(API+'/api/est/setores'); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Erro ao carregar setores'); _setores=(d.setores||[]).filter(s=>s.ativo!==false); } }
 async function abrirEditorProduto(id){
   await Promise.all([ensureCats(),ensureForns(),ensureSetores(),ensureConversoes(),ensureLocais()]).catch(e=>toast(e.message));
   let p={nome:'',unidade:'UNIDADE',estoque_atual:0,pode_contar:true,pode_comprar:true,pode_produzir:false,ativo:true}, setores=[], ficha=[];

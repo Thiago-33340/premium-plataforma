@@ -889,16 +889,18 @@ async function salvarItem(rowEl){ const id=rowEl.dataset.id; const all=(await (a
   await fetch(API+'/api/admin/estoque-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); toast('Item salvo'); }
 
 /* ===== EQUIPE ===== */
-function setorNome(sid){ const s=SETORES.find(x=>x.setor_id===sid); return s?s.setor_nome:sid; }
-async function loadEquipe(){ if(!SETORES.length){ try{ const ss=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; SETORES=ss.map(s=>({setor_id:String(s.id), setor_nome:s.nome})); }catch(e){} }
+function setorNome(sid){ const key=String(sid); const s=SETORES.find(x=>x.setor_id===key); return s?s.setor_nome+(s.ativo===false?' (inativo)':''):sid; }
+async function loadEquipe(){ if(!SETORES.length){ try{ const ss=(await (await fetch(API+'/api/est/setores')).json()).setores||[]; SETORES=ss.map(s=>({setor_id:String(s.id), setor_nome:s.nome, ativo:s.ativo!==false})); }catch(e){} }
   const us=(await (await fetch(API+'/api/admin/usuarios?admin_id='+user.id)).json()).usuarios||[]; const box=$('equipeBox'); box.innerHTML='';
   us.forEach(u=>{ const det=document.createElement('details');
+    const setoresDoUsuario=(u.setores_permitidos||[]).map(String);
+    const setoresDisponiveis=SETORES.filter(s=>s.ativo!==false||setoresDoUsuario.includes(s.setor_id));
     const setoresNomes=(u.setores_permitidos||[]).map(s=> s==='TUDO'?'Todos os setores':setorNome(s)).join(', ')||'—';
     det.innerHTML=`<summary>${u.nome} <span class="cnt">${PERFIL_NOME[u.perfil_principal]||u.perfil_principal}${u.ativo?'':' · inativo'}</span></summary><div class="in" style="padding:6px 14px 14px">
       <div class="mut sm" style="margin-bottom:8px">Usuário: <b>${u.apelido_login||'—'}</b> · Setores: ${setoresNomes} · ${u.tem_pin?'PIN definido':'sem PIN'}</div>
       <div class="grid2">
         <label class="xs mut">Perfil<select class="field" data-f="perfil">${PERFIS.map(p=>`<option value="${p}" ${u.perfil_principal===p?'selected':''}>${PERFIL_NOME[p]}</option>`).join('')}</select></label>
-        <label class="xs mut">Setores (segure Ctrl)<select class="field" data-f="setores" multiple size="3"><option value="TUDO" ${(u.setores_permitidos||[]).includes('TUDO')?'selected':''}>Todos os setores</option>${SETORES.map(s=>`<option value="${s.setor_id}" ${(u.setores_permitidos||[]).includes(s.setor_id)?'selected':''}>${s.setor_nome}</option>`).join('')}</select></label>
+        <label class="xs mut">Setores (segure Ctrl)<select class="field" data-f="setores" multiple size="3"><option value="TUDO" ${setoresDoUsuario.includes('TUDO')?'selected':''}>Todos os setores</option>${setoresDisponiveis.map(s=>`<option value="${s.setor_id}" ${setoresDoUsuario.includes(s.setor_id)?'selected':''}>${s.setor_nome}${s.ativo===false?' (inativo)':''}</option>`).join('')}</select></label>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <button class="btn sm" data-salvar>Salvar</button>

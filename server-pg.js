@@ -1162,7 +1162,7 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'setor' && seg[3] && !seg[4] && req.method === 'PATCH') {
     const b = await readBody(req); const g = await estGestor(b.usuario_id);
     if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
-    await db.q('UPDATE est_setor SET nome=COALESCE($2,nome), ativo=COALESCE($3,ativo) WHERE id=$1 AND tenant_id=$4', [seg[3], b.nome ? String(b.nome).trim() : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+    await db.q('UPDATE est_setor SET nome=COALESCE($2,nome), ativo=COALESCE($3,ativo), ordem=COALESCE($4,ordem) WHERE id=$1 AND tenant_id=$5', [seg[3], b.nome ? String(b.nome).trim() : null, typeof b.ativo === 'boolean' ? b.ativo : null, b.ordem != null && b.ordem !== '' ? Number(b.ordem) : null, TENANT]);
     return json(res, 200, { ok: true });
   }
 

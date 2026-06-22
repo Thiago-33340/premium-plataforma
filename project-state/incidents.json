@@ -1,0 +1,10 @@
+[
+  {
+    "id": "incident-rbac-setores-contagem-2026-06-21",
+    "data": "2026-06-21",
+    "titulo": "Colaboradores com setores legados nao viam corretamente a contagem",
+    "causa_raiz": "Usuarios estavam com setores_permitidos no padrao legado SET001/SET002/SET003, enquanto o fluxo novo /api/est usa est_setor.id numerico ou nome do setor.",
+    "resolucao": "Ajuste de dados da Premium para IDs reais do tenant e evolucao do painel para setores dinamicos por cliente. O de/para da Premium nao deve ser tratado como regra fixa do SaaS.",
+    "prevencao": "Novas atribuicoes devem usar setores ativos vindos de /api/est/setores. IDs legados SETxxx nao devem ser usados no fluxo novo."
+  }
+]

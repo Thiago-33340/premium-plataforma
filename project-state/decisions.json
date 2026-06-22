@@ -1,0 +1,14 @@
+[
+  {
+    "id": "decision-setores-contagem-por-tenant-2026-06-22",
+    "data": "2026-06-22",
+    "decisao": "Setores de contagem sao configuracao por cliente/tenant, nao catalogo fixo do Titan.",
+    "motivo": "Cada operacao pode ter setores diferentes. A Premium usa Borda, Montagem, Finalizacao, Recepcao e Gerais, mas outros clientes podem configurar outra estrutura.",
+    "regra_saas": "Gestor cria, renomeia, ordena, desativa e reativa setores pelo painel. Produtos e colaboradores devem usar setores vivos do tenant em est_setor. Setores inativos preservam historico e nao devem aparecer em novas contagens/novas atribuicoes.",
+    "impacto": [
+      "Tela de estoque passa a permitir gestao dinamica de setores.",
+      "Contagem e cadastro de produto usam apenas setores ativos.",
+      "Painel de equipe mostra setores ativos para novas atribuicoes e preserva setor inativo se ele ja estava vinculado."
+    ]
+  }
+]
