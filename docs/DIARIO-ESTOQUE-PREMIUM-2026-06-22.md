@@ -187,3 +187,52 @@ Validações após correção local:
 Observação:
 
 - O smoke em produção só deve ficar 18/18 depois do deploy desta correção.
+
+## Marco 06 — Fechamento do ciclo API/RBAC e smoke final
+
+Status: concluído em produção
+
+O que foi entregue neste ciclo:
+
+- PR #19 (`codex/estoque-premium-fichas-rbac`) foi mergeado na `main`.
+- Ajustes críticos posteriores foram aplicados direto na `main` para corrigir o comportamento real em produção.
+- Deploy manual no EasyPanel foi acionado para publicar as correções.
+- A rota `GET /api/est/meus-itens?usuario_id=thiago` passou a resolver o usuário por login/apelido/nome, além de UUID.
+- A rota retornou `200` para o usuário `thiago`, com acesso amplo de gestor.
+- Erros internos da rota foram protegidos para não expor detalhe técnico sensível ao cliente.
+- O smoke read-only final foi executado contra:
+  - `https://premium.titanatende.com.br`
+  - `https://tools.titanatende.com.br`
+
+Resultado do smoke final:
+
+- `18/18` checks executados.
+- `0` falhas.
+- `0` checks pulados.
+- Blindagem read-only confirmada.
+- Resultado salvo em `project-state/health-checks.json`.
+
+Checks cobertos:
+
+- Health da aplicação.
+- Dashboard do estoque.
+- Produtos.
+- Setores.
+- Categorias.
+- Fornecedores.
+- Produzidos/fichas.
+- Produções recentes.
+- Movimentos recentes.
+- Contagens recentes.
+- Mesas.
+- Caixa.
+- Entregadores.
+- Command Center HTML.
+- Autenticação Titan anônima protegida.
+- Mapper protegido sem sessão.
+- Permissões do usuário.
+- Meus itens do usuário.
+
+Pendência proposital:
+
+- Testes de criação/alteração/exclusão real de ficha técnica e produção devem ser feitos em fluxo controlado com item de teste ou janela operacional autorizada, porque alteram dados reais de estoque.
