@@ -279,7 +279,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 45,
+    "progresso": 70,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
