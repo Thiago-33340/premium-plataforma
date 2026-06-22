@@ -1,17 +1,16 @@
 {
   "semana": "2026-06-21",
-  "objetivo": "Transformar o inventário do Titan em base operacional confiável.",
+  "objetivo": "Manter o Titan sob controle enquanto o estoque evolui: Claude atua no estoque; Codex mantém mapper, riscos, rotas, tarefas e deploys.",
   "prioridades": [
-    "Validar módulos oficiais",
-    "Validar contratos críticos de estoque/produção/contagem",
-    "Classificar tabelas oficiais e legadas",
-    "Criar smoke tests para produção transacional e contagem",
-    "Criar checklist de deploy e produção",
-    "Preparar wireframe do Command Center"
+    "Publicar e validar o Titan Mapper",
+    "Acompanhar progresso do estoque sem conflitar com o trabalho do Claude",
+    "Registrar toda decisão relevante em project-state",
+    "Manter smoke read-only e RBAC verdes",
+    "Preparar visão específica do estoque após a entrega do Claude"
   ],
   "nao_fazer_agora": [
     "Reescrever arquitetura inteira",
-    "Criar Command Center visual antes de validar a base",
+    "Criar mudanças paralelas grandes no estoque enquanto Claude está atuando",
     "Fazer deploy sem checklist",
     "Ler secrets ou arquivos sensíveis"
   ]

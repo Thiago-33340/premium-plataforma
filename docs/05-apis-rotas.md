@@ -23,6 +23,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 | `staff-mesas-caixa` | mesas-caixa | `/api` | ativo_em_validacao |
 | `admin` | admin-gestor | `/api/admin` | misto |
 | `config-global` | core-http | `/api` | ativo |
+| `mapper-state` | command-center | `/api/mapper` | ativo_em_validacao |
 
 ## Decisões de fronteira
 
@@ -32,6 +33,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
+- `/api/mapper/state` é read-only, restrito a gestor por `admin_id`, e expõe somente arquivos permitidos de `project-state`.
 
 ## Rotas que devem ser evitadas em implementação nova
 

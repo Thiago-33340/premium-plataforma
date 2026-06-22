@@ -78,5 +78,20 @@
       "A ponte de compatibilidade não pode voltar a escrever em `estoque_itens_definicao`.",
       "A remoção definitiva das rotas antigas exige verificar se ainda existe cliente/código chamando esses endpoints."
     ]
+  },
+  {
+    "id": "decision-007",
+    "data": "2026-06-22",
+    "decisao": "Criar Titan Mapper visual como camada de controle do progresso",
+    "motivo": "O estoque está sendo trabalhado em paralelo pelo Claude; Thiago precisa enxergar progresso, riscos, tarefas e próximos passos sem depender da memória de cada ferramenta.",
+    "impacto": "O mapper passa a ler `project-state/*.json` por `/api/mapper/state` e apresentar `/mapper` como visão executiva restrita ao gestor.",
+    "modulos_afetados": ["command-center", "estoque-v2", "admin-gestor", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "Codex deve focar mapper, governança e integração enquanto Claude atua no estoque.",
+      "O mapper não deve expor secrets; a API lê apenas arquivos permitidos de `project-state`.",
+      "Toda evolução relevante deve atualizar tarefas, riscos ou decisões."
+    ]
   }
 ]

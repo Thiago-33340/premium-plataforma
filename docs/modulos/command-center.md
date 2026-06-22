@@ -67,18 +67,27 @@ O Command Center deve ler:
 
 ## Status atual
 
-`planejado`
+`em_andamento`
 
-Ainda não deve ser implementado visualmente antes de validar a base `project-state`.
+A primeira versão visual foi criada como **Titan Mapper**:
+
+- página: `/mapper`;
+- arquivo: `public/mapper.html`;
+- API read-only: `GET /api/mapper/state`;
+- acesso: restrito a gestor por `admin_id`;
+- fonte: arquivos permitidos de `project-state/`.
+
+Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys e fronteiras críticas enquanto outras ferramentas atuam nos módulos.
 
 ## Critério de pronto da primeira versão
 
-- lê JSONs locais;
+- lê JSONs locais via API read-only;
 - mostra módulos;
 - mostra tarefas;
 - mostra riscos;
 - mostra deploys;
 - mostra última blindagem/smoke;
 - mostra última auditoria de permissões/RBAC;
-- não depende de banco nem rede na primeira versão;
+- não expõe secrets;
+- exige gestor;
 - pode evoluir depois para GitHub/EasyPanel.

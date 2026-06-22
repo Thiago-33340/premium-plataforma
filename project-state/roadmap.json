@@ -14,8 +14,8 @@
   {
     "fase": 3,
     "nome": "Command Center inicial",
-    "status": "planejado",
-    "entregas": ["visão geral", "módulos", "tarefas", "riscos", "deploys"]
+    "status": "em_andamento",
+    "entregas": ["Titan Mapper visual", "visão geral", "módulos", "tarefas", "riscos", "deploys"]
   },
   {
     "fase": 4,
