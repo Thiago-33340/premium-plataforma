@@ -187,14 +187,14 @@
     "id": "task-f2-015",
     "titulo": "Integrar login real ao Command Center",
     "modulo": "command-center",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "seguranca",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014"],
-    "proximo_passo": "Deployar a mudança, informar os dois e-mails dos sócios e validar primeiro acesso em tools.titanatende.com.br."
+    "proximo_passo": "Usar a aba Acessos para autorizar novos e-mails. Thiago e Tassiano já possuem fluxo de primeiro acesso disponível no host técnico."
   },
   {
     "id": "task-f2-016",
@@ -208,5 +208,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-014", "task-f2-015"],
     "proximo_passo": "Planejar endpoint auditado para registrar tarefa, risco, decisão e deploy sem editar JSON manualmente."
+  },
+  {
+    "id": "task-f2-017",
+    "titulo": "Entregar estoque Premium pronto para operação",
+    "modulo": "estoque-v2",
+    "status": "em_andamento",
+    "prioridade": "alta",
+    "categoria": "produto",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-002", "task-f2-006", "task-f2-014", "task-f2-015"],
+    "proximo_passo": "Deployar ajustes de produto/setor/ficha técnica, validar visual no navegador e rodar smoke read-only pós-deploy."
   }
 ]

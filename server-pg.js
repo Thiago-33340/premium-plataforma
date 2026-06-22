@@ -163,11 +163,9 @@ async function gestorBasico(uid) {
   try {
     const r = await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais
       FROM rbac_contacts
-      WHERE id=$1 AND tenant_id=$2 AND ativo
-        AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal
-          OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}'))
-          OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]);
-    return r.rows[0] || null;
+      WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT]);
+    const u = r.rows[0] || null;
+    return u && perfilGestor(u) ? u : null;
   } catch (e) { return null; }
 }
 function lerProjectStateSeguro() {
@@ -188,12 +186,13 @@ function lerProjectStateSeguro() {
 /* ===== Permissões do Estoque (configuráveis por usuário) ===== */
 const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
 const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
+function perfisUsuario(u) { return [u && u.perfil_principal].concat((u && u.perfis_adicionais) || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean); }
+function perfilGestor(u) { return perfisUsuario(u).some(p => p === 'GESTOR' || p === 'GERENTE' || p.startsWith('GESTOR_') || p.startsWith('GERENTE_')); }
 async function estPermsEfetivas(uid) {
   if (!uid) return { user: null, perms: [], gestor: false };
   let u; try { u = (await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT])).rows[0]; } catch (e) { return { user: null, perms: [], gestor: false }; }
   if (!u) return { user: null, perms: [], gestor: false };
-  const perfis = [u.perfil_principal].concat(u.perfis_adicionais || []).map(x => String(x || '').toUpperCase());
-  const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+  const gestor = perfilGestor(u);
   if (gestor) return { user: u, perms: EST_PERMS.slice(), gestor: true };
   let ex = []; try { ex = (await db.q(`SELECT permissao FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, uid])).rows; } catch (e) {}
   if (ex.some(r => r.permissao === '__configured__')) return { user: u, perms: ex.map(r => r.permissao).filter(p => p !== '__configured__'), gestor: false };
@@ -923,23 +922,39 @@ async function api(req, res, url) {
     const busca = (url.searchParams.get('busca') || '').toLowerCase();
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
+    const setor = url.searchParams.get('setor') || '';
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
         p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
         p.marca_preferida, p.ultima_marca, p.categoria_id, p.fornecedor_preferido_id, p.ultimo_fornecedor_id,
         p.conversao_origem, p.conversao_confianca, p.conversao_precisa_revisao, p.tipo_item, p.nome_nf,
         p.local_fisico_id, l.nome AS local_fisico,
-        c.nome AS categoria, f.nome AS fornecedor, uf.nome AS ultimo_fornecedor
+        c.nome AS categoria, f.nome AS fornecedor, uf.nome AS ultimo_fornecedor,
+        COALESCE(sx.setores, '[]'::json) AS setores,
+        COALESCE(sx.setor_nomes, '') AS setor_nomes
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
       LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
       LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object('id', s.id, 'nome', s.nome) ORDER BY s.ordem, s.nome) AS setores,
+               string_agg(s.nome, ', ' ORDER BY s.ordem, s.nome) AS setor_nomes
+          FROM est_produto_setor ps
+          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+         WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+      ) sx ON TRUE
       WHERE p.tenant_id=$1
         AND ($2='' OR lower(p.nome) LIKE '%'||$2||'%')
         AND ($3='' OR c.nome=$3)
         AND ($4='' OR f.nome=$4)
-      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn]);
+        AND ($5='' OR EXISTS (
+          SELECT 1
+            FROM est_produto_setor ps2
+            JOIN est_setor s2 ON s2.id=ps2.setor_id AND s2.tenant_id=ps2.tenant_id
+           WHERE ps2.tenant_id=p.tenant_id AND ps2.produto_id=p.id AND (s2.nome=$5 OR s2.id::text=$5)
+        ))
+      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor]);
     return json(res, 200, { produtos: r.rows });
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
@@ -988,8 +1003,7 @@ async function api(req, res, url) {
     const uid = url.searchParams.get('usuario_id');
     const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
     if (!u) return json(res, 403, { erro: 'usuário inválido' });
-    const perfis = [u.perfil_principal].concat(u.perfis_adicionais || []).map(x => String(x || '').toUpperCase());
-    const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+    const gestor = perfilGestor(u);
     const setp = (u.setores_permitidos || []).map(x => String(x));
     const tudo = gestor || setp.includes('TUDO');
     const r = tudo
@@ -1283,7 +1297,7 @@ async function api(req, res, url) {
   }
 
   // ===== CONTAGEM POR SETOR + AUDITORIA =====
-  const estGestor = async (uid) => { if (!uid) return null; try { const r = await db.q(`SELECT id, nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [uid, TENANT]); return r.rows[0] || null; } catch (e) { return null; } };
+  const estGestor = async (uid) => { if (!uid) return null; try { const r = await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT]); const u = r.rows[0] || null; return u && perfilGestor(u) ? u : null; } catch (e) { return null; } };
 
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar' && req.method === 'POST') {
     const b = await readBody(req);
@@ -1293,8 +1307,7 @@ async function api(req, res, url) {
     if (!u.rows[0]) return json(res, 403, { erro: 'usuário inválido' });
     const s = await db.q('SELECT id, nome FROM est_setor WHERE id=$1 AND tenant_id=$2', [b.setor_id, TENANT]);
     if (!s.rows[0]) return json(res, 400, { erro: 'setor inválido' });
-    const perfis = [u.rows[0].perfil_principal].concat(u.rows[0].perfis_adicionais || []).map(x => String(x || '').toUpperCase());
-    const gestor = perfis.includes('GESTOR') || perfis.includes('GERENTE');
+    const gestor = perfilGestor(u.rows[0]);
     const permitidos = (u.rows[0].setores_permitidos || []).map(String);
     if (!gestor && !permitidos.includes('TUDO') && !permitidos.includes(String(s.rows[0].id)) && !permitidos.includes(s.rows[0].nome))
       return json(res, 403, { erro: 'Este setor não está atribuído ao colaborador.' });
@@ -1708,7 +1721,8 @@ async function api(req, res, url) {
       const todos = [].concat(...rota.comprar_por_fornecedor.map(g => g.itens), rota.nao_encontrados);
       for (const it of todos) await db.q(`INSERT INTO est_lista_compra_item (tenant_id, lista_id, produto_id, quantidade, unidade, fornecedor_id, status) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [TENANT, listaId, it.produto_id, it.quantidade, it.unidade || null, it.fornecedor_id || null, it.fornecedor ? 'OK' : 'SEM_FORNECEDOR']);
     } catch (e) {}
-    const gestores = (await db.q(`SELECT DISTINCT regexp_replace(COALESCE(phone,''),'\\D','','g') AS tel FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND COALESCE(phone,'')<>'' AND ('GESTOR'=perfil_principal OR 'GERENTE'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')) OR 'GERENTE'=ANY(COALESCE(perfis_adicionais,'{}')))`, [TENANT])).rows.map(r => r.tel).filter(Boolean);
+    const gestores = (await db.q(`SELECT phone, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE tenant_id=$1 AND ativo AND COALESCE(phone,'')<>''`, [TENANT])).rows
+      .filter(perfilGestor).map(r => soPhone(r.phone)).filter(Boolean);
     return json(res, 200, { due: true, periodicidade: per, lista_id: listaId, estimativa_total: rota.estimativa_total, itens_total: rota.itens_total, texto, gestores });
   }
 
@@ -1732,8 +1746,10 @@ async function api(req, res, url) {
 
   // ---- Produção Interna (ficha técnica + baixa de insumos) ----
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'produzidos' && req.method === 'GET') {
-    const prods = await db.q(`SELECT p.id,p.nome,p.unidade,p.estoque_atual,p.estoque_ideal,s.nome AS setor,
-        f.id AS ficha_id,COUNT(DISTINCT po.id)::int AS porcoes,COUNT(pi.id)::int AS ingredientes
+    const prods = await db.q(`SELECT p.id,p.nome,p.unidade,p.estoque_atual,p.estoque_ideal,
+        COALESCE(string_agg(DISTINCT s.nome, ', ' ORDER BY s.nome), 'Sem setor') AS setor,
+        COALESCE(array_agg(DISTINCT s.id) FILTER (WHERE s.id IS NOT NULL), '{}') AS setores,
+        f.id AS ficha_id,COUNT(DISTINCT po.id)::int AS porcoes,COUNT(DISTINCT pi.id)::int AS ingredientes
       FROM est_produto p
       LEFT JOIN est_produto_setor ps ON ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
       LEFT JOIN est_setor s ON s.id=ps.setor_id
@@ -1741,7 +1757,7 @@ async function api(req, res, url) {
       LEFT JOIN est_ficha_porcao po ON po.tenant_id=p.tenant_id AND po.ficha_id=f.id AND po.ativo
       LEFT JOIN est_ficha_porcao_item pi ON pi.tenant_id=p.tenant_id AND pi.porcao_id=po.id
       WHERE p.tenant_id=$1 AND p.ativo AND p.pode_produzir
-      GROUP BY p.id,s.nome,f.id ORDER BY s.nome,p.nome`, [TENANT]);
+      GROUP BY p.id,f.id ORDER BY setor,p.nome`, [TENANT]);
     const insumos = await db.q(`SELECT id,nome,unidade,peso_g,medio_valor,ultimo_valor FROM est_produto WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
     return json(res, 200, { produzidos: prods.rows, insumos: insumos.rows });
   }
@@ -2153,7 +2169,7 @@ async function api(req, res, url) {
       if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
     }
     const setoresPerm = col.setores_permitidos || [];
-    const veTudo = col.perfil_principal === 'GESTOR' || setoresPerm.map(s => String(s).toUpperCase()).includes('TUDO');
+    const veTudo = perfilGestor(col) || setoresPerm.map(s => String(s).toUpperCase()).includes('TUDO');
     let setores;
     if (veTudo) {
       const s = await db.q('SELECT setor_id, setor_nome, count(*)::int itens FROM estoque_itens_definicao WHERE tenant_id=$1 AND ativo AND exige_contagem GROUP BY setor_id, setor_nome ORDER BY setor_nome', [TENANT]);
@@ -2275,11 +2291,11 @@ async function api(req, res, url) {
       const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
       if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
     }
-    const perfis = [col.perfil_principal].concat(col.perfis_adicionais || []);
+    const perfis = perfisUsuario(col);
     const ehGarcom = perfis.includes('GARCOM');
-    const ehGestor = perfis.some(p => ['GESTOR', 'GERENTE', 'CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
+    const ehGestor = perfilGestor(col) || perfis.some(p => ['CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
     return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login, setores_permitidos: col.setores_permitidos || [],
-      pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfis.includes('GESTOR') } });
+      pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfilGestor(col) } });
   }
   // trocar o proprio PIN (primeiro login obrigatorio): valida o atual, grava o novo.
   if (sub === 'staff' && seg[2] === 'trocar-pin' && req.method === 'POST') {
@@ -2388,8 +2404,8 @@ async function api(req, res, url) {
   if (sub === 'admin') {
     const body = (req.method !== 'GET') ? await readBody(req) : {};
     const adminId = (req.method === 'GET') ? url.searchParams.get('admin_id') : body.admin_id;
-    const g = await db.q(`SELECT 1 FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo AND ('GESTOR'=perfil_principal OR 'GESTOR'=ANY(COALESCE(perfis_adicionais,'{}')))`, [adminId, TENANT]);
-    if (!g.rows[0]) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+    const g = await db.q(`SELECT id, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [adminId, TENANT]);
+    if (!g.rows[0] || !perfilGestor(g.rows[0])) return json(res, 403, { erro: 'acesso restrito ao gestor' });
 
     if (seg[2] === 'usuarios' && req.method === 'GET') {
       const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, ativo, (pin_hash IS NOT NULL) AS tem_pin FROM rbac_contacts WHERE tenant_id=$1 ORDER BY ativo DESC, nome`, [TENANT]);
