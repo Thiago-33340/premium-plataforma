@@ -25,6 +25,7 @@ const DEFAULT_TOOLS_HOSTS = [
   'localhost',
   '127.0.0.1',
   '::1',
+  'tools.titanatende.com.br',
   'mayaproject-github.yrbgh5.easypanel.host'
 ];
 const TITAN_TOOLS_HOSTS = new Set([

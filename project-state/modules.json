@@ -289,13 +289,13 @@
     "repositorio": "Thiago-33340/premium-plataforma",
     "container": "a_definir",
     "banco": "project-state",
+    "host_tecnico_definitivo": "https://tools.titanatende.com.br",
     "host_tecnico_temporario": "https://mayaproject-github.yrbgh5.easypanel.host",
     "dominios_operacionais_bloqueados": ["premium.titanatende.com.br", "pedido.titanatende.com.br"],
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["mapper-state"],
     "pendencias": [
       "Adicionar login integrado ao admin/estoque",
-      "Apontar domínio definitivo de ferramentas, ex: tools.titanatende.com.br",
       "Transformar ações do Command Center em registros graváveis auditados",
       "Criar visão de estoque com métricas reais depois da entrega do Claude"
     ],
