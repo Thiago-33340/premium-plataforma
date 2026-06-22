@@ -2,11 +2,11 @@
   "semana": "2026-06-21",
   "objetivo": "Manter o Titan sob controle enquanto o estoque evolui: Claude atua no estoque; Codex mantém mapper, riscos, rotas, tarefas e deploys.",
   "prioridades": [
-    "Usar o Titan Mapper publicado como painel de progresso",
-    "Acompanhar progresso do estoque sem conflitar com o trabalho do Claude",
+    "Usar o Titan Command Center como painel de coordenação",
+    "Separar funções: Codex implementa, Claude avalia/calcula/revisa, Thiago aprova",
     "Registrar toda decisão relevante em project-state",
     "Manter smoke read-only e RBAC verdes",
-    "Preparar visão específica do estoque após a entrega do Claude"
+    "Guiar o estoque por contratos, testes e critérios de aceite"
   ],
   "nao_fazer_agora": [
     "Reescrever arquitetura inteira",

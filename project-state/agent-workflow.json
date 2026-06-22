@@ -1,0 +1,140 @@
+{
+  "status": "ativo",
+  "version": "2026-06-22.1",
+  "current_mission": {
+    "title": "Entregar estoque operacional Premium com governança pelo Command Center",
+    "owner": "Thiago",
+    "primary_executor": "Codex",
+    "strategic_reviewer": "Claude",
+    "context": "O estoque virou o módulo mais crítico. A partir de agora, o Command Center organiza responsabilidades, fronteiras técnicas, riscos, testes e próximos passos para evitar retrabalho entre ferramentas.",
+    "north_star": "Um gestor consegue cadastrar produtos, setores, fichas técnicas, produção, contagem, auditoria e permissões com segurança; colaboradores contam apenas o que foi atribuído; cada mudança passa por smoke e registro no project-state."
+  },
+  "roles": [
+    {
+      "id": "thiago",
+      "name": "Thiago",
+      "label": "Dono do produto e aprovador",
+      "primary_duties": [
+        "Definir prioridade de negócio",
+        "Aprovar fluxos críticos",
+        "Validar se a operação Premium foi representada corretamente",
+        "Liberar mudanças com impacto real em produção"
+      ],
+      "must_not": [
+        "Virar gargalo para microdecisões técnicas quando já houver regra registrada",
+        "Validar layout sem testar o fluxo operacional principal"
+      ]
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "label": "Executor técnico, UI e deploy",
+      "primary_duties": [
+        "Editar código, interfaces e rotas",
+        "Criar ou ajustar testes e smoke checks",
+        "Manter project-state, docs e Command Center atualizados",
+        "Fazer PR, merge e deploy quando autorizado",
+        "Preservar fronteiras oficiais: /api/est/* e tabelas est_*"
+      ],
+      "must_not": [
+        "Expandir rotas legadas como se fossem oficiais",
+        "Ler ou expor secrets",
+        "Misturar alterações grandes sem registrar decisão/tarefa"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "label": "Arquiteto/revisor, cálculo e apoio estratégico",
+      "primary_duties": [
+        "Avaliar planos, riscos, UX e coerência de regras",
+        "Calcular impactos de estoque, produção, fichas e conversões",
+        "Gerar especificações para Codex implementar",
+        "Revisar entregas e apontar lacunas antes do deploy",
+        "Ajudar a priorizar o caminho mais curto para o produto pronto"
+      ],
+      "must_not": [
+        "Implementar código em paralelo no mesmo arquivo sem combinar com Codex",
+        "Mudar fronteiras de banco/rotas sem registrar decisão",
+        "Criar solução fixa para setores que devem ser configuráveis por cliente"
+      ]
+    }
+  ],
+  "workflow": [
+    {
+      "step": 1,
+      "name": "Briefing",
+      "owner": "Thiago",
+      "output": "Problema de negócio, prioridade e critério de aceite"
+    },
+    {
+      "step": 2,
+      "name": "Arquitetura e cálculo",
+      "owner": "Claude",
+      "output": "Plano, riscos, regras operacionais, cálculos e lacunas"
+    },
+    {
+      "step": 3,
+      "name": "Implementação",
+      "owner": "Codex",
+      "output": "Código, UI, rotas, testes, documentação e project-state"
+    },
+    {
+      "step": 4,
+      "name": "Revisão cruzada",
+      "owner": "Claude + Codex",
+      "output": "Checklist de regressão, ajustes finais e decisão de deploy"
+    },
+    {
+      "step": 5,
+      "name": "Deploy e validação",
+      "owner": "Codex",
+      "output": "Deploy no EasyPanel, smoke 100% verde e registro em deploys.json"
+    },
+    {
+      "step": 6,
+      "name": "Aprovação operacional",
+      "owner": "Thiago",
+      "output": "Validação no fluxo real da Premium"
+    }
+  ],
+  "lanes": [
+    {
+      "id": "estoque-core",
+      "name": "Estoque core",
+      "codex_focus": ["cadastro de produtos", "setores dinâmicos", "UI gestor/colaborador", "rotas /api/est/*"],
+      "claude_focus": ["regras de negócio", "cálculo de saldos", "riscos de regressão", "critérios de aceite"]
+    },
+    {
+      "id": "producao-fichas",
+      "name": "Produção e fichas técnicas",
+      "codex_focus": ["editor multi-porção", "excluir/editar ficha", "lançamento transacional", "layout"],
+      "claude_focus": ["rendimento", "baixa por insumo bruto", "conversão de unidade", "custo e perda"]
+    },
+    {
+      "id": "contagem-rbac",
+      "name": "Contagem, auditoria e permissões",
+      "codex_focus": ["tela colaborador", "auditoria gestor", "permissões por setor", "smoke read-only"],
+      "claude_focus": ["matriz de acesso", "cenários de abuso/erro", "testes por perfil", "fluxo remoto sem PIN"]
+    },
+    {
+      "id": "command-center",
+      "name": "Governança e Command Center",
+      "codex_focus": ["dashboard", "project-state", "deploy", "checks automatizados"],
+      "claude_focus": ["avaliação de prioridades", "lacunas do mapa", "melhor caminho de execução"]
+    }
+  ],
+  "handoff_to_claude": {
+    "title": "Prompt operacional para o Claude",
+    "intent": "Fazer o Claude atuar como revisor/arquiteto, não como executor concorrente no código.",
+    "prompt": "Você agora atua como arquiteto/revisor do Titan, guiado pelo Command Center. Não implemente código em paralelo nos mesmos arquivos sem alinhar. Seu papel é avaliar o plano, calcular impactos de estoque/produção/fichas/conversões, apontar riscos, escrever critérios de aceite e revisar o resultado do Codex. Use as fronteiras oficiais: novas funções de estoque em /api/est/* e tabelas est_*; /api/estoque/* é legado; setores são dinâmicos por cliente; ficha de produção interna é est_ficha_* e não ficha de cardápio. Entregue recomendações objetivas, cenários de teste e priorização para acelerar a Premium sem criar retrabalho."
+  },
+  "definition_of_done": [
+    "Fluxo principal funciona no desktop e celular",
+    "Gestor tem controle total e colaborador vê apenas o permitido",
+    "Rotas oficiais documentadas e testadas",
+    "Smoke read-only verde antes e depois do deploy",
+    "Mudanças registradas em project-state",
+    "Claude revisou regra/cálculo quando houver impacto operacional"
+  ]
+}

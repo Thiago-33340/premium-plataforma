@@ -34,7 +34,7 @@ async function check(name, path, validate = () => true, displayPath = path) {
   try {
     const { res, json, text } = await fetchJson(path);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 180)}`);
-    const result = validate(json, res);
+    const result = validate(json, res, text);
     if (result !== true) throw new Error(result || 'resposta inválida');
     checks.push({ name, path: displayPath, ok: true, ms: Date.now() - started });
   } catch (err) {
@@ -44,6 +44,7 @@ async function check(name, path, validate = () => true, displayPath = path) {
 }
 
 await check('health', '/api/health', (j) => j && j.ok === true);
+await check('command center html', '/command-center', (_j, _res, text) => text.includes('Titan Command Center'));
 await check('estoque dashboard', '/api/est/dashboard', (j) => j && typeof j === 'object' && 'produtos_ativos' in j);
 await check('produtos', '/api/est/produtos', (j) => Array.isArray(j?.produtos));
 await check('setores', '/api/est/setores', (j) => Array.isArray(j?.setores));

@@ -63,7 +63,7 @@
     "bloqueada": false,
     "dependencias": ["task-f2-001", "task-f2-002", "task-f2-003"],
     "bloqueios": [],
-    "proximo_passo": "Validar /mapper com Thiago e evoluir filtros/visões específicas depois que o Claude entregar o estoque."
+    "proximo_passo": "Command Center operacional criado sobre /mapper e /command-center. Próximo passo: transformar registros em ações graváveis auditadas."
   },
   {
     "id": "task-f2-006",
@@ -169,5 +169,44 @@
     "bloqueada": false,
     "dependencias": ["task-f2-003", "task-f2-006", "task-f2-008"],
     "proximo_passo": "Mapper publicado e validado em produção. Próximo passo: adicionar visão específica do estoque após a entrega atual do Claude."
+  },
+  {
+    "id": "task-f2-014",
+    "titulo": "Transformar mapper em Command Center operacional",
+    "modulo": "command-center",
+    "status": "concluido",
+    "prioridade": "alta",
+    "categoria": "ux_ui",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-013"],
+    "proximo_passo": "Usar a aba Agentes para passar o briefing ao Claude e a aba Estoque para guiar as próximas implementações."
+  },
+  {
+    "id": "task-f2-015",
+    "titulo": "Integrar login real ao Command Center",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "seguranca",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-014"],
+    "proximo_passo": "Remover dependência de admin_id na URL e reaproveitar a sessão/autenticação oficial do gestor."
+  },
+  {
+    "id": "task-f2-016",
+    "titulo": "Criar ações graváveis no Command Center",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "automacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-014", "task-f2-015"],
+    "proximo_passo": "Planejar endpoint auditado para registrar tarefa, risco, decisão e deploy sem editar JSON manualmente."
   }
 ]

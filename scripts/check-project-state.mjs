@@ -23,7 +23,8 @@ const required = [
   'rbac-audit.json',
   'module-route-table-map.json',
   'api-contracts-critical.json',
-  'test-matrix.json'
+  'test-matrix.json',
+  'agent-workflow.json'
 ];
 
 const errors = [];
@@ -114,6 +115,20 @@ for (const contract of Array.isArray(data['api-contracts-critical.json']) ? data
 for (const test of Array.isArray(data['test-matrix.json']) ? data['test-matrix.json'] : []) {
   for (const field of ['id', 'module', 'type', 'priority', 'covers', 'expected']) {
     if (test[field] == null) errors.push(`Teste ${test.id || '(sem id)'} sem campo ${field}.`);
+  }
+}
+
+const agentWorkflow = data['agent-workflow.json'];
+if (!agentWorkflow || typeof agentWorkflow !== 'object' || Array.isArray(agentWorkflow)) {
+  errors.push('agent-workflow.json deveria ser um objeto.');
+} else {
+  for (const field of ['status', 'current_mission', 'roles', 'workflow', 'handoff_to_claude']) {
+    if (agentWorkflow[field] == null) errors.push(`agent-workflow.json sem campo ${field}.`);
+  }
+  if (!Array.isArray(agentWorkflow.roles)) errors.push('agent-workflow.json precisa ter roles como lista.');
+  if (!Array.isArray(agentWorkflow.workflow)) errors.push('agent-workflow.json precisa ter workflow como lista.');
+  if (!agentWorkflow.handoff_to_claude || typeof agentWorkflow.handoff_to_claude !== 'object') {
+    errors.push('agent-workflow.json precisa ter handoff_to_claude como objeto.');
   }
 }
 
