@@ -218,3 +218,17 @@ Como o Claude deve usar isso:
 - Ler a aba **Execução** e as tarefas/riscos antes de sugerir próximos passos.
 - Tratar o Command como governança e trilha de decisão, não como executor automático de código.
 - Não assumir que uma tarefa registrada no Command já foi implantada; deploy continua exigindo commit/push/deploy explícito.
+
+## Atualização — Registro governado de deploy
+
+Data: 2026-06-22
+
+A aba **Deploys** do Command agora registra plano/resultado de deploy por ação auditada `create_deploy_record`.
+
+O Claude deve interpretar assim:
+
+- Um deploy registrado no Command é trilha de governança.
+- Ele pode estar planejado, pronto, concluído ou falho.
+- O registro não significa que EasyPanel foi acionado automaticamente.
+- Deploy real continua exigindo commit/push/deploy explícito e smoke verde.
+- Nenhum token/gatilho de deploy deve ser pedido, salvo ou copiado para documentação.

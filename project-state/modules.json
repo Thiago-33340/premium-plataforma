@@ -279,7 +279,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 95,
+    "progresso": 97,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -295,13 +295,14 @@
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
-      "Desenhar automação Git/PR/deploy com confirmação humana",
+      "Desenhar PR/deploy automático real com confirmação humana e sem armazenar secrets",
       "Usar stock-readiness.json como painel de prontidão do estoque"
     ],
     "proximos_passos": [
       "Usar /command-center ou /login no host tools.titanatende.com.br",
       "Acompanhar o Passo 2 e a prontidão do estoque na aba Estoque",
       "Registrar tarefa, risco e decisão pela aba Execução; as ações ficam no project-state e em titan_command_actions",
+      "Registrar plano ou resultado de deploy pela aba Deploys antes/depois de publicar",
       "Manter commit/Git como trilha definitiva para mudanças de código"
     ]
   }

@@ -159,7 +159,7 @@ const PROJECT_STATE_FILES = [
   'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json',
   'command-audit-log.json'
 ];
-const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'command-audit-log.json']);
+const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'deploys.json', 'command-audit-log.json']);
 const PROJECT_STATE_DIR = path.join(ROOT, 'project-state');
 async function gestorBasico(uid) {
   if (!uid) return null;
@@ -189,6 +189,7 @@ function aplicarCommandActionsNoState(files, actions) {
   const tasks = Array.isArray(files['tasks.json']) ? files['tasks.json'] : [];
   const risks = Array.isArray(files['risks.json']) ? files['risks.json'] : [];
   const decisions = Array.isArray(files['decisions.json']) ? files['decisions.json'] : [];
+  const deploys = Array.isArray(files['deploys.json']) ? files['deploys.json'] : [];
   const auditLog = Array.isArray(files['command-audit-log.json']) ? files['command-audit-log.json'] : [];
 
   for (const row of actions) {
@@ -199,11 +200,13 @@ function aplicarCommandActionsNoState(files, actions) {
     if (row.action === 'update_task' && target.id) upsertCommandItem(tasks, target, true);
     if (row.action === 'create_risk' && target.id) upsertCommandItem(risks, target, false);
     if (row.action === 'create_decision' && target.id) upsertCommandItem(decisions, target, false);
+    if (row.action === 'create_deploy_record' && target.id) upsertCommandItem(deploys, target, false);
     if (audit.id) upsertCommandItem(auditLog, audit, false);
   }
   files['tasks.json'] = tasks;
   files['risks.json'] = risks;
   files['decisions.json'] = decisions;
+  files['deploys.json'] = deploys;
   files['command-audit-log.json'] = auditLog
     .sort((a, b) => String(a.criado_em || '').localeCompare(String(b.criado_em || '')))
     .slice(-500);
@@ -303,6 +306,29 @@ function textoLimpo(v, max) {
 function listaLimpa(v, maxItems) {
   const arr = Array.isArray(v) ? v : String(v || '').split(',');
   return arr.map(x => textoLimpo(x, 80)).filter(Boolean).slice(0, maxItems || 8);
+}
+function listaLinhasLimpa(v, maxItems, maxLen) {
+  const arr = Array.isArray(v) ? v : String(v || '').split(/[\n;,]+/);
+  return arr.map(x => textoLimpo(x, maxLen || 180)).filter(Boolean).slice(0, maxItems || 12);
+}
+function slugCurto(v, fallback) {
+  const s = String(v || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 42);
+  return s || fallback || 'registro';
+}
+function proximoDeployId(deploys, titulo) {
+  const base = `deploy-${dataSP()}-${slugCurto(titulo, 'command')}`;
+  const usados = new Set((Array.isArray(deploys) ? deploys : []).map(d => String(d && d.id || '')));
+  if (!usados.has(base)) return base;
+  for (let i = 2; i < 200; i++) {
+    const id = `${base}-${i}`;
+    if (!usados.has(id)) return id;
+  }
+  return `${base}-${Date.now()}`;
 }
 function dataSP() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -1079,6 +1105,38 @@ async function api(req, res, url) {
         const audit = registrarCommandAudit(gestor, action, 'decisions.json', decision.id, `Decisão registrada: ${decision.decisao}`, { status: decision.status });
         const dbAction = await persistirCommandActionDb(gestor, action, b, 'decisions.json', decision.id, decision, audit);
         return json(res, 201, { ok: true, target: decision, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+      }
+
+      if (action === 'create_deploy_record') {
+        const state = await lerProjectStateSeguro();
+        const deploys = Array.isArray(state['deploys.json']) ? state['deploys.json'] : lerProjectJson('deploys.json', []);
+        const titulo = textoLimpo(b.titulo || b.id || 'Deploy registrado pelo Command', 180);
+        const status = textoLimpo(b.status, 60) || 'planejado';
+        const deploy = {
+          id: proximoDeployId(deploys, titulo),
+          data: dataSP(),
+          titulo,
+          servico: textoLimpo(b.servico, 120) || 'mayaproject/github',
+          ambiente: textoLimpo(b.ambiente, 80) || 'producao',
+          status,
+          origem: textoLimpo(b.origem, 160) || 'Command Center',
+          branch: textoLimpo(b.branch, 80) || 'main',
+          merge_commit: textoLimpo(b.merge_commit || b.commit, 80),
+          pull_request: textoLimpo(b.pull_request, 240),
+          dominios: listaLinhasLimpa(b.dominios, 8, 120).length ? listaLinhasLimpa(b.dominios, 8, 120) : ['https://premium.titanatende.com.br', 'https://tools.titanatende.com.br'],
+          validacoes: listaLinhasLimpa(b.validacoes || b.detalhe, 14, 220),
+          observacoes: textoLimpo(b.observacoes || b.proximo_passo || b.detalhe, 700),
+          exige_confirmacao_humana: b.exige_confirmacao_humana !== false,
+          aciona_deploy_automatico: false,
+          criado_via_command: true,
+          criado_por: gestor.email,
+          criado_em: new Date().toISOString()
+        };
+        deploys.push(deploy);
+        gravarProjectJson('deploys.json', deploys);
+        const audit = registrarCommandAudit(gestor, action, 'deploys.json', deploy.id, `Deploy registrado: ${deploy.titulo}`, { status: deploy.status, branch: deploy.branch, commit: deploy.merge_commit || null });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'deploys.json', deploy.id, deploy, audit);
+        return json(res, 201, { ok: true, target: deploy, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       return json(res, 400, { erro: 'Ação do Command não reconhecida.' });

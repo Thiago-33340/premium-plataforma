@@ -146,6 +146,17 @@ Verifique:
 - validações feitas;
 - observações.
 
+Usuários com permissão de escrita também podem usar **Registro governado de deploy** para registrar:
+
+- deploy planejado;
+- deploy pronto para publicar;
+- deploy concluído;
+- deploy falho.
+
+Esse registro entra no `project-state/deploys.json`, no log auditado do Command e na trilha persistente do Postgres.
+
+Importante: registrar deploy no Command **não aciona o EasyPanel automaticamente**. Ele documenta a intenção/resultado. A publicação real continua exigindo GitHub + EasyPanel + smoke.
+
 ### Mapa técnico
 
 Use quando alguém estiver em dúvida sobre rota, serviço ou fronteira.

@@ -270,13 +270,26 @@
     "id": "task-f2-021",
     "titulo": "Desenhar automação Git/deploy acionada pelo Command",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "automacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-020"],
-    "proximo_passo": "Definir permissões e confirmação humana para o Command abrir PR, registrar deploy ou acionar implantação. Mudanças de código continuam via Git/commit/deploy explícito."
+    "proximo_passo": "Implementado primeiro degrau seguro: aba Deploys registra plano/resultado de deploy com auditoria em deploys.json + titan_command_actions, sem acionar EasyPanel automaticamente."
+  },
+  {
+    "id": "task-f2-022",
+    "titulo": "Projetar PR/deploy automático real com confirmação humana",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "automacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-021"],
+    "proximo_passo": "Definir fluxo seguro para abrir PR ou acionar deploy sem armazenar token em código, com confirmação explícita de Thiago/Tassiano e trilha de auditoria."
   }
 ]

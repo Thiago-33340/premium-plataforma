@@ -451,3 +451,46 @@ Arquivos principais:
 - `project-state/modules.json`
 - `project-state/routes.json`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+
+## Marco 11 — Deploy passa a ter registro governado no Command
+
+Status: implementado localmente, aguardando validação/deploy desta etapa
+
+Motivo:
+
+- O Command já registrava tarefas, riscos e decisões.
+- O próximo gargalo era deploy: sem um registro orientado, a equipe depende da memória para saber o que foi planejado, publicado e validado.
+- Acionar EasyPanel automaticamente ainda seria cedo, porque envolve efeito externo e não deve armazenar token/gatilho em código.
+
+O que foi implementado:
+
+- `deploys.json` entrou na whitelist gravável do Command.
+- Nova ação `create_deploy_record` em `POST /api/mapper/action`.
+- A aba **Deploys** ganhou formulário de **Registro governado de deploy**.
+- O registro pode marcar deploy como:
+  - planejado;
+  - pronto para deploy;
+  - concluído;
+  - falhou.
+- O registro grava:
+  - `project-state/deploys.json`;
+  - `project-state/command-audit-log.json`;
+  - `titan_command_actions`.
+- `GET /api/mapper/state` também aplica overlay dos deploys criados pela UI.
+
+Limite consciente:
+
+- Registrar deploy no Command não publica código.
+- O Command não aciona EasyPanel automaticamente nesta etapa.
+- Git, EasyPanel e smoke continuam sendo ações explícitas.
+- Nenhum token, gatilho ou secret de deploy foi salvo.
+
+Arquivos principais:
+
+- `server-pg.js`
+- `public/mapper.html`
+- `project-state/api-contracts-critical.json`
+- `project-state/tasks.json`
+- `project-state/decisions.json`
+- `project-state/modules.json`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`

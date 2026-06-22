@@ -183,5 +183,21 @@
       "O Postgres guarda a trilha viva de ações criadas pela UI entre deploys.",
       "Ações futuras de PR, commit ou deploy pelo Command exigem permissão e confirmação explícita."
     ]
+  },
+  {
+    "id": "decision-013",
+    "data": "2026-06-22",
+    "decisao": "Registrar deploys pelo Command antes de automatizar implantação real",
+    "motivo": "Acionar deploy automático envolve efeito externo e possível uso de credenciais. O próximo passo seguro é o Command governar o plano/resultado do deploy sem armazenar token nem publicar código sem ação explícita.",
+    "impacto": "A aba Deploys passa a registrar deploy planejado, pronto, concluído ou falho via POST /api/mapper/action com action=create_deploy_record. O registro entra em deploys.json, command-audit-log.json e titan_command_actions. EasyPanel/Git continuam fora de automação automática nesta etapa.",
+    "modulos_afetados": ["command-center", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "Registrar deploy no Command não aciona EasyPanel.",
+      "Deploy real continua exigindo commit/push/deploy explícito.",
+      "Nenhum gatilho, token ou secret de deploy deve ser salvo em código ou project-state.",
+      "Automação futura de PR/deploy precisa de confirmação humana no momento da ação."
+    ]
   }
 ]

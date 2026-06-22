@@ -158,6 +158,13 @@ A aba **Execução** permite, para usuários com `editar_project_state` ou `aces
 - criar risco;
 - criar decisão.
 
+A aba **Deploys** permite registrar plano/resultado de deploy:
+
+- planejado;
+- pronto para deploy;
+- concluído;
+- falhou.
+
 Cada ação:
 
 - grava somente arquivos permitidos de `project-state`;
@@ -168,6 +175,7 @@ Cada ação:
 Limite consciente:
 
 - o Command Center não altera código sozinho;
+- o registro de deploy não aciona EasyPanel automaticamente;
 - Git continua sendo a trilha definitiva para código, documentação versionada e deploy;
 - PR/commit/deploy acionados pelo Command ficam para etapa futura com confirmação humana.
 
@@ -193,6 +201,7 @@ Limite consciente:
 - mostra visão dedicada do estoque;
 - mostra aba de acessos para usuários com permissão;
 - permite criar tarefa, risco, decisão e atualizar tarefa com auditoria;
+- permite registrar deploy planejado/concluído/falho sem acionar implantação automática;
 - persiste ações vivas em `titan_command_actions`;
 - possui filtros por módulo/status/ferramenta;
 - não expõe secrets;

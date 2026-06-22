@@ -131,6 +131,7 @@
     let TOOL_USERS = null;
     let ACCESS_MSG = '';
     let COMMAND_MSG = '';
+    let DEPLOY_MSG = '';
     let ACTIVE = 'visao';
     let FILTER = { q:'', module:'', status:'', tool:'' };
 
@@ -378,6 +379,7 @@
       document.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { ACTIVE = btn.dataset.tab; render(); });
       bindFilters();
       bindCommandActions(p);
+      bindDeployActions(p);
       bindCopy(p);
       bindAcessos();
     }
@@ -664,6 +666,7 @@
 
     function renderDeploys(p){
       return `
+        ${temPerm('editar_project_state') ? deployActionPanel(p) : ''}
         <div class="cols">
           <div class="card pad">
             <div class="sectionTitle"><h2>Deploys registrados</h2><span class="pill">${p.deploys.length}</span></div>
@@ -673,6 +676,33 @@
             <div class="sectionTitle"><h2>Decisões recentes</h2><span class="pill">governança</span></div>
             <div class="list">${p.decisions.slice().reverse().map(decisionItem).join('') || empty('Sem decisões.')}</div>
           </div>
+        </div>`;
+    }
+
+    function deployActionPanel(p){
+      const latestCommit = p.deploys.slice().reverse().find(d => d.merge_commit)?.merge_commit || '';
+      return `
+        <div class="card pad callout" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Registro governado de deploy</h2><span class="pill ok">confirmação humana</span></div>
+          <div class="sub">Registra um deploy planejado, pronto ou concluído no Command. Isto não aciona EasyPanel automaticamente e não usa token no código.</div>
+          <div class="filters" style="grid-template-columns:1.4fr 1fr 1fr 1fr;margin-top:12px">
+            <input class="field" id="deployTitle" placeholder="Título do deploy / mudança">
+            <select class="field" id="deployStatus">
+              <option value="planejado">Planejado</option>
+              <option value="pronto_para_deploy">Pronto para deploy</option>
+              <option value="concluido">Concluído</option>
+              <option value="falhou">Falhou</option>
+            </select>
+            <input class="field" id="deployBranch" placeholder="Branch" value="main">
+            <input class="field" id="deployCommit" placeholder="Commit" value="${esc(latestCommit)}">
+            <input class="field" id="deployService" placeholder="Serviço" value="mayaproject/github">
+            <input class="field" id="deployDomains" placeholder="Domínios separados por vírgula" value="https://premium.titanatende.com.br, https://tools.titanatende.com.br">
+            <textarea class="field" id="deployValidations" rows="3" placeholder="Validações exigidas/feitas — uma por linha"></textarea>
+            <textarea class="field" id="deployNotes" rows="3" placeholder="Observações, rollback ou aprovação humana"></textarea>
+            <button class="btn primary" id="cmdCreateDeploy">Registrar deploy no Command</button>
+          </div>
+          <div class="sub" style="margin-top:10px">Regra: registrar aqui não publica código. Publicação real continua com GitHub + EasyPanel + smoke.</div>
+          ${DEPLOY_MSG ? `<div class="sub" style="margin-top:10px">${esc(DEPLOY_MSG)}</div>` : ''}
         </div>`;
     }
 
@@ -914,6 +944,39 @@
           ACTIVE = 'execucao';
         }catch(e){
           COMMAND_MSG = e.message;
+          render();
+        }
+      };
+    }
+
+    function bindDeployActions(p){
+      if(ACTIVE !== 'deploys' || !temPerm('editar_project_state')) return;
+      const btn = document.getElementById('cmdCreateDeploy');
+      if(!btn) return;
+      btn.onclick = async () => {
+        const payload = {
+          action:'create_deploy_record',
+          titulo:document.getElementById('deployTitle').value,
+          status:document.getElementById('deployStatus').value,
+          branch:document.getElementById('deployBranch').value,
+          commit:document.getElementById('deployCommit').value,
+          servico:document.getElementById('deployService').value,
+          dominios:document.getElementById('deployDomains').value,
+          validacoes:document.getElementById('deployValidations').value,
+          observacoes:document.getElementById('deployNotes').value,
+          origem:'Command Center'
+        };
+        if(!payload.titulo){
+          DEPLOY_MSG = 'Informe um título para registrar o deploy.';
+          return render();
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          DEPLOY_MSG = `Deploy registrado: ${out.target?.id || 'registro'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
+          await load();
+          ACTIVE = 'deploys';
+        }catch(e){
+          DEPLOY_MSG = e.message;
           render();
         }
       };
