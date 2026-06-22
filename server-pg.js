@@ -1005,27 +1005,31 @@ async function api(req, res, url) {
     });
   }
   if (sub === 'est' && seg[2] === 'meus-itens' && req.method === 'GET') {
-    const uid = url.searchParams.get('usuario_id');
-    const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
-    if (!u) return json(res, 403, { erro: 'usuário inválido' });
-    const gestor = perfilGestor(u);
-    const setp = setoresPermitidosLista(u.setores_permitidos);
-    const tudo = gestor || setp.includes('TUDO');
-    const r = tudo
-      ? await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
-          FROM est_produto p
-          JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
-          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
-         WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
-         ORDER BY s.nome, p.nome`, [TENANT])
-      : await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
-          FROM est_produto p
-          JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
-          JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
-         WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
-           AND (s.id::text = ANY($2::text[]) OR s.nome = ANY($2::text[]))
-         ORDER BY s.nome, p.nome`, [TENANT, setp]);
-    return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
+    try {
+      const uid = url.searchParams.get('usuario_id');
+      const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
+      if (!u) return json(res, 403, { erro: 'usuário inválido' });
+      const gestor = perfilGestor(u);
+      const setp = setoresPermitidosLista(u.setores_permitidos);
+      const tudo = gestor || setp.includes('TUDO');
+      const r = tudo
+        ? await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
+            FROM est_produto p
+            JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+            JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+           WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
+           ORDER BY s.nome, p.nome`, [TENANT])
+        : await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
+            FROM est_produto p
+            JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+            JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+           WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
+             AND (s.id::text = ANY($2::text[]) OR s.nome = ANY($2::text[]))
+           ORDER BY s.nome, p.nome`, [TENANT, setp]);
+      return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
+    } catch (e) {
+      return json(res, 500, { erro: e.code || e.message });
+    }
   }
   if (sub === 'est' && seg[2] === 'movimentos' && req.method === 'GET') {
     const lim = Math.min(parseInt(url.searchParams.get('limit'), 10) || 30, 100);
