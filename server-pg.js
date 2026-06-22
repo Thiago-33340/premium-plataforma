@@ -156,7 +156,7 @@ const PROJECT_STATE_FILES = [
   'tasks.json', 'risks.json', 'dependencies.json', 'decisions.json', 'roadmap.json',
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
-  'test-matrix.json', 'agent-workflow.json'
+  'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json'
 ];
 async function gestorBasico(uid) {
   if (!uid) return null;
@@ -1418,7 +1418,7 @@ async function api(req, res, url) {
     if (!e.user || (!e.gestor && !e.perms.includes('fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para fazer contagem.' });
     const c = await db.q('SELECT usuario_id, status FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
     if (!c.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
-    if (!e.gestor && String(c.rows[0].usuario_id) !== String(b.usuario_id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
+    if (!e.gestor && String(c.rows[0].usuario_id) !== String(e.user.id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
     if (c.rows[0].status !== 'EM_ANDAMENTO') return json(res, 409, { erro: 'Esta contagem já foi encerrada.' });
     const q = (b.quantidade === '' || b.quantidade == null) ? null : Number(b.quantidade);
     if (q != null && (!Number.isFinite(q) || q < 0)) return json(res, 400, { erro: 'Informe uma quantidade válida.' });
@@ -1435,7 +1435,7 @@ async function api(req, res, url) {
     if (!e.user || (!e.gestor && !e.perms.includes('fazer_contagem'))) return json(res, 403, { erro: 'Sem permissão para encerrar contagem.' });
     const owner = await db.q('SELECT usuario_id, status FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
     if (!owner.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
-    if (!e.gestor && String(owner.rows[0].usuario_id) !== String(b.usuario_id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
+    if (!e.gestor && String(owner.rows[0].usuario_id) !== String(e.user.id)) return json(res, 403, { erro: 'Esta contagem pertence a outro colaborador.' });
     if (owner.rows[0].status !== 'EM_ANDAMENTO') return json(res, 409, { erro: 'Esta contagem já foi encerrada.' });
     for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
       const q = (it.quantidade === '' || it.quantidade == null) ? null : Number(it.quantidade);
@@ -1465,8 +1465,9 @@ async function api(req, res, url) {
   }
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'auditar' && req.method === 'POST') {
     const b = await readBody(req); const cid = seg[3];
-    if (!(await estPode(b.usuario_id, 'auditar_contagem'))) return json(res, 403, { erro: 'Sem permissão para auditar.' });
-    const g = await estPermsEfetivas(b.usuario_id).then(e => e.user);
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || !(e.gestor || e.perms.includes('auditar_contagem'))) return json(res, 403, { erro: 'Sem permissão para auditar.' });
+    const g = e.user;
     const acao = b.acao;
     if (acao === 'aprovar') {
       const its = await db.q('SELECT produto_id, quantidade FROM est_contagem_item WHERE contagem_id=$1 AND quantidade IS NOT NULL AND produto_id IS NOT NULL', [cid]);
@@ -1475,7 +1476,7 @@ async function api(req, res, url) {
         const antes = cur.rows[0] ? Number(cur.rows[0].estoque_atual) : 0, depois = Number(it.quantidade);
         await db.q('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1', [it.produto_id, depois]);
         await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref)
-          VALUES ($1,$2,'CONTAGEM',$3,$4,$5,'CONTAGEM',$6,$7,$8)`, [TENANT, it.produto_id, antes, depois - antes, depois, b.usuario_id, g.nome, cid]);
+          VALUES ($1,$2,'CONTAGEM',$3,$4,$5,'CONTAGEM',$6,$7,$8)`, [TENANT, it.produto_id, antes, depois - antes, depois, g.id, g.nome, cid]);
       }
       await db.q("UPDATE est_contagem SET status='APROVADA', status_auditoria='APROVADA' WHERE id=$1 AND tenant_id=$2", [cid, TENANT]);
     } else if (acao === 'reprovar') {
@@ -1483,7 +1484,7 @@ async function api(req, res, url) {
     } else if (acao === 'corrigir') {
       await db.q("UPDATE est_contagem SET status='EM_ANDAMENTO', status_auditoria='CORRECAO_SOLICITADA' WHERE id=$1 AND tenant_id=$2", [cid, TENANT]);
     } else return json(res, 400, { erro: 'ação inválida' });
-    await db.q('INSERT INTO est_auditoria (tenant_id, contagem_id, gestor_id, gestor_nome, acao, observacao) VALUES ($1,$2,$3,$4,$5,$6)', [TENANT, cid, b.usuario_id, g.nome, acao, b.observacao || null]);
+    await db.q('INSERT INTO est_auditoria (tenant_id, contagem_id, gestor_id, gestor_nome, acao, observacao) VALUES ($1,$2,$3,$4,$5,$6)', [TENANT, cid, g.id, g.nome, acao, b.observacao || null]);
     return json(res, 200, { ok: true });
   }
 
@@ -1546,37 +1547,50 @@ async function api(req, res, url) {
   }
   if (sub === 'est' && seg[2] === 'compra' && !seg[3] && req.method === 'POST') {
     const b = await readBody(req);
-    if (!(await estPode(b.usuario_id, 'registrar_compra'))) return json(res, 403, { erro: 'Sem permissão para registrar compra.' });
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || !(e.gestor || e.perms.includes('registrar_compra'))) return json(res, 403, { erro: 'Sem permissão para registrar compra.' });
     const itens = (Array.isArray(b.itens) ? b.itens : []).filter(it => it.produto_id);
     if (!itens.length) return json(res, 400, { erro: 'Selecione ao menos um produto.' });
-    let total = 0;
-    const c = await db.q(`INSERT INTO est_compra (tenant_id, fornecedor_id, usuario_id, usuario_nome, origem, status, data_compra)
-      VALUES ($1,$2,$3,$4,$5,'CONFIRMADA',COALESCE($6,CURRENT_DATE)) RETURNING id`,
-      [TENANT, b.fornecedor_id || null, b.usuario_id, g.nome, b.origem || 'MANUAL', b.data_compra || null]);
-    const cid = c.rows[0].id;
-    for (const it of itens) {
-      const qtd = Number(it.quantidade) || 0;
-      let vu = it.valor_unitario != null && it.valor_unitario !== '' ? Number(it.valor_unitario) : null;
-      let vt = it.valor_total != null && it.valor_total !== '' ? Number(it.valor_total) : null;
-      if (vu == null && vt != null && qtd) vu = vt / qtd;
-      if (vt == null && vu != null) vt = vu * qtd;
-      total += vt || 0;
-      await db.q('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt]);
-      const cur = await db.q('SELECT estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2', [it.produto_id, TENANT]);
-      if (cur.rows[0]) {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      let total = 0;
+      const c = await client.query(`INSERT INTO est_compra (tenant_id, fornecedor_id, usuario_id, usuario_nome, origem, status, data_compra)
+        VALUES ($1,$2,$3,$4,$5,'CONFIRMADA',COALESCE($6,CURRENT_DATE)) RETURNING id`,
+        [TENANT, b.fornecedor_id || null, e.user.id, e.user.nome, b.origem || 'MANUAL', b.data_compra || null]);
+      const cid = c.rows[0].id;
+      for (const it of itens) {
+        const qtd = Number(String(it.quantidade == null ? '' : it.quantidade).replace(',', '.'));
+        if (!(qtd > 0)) throw new Error('Toda entrada de compra precisa de quantidade maior que zero.');
+        let vu = it.valor_unitario != null && it.valor_unitario !== '' ? Number(String(it.valor_unitario).replace(',', '.')) : null;
+        let vt = it.valor_total != null && it.valor_total !== '' ? Number(String(it.valor_total).replace(',', '.')) : null;
+        if (vu != null && !(vu >= 0)) vu = null;
+        if (vt != null && !(vt >= 0)) vt = null;
+        if (vu == null && vt != null && qtd) vu = vt / qtd;
+        if (vt == null && vu != null) vt = vu * qtd;
+        total += vt || 0;
+        const cur = await client.query('SELECT id, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo FOR UPDATE', [it.produto_id, TENANT]);
+        if (!cur.rows[0]) throw new Error('Produto da compra não encontrado ou inativo.');
+        await client.query('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt]);
         const antes = Number(cur.rows[0].estoque_atual), depois = antes + qtd;
-        await db.q('UPDATE est_produto SET estoque_atual=$2, ultima_marca=COALESCE($3,ultima_marca), ultimo_fornecedor_id=COALESCE($4,ultimo_fornecedor_id), atualizado_em=NOW() WHERE id=$1', [it.produto_id, depois, it.marca || null, b.fornecedor_id || null]);
-        await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref, motivo)
-          VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtd, depois, b.usuario_id, g.nome, cid]);
+        await client.query('UPDATE est_produto SET estoque_atual=$2, ultima_marca=COALESCE($3,ultima_marca), ultimo_fornecedor_id=COALESCE($4,ultimo_fornecedor_id), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$5', [it.produto_id, depois, it.marca || null, b.fornecedor_id || null, TENANT]);
+        await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref, motivo)
+          VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtd, depois, e.user.id, e.user.nome, cid]);
         if (vu != null && vu > 0) {
-          await db.q(`UPDATE est_produto SET ultimo_valor=$2, maior_valor=GREATEST(COALESCE(maior_valor,0),$2), menor_valor=LEAST(COALESCE(menor_valor,$2),$2) WHERE id=$1`, [it.produto_id, vu]);
-          await db.q(`UPDATE est_produto p SET medio_valor=(SELECT AVG(ci.valor_unitario) FROM est_compra_item ci JOIN est_compra cc ON cc.id=ci.compra_id WHERE ci.produto_id=p.id AND ci.valor_unitario IS NOT NULL AND cc.tenant_id=$1) WHERE p.id=$2`, [TENANT, it.produto_id]);
+          await client.query(`UPDATE est_produto SET ultimo_valor=$2, maior_valor=GREATEST(COALESCE(maior_valor,0),$2), menor_valor=LEAST(COALESCE(menor_valor,$2),$2) WHERE id=$1 AND tenant_id=$3`, [it.produto_id, vu, TENANT]);
+          await client.query(`UPDATE est_produto p SET medio_valor=(SELECT AVG(ci.valor_unitario) FROM est_compra_item ci JOIN est_compra cc ON cc.id=ci.compra_id WHERE ci.produto_id=p.id AND ci.valor_unitario IS NOT NULL AND cc.tenant_id=$1) WHERE p.id=$2 AND p.tenant_id=$1`, [TENANT, it.produto_id]);
         }
       }
+      await client.query('UPDATE est_compra SET total=$2 WHERE id=$1 AND tenant_id=$3', [cid, total, TENANT]);
+      await client.query('COMMIT');
+      return json(res, 201, { ok: true, id: cid, total });
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e.code || e.message });
+    } finally {
+      client.release();
     }
-    await db.q('UPDATE est_compra SET total=$2 WHERE id=$1', [cid, total]);
-    return json(res, 201, { ok: true, id: cid, total });
   }
   if (sub === 'est' && seg[2] === 'compras' && req.method === 'GET') {
     const r = await db.q(`SELECT c.id, c.criado_em, c.data_compra, c.usuario_nome, c.total, f.nome AS fornecedor,
@@ -1894,10 +1908,11 @@ async function api(req, res, url) {
   }
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'run' && req.method === 'POST') {
     const b = await readBody(req);
-    if (!b.usuario_id) return json(res, 403, { erro: 'Faça login.' });
-    if (!(await estPode(b.usuario_id, 'acessar_producao_interna'))) return json(res, 403, { erro: 'Sem permissão para lançar produção.' });
-    const u = await db.q('SELECT nome FROM rbac_contacts WHERE id=$1 AND tenant_id=$2', [b.usuario_id, TENANT]);
-    const uname = u.rows[0] ? u.rows[0].nome : null;
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user) return json(res, 403, { erro: 'Faça login.' });
+    if (!(e.gestor || e.perms.includes('acessar_producao_interna'))) return json(res, 403, { erro: 'Sem permissão para lançar produção.' });
+    const usuarioId = e.user.id;
+    const uname = e.user.nome || e.user.apelido_login || null;
     const pid = parseInt(b.produto_id, 10); let qtd = Number(b.quantidade), porcao = null;
     if (b.porcao_id) {
       const lotes = Number(String(b.lotes == null ? 1 : b.lotes).replace(',', '.'));
@@ -1928,7 +1943,7 @@ async function api(req, res, url) {
           r.quantidade_por_unidade,r.unidade AS receita_unidade,r.rendimento
         FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id WHERE r.tenant_id=$1 AND r.produto_id=$2 AND r.ativo FOR UPDATE OF i`, [TENANT, pid]);
       if (!rec.rows.length) { await client.query('ROLLBACK'); return json(res,400,{erro:'Esta porção ainda não tem ingredientes. Complete a ficha antes de produzir.'}); }
-      const run = await client.query(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, rendido, perda, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [TENANT, pid, qtd, rendido, perda || null, b.usuario_id, uname, b.observacao || null]);
+      const run = await client.query(`INSERT INTO est_producao_run (tenant_id, produto_id, quantidade, rendido, perda, usuario_id, usuario_nome, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [TENANT, pid, qtd, rendido, perda || null, usuarioId, uname, b.observacao || null]);
       const runId = run.rows[0].id; const avisos = [];
       for (const r of rec.rows) {
       const qpu = r.quantidade_por_unidade != null ? Number(r.quantidade_por_unidade) : 0;
@@ -1938,18 +1953,18 @@ async function api(req, res, url) {
       if (!(baixa > 0)) continue;
       const antes = Number(r.estoque_atual), depois = antes - baixa;
       await client.query('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [r.insumo_produto_id, depois, TENANT]);
-      await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, b.usuario_id, uname, 'Produção de ' + p.rows[0].nome, runId]);
+      await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_BAIXA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, r.insumo_produto_id, r.insumo, antes, baixa, depois, usuarioId, uname, 'Produção de ' + p.rows[0].nome, runId]);
       if (depois < 0) avisos.push(r.insumo + ' ficou negativo (' + depois.toFixed(3) + ')');
     }
     const antesP = Number(p.rows[0].estoque_atual), depoisP = antesP + entrada;
     await client.query('UPDATE est_produto SET estoque_atual=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [pid, depoisP, TENANT]);
-    await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, entrada, depoisP, b.usuario_id, uname, 'Produção interna', runId]);
+    await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PRODUCAO_ENTRADA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`, [TENANT, pid, p.rows[0].nome, antesP, entrada, depoisP, usuarioId, uname, 'Produção interna', runId]);
     // Perda de produção (merma): diferença entre a base e o rendido real
     let perda_pct = null, alerta_perda = null;
     if (perda > 0) {
       perda_pct = qtd > 0 ? (perda / qtd * 100) : 0;
       await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, ref) VALUES ($1,$2,$3,'PERDA',$4,$5,$6,'PRODUCAO',$7,$8,$9,$10)`,
-        [TENANT, pid, p.rows[0].nome, depoisP, perda, depoisP, b.usuario_id, uname, 'Merma de produção (' + perda_pct.toFixed(1) + '%)', runId]);
+        [TENANT, pid, p.rows[0].nome, depoisP, perda, depoisP, usuarioId, uname, 'Merma de produção (' + perda_pct.toFixed(1) + '%)', runId]);
       // Alerta se a perda % ficar acima da média das últimas produções deste item
       try {
         const hist = await client.query(`SELECT AVG(perda / NULLIF(quantidade,0))::float AS media FROM est_producao_run WHERE tenant_id=$1 AND produto_id=$2 AND perda IS NOT NULL AND id<>$3`, [TENANT, pid, runId]);
@@ -1988,10 +2003,11 @@ async function api(req, res, url) {
     if (!(await estPode(b.usuario_id, 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
     if (!b.alvo_id) return json(res, 400, { erro: 'alvo_id obrigatório' });
     const alvoEh = await estPermsEfetivas(b.alvo_id);
+    if (!alvoEh.user) return json(res, 404, { erro: 'Usuário alvo não encontrado.' });
     if (alvoEh.gestor) return json(res, 400, { erro: 'Gestores/gerentes já têm acesso total.' });
     const sel = Array.isArray(b.permissoes) ? b.permissoes.filter(p => EST_PERMS.includes(p)) : [];
-    await db.q(`DELETE FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, b.alvo_id]);
-    for (const p of sel.concat(['__configured__'])) await db.q(`INSERT INTO est_permissao (tenant_id, usuario_id, permissao) VALUES ($1,$2,$3) ON CONFLICT (tenant_id, usuario_id, permissao) DO NOTHING`, [TENANT, b.alvo_id, p]);
+    await db.q(`DELETE FROM est_permissao WHERE tenant_id=$1 AND usuario_id=$2`, [TENANT, alvoEh.user.id]);
+    for (const p of sel.concat(['__configured__'])) await db.q(`INSERT INTO est_permissao (tenant_id, usuario_id, permissao) VALUES ($1,$2,$3) ON CONFLICT (tenant_id, usuario_id, permissao) DO NOTHING`, [TENANT, alvoEh.user.id, p]);
     return json(res, 200, { ok: true, perms: sel });
   }
 

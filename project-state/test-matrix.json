@@ -4,10 +4,10 @@
     "module": "estoque-v2",
     "type": "smoke",
     "priority": "alta",
-    "covers": ["POST /api/est/produto", "PATCH /api/est/produto/:id", "DELETE /api/est/produto/:id"],
+    "covers": ["POST /api/est/produto", "PATCH /api/est/produto/:id", "DELETE /api/est/produto/:id", "POST /api/est/compra"],
     "preconditions": ["usuário com editar_produtos", "categoria existente"],
-    "expected": "produto cria, edita e inativa preservando histórico",
-    "script": "npm run smoke:mutating",
+    "expected": "produto cria, edita, recebe entrada por compra de teste e inativa preservando histórico",
+    "script": "npm run smoke:mutating -- --confirm=CRIAR_DADOS_DE_TESTE --user-id=<gestor>",
     "mutates_data": true
   },
   {
@@ -16,9 +16,9 @@
     "type": "integration",
     "priority": "critica",
     "covers": ["PUT /api/est/producao/ficha", "POST /api/est/producao/run"],
-    "preconditions": ["produto pode_produzir", "ficha com porção e ingredientes", "estoque de insumos conhecido"],
-    "expected": "baixa insumos, entra produto produzido, registra movimentos e produção",
-    "script": "pendente: exige ambiente de teste isolado",
+    "preconditions": ["usuário gestor", "confirmação explícita CRIAR_DADOS_DE_TESTE", "script cria produtos de teste e faz cleanup lógico"],
+    "expected": "salva ficha avançada, baixa insumo de teste, entra produto produzido de teste, registra movimentos e inativa dados de teste",
+    "script": "npm run smoke:mutating -- --confirm=CRIAR_DADOS_DE_TESTE --user-id=<gestor>",
     "mutates_data": true
   },
   {

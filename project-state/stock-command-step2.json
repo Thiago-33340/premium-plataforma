@@ -1,0 +1,102 @@
+{
+  "id": "stock-command-step2",
+  "titulo": "Passo 2 do Command — arquitetura e cálculo do estoque Premium",
+  "status": "concluido_codex_substituindo_claude",
+  "data": "2026-06-22",
+  "responsavel_original": "Claude",
+  "responsavel_execucao": "Codex",
+  "motivo": "Claude não estava atuando; Codex assumiu a análise de regras, cálculos, lacunas e próximos passos para manter a entrega do estoque avançando.",
+  "fontes_usadas": [
+    "docs/HANDOFF-CLAUDE-COMMAND-MAPPER.md",
+    "docs/DIARIO-ESTOQUE-PREMIUM-2026-06-22.md",
+    "project-state/agent-workflow.json",
+    "project-state/tasks.json",
+    "project-state/modules.json",
+    "project-state/api-contracts-critical.json",
+    "project-state/test-matrix.json",
+    "project-state/routes.json",
+    "public/estoque.html",
+    "public/mapper.html",
+    "server-pg.js",
+    "scripts/smoke-mutating-sandbox.mjs",
+    "data/estoque-catalogo-premium-v4.json",
+    "seed-setores-premium.sql",
+    "seed-produzidos-rp.sql"
+  ],
+  "fronteiras": [
+    "Estoque oficial usa /api/est/* e tabelas est_*.",
+    "Rotas /api/estoque/* são legado e não devem receber regra nova.",
+    "Ficha de produção interna usa est_ficha_producao, est_ficha_porcao e est_ficha_porcao_item.",
+    "Ficha de cardápio/venda usa ficha_itens e é uma camada diferente.",
+    "Setores são dinâmicos por tenant; Premium usa Gerais, Borda, Finalização, Montagem e Recepção, mas outros clientes podem ter setores diferentes."
+  ],
+  "calculos_oficiais": [
+    {
+      "nome": "Produção por porção",
+      "formula": "entrada_produzido = lotes * rendimento_da_porcao, exceto quando rendido real for informado; nesse caso entrada_produzido = rendido_real.",
+      "impacto": "A produção dá entrada no produto produzido e baixa os ingredientes da porção multiplicados pelos lotes."
+    },
+    {
+      "nome": "Baixa de ingrediente",
+      "formula": "baixa = converter(quantidade_do_ingrediente, unidade_da_receita, unidade_do_estoque, peso_g) * lotes.",
+      "impacto": "G/KG e ML/L são convertidos para a unidade de controle do estoque. Quando o bruto é contado por unidade e possui peso_g, gramas são convertidos para unidades."
+    },
+    {
+      "nome": "Compra manual",
+      "formula": "estoque_depois = estoque_antes + quantidade_comprada; valor_unitario = valor_total / quantidade quando valor unitário vier vazio.",
+      "impacto": "Compra grava est_compra, est_compra_item, est_movimento e recalcula último/maior/menor/custo médio."
+    },
+    {
+      "nome": "Auditoria de contagem",
+      "formula": "Ao aprovar, estoque_atual do produto passa a ser a quantidade contada; movimento CONTAGEM guarda a diferença.",
+      "impacto": "A contagem só vira verdade operacional quando o gestor aprova."
+    }
+  ],
+  "achados": [
+    {
+      "tipo": "bug_runtime",
+      "titulo": "Compra manual usava usuário não definido",
+      "detalhe": "POST /api/est/compra usava g.nome sem definir g no handler. Isso quebraria entrada de compra em runtime.",
+      "acao": "Corrigido para resolver usuário efetivo por alias/UUID e gravar compra em transação."
+    },
+    {
+      "tipo": "lacuna_teste",
+      "titulo": "Smoke mutável não cobria ficha avançada nem produção",
+      "detalhe": "O script anterior cobria produto e ficha simples, mas não o fluxo oficial atual de ficha por porções.",
+      "acao": "Smoke mutável atualizado para criar itens de teste, lançar compra, salvar ficha avançada, rodar produção, conferir baixa/entrada e inativar itens de teste."
+    },
+    {
+      "tipo": "governanca",
+      "titulo": "Passo 2 do Command estava preso ao Claude",
+      "detalhe": "O Command exibia briefing para Claude, mas não tinha um artefato próprio com a decisão de arquitetura/cálculo.",
+      "acao": "Criado este arquivo como fonte viva do passo 2 para Command/Mapper."
+    }
+  ],
+  "criterios_de_aceite_estoque": [
+    "Gestor consegue criar e editar produto sem erro.",
+    "Produto mostra setores dinâmicos e pode ser filtrado por setor.",
+    "Gestor consegue criar, editar e excluir ficha técnica avançada com porções.",
+    "Produção não lança sem porção com ingredientes válidos.",
+    "Produção lança baixa nos insumos e entrada no produzido em transação.",
+    "Compra manual registra entrada e histórico sem quebrar por usuário/login remoto.",
+    "Colaborador enxerga apenas setores e abas permitidas.",
+    "Auditoria de contagem só atualiza saldo após aprovação do gestor.",
+    "Smoke read-only fica 18/18.",
+    "Smoke mutável controlado passa usando produtos de teste e cleanup lógico."
+  ],
+  "proxima_ordem": [
+    "Validar sintaxe e project-state.",
+    "Deployar correções de compra, produção, Command e smoke mutável.",
+    "Rodar smoke read-only pós-deploy.",
+    "Rodar smoke mutável controlado em produção apenas com confirmação explícita CRIAR_DADOS_DE_TESTE e allow-remote=1.",
+    "Validar visual no Chrome: Command mostra passo 2 e Estoque permite abrir ficha avançada.",
+    "Registrar resultado no diário e deploys.json."
+  ],
+  "nao_fazer_sem_nova_decisao": [
+    "Migrar estoque legado agora.",
+    "Rodar teste mutável usando produto real da Premium.",
+    "Hardcodar setores da Premium no backend.",
+    "Misturar ficha de cardápio com ficha de produção interna.",
+    "Expor ou ler secrets para documentar deploy."
+  ]
+}

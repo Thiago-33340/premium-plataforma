@@ -308,7 +308,8 @@
         workflow: file(data, 'agent-workflow.json', {}),
         routes: file(data, 'routes.json', {}),
         services: file(data, 'services.json', []),
-        people: file(data, 'people.json', [])
+        people: file(data, 'people.json', []),
+        stockStep2: file(data, 'stock-command-step2.json', {})
       };
     }
 
@@ -434,6 +435,7 @@
       const stockRisks = p.risks.filter(r => (r.modulos_afetados || []).some(id => stockIds.includes(id)));
       const contracts = p.contracts.filter(c => String(c.module || '').includes('estoque') || String(c.module || '').includes('producao') || String(c.module || '').includes('contagem'));
       const tests = p.tests.filter(t => stockIds.includes(t.module));
+      const step2 = p.stockStep2 || {};
       return `
         <div class="hero">
           <div class="card pad callout">
@@ -444,6 +446,24 @@
           <div class="card pad">
             <div class="sectionTitle"><h2>Divisão Claude/Codex no estoque</h2><span class="pill">lanes</span></div>
             <div class="list">${(p.workflow.lanes || []).filter(l => l.id !== 'command-center').map(laneCard).join('') || empty('Sem lanes registradas.')}</div>
+          </div>
+        </div>
+        <div class="card pad callout" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Passo 2 do Command — arquitetura e cálculo</h2><span class="pill ok">${esc(statusLabel(step2.status || 'pendente'))}</span></div>
+          <div class="sub">${esc(step2.motivo || 'Bloco de cálculo/regras ainda não registrado.')}</div>
+          <div class="split3" style="margin-top:13px">
+            <div>
+              <h3 style="margin-bottom:8px">Cálculos oficiais</h3>
+              <div class="list">${(step2.calculos_oficiais || []).slice(0,4).map(calcItem).join('') || empty('Sem cálculos registrados.')}</div>
+            </div>
+            <div>
+              <h3 style="margin-bottom:8px">Achados</h3>
+              <div class="list">${(step2.achados || []).slice(0,4).map(achadoItem).join('') || empty('Sem achados registrados.')}</div>
+            </div>
+            <div>
+              <h3 style="margin-bottom:8px">Próxima ordem</h3>
+              <div class="list">${(step2.proxima_ordem || []).slice(0,6).map(x => `<div class="item"><b>${esc(x)}</b></div>`).join('') || empty('Sem ordem registrada.')}</div>
+            </div>
           </div>
         </div>
         <div class="cols" style="margin-bottom:14px">
@@ -470,6 +490,7 @@
 
     function renderAgentes(p){
       const brief = buildClaudeBrief(p);
+      const step2 = p.stockStep2 || {};
       return `
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad">
@@ -485,6 +506,13 @@
         <div class="card pad">
           <div class="sectionTitle"><h2>Fluxo operacional</h2><span class="pill">do briefing ao deploy</span></div>
           <div class="timeline">${(p.workflow.workflow || []).map(flowItem).join('') || empty('Sem workflow registrado.')}</div>
+        </div>
+        <div class="card pad" style="margin-top:14px">
+          <div class="sectionTitle"><h2>Passo 2 assumido</h2><span class="pill ok">${esc(statusLabel(step2.status || '—'))}</span></div>
+          <div class="list">
+            <div class="item"><b>${esc(step2.titulo || 'Arquitetura e cálculo')}</b><small>${esc(step2.motivo || '')}</small></div>
+            <div class="item"><b>Fontes</b><small>${esc((step2.fontes_usadas || []).slice(0,8).join(' · '))}</small></div>
+          </div>
         </div>`;
     }
 
@@ -665,6 +693,14 @@
       return `<div class="item"><b>${esc(l.name || l.id)}</b><small><b>Codex:</b> ${esc((l.codex_focus || []).join(' · '))}</small><small><b>Claude:</b> ${esc((l.claude_focus || []).join(' · '))}</small></div>`;
     }
 
+    function calcItem(c){
+      return `<div class="item"><span class="tag ok">cálculo</span><b>${esc(c.nome || 'Regra')}</b><small>${esc(c.formula || '')}</small><small>${esc(c.impacto || '')}</small></div>`;
+    }
+
+    function achadoItem(a){
+      return `<div class="item"><span class="tag ${esc(norm(a.tipo || 'achado'))}">${esc(a.tipo || 'achado')}</span><b>${esc(a.titulo || 'Achado')}</b><small>${esc(a.detalhe || '')}</small><small>${esc(a.acao || '')}</small></div>`;
+    }
+
     function roleCard(r){
       return `<div class="item"><span class="tag ${esc(norm(r.id))}">${esc(r.name || r.id)}</span><b>${esc(r.label || '')}</b><small>${esc((r.primary_duties || []).join(' · '))}</small><small><b>Não fazer:</b> ${esc((r.must_not || []).join(' · '))}</small></div>`;
     }
@@ -778,6 +814,9 @@
       const open = p.tasks.filter(t => norm(t.status) !== 'concluido').slice(0,8).map(t => `- ${t.id}: ${t.titulo} [${t.modulo}/${t.prioridade}] -> ${t.proximo_passo || ''}`).join('\n');
       const risks = p.risks.slice().sort((a,b)=>riskWeight(b)-riskWeight(a)).slice(0,6).map(r => `- ${r.id}: ${r.titulo} [${r.severidade}/${r.status}] -> ${r.mitigacao || r.impacto || ''}`).join('\n');
       const wf = p.workflow.handoff_to_claude || {};
+      const step2 = p.stockStep2 || {};
+      const calculos = (step2.calculos_oficiais || []).slice(0,5).map(c => `- ${c.nome}: ${c.formula}`).join('\n');
+      const aceite = (step2.criterios_de_aceite_estoque || []).slice(0,10).map(x => `- ${x}`).join('\n');
       return `${wf.prompt || 'Você atua como revisor/arquiteto do Titan.'}
 
 Missão atual:
@@ -795,6 +834,16 @@ ${open || '- Nenhuma tarefa aberta listada.'}
 
 Riscos principais:
 ${risks || '- Nenhum risco listado.'}
+
+Passo 2 do Command:
+${step2.status ? `- Status: ${step2.status}` : '- Ainda sem artefato oficial.'}
+${step2.motivo ? `- Observação: ${step2.motivo}` : ''}
+
+Cálculos/regras já materializados:
+${calculos || '- Sem cálculos registrados.'}
+
+Critérios de aceite do estoque:
+${aceite || '- Sem critérios registrados.'}
 
 Entregue para Thiago e Codex:
 1. Lacunas de regra/UX.

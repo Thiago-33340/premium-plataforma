@@ -84,7 +84,7 @@
     "id": "estoque-v2",
     "nome": "Estoque operacional v2",
     "status": "em_andamento",
-    "progresso": 88,
+    "progresso": 92,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -98,14 +98,13 @@
     "rotas_relacionadas": ["estoque-v2-cadastros-operacao"],
     "tabelas_relacionadas": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor"],
     "pendencias": [
-      "Validar pós-deploy a lista de produtos com setores",
       "Testar conversões de unidade",
       "Documentar catálogo Premium v4 como fonte inicial",
-      "Rodar smoke read-only depois do deploy da tela de estoque"
+      "Rodar smoke mutável controlado depois do deploy das correções críticas"
     ],
     "proximos_passos": [
-      "Validar no navegador: produto -> setor -> ficha -> movimento",
-      "Criar testes de baixa e entrada",
+      "Validar no navegador: produto -> setor -> ficha -> compra -> produção",
+      "Rodar smoke mutável controlado com itens de teste",
       "Classificar rotas antigas de estoque como legado"
     ]
   },
@@ -113,7 +112,7 @@
     "id": "producao-fichas",
     "nome": "Produção e fichas técnicas",
     "status": "em_andamento",
-    "progresso": 78,
+    "progresso": 86,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -130,12 +129,12 @@
       "Completar fichas pendentes",
       "Documentar baixa de insumos por produção",
       "Validar editor avançado no estoque após deploy",
-      "Criar validação automatizada de custo/rendimento por porção"
+      "Rodar smoke mutável de ficha avançada e produção"
     ],
     "proximos_passos": [
       "Listar itens produzidos sem ficha completa",
       "Testar salvar/excluir ficha em ambiente controlado",
-      "Testar transação produção -> movimento de estoque"
+      "Usar smoke mutável para confirmar baixa/entrada transacional"
     ]
   },
   {
@@ -281,7 +280,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 76,
+    "progresso": 84,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -298,11 +297,11 @@
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
       "Transformar ações do Command Center em registros graváveis auditados",
-      "Criar visão de estoque com métricas reais depois da entrega Premium"
+      "Criar visão de estoque com métricas reais depois do smoke mutável"
     ],
     "proximos_passos": [
       "Usar /command-center ou /login no host tools.titanatende.com.br",
-      "Entregar briefing do Claude pela aba Agentes",
+      "Acompanhar o Passo 2 do estoque na aba Estoque",
       "Registrar cada avanço relevante em project-state"
     ]
   }

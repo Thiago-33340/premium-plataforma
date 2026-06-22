@@ -70,8 +70,9 @@
     {
       "step": 2,
       "name": "Arquitetura e cálculo",
-      "owner": "Claude",
-      "output": "Plano, riscos, regras operacionais, cálculos e lacunas"
+      "owner": "Codex substituindo Claude nesta execução",
+      "status": "concluido_em_2026-06-22",
+      "output": "Plano, riscos, regras operacionais, cálculos e lacunas registrados em project-state/stock-command-step2.json"
     },
     {
       "step": 3,

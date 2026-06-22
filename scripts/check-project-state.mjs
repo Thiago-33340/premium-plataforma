@@ -24,7 +24,8 @@ const required = [
   'module-route-table-map.json',
   'api-contracts-critical.json',
   'test-matrix.json',
-  'agent-workflow.json'
+  'agent-workflow.json',
+  'stock-command-step2.json'
 ];
 
 const errors = [];
@@ -130,6 +131,18 @@ if (!agentWorkflow || typeof agentWorkflow !== 'object' || Array.isArray(agentWo
   if (!agentWorkflow.handoff_to_claude || typeof agentWorkflow.handoff_to_claude !== 'object') {
     errors.push('agent-workflow.json precisa ter handoff_to_claude como objeto.');
   }
+}
+
+const stockStep2 = data['stock-command-step2.json'];
+if (!stockStep2 || typeof stockStep2 !== 'object' || Array.isArray(stockStep2)) {
+  errors.push('stock-command-step2.json deveria ser um objeto.');
+} else {
+  for (const field of ['id', 'titulo', 'status', 'fontes_usadas', 'calculos_oficiais', 'criterios_de_aceite_estoque', 'proxima_ordem']) {
+    if (stockStep2[field] == null) errors.push(`stock-command-step2.json sem campo ${field}.`);
+  }
+  if (!Array.isArray(stockStep2.fontes_usadas)) errors.push('stock-command-step2.json precisa ter fontes_usadas como lista.');
+  if (!Array.isArray(stockStep2.calculos_oficiais)) errors.push('stock-command-step2.json precisa ter calculos_oficiais como lista.');
+  if (!Array.isArray(stockStep2.criterios_de_aceite_estoque)) errors.push('stock-command-step2.json precisa ter criterios_de_aceite_estoque como lista.');
 }
 
 const health = data['health-checks.json'];

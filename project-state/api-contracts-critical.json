@@ -26,6 +26,21 @@
     "known_errors": ["400 Informe o nome.", "404 Produto não encontrado.", "400 Já existe um produto com esse nome."]
   },
   {
+    "id": "est-compra-manual",
+    "module": "estoque-v2",
+    "method": "POST",
+    "path": "/api/est/compra",
+    "screen": "public/estoque.html",
+    "permission": "registrar_compra",
+    "payload_required": ["usuario_id", "itens[]", "itens[].produto_id", "itens[].quantidade"],
+    "payload_optional": ["fornecedor_id", "data_compra", "origem", "itens[].marca", "itens[].unidade", "itens[].valor_unitario", "itens[].valor_total"],
+    "writes": ["est_compra", "est_compra_item", "est_produto", "est_movimento"],
+    "success": "201 { ok: true, id, total }",
+    "known_errors": ["403 Sem permissão para registrar compra.", "400 Selecione ao menos um produto.", "400 quantidade maior que zero", "400 Produto da compra não encontrado ou inativo."],
+    "transactional": true,
+    "note": "Resolve usuario_id por UUID/login/apelido e grava entrada de estoque, movimento e custos em uma transação."
+  },
+  {
     "id": "est-produto-ficha-simple",
     "module": "estoque-v2/producao-fichas",
     "method": "PUT",
@@ -44,7 +59,7 @@
     "module": "producao-fichas",
     "method": "PUT",
     "path": "/api/est/producao/ficha",
-    "screen": "public/admin.html",
+    "screen": "public/estoque.html / public/admin.html",
     "permission": "editar_produtos",
     "payload_required": ["usuario_id", "produto_id", "porcoes[]"],
     "payload_optional": ["descricao", "unidade_consumo", "tipo", "instrucoes", "setores", "porcoes[].itens[].observacao"],

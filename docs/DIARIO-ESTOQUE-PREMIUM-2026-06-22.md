@@ -236,3 +236,64 @@ Checks cobertos:
 Pendência proposital:
 
 - Testes de criação/alteração/exclusão real de ficha técnica e produção devem ser feitos em fluxo controlado com item de teste ou janela operacional autorizada, porque alteram dados reais de estoque.
+
+## Marco 07 — Codex assume o passo 2 do Command e corrige gargalos finais do estoque
+
+Status: concluído localmente, pendente de deploy e smoke mutável controlado
+
+Contexto:
+
+- O Claude não estava atuando no estoque.
+- O passo 2 do Command Center, “Arquitetura e cálculo”, estava atribuído ao Claude.
+- Para não travar a entrega do estoque Premium, o Codex assumiu temporariamente este papel.
+
+Fontes usadas:
+
+- `docs/HANDOFF-CLAUDE-COMMAND-MAPPER.md`
+- `project-state/agent-workflow.json`
+- `project-state/tasks.json`
+- `project-state/modules.json`
+- `project-state/api-contracts-critical.json`
+- `project-state/test-matrix.json`
+- `public/estoque.html`
+- `public/mapper.html`
+- `server-pg.js`
+- `scripts/smoke-mutating-sandbox.mjs`
+- `data/estoque-catalogo-premium-v4.json`
+- `seed-setores-premium.sql`
+- `seed-produzidos-rp.sql`
+
+O que foi encontrado:
+
+- A compra manual (`POST /api/est/compra`) tinha bug de runtime: usava `g.nome` sem definir `g`.
+- Algumas rotas validavam permissão por login/apelido, mas gravavam `usuario_id` com o valor bruto recebido; isso poderia quebrar testes remotos usando `thiago`.
+- O smoke mutável existente testava produto/ficha simples, mas não testava o fluxo oficial novo de ficha avançada por porção e produção.
+- O Command Center mostrava briefing para Claude, mas não tinha um artefato oficial do passo 2.
+
+Correções aplicadas:
+
+- `POST /api/est/compra` agora:
+  - resolve usuário efetivo por UUID/login/apelido;
+  - valida quantidade maior que zero;
+  - grava compra, itens, entrada, movimento e custos em transação;
+  - evita gravação parcial se algum item falhar.
+- Produção interna (`POST /api/est/producao/run`) agora resolve usuário efetivo antes de gravar produção/movimentos.
+- Auditoria/contagem e permissões passaram a usar o usuário resolvido onde havia risco de alias.
+- `scripts/smoke-mutating-sandbox.mjs` foi ampliado para:
+  - criar insumo de teste;
+  - lançar compra/entrada de teste;
+  - criar produzido de teste;
+  - salvar ficha avançada;
+  - lançar produção;
+  - conferir baixa/entrada;
+  - inativar produtos de teste no cleanup.
+- Criado `project-state/stock-command-step2.json`.
+- Criado `docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md`.
+- Command/Mapper passou a exibir o passo 2 na aba Estoque e no briefing de Agentes.
+
+Próximo passo:
+
+- Rodar validações locais.
+- Deployar.
+- Rodar smoke read-only.
+- Rodar smoke mutável controlado em produção com produtos de teste, usando confirmação explícita.

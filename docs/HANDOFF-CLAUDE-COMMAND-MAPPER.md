@@ -138,3 +138,33 @@ Entregar ao Thiago/Codex:
 3. Riscos de cálculo/conversão.
 4. Ordem recomendada para finalizar hoje.
 5. Pontos que não devem ir para deploy sem validação.
+
+## Atualização — Claude indisponível e passo 2 assumido pelo Codex
+
+Data: 2026-06-22
+
+Como o Claude não estava trabalhando no momento da entrega, o Codex assumiu temporariamente o papel do passo 2 do Command Center: arquitetura, cálculo, análise de lacunas e critérios de aceite do estoque.
+
+Artefatos criados/atualizados:
+
+- `project-state/stock-command-step2.json`
+- `docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md`
+- `project-state/agent-workflow.json`
+- `project-state/tasks.json`
+- `project-state/modules.json`
+- `project-state/test-matrix.json`
+- `project-state/api-contracts-critical.json`
+
+Achados principais:
+
+- `POST /api/est/compra` tinha bug de runtime por usar usuário não definido.
+- Rotas críticas precisavam resolver usuário real por login/apelido/UUID antes de gravar histórico.
+- Smoke mutável anterior não cobria ficha avançada por porções nem produção transacional.
+- Command/Mapper precisava exibir o passo 2 como fonte viva, não apenas como prompt para o Claude.
+
+O Claude, ao voltar, deve:
+
+- Ler `project-state/stock-command-step2.json` antes de sugerir qualquer mudança.
+- Revisar cálculos e critérios, não reimplementar o mesmo editor.
+- Usar o smoke mutável controlado como critério de aceite do fluxo produto → compra → ficha → produção.
+- Apontar fichas reais da Premium que ainda precisam de ingredientes, mas sem alterar dados em produção sem autorização.

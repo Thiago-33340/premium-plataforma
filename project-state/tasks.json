@@ -3,7 +3,7 @@
     "id": "task-f2-001",
     "titulo": "Validar módulos oficiais do Titan",
     "modulo": "command-center",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "alta",
     "categoria": "logistica",
     "responsavel_humano": "Thiago",
@@ -16,14 +16,14 @@
     "id": "task-f2-002",
     "titulo": "Documentar contratos das rotas críticas de estoque",
     "modulo": "estoque-v2",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "alta",
     "categoria": "documentacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-001"],
-    "proximo_passo": "Validar api-contracts-critical.json e transformar contratos em testes de smoke."
+    "proximo_passo": "Contratos críticos e matriz de testes atualizados; usar smoke:read e smoke:mutating antes/depois dos próximos deploys."
   },
   {
     "id": "task-f2-003",
@@ -42,7 +42,7 @@
     "id": "task-f2-004",
     "titulo": "Criar checklist oficial de deploy",
     "modulo": "infra-deploy",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "devops",
     "responsavel_humano": "Thiago",
@@ -55,7 +55,7 @@
     "id": "task-f2-005",
     "titulo": "Desenhar Command Center inicial",
     "modulo": "command-center",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "ux_ui",
     "responsavel_humano": "Thiago",
@@ -63,7 +63,7 @@
     "bloqueada": false,
     "dependencias": ["task-f2-001", "task-f2-002", "task-f2-003"],
     "bloqueios": [],
-    "proximo_passo": "Command Center operacional criado sobre /mapper e /command-center. Próximo passo: transformar registros em ações graváveis auditadas."
+    "proximo_passo": "Command Center operacional e ativo. Ações graváveis auditadas seguem na task-f2-016."
   },
   {
     "id": "task-f2-006",
@@ -207,7 +207,7 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014", "task-f2-015"],
-    "proximo_passo": "Planejar endpoint auditado para registrar tarefa, risco, decisão e deploy sem editar JSON manualmente."
+    "proximo_passo": "Planejar endpoint auditado para registrar tarefa, risco, decisão e deploy sem editar JSON manualmente. Não é bloqueio para o estoque Premium de hoje."
   },
   {
     "id": "task-f2-017",
@@ -220,6 +220,19 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-002", "task-f2-006", "task-f2-014", "task-f2-015"],
-    "proximo_passo": "Deployar ajustes de produto/setor/ficha técnica, validar visual no navegador e rodar smoke read-only pós-deploy."
+    "proximo_passo": "Deployar correções de compra/produção/Command, rodar smoke read-only e executar smoke mutável controlado com produtos de teste."
+  },
+  {
+    "id": "task-f2-018",
+    "titulo": "Concluir passo 2 do Command para estoque Premium",
+    "modulo": "command-center",
+    "status": "concluido",
+    "prioridade": "alta",
+    "categoria": "arquitetura_calculo",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-014", "task-f2-015", "task-f2-017"],
+    "proximo_passo": "Usar project-state/stock-command-step2.json e docs/COMMAND-STEP2-ESTOQUE-PREMIUM.md como referência para validação final do estoque."
   }
 ]
