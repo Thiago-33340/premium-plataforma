@@ -1043,7 +1043,7 @@ async function api(req, res, url) {
            ORDER BY s.nome, p.nome`, [TENANT, setp]);
       return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
     } catch (e) {
-      return json(res, 500, { erro: e.code || e.message });
+      return json(res, 500, { erro: 'Falha ao carregar itens do usuário.' });
     }
   }
   if (sub === 'est' && seg[2] === 'movimentos' && req.method === 'GET') {
