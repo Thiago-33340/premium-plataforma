@@ -279,7 +279,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 88,
+    "progresso": 92,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -295,13 +295,14 @@
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
-      "Transformar ações do Command Center em registros graváveis auditados",
+      "Integrar ações graváveis a persistência/versionamento externo no futuro",
       "Usar stock-readiness.json como painel de prontidão do estoque"
     ],
     "proximos_passos": [
       "Usar /command-center ou /login no host tools.titanatende.com.br",
       "Acompanhar o Passo 2 e a prontidão do estoque na aba Estoque",
-      "Registrar cada avanço relevante em project-state"
+      "Registrar tarefa, risco e decisão pela aba Execução quando não exigir commit manual",
+      "Manter commit/Git como trilha definitiva para mudanças de código"
     ]
   }
 ]

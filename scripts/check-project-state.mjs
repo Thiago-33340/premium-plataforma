@@ -26,7 +26,8 @@ const required = [
   'test-matrix.json',
   'agent-workflow.json',
   'stock-command-step2.json',
-  'stock-readiness.json'
+  'stock-readiness.json',
+  'command-audit-log.json'
 ];
 
 const errors = [];
@@ -166,6 +167,21 @@ if (!stockReadiness || typeof stockReadiness !== 'object' || Array.isArray(stock
   }
   if (!Array.isArray(stockReadiness.remaining_recipe_gaps)) errors.push('stock-readiness.json precisa ter remaining_recipe_gaps como lista.');
   if (!Array.isArray(stockReadiness.real_data_corrections)) errors.push('stock-readiness.json precisa ter real_data_corrections como lista.');
+}
+
+const commandAudit = data['command-audit-log.json'];
+if (!Array.isArray(commandAudit)) {
+  errors.push('command-audit-log.json deveria ser uma lista.');
+} else {
+  for (const [idx, entry] of commandAudit.entries()) {
+    if (!entry || typeof entry !== 'object') {
+      errors.push(`command-audit-log.json item ${idx} deveria ser objeto.`);
+      continue;
+    }
+    for (const field of ['id', 'criado_em', 'action', 'target_file', 'resumo']) {
+      if (entry[field] == null) errors.push(`command-audit-log.json item ${idx} sem campo ${field}.`);
+    }
+  }
 }
 
 const rbacAudit = data['rbac-audit.json'];

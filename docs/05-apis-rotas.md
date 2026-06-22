@@ -35,10 +35,11 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
 - `/command-center` é a rota oficial da central operacional interna do Titan. `/mapper` continua como atalho/compatibilidade e `/login` aponta para a mesma tela de autenticação.
-- `/command-center`, `/mapper`, `/mapper.html`, `/login`, `/api/titan/auth/*` e `/api/mapper/state` são ferramentas internas e devem responder apenas em host técnico autorizado.
+- `/command-center`, `/mapper`, `/mapper.html`, `/login`, `/api/titan/auth/*`, `/api/mapper/state` e `/api/mapper/action` são ferramentas internas e devem responder apenas em host técnico autorizado.
 - `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.
 - `/api/titan/auth/*` gerencia login real das ferramentas Titan: e-mail autorizado, primeiro acesso, senha com hash e sessão por cookie HttpOnly.
 - `/api/mapper/state` é read-only, restrito a sessão Titan Tools com permissão `ver_project_state` e por host técnico, e expõe somente arquivos permitidos de `project-state`.
+- `/api/mapper/action` grava ações auditadas do Command Center, restrito a sessão Titan Tools com permissão `editar_project_state`. Só pode alterar arquivos whitelistados de `project-state` e sempre registra `command-audit-log.json`.
 
 ## Rotas que devem ser evitadas em implementação nova
 

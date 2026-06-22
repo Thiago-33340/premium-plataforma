@@ -151,5 +151,21 @@
       "Usuários com gerenciar_usuarios podem autorizar novos e-mails e definir permissões pelo Command Center.",
       "O bootstrap inicial dos sócios deve ser feito por TITAN_TOOL_BOOTSTRAP_EMAILS ou por usuário já autorizado com acesso total."
     ]
+  },
+  {
+    "id": "decision-011",
+    "data": "2026-06-22",
+    "decisao": "Permitir ações graváveis auditadas no Command Center",
+    "motivo": "Thiago e Tassiano precisam registrar tarefas, riscos, decisões e avanço sem editar JSON manualmente e sem depender da memória das ferramentas.",
+    "impacto": "A aba Execução passa a criar/atualizar registros em project-state com log de auditoria. Mudanças de código e deploys continuam exigindo commit/push/deploy explícitos.",
+    "modulos_afetados": ["command-center", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "Apenas usuários com acesso_total ou editar_project_state podem gravar ações.",
+      "Toda ação gravável registra command-audit-log.json com usuário, horário, ação, arquivo e alvo.",
+      "Ações do Command não devem expor secrets nem editar arquivos fora da whitelist.",
+      "A versão atual grava tarefas, riscos, decisões e status de tarefa; deploy e Git automático ficam para etapa futura."
+    ]
   }
 ]

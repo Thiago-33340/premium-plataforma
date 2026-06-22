@@ -57,6 +57,19 @@ async function checkStatus(name, path, validate = () => true, displayPath = path
   await delay(50);
 }
 
+async function checkStatusRequest(name, path, opts = {}, validate = () => true, displayPath = path, origin = baseUrl) {
+  const started = Date.now();
+  try {
+    const { res, json, text } = await fetchJson(path, opts, origin);
+    const result = validate(json, res, text);
+    if (result !== true) throw new Error(result || `HTTP ${res.status}: ${text.slice(0, 180)}`);
+    checks.push({ name, path: displayPath, ok: true, ms: Date.now() - started });
+  } catch (err) {
+    checks.push({ name, path: displayPath, ok: false, ms: Date.now() - started, error: err.message });
+  }
+  await delay(50);
+}
+
 function skip(name, path, error) {
   checks.push({ name, path, ok: true, skipped: true, ms: 0, error });
 }
@@ -84,10 +97,16 @@ if (toolsBaseUrl) {
   await check('command center html', '/command-center', (_j, _res, text) => text.includes('Titan Command Center'), '/command-center', toolsBaseUrl);
   await check('titan auth me anon', '/api/titan/auth/me', (j) => j?.ok === true && j.usuario === null, '/api/titan/auth/me', toolsBaseUrl);
   await checkStatus('mapper state protegido', '/api/mapper/state', (j, res) => res.status === 401 && Boolean(j?.erro), '/api/mapper/state', toolsBaseUrl);
+  await checkStatusRequest('mapper action protegido', '/api/mapper/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'create_task' })
+  }, (j, res) => res.status === 401 && Boolean(j?.erro), '/api/mapper/action', toolsBaseUrl);
 } else {
   skip('command center html', '/command-center', 'sem TITAN_TOOLS_BASE_URL');
   skip('titan auth me anon', '/api/titan/auth/me', 'sem TITAN_TOOLS_BASE_URL');
   skip('mapper state protegido', '/api/mapper/state', 'sem TITAN_TOOLS_BASE_URL');
+  skip('mapper action protegido', '/api/mapper/action', 'sem TITAN_TOOLS_BASE_URL');
 }
 
 if (userId) {

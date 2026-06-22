@@ -200,14 +200,14 @@
     "id": "task-f2-016",
     "titulo": "Criar ações graváveis no Command Center",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "automacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-014", "task-f2-015"],
-    "proximo_passo": "Planejar endpoint auditado para registrar tarefa, risco, decisão e deploy sem editar JSON manualmente. Não é bloqueio para o estoque Premium de hoje."
+    "proximo_passo": "Primeira versão implementada: criar tarefa, risco, decisão e atualizar status de tarefa pela aba Execução, com command-audit-log.json. Próximo degrau: persistência/versionamento externo e ações de deploy."
   },
   {
     "id": "task-f2-017",
@@ -252,5 +252,18 @@
       "Regra operacional de Coco Ralado Floco"
     ],
     "proximo_passo": "Thiago confirmar os ingredientes, quantidades, unidade e rendimento dessas 3 fichas; depois Codex grava via editor avançado e roda smoke mutável."
+  },
+  {
+    "id": "task-f2-020",
+    "titulo": "Versionar ações do Command em trilha externa segura",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "automacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-016"],
+    "proximo_passo": "Definir se ações gravadas em produção devem abrir PR/commit automático, gravar em banco auditado ou permanecer como project-state runtime exportável."
   }
 ]

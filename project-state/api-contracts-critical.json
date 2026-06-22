@@ -134,5 +134,25 @@
     "success": "200 { ok: true }",
     "known_errors": ["403 Sem permissão", "400 ação inválida"],
     "side_effects": ["acao=aprovar atualiza estoque_atual de cada item contado e grava movimento CONTAGEM", "acao=corrigir volta status para EM_ANDAMENTO"]
+  },
+  {
+    "id": "command-action",
+    "module": "command-center",
+    "method": "POST",
+    "path": "/api/mapper/action",
+    "screen": "public/mapper.html / command-center",
+    "permission": "editar_project_state",
+    "payload_required": ["action"],
+    "payload_optional": ["titulo", "modulo", "prioridade", "categoria", "detalhe", "bloqueada", "id", "status", "proximo_passo", "severidade", "impacto", "mitigacao", "decisao", "motivo"],
+    "writes": ["project-state/tasks.json", "project-state/risks.json", "project-state/decisions.json", "project-state/command-audit-log.json"],
+    "success": "200/201 { ok: true, target, audit }",
+    "known_errors": ["401 Faça login no Titan Tools.", "403 Sem permissão para esta ferramenta.", "400 Ação do Command não reconhecida.", "404 Tarefa não encontrada."],
+    "side_effects": [
+      "create_task adiciona task-f2-XXX",
+      "update_task altera status/próximo passo/bloqueio",
+      "create_risk adiciona risk-XXX",
+      "create_decision adiciona decision-XXX",
+      "toda ação gera command-audit-log.json"
+    ]
   }
 ]

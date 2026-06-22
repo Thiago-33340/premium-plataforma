@@ -130,6 +130,7 @@
     let AUTH = null;
     let TOOL_USERS = null;
     let ACCESS_MSG = '';
+    let COMMAND_MSG = '';
     let ACTIVE = 'visao';
     let FILTER = { q:'', module:'', status:'', tool:'' };
 
@@ -310,7 +311,8 @@
         services: file(data, 'services.json', []),
         people: file(data, 'people.json', []),
         stockStep2: file(data, 'stock-command-step2.json', {}),
-        stockReadiness: file(data, 'stock-readiness.json', {})
+        stockReadiness: file(data, 'stock-readiness.json', {}),
+        audit: file(data, 'command-audit-log.json', [])
       };
     }
 
@@ -374,6 +376,7 @@
       };
       document.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { ACTIVE = btn.dataset.tab; render(); });
       bindFilters();
+      bindCommandActions(p);
       bindCopy(p);
       bindAcessos();
     }
@@ -551,6 +554,7 @@
       const tasks = filteredTasks(p.tasks);
       const moduleOptions = p.modules.map(m => `<option value="${esc(m.id)}" ${FILTER.module === m.id ? 'selected' : ''}>${esc(m.nome || m.id)}</option>`).join('');
       return `
+        ${temPerm('editar_project_state') ? commandActionPanel(p) : ''}
         <div class="card pad" style="margin-bottom:14px">
           <div class="sectionTitle"><h2>Filtros de execução</h2><span class="pill">${modules.length} módulos · ${tasks.length} tarefas</span></div>
           <div class="filters">
@@ -579,6 +583,56 @@
         <div class="card pad">
           <div class="sectionTitle"><h2>Tarefas</h2><span class="pill">${tasks.length}</span></div>
           <div class="list">${tasks.map(taskItem).join('') || empty('Nenhuma tarefa com esse filtro.')}</div>
+        </div>`;
+    }
+
+    function commandActionPanel(p){
+      const moduleOptions = p.modules.map(m => `<option value="${esc(m.id)}">${esc(m.nome || m.id)}</option>`).join('');
+      const taskOptions = p.tasks.slice().reverse().map(t => `<option value="${esc(t.id)}">${esc(t.id)} · ${esc(t.titulo)}</option>`).join('');
+      const audit = (p.audit || []).slice(-5).reverse();
+      return `
+        <div class="cols" style="margin-bottom:14px">
+          <div class="card pad callout">
+            <div class="sectionTitle"><h2>Registrar no Command</h2><span class="pill ok">ação auditada</span></div>
+            <div class="sub">Cria tarefa, risco ou decisão direto no <span class="mono">project-state</span>, com log de quem registrou.</div>
+            <div class="filters" style="margin-top:12px">
+              <select class="field" id="cmdActionType">
+                <option value="create_task">Nova tarefa</option>
+                <option value="create_risk">Novo risco</option>
+                <option value="create_decision">Nova decisão</option>
+              </select>
+              <select class="field" id="cmdModule">${moduleOptions}</select>
+              <select class="field" id="cmdPriority">
+                <option value="alta">Alta</option>
+                <option value="media">Média</option>
+                <option value="baixa">Baixa</option>
+                <option value="critica">Crítica</option>
+              </select>
+              <input class="field" id="cmdTitle" placeholder="Título / decisão">
+              <input class="field" id="cmdCategory" placeholder="Categoria, impacto curto ou mitigação">
+              <textarea class="field" id="cmdDetail" rows="3" placeholder="Próximo passo, motivo, impacto ou mitigação"></textarea>
+              <label class="check"><input id="cmdBlocked" type="checkbox"> Bloqueada / exige decisão humana</label>
+              <button class="btn primary" id="cmdCreateAction">Registrar ação</button>
+            </div>
+            ${COMMAND_MSG ? `<div class="sub" style="margin-top:10px">${esc(COMMAND_MSG)}</div>` : ''}
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Atualizar tarefa</h2><span class="pill">status</span></div>
+            <div class="filters" style="margin-top:12px">
+              <select class="field" id="cmdTaskId">${taskOptions}</select>
+              <select class="field" id="cmdTaskStatus">
+                <option value="em_andamento">Em andamento</option>
+                <option value="planejado">Planejado</option>
+                <option value="concluido">Concluído</option>
+                <option value="bloqueado_dados_operacionais">Bloqueado por dados</option>
+              </select>
+              <textarea class="field" id="cmdTaskStep" rows="3" placeholder="Novo próximo passo / observação"></textarea>
+              <label class="check"><input id="cmdTaskBlocked" type="checkbox"> Marcar como bloqueada</label>
+              <button class="btn primary" id="cmdUpdateTask">Atualizar tarefa</button>
+            </div>
+            <div class="sectionTitle" style="margin-top:18px"><h2>Últimas ações auditadas</h2><span class="pill">${audit.length}</span></div>
+            <div class="list">${audit.map(auditItem).join('') || empty('Ainda sem ações auditadas.')}</div>
+          </div>
         </div>`;
     }
 
@@ -760,6 +814,10 @@
       return `<div class="item"><span class="tag ${esc(norm(d.status))}">${esc(d.status || '—')}</span><b>${esc(d.decisao || d.id)}</b><small>${esc(d.data || '')} · ${esc((d.modulos_afetados || []).join(', '))}</small></div>`;
     }
 
+    function auditItem(a){
+      return `<div class="item"><span class="tag ok">${esc(a.action || 'ação')}</span><b>${esc(a.target_id || a.target_file || 'registro')}</b><small>${esc(a.resumo || '')}</small><small>${fmt(a.criado_em)} · ${esc(a.usuario_nome || a.usuario_email || '')}</small></div>`;
+    }
+
     function boundaryItem(b){
       return `<div class="item"><b>${esc(b.id)}</b><small>${esc(b.rule || '')}</small><div style="margin-top:8px">${Object.entries(b).filter(([k,v]) => v && typeof v === 'object' && k !== 'id').map(([k,v]) => `<span class="tag">${esc(k)}: ${esc((v.routes || v.tables || []).slice(0,4).join(', '))}</span>`).join('')}</div></div>`;
     }
@@ -802,6 +860,59 @@
       tool.onchange = e => { FILTER.tool = e.target.value; render(); };
     }
 
+    function bindCommandActions(p){
+      if(ACTIVE !== 'execucao' || !temPerm('editar_project_state')) return;
+      const create = document.getElementById('cmdCreateAction');
+      if(create) create.onclick = async () => {
+        const action = document.getElementById('cmdActionType').value;
+        const modulo = document.getElementById('cmdModule').value;
+        const titulo = document.getElementById('cmdTitle').value;
+        const detalhe = document.getElementById('cmdDetail').value;
+        const prioridade = document.getElementById('cmdPriority').value;
+        const categoria = document.getElementById('cmdCategory').value;
+        const bloqueada = document.getElementById('cmdBlocked').checked;
+        const payload = { action, titulo, modulo, prioridade, categoria, detalhe, bloqueada };
+        if(action === 'create_risk'){
+          payload.severidade = prioridade === 'critica' ? 'critica' : prioridade;
+          payload.impacto = detalhe;
+          payload.mitigacao = categoria || 'Mitigação a definir pelo Command.';
+        }
+        if(action === 'create_decision'){
+          payload.decisao = titulo;
+          payload.motivo = detalhe;
+          payload.status = 'proposta';
+          payload.impacto = categoria || 'Impacto a detalhar.';
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          COMMAND_MSG = `Registrado: ${out.target?.id || 'ação'} · ${out.audit?.id || 'auditado'}`;
+          await load();
+          ACTIVE = 'execucao';
+        }catch(e){
+          COMMAND_MSG = e.message;
+          render();
+        }
+      };
+      const update = document.getElementById('cmdUpdateTask');
+      if(update) update.onclick = async () => {
+        try{
+          const out = await apiPost('/api/mapper/action', {
+            action:'update_task',
+            id:document.getElementById('cmdTaskId').value,
+            status:document.getElementById('cmdTaskStatus').value,
+            proximo_passo:document.getElementById('cmdTaskStep').value,
+            bloqueada:document.getElementById('cmdTaskBlocked').checked
+          });
+          COMMAND_MSG = `Atualizado: ${out.target?.id || 'tarefa'} · ${out.audit?.id || 'auditado'}`;
+          await load();
+          ACTIVE = 'execucao';
+        }catch(e){
+          COMMAND_MSG = e.message;
+          render();
+        }
+      };
+    }
+
     async function carregarAcessos(){
       const res = await fetch(`${API}/api/titan/auth/users`, { credentials:'same-origin' });
       const data = await res.json().catch(() => ({}));
@@ -826,7 +937,7 @@
       btn.onclick = async () => {
         const perfil = document.getElementById('accessProfile').value;
         const permissoes = perfil === 'total'
-          ? ['acesso_total','command_center','mapper','ver_project_state','gerenciar_usuarios']
+          ? ['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']
           : ['command_center','mapper','ver_project_state'];
         try{
           await apiPost('/api/titan/auth/authorize-email', {

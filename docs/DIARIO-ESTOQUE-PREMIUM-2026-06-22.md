@@ -356,3 +356,35 @@ Próximo passo:
 
 - Thiago confirmar ingredientes, quantidade, unidade e rendimento das 3 fichas pendentes.
 - Depois disso, gravar fichas pelo editor avançado e repetir smoke mutável controlado.
+
+## Marco 09 — Command Center ganha ações graváveis auditadas
+
+Status: implementado localmente, pendente de deploy/validação visual
+
+O Command Center deixou de ser apenas leitura de `project-state` e ganhou a primeira versão de ações graváveis na aba **Execução**.
+
+O que foi implementado:
+
+- Nova permissão `editar_project_state`.
+- Novo arquivo `project-state/command-audit-log.json`.
+- Nova rota `POST /api/mapper/action`, protegida por sessão Titan Tools e host técnico.
+- Ações disponíveis:
+  - criar tarefa;
+  - atualizar status/próximo passo de tarefa;
+  - criar risco;
+  - criar decisão.
+- Toda gravação usa whitelist de arquivos permitidos e gera log de auditoria.
+
+Limites conscientes:
+
+- A versão atual grava `tasks.json`, `risks.json`, `decisions.json` e `command-audit-log.json`.
+- Não edita arquivos fora da whitelist.
+- Não manipula secrets.
+- Ainda não faz commit/PR automático; versionamento externo virou próxima etapa.
+
+Arquivos principais:
+
+- `server-pg.js`
+- `public/mapper.html`
+- `project-state/command-audit-log.json`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`

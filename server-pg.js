@@ -72,7 +72,7 @@ function jsonComHeaders(res, code, obj, headers) {
 }
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
 
-const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'gerenciar_usuarios'];
+const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'editar_project_state', 'gerenciar_usuarios'];
 const TITAN_TOOL_SESSION_COOKIE = 'tt_session';
 function normEmail(v) { return String(v || '').trim().toLowerCase(); }
 function emailValido(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normEmail(v)); }
@@ -156,8 +156,11 @@ const PROJECT_STATE_FILES = [
   'tasks.json', 'risks.json', 'dependencies.json', 'decisions.json', 'roadmap.json',
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
-  'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json'
+  'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json',
+  'command-audit-log.json'
 ];
+const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'command-audit-log.json']);
+const PROJECT_STATE_DIR = path.join(ROOT, 'project-state');
 async function gestorBasico(uid) {
   if (!uid) return null;
   try {
@@ -166,18 +169,78 @@ async function gestorBasico(uid) {
   } catch (e) { return null; }
 }
 function lerProjectStateSeguro() {
-  const base = path.join(ROOT, 'project-state');
   const out = {};
   for (const file of PROJECT_STATE_FILES) {
     try {
-      const full = path.join(base, file);
-      if (!full.startsWith(base)) continue;
+      const full = projectStatePath(file, false);
       out[file] = JSON.parse(fs.readFileSync(full, 'utf8'));
     } catch (e) {
       out[file] = { erro: e.message };
     }
   }
   return out;
+}
+function projectStatePath(file, writable) {
+  const name = path.basename(String(file || ''));
+  if (!PROJECT_STATE_FILES.includes(name)) throw new Error('Arquivo de estado não permitido.');
+  if (writable && !PROJECT_STATE_MUTABLE_FILES.has(name)) throw new Error('Arquivo de estado não gravável pelo Command.');
+  const full = path.join(PROJECT_STATE_DIR, name);
+  const rel = path.relative(PROJECT_STATE_DIR, full);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error('Caminho de estado inválido.');
+  return full;
+}
+function lerProjectJson(file, fallback) {
+  const full = projectStatePath(file, false);
+  try { return JSON.parse(fs.readFileSync(full, 'utf8')); } catch { return fallback; }
+}
+function gravarProjectJson(file, data) {
+  const full = projectStatePath(file, true);
+  const tmp = `${full}.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, full);
+}
+function textoLimpo(v, max) {
+  return String(v || '').replace(/\s+/g, ' ').trim().slice(0, max || 240);
+}
+function listaLimpa(v, maxItems) {
+  const arr = Array.isArray(v) ? v : String(v || '').split(',');
+  return arr.map(x => textoLimpo(x, 80)).filter(Boolean).slice(0, maxItems || 8);
+}
+function dataSP() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date()).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+function proximoId(lista, prefixo, pad) {
+  const re = new RegExp(`^${prefixo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)$`);
+  let max = 0;
+  for (const item of Array.isArray(lista) ? lista : []) {
+    const m = re.exec(String(item.id || ''));
+    if (m) max = Math.max(max, Number(m[1]) || 0);
+  }
+  return prefixo + String(max + 1).padStart(pad || 3, '0');
+}
+function registrarCommandAudit(user, action, targetFile, targetId, resumo, extra) {
+  const log = lerProjectJson('command-audit-log.json', []);
+  const entry = {
+    id: `command-log-${Date.now()}`,
+    criado_em: new Date().toISOString(),
+    usuario_id: user.id,
+    usuario_email: user.email,
+    usuario_nome: user.nome || user.email,
+    action,
+    target_file: targetFile,
+    target_id: targetId || null,
+    resumo: textoLimpo(resumo, 500),
+    extra: extra && typeof extra === 'object' ? extra : {}
+  };
+  log.push(entry);
+  gravarProjectJson('command-audit-log.json', log.slice(-500));
+  return entry;
 }
 
 /* ===== Permissões do Estoque (configuráveis por usuário) ===== */
@@ -818,6 +881,104 @@ async function api(req, res, url) {
       usuario: userPublico(gestor),
       files: lerProjectStateSeguro()
     });
+  }
+
+  if (sub === 'mapper' && seg[2] === 'action' && req.method === 'POST') {
+    const gestor = await requerTitanSession(req, res, 'editar_project_state');
+    if (!gestor) return;
+    const b = await readBody(req);
+    const action = textoLimpo(b.action || b.tipo, 60);
+    try {
+      if (action === 'create_task') {
+        const tasks = lerProjectJson('tasks.json', []);
+        const titulo = textoLimpo(b.titulo, 180);
+        const modulo = textoLimpo(b.modulo, 80);
+        if (!titulo || !modulo) return json(res, 400, { erro: 'Informe título e módulo da tarefa.' });
+        const task = {
+          id: proximoId(tasks, 'task-f2-', 3),
+          titulo,
+          modulo,
+          status: textoLimpo(b.status, 60) || 'planejado',
+          prioridade: textoLimpo(b.prioridade, 40) || 'media',
+          categoria: textoLimpo(b.categoria, 80) || 'produto',
+          responsavel_humano: textoLimpo(b.responsavel_humano, 80) || 'Thiago',
+          ferramenta_atuante: textoLimpo(b.ferramenta_atuante, 80) || 'Codex',
+          bloqueada: !!b.bloqueada,
+          dependencias: listaLimpa(b.dependencias, 12),
+          proximo_passo: textoLimpo(b.proximo_passo || b.detalhe, 500),
+          criado_via_command: true,
+          criado_em: new Date().toISOString()
+        };
+        tasks.push(task);
+        gravarProjectJson('tasks.json', tasks);
+        const audit = registrarCommandAudit(gestor, action, 'tasks.json', task.id, `Tarefa criada: ${task.titulo}`, { modulo: task.modulo, prioridade: task.prioridade });
+        return json(res, 201, { ok: true, target: task, audit });
+      }
+
+      if (action === 'update_task') {
+        const tasks = lerProjectJson('tasks.json', []);
+        const id = textoLimpo(b.id || b.task_id, 80);
+        const idx = tasks.findIndex(t => String(t.id) === id);
+        if (idx < 0) return json(res, 404, { erro: 'Tarefa não encontrada.' });
+        const antes = { status: tasks[idx].status, proximo_passo: tasks[idx].proximo_passo, bloqueada: tasks[idx].bloqueada };
+        if (b.status != null) tasks[idx].status = textoLimpo(b.status, 80) || tasks[idx].status;
+        if (b.proximo_passo != null || b.detalhe != null) tasks[idx].proximo_passo = textoLimpo(b.proximo_passo || b.detalhe, 500);
+        if (typeof b.bloqueada === 'boolean') tasks[idx].bloqueada = b.bloqueada;
+        if (b.ferramenta_atuante != null) tasks[idx].ferramenta_atuante = textoLimpo(b.ferramenta_atuante, 80) || tasks[idx].ferramenta_atuante;
+        tasks[idx].atualizado_via_command = true;
+        tasks[idx].atualizado_em = new Date().toISOString();
+        gravarProjectJson('tasks.json', tasks);
+        const audit = registrarCommandAudit(gestor, action, 'tasks.json', id, `Tarefa atualizada: ${id}`, { antes, depois: { status: tasks[idx].status, proximo_passo: tasks[idx].proximo_passo, bloqueada: tasks[idx].bloqueada } });
+        return json(res, 200, { ok: true, target: tasks[idx], audit });
+      }
+
+      if (action === 'create_risk') {
+        const risks = lerProjectJson('risks.json', []);
+        const titulo = textoLimpo(b.titulo, 180);
+        if (!titulo) return json(res, 400, { erro: 'Informe o título do risco.' });
+        const risk = {
+          id: proximoId(risks, 'risk-', 3),
+          titulo,
+          severidade: textoLimpo(b.severidade, 40) || 'media',
+          status: textoLimpo(b.status, 60) || 'aberto',
+          modulos_afetados: listaLimpa(b.modulos_afetados || b.modulo, 8),
+          impacto: textoLimpo(b.impacto || b.detalhe, 500),
+          mitigacao: textoLimpo(b.mitigacao || b.proximo_passo, 500),
+          criado_via_command: true,
+          criado_em: new Date().toISOString()
+        };
+        risks.push(risk);
+        gravarProjectJson('risks.json', risks);
+        const audit = registrarCommandAudit(gestor, action, 'risks.json', risk.id, `Risco criado: ${risk.titulo}`, { severidade: risk.severidade });
+        return json(res, 201, { ok: true, target: risk, audit });
+      }
+
+      if (action === 'create_decision') {
+        const decisions = lerProjectJson('decisions.json', []);
+        const decisao = textoLimpo(b.decisao || b.titulo, 220);
+        if (!decisao) return json(res, 400, { erro: 'Informe a decisão.' });
+        const decision = {
+          id: proximoId(decisions, 'decision-', 3),
+          data: dataSP(),
+          decisao,
+          motivo: textoLimpo(b.motivo || b.detalhe, 700),
+          impacto: textoLimpo(b.impacto || b.proximo_passo, 700),
+          modulos_afetados: listaLimpa(b.modulos_afetados || b.modulo, 8),
+          responsavel: textoLimpo(b.responsavel, 80) || (gestor.nome || gestor.email),
+          status: textoLimpo(b.status, 60) || 'proposta',
+          criado_via_command: true,
+          criado_em: new Date().toISOString()
+        };
+        decisions.push(decision);
+        gravarProjectJson('decisions.json', decisions);
+        const audit = registrarCommandAudit(gestor, action, 'decisions.json', decision.id, `Decisão registrada: ${decision.decisao}`, { status: decision.status });
+        return json(res, 201, { ok: true, target: decision, audit });
+      }
+
+      return json(res, 400, { erro: 'Ação do Command não reconhecida.' });
+    } catch (e) {
+      return json(res, 500, { erro: 'Falha ao registrar ação no Command.', detalhe: e.message });
+    }
   }
 
   if (sub === '_diag') {

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "command-log-bootstrap-2026-06-22",
+    "criado_em": "2026-06-22T15:45:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "bootstrap_command_actions",
+    "target_file": "command-audit-log.json",
+    "target_id": null,
+    "resumo": "Arquivo inicial criado para auditar ações graváveis do Command Center.",
+    "extra": {
+      "escopo": "tarefas, riscos e decisões"
+    }
+  }
+]

@@ -87,6 +87,33 @@ Filtros úteis:
 - ferramenta atuante;
 - busca por texto.
 
+Se o usuário tiver permissão de escrita no Command, esta aba também mostra **Registrar no Command**.
+
+Use essa área para:
+
+- criar uma nova tarefa;
+- registrar um risco;
+- registrar uma decisão;
+- atualizar o status de uma tarefa existente.
+
+Toda ação gravável gera auditoria em `project-state/command-audit-log.json`, com:
+
+- usuário;
+- horário;
+- tipo da ação;
+- arquivo alterado;
+- ID criado ou atualizado;
+- resumo da mudança.
+
+Regra prática:
+
+- use **Nova tarefa** quando algo precisa ser executado;
+- use **Novo risco** quando algo pode quebrar prazo, operação, segurança ou estoque;
+- use **Nova decisão** quando Thiago/Tassiano definirem uma regra do produto ou do processo;
+- use **Atualizar tarefa** quando algo andou, travou ou foi concluído.
+
+Importante: essa primeira versão grava o `project-state` do ambiente onde o Command roda. Mudanças de código, deploy e sincronização definitiva com Git continuam exigindo commit/push/deploy explícito.
+
 ### Qualidade
 
 Use antes/depois de deploy.
