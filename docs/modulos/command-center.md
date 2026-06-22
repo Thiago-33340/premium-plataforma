@@ -91,8 +91,18 @@ A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Tita
 - atalho/compatibilidade: `/mapper`;
 - arquivo: `public/mapper.html`;
 - API read-only: `GET /api/mapper/state`;
-- acesso: restrito a gestor por `admin_id`;
+- acesso: restrito a gestor por `admin_id` e a host técnico autorizado;
 - fonte: arquivos permitidos de `project-state/`.
+
+## Separação de domínio
+
+O Command Center e o Mapper são ferramentas internas de criação/governança do Titan, não telas do cliente Premium.
+
+- Não devem aparecer em `premium.titanatende.com.br`.
+- Não devem aparecer em `pedido.titanatende.com.br`.
+- Devem rodar em um host técnico, configurável por `TITAN_TOOLS_HOSTS`.
+- Enquanto um domínio definitivo não existir, o host técnico padrão do EasyPanel pode ser usado.
+- Domínio recomendado: `tools.titanatende.com.br` ou `studio.titanatende.com.br`.
 
 Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys, fronteiras críticas e divisão de responsabilidades enquanto outras ferramentas atuam nos módulos.
 
@@ -119,4 +129,5 @@ Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompa
 - possui filtros por módulo/status/ferramenta;
 - não expõe secrets;
 - exige gestor;
+- exige host técnico autorizado;
 - pode evoluir depois para ações graváveis auditadas e login integrado.

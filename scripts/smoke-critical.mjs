@@ -9,17 +9,18 @@ for (const raw of process.argv.slice(2)) {
 }
 
 const baseUrl = (args.get('base-url') || process.env.TITAN_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const toolsBaseUrl = (args.get('tools-base-url') || process.env.TITAN_TOOLS_BASE_URL || '').replace(/\/+$/, '');
 const userId = args.get('user-id') || process.env.TITAN_SMOKE_USER_ID || '';
 const timeoutMs = Number(args.get('timeout-ms') || process.env.TITAN_SMOKE_TIMEOUT_MS || 8000);
 const outFile = args.get('out') || process.env.TITAN_SMOKE_OUT || '';
 
 const checks = [];
 
-async function fetchJson(path, opts = {}) {
+async function fetchJson(path, opts = {}, origin = baseUrl) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const res = await fetch(baseUrl + path, { ...opts, signal: ac.signal });
+    const res = await fetch(origin + path, { ...opts, signal: ac.signal });
     const text = await res.text();
     let json = null;
     try { json = text ? JSON.parse(text) : null; } catch (_) {}
@@ -29,10 +30,10 @@ async function fetchJson(path, opts = {}) {
   }
 }
 
-async function check(name, path, validate = () => true, displayPath = path) {
+async function check(name, path, validate = () => true, displayPath = path, origin = baseUrl) {
   const started = Date.now();
   try {
-    const { res, json, text } = await fetchJson(path);
+    const { res, json, text } = await fetchJson(path, {}, origin);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 180)}`);
     const result = validate(json, res, text);
     if (result !== true) throw new Error(result || 'resposta inválida');
@@ -43,8 +44,11 @@ async function check(name, path, validate = () => true, displayPath = path) {
   await delay(50);
 }
 
+function skip(name, path, error) {
+  checks.push({ name, path, ok: true, skipped: true, ms: 0, error });
+}
+
 await check('health', '/api/health', (j) => j && j.ok === true);
-await check('command center html', '/command-center', (_j, _res, text) => text.includes('Titan Command Center'));
 await check('estoque dashboard', '/api/est/dashboard', (j) => j && typeof j === 'object' && 'produtos_ativos' in j);
 await check('produtos', '/api/est/produtos', (j) => Array.isArray(j?.produtos));
 await check('setores', '/api/est/setores', (j) => Array.isArray(j?.setores));
@@ -63,14 +67,24 @@ await check('caixa', '/api/caixa', (j) => j && typeof j.aberto === 'boolean' && 
 await check('entregadores', '/api/entregadores', (j) => Array.isArray(j?.entregadores)
   && j.entregadores.every((e) => e && 'id' in e && typeof e.nome === 'string' && typeof e.ativo === 'boolean'));
 
+if (toolsBaseUrl) {
+  await check('command center html', '/command-center', (_j, _res, text) => text.includes('Titan Command Center'), '/command-center', toolsBaseUrl);
+} else {
+  skip('command center html', '/command-center', 'sem TITAN_TOOLS_BASE_URL');
+}
+
 if (userId) {
   await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms), '/api/est/permissoes?usuario_id=<usuario>');
   await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens), '/api/est/meus-itens?usuario_id=<usuario>');
-  await check('mapper state', `/api/mapper/state?admin_id=${encodeURIComponent(userId)}`, (j) => j?.ok === true && j.files && Array.isArray(j.files['modules.json']), '/api/mapper/state?admin_id=<gestor>');
+  if (toolsBaseUrl) {
+    await check('mapper state', `/api/mapper/state?admin_id=${encodeURIComponent(userId)}`, (j) => j?.ok === true && j.files && Array.isArray(j.files['modules.json']), '/api/mapper/state?admin_id=<gestor>', toolsBaseUrl);
+  } else {
+    skip('mapper state', '/api/mapper/state?admin_id=...', 'sem TITAN_TOOLS_BASE_URL');
+  }
 } else {
-  checks.push({ name: 'permissoes usuário', path: '/api/est/permissoes?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
-  checks.push({ name: 'meus itens usuário', path: '/api/est/meus-itens?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
-  checks.push({ name: 'mapper state', path: '/api/mapper/state?admin_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
+  skip('permissoes usuário', '/api/est/permissoes?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
+  skip('meus itens usuário', '/api/est/meus-itens?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
+  skip('mapper state', '/api/mapper/state?admin_id=...', userId ? 'sem TITAN_TOOLS_BASE_URL' : 'sem TITAN_SMOKE_USER_ID');
 }
 
 const failed = checks.filter((c) => !c.ok);
@@ -79,6 +93,7 @@ const skipped = checks.filter((c) => c.skipped);
 const report = {
   generated_at: new Date().toISOString(),
   base_url: baseUrl,
+  tools_base_url: toolsBaseUrl || null,
   mode: 'read_only',
   mutates_data: false,
   total: checks.length,

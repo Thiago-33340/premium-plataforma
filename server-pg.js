@@ -20,6 +20,45 @@ const CARDAPIO_FILE = path.join(ROOT, 'data', 'cardapio.json');
 const PORT = process.env.PORT || 8080;
 const WA_SECRET = process.env.WA_SECRET || 'premium-pizzas-wa-2026';
 
+const PUBLIC_CLIENT_HOSTS = new Set(['premium.titanatende.com.br', 'pedido.titanatende.com.br']);
+const DEFAULT_TOOLS_HOSTS = [
+  'localhost',
+  '127.0.0.1',
+  '::1',
+  'mayaproject-github.yrbgh5.easypanel.host'
+];
+const TITAN_TOOLS_HOSTS = new Set([
+  ...DEFAULT_TOOLS_HOSTS,
+  ...String(process.env.TITAN_TOOLS_HOSTS || '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+]);
+
+function reqHost(req) {
+  const raw = String(req.headers.host || '').trim().toLowerCase();
+  if (!raw) return '';
+  if (raw.startsWith('[')) return raw.slice(1, raw.indexOf(']'));
+  return raw.split(':')[0];
+}
+function hostNaLista(host, set) {
+  if (set.has(host)) return true;
+  for (const item of set) {
+    if (item.startsWith('*.') && host.endsWith(item.slice(1))) return true;
+  }
+  return false;
+}
+function hostFerramentasPermitido(req) {
+  const host = reqHost(req);
+  if (!host) return false;
+  if (hostNaLista(host, PUBLIC_CLIENT_HOSTS)) return false;
+  return hostNaLista(host, TITAN_TOOLS_HOSTS);
+}
+function notFound(res) {
+  res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('404');
+}
+
 const soPhone = s => String(s || '').replace(/\D/g, '');
 const validWA = p => { p = soPhone(p); return p.length === 12 || p.length === 13; };
 const waToken = phone => crypto.createHmac('sha256', WA_SECRET).update(soPhone(phone)).digest('hex').slice(0, 16);
@@ -531,6 +570,9 @@ async function api(req, res, url) {
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
 
   if (sub === 'mapper' && seg[2] === 'state' && req.method === 'GET') {
+    if (!hostFerramentasPermitido(req)) {
+      return json(res, 404, { erro: 'ferramenta interna disponível apenas no domínio técnico do Titan' });
+    }
     const adminId = url.searchParams.get('admin_id') || url.searchParams.get('usuario_id');
     const gestor = await gestorBasico(adminId);
     if (!gestor) return json(res, 403, { erro: 'acesso restrito ao gestor' });
@@ -2480,7 +2522,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
-    if (p === '/mapper' || p === '/mapper/' || p === '/command-center' || p === '/command-center/') {
+    if (p === '/mapper' || p === '/mapper/' || p === '/mapper.html' || p === '/command-center' || p === '/command-center/') {
+      if (!hostFerramentasPermitido(req)) return notFound(res);
       return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
     }
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');

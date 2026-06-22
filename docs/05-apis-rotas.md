@@ -33,8 +33,10 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
-- `/command-center` é a rota oficial da central operacional. `/mapper` continua como atalho/compatibilidade.
-- `/api/mapper/state` é read-only, restrito a gestor por `admin_id`, e expõe somente arquivos permitidos de `project-state`.
+- `/command-center` é a rota oficial da central operacional interna do Titan. `/mapper` continua como atalho/compatibilidade.
+- `/command-center`, `/mapper`, `/mapper.html` e `/api/mapper/state` são ferramentas internas e devem responder apenas em host técnico autorizado.
+- `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.
+- `/api/mapper/state` é read-only, restrito a gestor por `admin_id` e por host técnico, e expõe somente arquivos permitidos de `project-state`.
 
 ## Rotas que devem ser evitadas em implementação nova
 
