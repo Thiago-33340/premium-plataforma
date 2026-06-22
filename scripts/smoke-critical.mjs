@@ -29,16 +29,16 @@ async function fetchJson(path, opts = {}) {
   }
 }
 
-async function check(name, path, validate = () => true) {
+async function check(name, path, validate = () => true, displayPath = path) {
   const started = Date.now();
   try {
     const { res, json, text } = await fetchJson(path);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 180)}`);
     const result = validate(json, res);
     if (result !== true) throw new Error(result || 'resposta inválida');
-    checks.push({ name, path, ok: true, ms: Date.now() - started });
+    checks.push({ name, path: displayPath, ok: true, ms: Date.now() - started });
   } catch (err) {
-    checks.push({ name, path, ok: false, ms: Date.now() - started, error: err.message });
+    checks.push({ name, path: displayPath, ok: false, ms: Date.now() - started, error: err.message });
   }
   await delay(50);
 }
@@ -53,10 +53,18 @@ await check('produzidos', '/api/est/producao/produzidos', (j) => Array.isArray(j
 await check('producoes recentes', '/api/est/producoes', (j) => Array.isArray(j?.producoes));
 await check('movimentos recentes', '/api/est/movimentos?limit=3', (j) => Array.isArray(j?.movimentos));
 await check('contagens recentes', '/api/est/contagens', (j) => Array.isArray(j?.contagens));
+await check('mesas', '/api/mesas', (j) => Array.isArray(j?.mesas)
+  && j.mesas.every((m) => typeof m.numero === 'number'
+    && typeof m.ocupada === 'boolean'
+    && typeof m.total === 'number'
+    && typeof m.qtd_itens === 'number'));
+await check('caixa', '/api/caixa', (j) => j && typeof j.aberto === 'boolean' && 'caixa' in j);
+await check('entregadores', '/api/entregadores', (j) => Array.isArray(j?.entregadores)
+  && j.entregadores.every((e) => e && 'id' in e && typeof e.nome === 'string' && typeof e.ativo === 'boolean'));
 
 if (userId) {
-  await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms));
-  await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens));
+  await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms), '/api/est/permissoes?usuario_id=<usuario>');
+  await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens), '/api/est/meus-itens?usuario_id=<usuario>');
 } else {
   checks.push({ name: 'permissoes usuário', path: '/api/est/permissoes?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
   checks.push({ name: 'meus itens usuário', path: '/api/est/meus-itens?usuario_id=...', ok: true, skipped: true, ms: 0, error: 'sem TITAN_SMOKE_USER_ID' });
