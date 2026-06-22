@@ -16,13 +16,40 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 | `loja-cardapio-pedidos` | loja-pedidos | `/api` | ativo |
 | `estoque-v2-cadastros-operacao` | estoque-v2 | `/api/est` | ativo |
 | `contagem-auditoria` | contagem-auditoria | `/api/est` | ativo |
-| `compras-listas-visitas` | compras-fornecedores | `/api/est` | a_validar |
+| `compras-listas-visitas` | compras-fornecedores | `/api/est` | ativo_em_validacao |
 | `producao-fichas` | producao-fichas | `/api/est` | ativo |
-| `usuarios-permissoes-ia` | permissoes-staff | `/api/est` | a_validar |
+| `usuarios-permissoes-ia` | permissoes-staff | `/api/est` | misto |
 | `estoque-legado` | estoque-v2 | `/api/estoque` | legado |
-| `staff-mesas-caixa` | mesas-caixa | `/api` | a_validar |
-| `admin` | admin-gestor | `/api/admin` | ativo |
+| `staff-mesas-caixa` | mesas-caixa | `/api` | ativo_em_validacao |
+| `admin` | admin-gestor | `/api/admin` | misto |
 | `config-global` | core-http | `/api` | ativo |
+
+## Decisões de fronteira
+
+- `/api/est/*` é o caminho oficial novo do estoque, produção, contagem, compras, visitas e permissões do estoque.
+- `/api/estoque/*` é legado. Usa `estoque_itens_definicao`, `estoque_contagens`, `estoque_itens` e `estoque_movimentos`.
+- `/api/admin/estoque-*` ainda é misto/legado porque usa tabelas `estoque_*`. Não deve receber expansão funcional nova.
+- `/api/admin/catalogo`, `/api/admin/produto`, `/api/admin/grupo`, `/api/admin/opcao` são oficiais para cardápio.
+- `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
+- `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos, mas precisam de smoke específico antes de virar contrato fechado.
+
+## Rotas que devem ser evitadas em implementação nova
+
+```text
+POST /api/estoque/login
+GET  /api/estoque/itens
+POST /api/estoque/contagem
+POST /api/estoque/importar-definicao
+GET  /api/estoque/contagens
+POST /api/estoque/movimento
+GET  /api/estoque/movimentos
+GET  /api/admin/estoque-itens
+POST /api/admin/estoque-item
+DELETE /api/admin/estoque-item/:id
+POST /api/admin/setor/:id/rename
+```
+
+Essas rotas só devem ser mantidas para compatibilidade/migração até o admin antigo ser substituído pelo fluxo `/api/est/*`.
 
 ## Pendência de contrato
 

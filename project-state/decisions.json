@@ -46,5 +46,22 @@
       "SET004": "5/Gerais",
       "SET005": "legado Caixas; específico da base antiga da Premium"
     }
+  },
+  {
+    "id": "decision-005",
+    "data": "2026-06-22",
+    "decisao": "Classificar fronteiras de banco e rotas antes de novas evoluções",
+    "motivo": "O backend mistura estoque novo, estoque legado, cardápio, fichas de cardápio e fichas de produção interna. Sem fronteira explícita, há risco de escrever na tabela errada ou expandir fluxo legado.",
+    "impacto": "Novas mudanças devem consultar docs/04-banco-de-dados.md, docs/05-apis-rotas.md e project-state/databases.json antes de alterar estoque, admin, cardápio ou produção.",
+    "modulos_afetados": ["estoque-v2", "admin-gestor", "loja-pedidos", "producao-fichas", "contagem-auditoria"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "/api/est/* é o fluxo oficial novo do estoque.",
+      "/api/estoque/* é legado e não deve receber expansão funcional nova.",
+      "/api/admin/estoque-* é misto/legado e deve migrar para /api/est/*.",
+      "est_produto é estoque; produtos é cardápio.",
+      "est_ficha_* é produção interna; ficha_itens é ficha do cardápio/baixa por pedido."
+    ]
   }
 ]

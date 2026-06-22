@@ -21,10 +21,10 @@
     "id": "risk-003",
     "titulo": "Banco mistura estruturas atuais e legadas",
     "severidade": "alta",
-    "status": "aberto",
+    "status": "mitigado_parcial",
     "modulos_afetados": ["estoque-v2", "producao-fichas", "mesas-caixa"],
     "impacto": "Risco de duplicidade de regra, escrita na tabela errada ou migração incompleta.",
-    "mitigacao": "Classificar tabelas como oficial, legado, compatibilidade ou rascunho."
+    "mitigacao": "Classificação inicial registrada em docs/04-banco-de-dados.md e project-state/databases.json. Falta migrar rotas admin legadas."
   },
   {
     "id": "risk-004",
@@ -43,5 +43,14 @@
     "modulos_afetados": ["core-http", "estoque-v2", "producao-fichas", "contagem-auditoria"],
     "impacto": "Correções podem voltar quebradas em deploys futuros.",
     "mitigacao": "Criar smoke tests e validações de sintaxe/contratos antes de refatorações."
+  },
+  {
+    "id": "risk-006",
+    "titulo": "Admin ainda possui fluxo de estoque legado",
+    "severidade": "alta",
+    "status": "aberto",
+    "modulos_afetados": ["admin-gestor", "estoque-v2"],
+    "impacto": "Gestor pode alterar itens em tabelas estoque_* antigas enquanto o colaborador usa /api/est e est_*.",
+    "mitigacao": "Migrar /api/admin/estoque-* para /api/est/* ou esconder fluxo legado até migração."
   }
 ]
