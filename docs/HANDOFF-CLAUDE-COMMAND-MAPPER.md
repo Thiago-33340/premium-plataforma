@@ -245,3 +245,20 @@ O Claude deve interpretar assim:
 - A aprovação pode marcar deploy como aprovado, validado, reprovado ou rollback necessário.
 - Isso registra intenção humana, mas ainda não aciona EasyPanel automaticamente.
 - Uma aprovação no Command não substitui smoke verde nem revisão de regressão.
+
+## Atualização — Executor externo seguro de deploy
+
+Data: 2026-06-22
+
+O Command agora possui a ação `trigger_deploy_external`.
+
+O Claude deve interpretar assim:
+
+- O executor externo é opcional e depende de variável segura no ambiente do serviço.
+- A variável esperada é `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL`.
+- O valor da URL/token nunca deve ser pedido, copiado, salvo, documentado ou incluído em prompt.
+- Para acionar, o usuário precisa ter `acionar_deploy`.
+- O deploy precisa estar aprovado/validado no Command.
+- A frase obrigatória é `ACIONAR DEPLOY`.
+- A ação registra resultado em `deploys.json`, `command-audit-log.json` e `titan_command_actions`.
+- O Command é cockpit de governança e acionamento; código continua vindo de commit/push/deploy.

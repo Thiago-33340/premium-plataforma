@@ -278,8 +278,8 @@
   {
     "id": "command-center",
     "nome": "Titan Command Center",
-    "status": "em_andamento",
-    "progresso": 98,
+    "status": "operacional",
+    "progresso": 100,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -295,7 +295,7 @@
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
-      "Conectar automação externa real de PR/deploy sem armazenar secrets",
+      "Configurar TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL no ambiente para habilitar o executor externo",
       "Usar stock-readiness.json como painel de prontidão do estoque"
     ],
     "proximos_passos": [
@@ -304,6 +304,7 @@
       "Registrar tarefa, risco e decisão pela aba Execução; as ações ficam no project-state e em titan_command_actions",
       "Registrar plano ou resultado de deploy pela aba Deploys antes/depois de publicar",
       "Aprovar ou validar deploy digitando AUTORIZO DEPLOY na aba Deploys",
+      "Acionar deploy externo digitando ACIONAR DEPLOY quando a variável segura estiver configurada",
       "Manter commit/Git como trilha definitiva para mudanças de código"
     ]
   }

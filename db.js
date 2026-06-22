@@ -269,12 +269,12 @@ async function init(retries) {
           .filter(function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); });
         for (const email of emails) {
           await pool.query(`INSERT INTO titan_tool_users (tenant_id,email,nome,permissoes,ativo)
-            SELECT $1::varchar,$2,$3,ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']::TEXT[],TRUE
+            SELECT $1::varchar,$2,$3,ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','acionar_deploy','gerenciar_usuarios']::TEXT[],TRUE
             WHERE NOT EXISTS (SELECT 1 FROM titan_tool_users WHERE tenant_id=$1::varchar AND lower(email)=lower($2))`,
             [TENANT, email, email.split('@')[0]]);
           await pool.query(`UPDATE titan_tool_users
               SET ativo=TRUE,
-                  permissoes=ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']::TEXT[],
+                  permissoes=ARRAY['acesso_total','command_center','mapper','ver_project_state','editar_project_state','acionar_deploy','gerenciar_usuarios']::TEXT[],
                   atualizado_em=NOW()
             WHERE tenant_id=$1::varchar AND lower(email)=lower($2)`,
             [TENANT, email]);

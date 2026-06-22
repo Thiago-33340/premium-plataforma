@@ -16,7 +16,7 @@ Os módulos oficiais iniciais estão em `project-state/modules.json`.
 | Mesas, comandas e caixa | detectado | 45 | operação de salão/caixa |
 | Usuários, PIN, equipe e permissões | detectado | 45 | acesso e responsabilidade |
 | Infraestrutura e deploy | parcial | 50 | publicação e ambiente |
-| Titan Command Center | em_andamento | 98 | coordenação, mapper, agentes, progresso, ações auditadas, deploy governado e aprovação humana |
+| Titan Command Center | operacional | 100 | coordenação, mapper, agentes, progresso, ações auditadas, deploy governado, aprovação humana e executor externo seguro |
 
 ## Relação módulo → rota → banco → serviço
 

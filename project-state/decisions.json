@@ -215,5 +215,21 @@
       "A aprovação humana não substitui smoke pós-deploy.",
       "Automação externa futura só pode executar ação real após confirmação humana no momento da ação."
     ]
+  },
+  {
+    "id": "decision-015",
+    "data": "2026-06-22",
+    "decisao": "Habilitar executor externo de deploy apenas por variável segura de ambiente",
+    "motivo": "O Command precisa ficar pronto para acionar deploy, mas o webhook/gatilho do EasyPanel é sensível e não pode ser salvo no repositório, no project-state ou na documentação.",
+    "impacto": "A ação trigger_deploy_external só funciona para usuários com acionar_deploy, deploy previamente aprovado/validado, frase ACIONAR DEPLOY e variável TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL configurada no ambiente. A URL nunca é exposta pela API ou UI.",
+    "modulos_afetados": ["command-center", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "A frase obrigatória para acionamento externo é ACIONAR DEPLOY.",
+      "O deploy precisa ter confirmação humana prévia.",
+      "A URL do executor externo não aparece na tela nem no retorno da API.",
+      "Se a variável segura não existir, o Command mostra executor não configurado e bloqueia o botão."
+    ]
   }
 ]

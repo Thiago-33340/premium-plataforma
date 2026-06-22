@@ -174,6 +174,34 @@ AUTORIZO DEPLOY
 
 Isso reduz clique acidental e cria trilha clara de quem aprovou/validou. Mesmo aprovado no Command, o deploy real ainda precisa ser feito pelo fluxo operacional autorizado.
 
+### Executor externo de deploy
+
+A aba **Deploys** também mostra o bloco **Executor externo**.
+
+Ele serve para acionar um executor de deploy configurado no ambiente do EasyPanel, sem mostrar nem salvar a URL/token no código, no `project-state` ou na tela.
+
+Para o botão ficar disponível:
+
+- o usuário precisa ter permissão `acionar_deploy`;
+- o deploy precisa estar registrado no Command;
+- o deploy precisa ter aprovação humana;
+- a variável segura `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL` precisa existir no ambiente do serviço;
+- antes de acionar, é obrigatório digitar exatamente:
+
+```text
+ACIONAR DEPLOY
+```
+
+Se a variável segura não estiver configurada, o bloco aparece como **não configurado**. Isso é esperado e protege o projeto contra vazamento de gatilhos de deploy.
+
+Fluxo recomendado:
+
+1. Registrar o deploy no Command.
+2. Aprovar com `AUTORIZO DEPLOY`.
+3. Acionar com `ACIONAR DEPLOY`, se o executor externo estiver configurado.
+4. Rodar smoke depois do deploy.
+5. Registrar validação pós-deploy no Command.
+
 ### Mapa técnico
 
 Use quando alguém estiver em dúvida sobre rota, serviço ou fronteira.

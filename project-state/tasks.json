@@ -296,13 +296,30 @@
     "id": "task-f2-023",
     "titulo": "Conectar automação externa de PR/deploy ao Command",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "automacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-022"],
-    "proximo_passo": "Só avançar quando o mecanismo puder usar credencial externa segura, sem salvar token no repositório/project-state, e exigir aprovação humana no momento da ação."
+    "proximo_passo": "Implementado executor externo configurável por variável de ambiente segura, com permissão acionar_deploy, frase ACIONAR DEPLOY, aprovação humana prévia e auditoria em deploys.json + titan_command_actions."
+  },
+  {
+    "id": "task-f2-024",
+    "titulo": "Configurar webhook seguro de deploy no ambiente",
+    "modulo": "infra-deploy",
+    "status": "bloqueado_configuracao_segura",
+    "prioridade": "media",
+    "categoria": "devops",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": true,
+    "dependencias": ["task-f2-023"],
+    "bloqueios": [
+      "Definir variável TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL no ambiente do serviço",
+      "Não salvar webhook/token no repositório, project-state ou documentação"
+    ],
+    "proximo_passo": "Configurar a variável segura diretamente no EasyPanel; depois o botão Executor externo do Command deixa de aparecer como não configurado."
   }
 ]

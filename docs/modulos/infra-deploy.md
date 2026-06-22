@@ -19,11 +19,14 @@ Garantir que GitHub, EasyPanel, Docker, banco e deploys tenham registro confiáv
 
 O código tem Dockerfile e estrutura de deploy. Em 2026-06-22 foi confirmado que produção roda no EasyPanel, projeto `mayaproject`, app `github`, com deploy da branch `main`.
 
+O Command Center possui registro governado, aprovação humana e executor externo opcional. O executor só é habilitado quando a variável segura `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL` estiver configurada no ambiente do serviço.
+
 ## Pendências
 
 - Registrar variáveis apenas por nome/finalidade.
 - Criar checklist de rollback.
 - Padronizar consulta de logs sem expor secrets.
+- Configurar, se desejado, a variável segura de webhook diretamente no EasyPanel; o valor não deve ser salvo no Git, documentação ou `project-state`.
 
 ## Informações confirmadas
 
@@ -32,6 +35,7 @@ O código tem Dockerfile e estrutura de deploy. Em 2026-06-22 foi confirmado que
 - branch: `main`
 - domínios: `premium.titanatende.com.br`, `pedido.titanatende.com.br`
 - deploy manual: botão `Implantar`
+- deploy via Command: opcional, depende de variável segura e frase `ACIONAR DEPLOY`
 - último deploy registrado: `project-state/deploys.json`
 
 ## Checklist mínimo de deploy

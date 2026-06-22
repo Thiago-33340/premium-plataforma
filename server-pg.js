@@ -72,7 +72,7 @@ function jsonComHeaders(res, code, obj, headers) {
 }
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
 
-const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'editar_project_state', 'gerenciar_usuarios'];
+const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'editar_project_state', 'acionar_deploy', 'gerenciar_usuarios'];
 const TITAN_TOOL_SESSION_COOKIE = 'tt_session';
 function normEmail(v) { return String(v || '').trim().toLowerCase(); }
 function emailValido(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normEmail(v)); }
@@ -202,6 +202,7 @@ function aplicarCommandActionsNoState(files, actions) {
     if (row.action === 'create_decision' && target.id) upsertCommandItem(decisions, target, false);
     if (row.action === 'create_deploy_record' && target.id) upsertCommandItem(deploys, target, false);
     if (row.action === 'approve_deploy_record' && target.id) upsertCommandItem(deploys, target, true);
+    if (row.action === 'trigger_deploy_external' && target.id) upsertCommandItem(deploys, target, true);
     if (audit.id) upsertCommandItem(auditLog, audit, false);
   }
   files['tasks.json'] = tasks;
@@ -333,6 +334,49 @@ function proximoDeployId(deploys, titulo) {
 }
 function fraseConfirmacaoOk(v) {
   return String(v || '').trim().toUpperCase() === 'AUTORIZO DEPLOY';
+}
+function fraseAcionamentoOk(v) {
+  return String(v || '').trim().toUpperCase() === 'ACIONAR DEPLOY';
+}
+function deployWebhookUrl() {
+  return String(process.env.TITAN_DEPLOY_WEBHOOK_URL || process.env.EASYPANEL_DEPLOY_WEBHOOK_URL || '').trim();
+}
+function deployRuntimePublico() {
+  return {
+    deploy_external_configured: !!deployWebhookUrl(),
+    deploy_external_provider: deployWebhookUrl() ? 'env' : 'not_configured',
+    deploy_external_requires_phrase: 'ACIONAR DEPLOY'
+  };
+}
+async function acionarDeployWebhookSeguro(deploy, user) {
+  const url = deployWebhookUrl();
+  if (!url) return { configured: false, ok: false, status: null };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  const method = String(process.env.TITAN_DEPLOY_WEBHOOK_METHOD || 'POST').toUpperCase();
+  const payload = JSON.stringify({
+    source: 'titan-command-center',
+    tenant_id: TENANT,
+    deploy_id: deploy.id,
+    branch: deploy.branch || 'main',
+    commit: deploy.merge_commit || '',
+    requested_by: user.email,
+    requested_at: new Date().toISOString()
+  });
+  try {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Titan-Command-Center' },
+      signal: controller.signal
+    };
+    if (method !== 'GET' && method !== 'HEAD') opts.body = payload;
+    const res = await fetch(url, opts);
+    return { configured: true, ok: res.ok, status: res.status };
+  } catch (e) {
+    return { configured: true, ok: false, status: null, erro: e.name === 'AbortError' ? 'timeout' : 'request_failed' };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 function dataSP() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -1007,6 +1051,7 @@ async function api(req, res, url) {
       tenant: TENANT,
       generated_at: new Date().toISOString(),
       usuario: userPublico(gestor),
+      runtime: deployRuntimePublico(),
       files: await lerProjectStateSeguro()
     });
   }
@@ -1188,6 +1233,53 @@ async function api(req, res, url) {
         const audit = registrarCommandAudit(gestor, action, 'deploys.json', id, `Deploy ${status}: ${id}`, { antes, depois: { status: deploys[idx].status, confirmacao_humana: true } });
         const dbAction = await persistirCommandActionDb(gestor, action, b, 'deploys.json', id, deploys[idx], audit);
         return json(res, 200, { ok: true, target: deploys[idx], audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+      }
+
+      if (action === 'trigger_deploy_external') {
+        if (!titanTemPerm(gestor, 'acionar_deploy')) return json(res, 403, { erro: 'Sem permissão para acionar deploy externo.' });
+        const state = await lerProjectStateSeguro();
+        const deploys = Array.isArray(state['deploys.json']) ? state['deploys.json'] : lerProjectJson('deploys.json', []);
+        const id = textoLimpo(b.id || b.deploy_id, 140);
+        const idx = deploys.findIndex(d => String(d.id) === id);
+        if (idx < 0) return json(res, 404, { erro: 'Deploy não encontrado.' });
+        if (!fraseAcionamentoOk(b.confirmacao)) return json(res, 400, { erro: 'Digite ACIONAR DEPLOY para disparar o executor externo.' });
+        if (!deployWebhookUrl()) return json(res, 409, { erro: 'Executor externo não configurado no ambiente. Configure TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL no EasyPanel.' });
+        if (!deploys[idx].confirmacao_humana) return json(res, 409, { erro: 'Este deploy ainda não tem aprovação humana registrada.' });
+        if (!['aprovado_para_deploy', 'validado_pos_deploy'].includes(String(deploys[idx].status || ''))) {
+          return json(res, 409, { erro: 'Deploy precisa estar aprovado_para_deploy ou validado_pos_deploy antes do acionamento externo.' });
+        }
+        const antes = {
+          status: deploys[idx].status,
+          acionado_em: deploys[idx].acionado_em || null
+        };
+        const acionamento = await acionarDeployWebhookSeguro(deploys[idx], gestor);
+        const evento = {
+          tipo: acionamento.ok ? 'deploy_externo_acionado' : 'falha_acionamento_deploy',
+          usuario_email: gestor.email,
+          usuario_nome: gestor.nome || gestor.email,
+          criado_em: new Date().toISOString(),
+          observacao: textoLimpo(b.observacoes || b.proximo_passo || b.detalhe, 700),
+          webhook_status: acionamento.status || null,
+          webhook_configurado: acionamento.configured === true
+        };
+        deploys[idx] = Object.assign({}, deploys[idx], {
+          status: acionamento.ok ? 'deploy_externo_acionado' : 'falha_acionamento_deploy',
+          aciona_deploy_automatico: true,
+          acionamento_externo_configurado: true,
+          acionamento_externo_ok: acionamento.ok,
+          acionamento_externo_status: acionamento.status || null,
+          acionado_por: gestor.email,
+          acionado_por_nome: gestor.nome || gestor.email,
+          acionado_em: evento.criado_em,
+          acionamento_observacao: evento.observacao,
+          historico_command: (Array.isArray(deploys[idx].historico_command) ? deploys[idx].historico_command : []).concat(evento).slice(-30),
+          atualizado_via_command: true,
+          atualizado_em: evento.criado_em
+        });
+        gravarProjectJson('deploys.json', deploys);
+        const audit = registrarCommandAudit(gestor, action, 'deploys.json', id, `Deploy externo ${acionamento.ok ? 'acionado' : 'falhou'}: ${id}`, { antes, depois: { status: deploys[idx].status, webhook_status: acionamento.status || null } });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'deploys.json', id, deploys[idx], audit);
+        return json(res, 200, { ok: true, trigger_ok: acionamento.ok, webhook_status: acionamento.status || null, target: deploys[idx], audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       return json(res, 400, { erro: 'Ação do Command não reconhecida.' });

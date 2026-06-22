@@ -93,7 +93,7 @@ O Command Center deve ler:
 
 ## Status atual
 
-`em_andamento`
+`operacional`
 
 A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Titan Command Center**:
 
@@ -174,6 +174,16 @@ Também permite registrar aprovação humana:
 
 Para gravar aprovação, o usuário precisa digitar `AUTORIZO DEPLOY`.
 
+Também existe a ação `trigger_deploy_external`, que aciona um executor externo de deploy somente quando:
+
+- o usuário possui `acionar_deploy`;
+- o deploy já tem aprovação humana;
+- o status está `aprovado_para_deploy` ou `validado_pos_deploy`;
+- a confirmação digitada é `ACIONAR DEPLOY`;
+- a variável segura `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL` está configurada no ambiente do serviço.
+
+A URL do executor nunca é exposta em API, UI, documentação ou `project-state`.
+
 Cada ação:
 
 - grava somente arquivos permitidos de `project-state`;
@@ -186,8 +196,9 @@ Limite consciente:
 - o Command Center não altera código sozinho;
 - o registro de deploy não aciona EasyPanel automaticamente;
 - a aprovação humana não aciona EasyPanel automaticamente;
+- o executor externo só aciona deploy se a variável segura existir no ambiente;
 - Git continua sendo a trilha definitiva para código, documentação versionada e deploy;
-- PR/commit/deploy acionados pelo Command ficam para etapa futura com confirmação humana.
+- PR/commit/deploy acionados pelo Command dependem de confirmação humana e executor externo configurado.
 
 ## Regra operacional entre agentes
 
@@ -213,6 +224,7 @@ Limite consciente:
 - permite criar tarefa, risco, decisão e atualizar tarefa com auditoria;
 - permite registrar deploy planejado/concluído/falho sem acionar implantação automática;
 - permite registrar aprovação/validação humana de deploy com frase obrigatória;
+- permite acionar executor externo de deploy com permissão própria, frase obrigatória e variável segura;
 - persiste ações vivas em `titan_command_actions`;
 - possui filtros por módulo/status/ferramenta;
 - não expõe secrets;

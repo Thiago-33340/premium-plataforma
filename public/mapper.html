@@ -682,6 +682,9 @@
     function deployActionPanel(p){
       const latestCommit = p.deploys.slice().reverse().find(d => d.merge_commit)?.merge_commit || '';
       const deployOptions = p.deploys.slice().reverse().map(d => `<option value="${esc(d.id)}">${esc(d.id)} · ${esc(statusLabel(d.status || '—'))}</option>`).join('');
+      const runtime = STATE?.runtime || {};
+      const deployConfigured = runtime.deploy_external_configured === true;
+      const canTriggerDeploy = temPerm('acionar_deploy');
       return `
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad callout">
@@ -722,6 +725,17 @@
               <button class="btn primary" id="cmdApproveDeploy">Registrar aprovação</button>
             </div>
             <div class="sub" style="margin-top:10px">Este botão registra a decisão humana; ele ainda não aciona EasyPanel automaticamente.</div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Executor externo</h2><span class="pill ${deployConfigured && canTriggerDeploy ? 'ok' : 'warn'}">${deployConfigured ? (canTriggerDeploy ? 'configurado' : 'sem permissão') : 'não configurado'}</span></div>
+            <div class="sub">Aciona o deploy externo somente se a variável segura estiver configurada no EasyPanel. Para disparar, o deploy precisa estar aprovado e você precisa digitar <span class="mono">ACIONAR DEPLOY</span>.</div>
+            <div class="formRow">
+              <label><span class="fieldLabel">Deploy aprovado</span><select class="field" id="deployTriggerId">${deployOptions}</select></label>
+              <label><span class="fieldLabel">Confirmação de acionamento</span><input class="field" id="deployTriggerPhrase" placeholder="Digite ACIONAR DEPLOY"></label>
+              <textarea class="field" id="deployTriggerNotes" rows="3" placeholder="Observação do acionamento externo"></textarea>
+              <button class="btn primary" id="cmdTriggerDeploy" ${deployConfigured && canTriggerDeploy ? '' : 'disabled'}>Acionar deploy externo</button>
+            </div>
+            <div class="sub" style="margin-top:10px">${deployConfigured ? (canTriggerDeploy ? 'O Command chamará o executor configurado no ambiente, sem mostrar ou salvar a URL.' : 'Seu usuário não tem permissão acionar_deploy.') : 'Configure TITAN_DEPLOY_WEBHOOK_URL ou EASYPANEL_DEPLOY_WEBHOOK_URL no ambiente do serviço para habilitar.'}</div>
           </div>
         </div>
         <div style="margin-bottom:14px">
@@ -867,7 +881,8 @@
 
     function deployItem(d){
       const aprov = d.confirmacao_humana ? ` · aprovado/validado por ${d.aprovado_por_nome || d.aprovado_por || '—'} em ${fmt(d.validado_em || d.aprovado_em || d.atualizado_em)}` : '';
-      return `<div class="item"><span class="tag ${esc(norm(d.status))}">${esc(d.status || '—')}</span><span class="tag ${esc(norm(d.ambiente))}">${esc(d.ambiente || '—')}</span>${d.confirmacao_humana ? '<span class="tag ok">confirmação humana</span>' : ''}<b>${esc(d.id || 'Deploy')}</b><small>${esc(d.data || '')} · ${esc(d.origem || '')}${esc(aprov)}</small><small>${esc((d.validacoes || d.aprovacao_validacoes || []).join(' · '))}</small></div>`;
+      const acionado = d.acionado_em ? ` · acionado por ${d.acionado_por_nome || d.acionado_por || '—'} em ${fmt(d.acionado_em)}` : '';
+      return `<div class="item"><span class="tag ${esc(norm(d.status))}">${esc(d.status || '—')}</span><span class="tag ${esc(norm(d.ambiente))}">${esc(d.ambiente || '—')}</span>${d.confirmacao_humana ? '<span class="tag ok">confirmação humana</span>' : ''}${d.acionado_em ? '<span class="tag codex">executor externo</span>' : ''}<b>${esc(d.id || 'Deploy')}</b><small>${esc(d.data || '')} · ${esc(d.origem || '')}${esc(aprov)}${esc(acionado)}</small><small>${esc((d.validacoes || d.aprovacao_validacoes || []).join(' · '))}</small></div>`;
     }
 
     function decisionItem(d){
@@ -1028,6 +1043,28 @@
           render();
         }
       };
+      const trigger = document.getElementById('cmdTriggerDeploy');
+      if(trigger) trigger.onclick = async () => {
+        const payload = {
+          action:'trigger_deploy_external',
+          id:document.getElementById('deployTriggerId').value,
+          confirmacao:document.getElementById('deployTriggerPhrase').value,
+          observacoes:document.getElementById('deployTriggerNotes').value
+        };
+        if(!payload.id){
+          DEPLOY_MSG = 'Selecione um deploy aprovado para acionar.';
+          return render();
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          DEPLOY_MSG = `Executor externo: ${out.trigger_ok ? 'acionado' : 'falhou'} · ${out.target?.id || 'deploy'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
+          await load();
+          ACTIVE = 'deploys';
+        }catch(e){
+          DEPLOY_MSG = e.message;
+          render();
+        }
+      };
     }
 
     async function carregarAcessos(){
@@ -1054,7 +1091,7 @@
       btn.onclick = async () => {
         const perfil = document.getElementById('accessProfile').value;
         const permissoes = perfil === 'total'
-          ? ['acesso_total','command_center','mapper','ver_project_state','editar_project_state','gerenciar_usuarios']
+          ? ['acesso_total','command_center','mapper','ver_project_state','editar_project_state','acionar_deploy','gerenciar_usuarios']
           : ['command_center','mapper','ver_project_state'];
         try{
           await apiPost('/api/titan/auth/authorize-email', {

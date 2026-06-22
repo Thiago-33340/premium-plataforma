@@ -534,3 +534,47 @@ Arquivos principais:
 - `project-state/decisions.json`
 - `project-state/api-contracts-critical.json`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+
+## Marco 13 — Executor externo seguro no Command
+
+Status: implementado localmente, aguardando validação/deploy desta etapa
+
+Motivo:
+
+- O Command precisava sair do papel de apenas registrar/aprovar deploy e ficar pronto para acionar um executor externo.
+- Essa automação não pode salvar webhook, token ou URL sensível em Git, documentação, `project-state` ou UI.
+
+O que foi implementado:
+
+- Nova permissão `acionar_deploy`.
+- Nova ação `trigger_deploy_external` em `POST /api/mapper/action`.
+- A aba **Deploys** ganhou bloco **Executor externo**.
+- A ação exige:
+  - sessão Titan Tools;
+  - permissão `editar_project_state`;
+  - permissão `acionar_deploy`;
+  - deploy previamente registrado;
+  - aprovação humana;
+  - status `aprovado_para_deploy` ou `validado_pos_deploy`;
+  - confirmação textual `ACIONAR DEPLOY`;
+  - variável segura `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL` no ambiente do serviço.
+- A URL do executor nunca é exposta pela API ou pela UI.
+- O resultado do acionamento é auditado em:
+  - `project-state/deploys.json`;
+  - `project-state/command-audit-log.json`;
+  - `titan_command_actions`.
+
+Limite consciente:
+
+- Se a variável segura não estiver configurada no EasyPanel, o botão aparece como **não configurado** e permanece desabilitado.
+- O valor da variável deve ser configurado diretamente no ambiente do serviço, sem copiar para logs, prompts ou arquivos do projeto.
+
+Arquivos principais:
+
+- `server-pg.js`
+- `db.js`
+- `public/mapper.html`
+- `project-state/tasks.json`
+- `project-state/decisions.json`
+- `project-state/api-contracts-critical.json`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`
