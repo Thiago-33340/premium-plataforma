@@ -505,7 +505,7 @@ function pedirConfirm(titulo,msg,confirmLabel='Excluir'){ return new Promise(res
 
 /* ===== CONTAGEM POR SETOR ===== */
 let _cnt = null, _cntSaveTimers={};
-function ehGestor(){ const p=((user&&user.perfil)||'').toUpperCase(); return p==='GESTOR'||p==='GERENTE'||p.startsWith('GESTOR_')||p.startsWith('GERENTE_'); }
+function ehGestor(){ const p=((user&&user.perfil)||'').toUpperCase(); return p==='GESTOR'||p==='GERENTE'||p.startsWith('GESTOR')||p.startsWith('GERENTE'); }
 function cntHora(v){ if(!v)return 'agora'; try{return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(new Date(v));}catch(e){return 'agora';} }
 async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem(); return; }
   w.innerHTML='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div><div class="empty">Carregando…</div>';

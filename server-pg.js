@@ -187,7 +187,12 @@ function lerProjectStateSeguro() {
 const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
 const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
 function perfisUsuario(u) { return [u && u.perfil_principal].concat((u && u.perfis_adicionais) || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean); }
-function perfilGestor(u) { return perfisUsuario(u).some(p => p === 'GESTOR' || p === 'GERENTE' || p.startsWith('GESTOR_') || p.startsWith('GERENTE_')); }
+function perfilGestor(u) { return perfisUsuario(u).some(p => p === 'GESTOR' || p === 'GERENTE' || p.startsWith('GESTOR') || p.startsWith('GERENTE')); }
+function setoresPermitidosLista(v) {
+  if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+  if (v == null) return [];
+  return String(v).replace(/[{}"]/g, '').split(',').map(s => s.trim()).filter(Boolean);
+}
 async function estPermsEfetivas(uid) {
   if (!uid) return { user: null, perms: [], gestor: false };
   let u; try { u = (await db.q(`SELECT id, nome, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo`, [uid, TENANT])).rows[0]; } catch (e) { return { user: null, perms: [], gestor: false }; }
@@ -1004,7 +1009,7 @@ async function api(req, res, url) {
     const u = uid ? (await db.q('SELECT setores_permitidos, perfil_principal, perfis_adicionais FROM rbac_contacts WHERE id=$1 AND tenant_id=$2 AND ativo', [uid, TENANT])).rows[0] : null;
     if (!u) return json(res, 403, { erro: 'usuário inválido' });
     const gestor = perfilGestor(u);
-    const setp = (u.setores_permitidos || []).map(x => String(x));
+    const setp = setoresPermitidosLista(u.setores_permitidos);
     const tudo = gestor || setp.includes('TUDO');
     const r = tudo
       ? await db.q(`SELECT DISTINCT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor FROM est_produto p JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id JOIN est_setor s ON s.id=ps.setor_id WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar ORDER BY s.nome, p.nome`, [TENANT])
@@ -1308,7 +1313,7 @@ async function api(req, res, url) {
     const s = await db.q('SELECT id, nome FROM est_setor WHERE id=$1 AND tenant_id=$2', [b.setor_id, TENANT]);
     if (!s.rows[0]) return json(res, 400, { erro: 'setor inválido' });
     const gestor = perfilGestor(u.rows[0]);
-    const permitidos = (u.rows[0].setores_permitidos || []).map(String);
+    const permitidos = setoresPermitidosLista(u.rows[0].setores_permitidos);
     if (!gestor && !permitidos.includes('TUDO') && !permitidos.includes(String(s.rows[0].id)) && !permitidos.includes(s.rows[0].nome))
       return json(res, 403, { erro: 'Este setor não está atribuído ao colaborador.' });
     const aberta = await db.q(`SELECT id, setor_nome, usuario_nome, iniciada_em FROM est_contagem
@@ -2168,7 +2173,7 @@ async function api(req, res, url) {
       const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
       if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
     }
-    const setoresPerm = col.setores_permitidos || [];
+    const setoresPerm = setoresPermitidosLista(col.setores_permitidos);
     const veTudo = perfilGestor(col) || setoresPerm.map(s => String(s).toUpperCase()).includes('TUDO');
     let setores;
     if (veTudo) {
