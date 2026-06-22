@@ -283,13 +283,26 @@
     "id": "task-f2-022",
     "titulo": "Projetar PR/deploy automático real com confirmação humana",
     "modulo": "command-center",
-    "status": "planejado",
+    "status": "concluido",
     "prioridade": "media",
     "categoria": "automacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-021"],
-    "proximo_passo": "Definir fluxo seguro para abrir PR ou acionar deploy sem armazenar token em código, com confirmação explícita de Thiago/Tassiano e trilha de auditoria."
+    "proximo_passo": "Implementado fluxo de aprovação/validação humana de deploy com frase AUTORIZO DEPLOY, auditoria em deploys.json + titan_command_actions e sem acionar EasyPanel automaticamente."
+  },
+  {
+    "id": "task-f2-023",
+    "titulo": "Conectar automação externa de PR/deploy ao Command",
+    "modulo": "command-center",
+    "status": "planejado",
+    "prioridade": "media",
+    "categoria": "automacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-022"],
+    "proximo_passo": "Só avançar quando o mecanismo puder usar credencial externa segura, sem salvar token no repositório/project-state, e exigir aprovação humana no momento da ação."
   }
 ]

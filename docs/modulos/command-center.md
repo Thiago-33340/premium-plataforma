@@ -165,6 +165,15 @@ A aba **Deploys** permite registrar plano/resultado de deploy:
 - concluído;
 - falhou.
 
+Também permite registrar aprovação humana:
+
+- aprovado para deploy;
+- validado pós-deploy;
+- reprovado;
+- rollback necessário.
+
+Para gravar aprovação, o usuário precisa digitar `AUTORIZO DEPLOY`.
+
 Cada ação:
 
 - grava somente arquivos permitidos de `project-state`;
@@ -176,6 +185,7 @@ Limite consciente:
 
 - o Command Center não altera código sozinho;
 - o registro de deploy não aciona EasyPanel automaticamente;
+- a aprovação humana não aciona EasyPanel automaticamente;
 - Git continua sendo a trilha definitiva para código, documentação versionada e deploy;
 - PR/commit/deploy acionados pelo Command ficam para etapa futura com confirmação humana.
 
@@ -202,6 +212,7 @@ Limite consciente:
 - mostra aba de acessos para usuários com permissão;
 - permite criar tarefa, risco, decisão e atualizar tarefa com auditoria;
 - permite registrar deploy planejado/concluído/falho sem acionar implantação automática;
+- permite registrar aprovação/validação humana de deploy com frase obrigatória;
 - persiste ações vivas em `titan_command_actions`;
 - possui filtros por módulo/status/ferramenta;
 - não expõe secrets;

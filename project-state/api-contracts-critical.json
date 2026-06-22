@@ -143,7 +143,7 @@
     "screen": "public/mapper.html / command-center",
     "permission": "editar_project_state",
     "payload_required": ["action"],
-    "payload_optional": ["titulo", "modulo", "prioridade", "categoria", "detalhe", "bloqueada", "id", "status", "proximo_passo", "severidade", "impacto", "mitigacao", "decisao", "motivo", "branch", "commit", "merge_commit", "servico", "ambiente", "dominios", "validacoes", "observacoes"],
+    "payload_optional": ["titulo", "modulo", "prioridade", "categoria", "detalhe", "bloqueada", "id", "status", "proximo_passo", "severidade", "impacto", "mitigacao", "decisao", "motivo", "branch", "commit", "merge_commit", "servico", "ambiente", "dominios", "validacoes", "observacoes", "confirmacao"],
     "writes": ["project-state/tasks.json", "project-state/risks.json", "project-state/decisions.json", "project-state/deploys.json", "project-state/command-audit-log.json", "titan_command_actions"],
     "success": "200/201 { ok: true, target, audit, persisted_db, db_action_id }",
     "known_errors": ["401 Faça login no Titan Tools.", "403 Sem permissão para esta ferramenta.", "400 Ação do Command não reconhecida.", "404 Tarefa não encontrada."],
@@ -153,6 +153,7 @@
       "create_risk adiciona risk-XXX",
       "create_decision adiciona decision-XXX",
       "create_deploy_record adiciona registro governado em deploys.json sem acionar deploy automático",
+      "approve_deploy_record atualiza deploys.json com aprovação/validação humana e exige confirmacao=AUTORIZO DEPLOY",
       "toda ação gera command-audit-log.json",
       "toda ação tenta persistir em titan_command_actions; GET /api/mapper/state aplica overlay do banco sobre project-state"
     ]

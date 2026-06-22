@@ -199,5 +199,21 @@
       "Nenhum gatilho, token ou secret de deploy deve ser salvo em código ou project-state.",
       "Automação futura de PR/deploy precisa de confirmação humana no momento da ação."
     ]
+  },
+  {
+    "id": "decision-014",
+    "data": "2026-06-22",
+    "decisao": "Exigir frase de confirmação para aprovação humana de deploy",
+    "motivo": "Aprovar deploy é uma decisão operacional sensível. Antes de automatizar PR/EasyPanel, o Command precisa provar que consegue registrar intenção humana explícita sem depender de memória ou clique acidental.",
+    "impacto": "A ação approve_deploy_record atualiza deploys.json, command-audit-log.json e titan_command_actions somente quando o usuário digita AUTORIZO DEPLOY. A ação registra aprovado_para_deploy, validado_pos_deploy, reprovado ou rollback_necessario, mas não aciona EasyPanel automaticamente.",
+    "modulos_afetados": ["command-center", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "A frase obrigatória é AUTORIZO DEPLOY.",
+      "A aprovação humana é registrada com usuário, horário, status e observação.",
+      "A aprovação humana não substitui smoke pós-deploy.",
+      "Automação externa futura só pode executar ação real após confirmação humana no momento da ação."
+    ]
   }
 ]

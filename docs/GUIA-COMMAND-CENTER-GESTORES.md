@@ -157,6 +157,23 @@ Esse registro entra no `project-state/deploys.json`, no log auditado do Command 
 
 Importante: registrar deploy no Command **não aciona o EasyPanel automaticamente**. Ele documenta a intenção/resultado. A publicação real continua exigindo GitHub + EasyPanel + smoke.
 
+### Aprovação humana de deploy
+
+Na mesma aba **Deploys**, use **Aprovação humana de deploy** para marcar:
+
+- aprovado para deploy;
+- validado pós-deploy;
+- reprovado;
+- rollback necessário.
+
+Para gravar, o Command exige digitar exatamente:
+
+```text
+AUTORIZO DEPLOY
+```
+
+Isso reduz clique acidental e cria trilha clara de quem aprovou/validou. Mesmo aprovado no Command, o deploy real ainda precisa ser feito pelo fluxo operacional autorizado.
+
 ### Mapa técnico
 
 Use quando alguém estiver em dúvida sobre rota, serviço ou fronteira.

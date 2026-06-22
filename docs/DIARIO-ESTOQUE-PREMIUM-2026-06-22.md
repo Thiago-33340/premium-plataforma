@@ -494,3 +494,43 @@ Arquivos principais:
 - `project-state/decisions.json`
 - `project-state/modules.json`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+
+## Marco 12 — Aprovação humana de deploy no Command
+
+Status: implementado localmente, aguardando validação/deploy desta etapa
+
+Motivo:
+
+- Registrar deploy era necessário, mas ainda faltava o “ok humano” formal.
+- Antes de qualquer automação externa real, o Command precisa diferenciar plano, aprovação, validação, reprovação e rollback.
+
+O que foi implementado:
+
+- Nova ação `approve_deploy_record` em `POST /api/mapper/action`.
+- A aba **Deploys** ganhou bloco **Aprovação humana de deploy**.
+- O usuário seleciona um deploy e escolhe:
+  - aprovado para deploy;
+  - validado pós-deploy;
+  - reprovado;
+  - rollback necessário.
+- Para salvar, precisa digitar exatamente `AUTORIZO DEPLOY`.
+- A aprovação grava:
+  - `project-state/deploys.json`;
+  - `project-state/command-audit-log.json`;
+  - `titan_command_actions`.
+- O card do deploy passa a mostrar `confirmação humana` quando houver aprovação/validação registrada.
+
+Limite consciente:
+
+- A aprovação humana ainda não aciona EasyPanel automaticamente.
+- A aprovação não substitui smoke pós-deploy.
+- O próximo passo futuro é conectar automação externa real sem salvar token no repositório/project-state.
+
+Arquivos principais:
+
+- `server-pg.js`
+- `public/mapper.html`
+- `project-state/tasks.json`
+- `project-state/decisions.json`
+- `project-state/api-contracts-critical.json`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`

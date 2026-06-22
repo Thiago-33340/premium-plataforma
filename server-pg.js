@@ -201,6 +201,7 @@ function aplicarCommandActionsNoState(files, actions) {
     if (row.action === 'create_risk' && target.id) upsertCommandItem(risks, target, false);
     if (row.action === 'create_decision' && target.id) upsertCommandItem(decisions, target, false);
     if (row.action === 'create_deploy_record' && target.id) upsertCommandItem(deploys, target, false);
+    if (row.action === 'approve_deploy_record' && target.id) upsertCommandItem(deploys, target, true);
     if (audit.id) upsertCommandItem(auditLog, audit, false);
   }
   files['tasks.json'] = tasks;
@@ -329,6 +330,9 @@ function proximoDeployId(deploys, titulo) {
     if (!usados.has(id)) return id;
   }
   return `${base}-${Date.now()}`;
+}
+function fraseConfirmacaoOk(v) {
+  return String(v || '').trim().toUpperCase() === 'AUTORIZO DEPLOY';
 }
 function dataSP() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -1137,6 +1141,53 @@ async function api(req, res, url) {
         const audit = registrarCommandAudit(gestor, action, 'deploys.json', deploy.id, `Deploy registrado: ${deploy.titulo}`, { status: deploy.status, branch: deploy.branch, commit: deploy.merge_commit || null });
         const dbAction = await persistirCommandActionDb(gestor, action, b, 'deploys.json', deploy.id, deploy, audit);
         return json(res, 201, { ok: true, target: deploy, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+      }
+
+      if (action === 'approve_deploy_record') {
+        const state = await lerProjectStateSeguro();
+        const deploys = Array.isArray(state['deploys.json']) ? state['deploys.json'] : lerProjectJson('deploys.json', []);
+        const id = textoLimpo(b.id || b.deploy_id, 140);
+        const idx = deploys.findIndex(d => String(d.id) === id);
+        if (idx < 0) return json(res, 404, { erro: 'Deploy não encontrado.' });
+        if (!fraseConfirmacaoOk(b.confirmacao)) return json(res, 400, { erro: 'Digite AUTORIZO DEPLOY para registrar aprovação humana.' });
+        const statusPermitidos = new Set(['aprovado_para_deploy', 'validado_pos_deploy', 'reprovado', 'rollback_necessario']);
+        const status = textoLimpo(b.status, 80) || 'aprovado_para_deploy';
+        if (!statusPermitidos.has(status)) return json(res, 400, { erro: 'Status de aprovação inválido.' });
+        const antes = {
+          status: deploys[idx].status,
+          aprovado_em: deploys[idx].aprovado_em || null,
+          validado_em: deploys[idx].validado_em || null
+        };
+        const evento = {
+          tipo: status,
+          usuario_email: gestor.email,
+          usuario_nome: gestor.nome || gestor.email,
+          criado_em: new Date().toISOString(),
+          observacao: textoLimpo(b.observacoes || b.proximo_passo || b.detalhe, 700),
+          validacoes: listaLinhasLimpa(b.validacoes, 12, 220)
+        };
+        deploys[idx] = Object.assign({}, deploys[idx], {
+          status,
+          confirmacao_humana: true,
+          confirmacao_recebida: true,
+          aciona_deploy_automatico: false,
+          exige_confirmacao_humana: true,
+          aprovado_por: gestor.email,
+          aprovado_por_nome: gestor.nome || gestor.email,
+          aprovado_em: status === 'aprovado_para_deploy' ? evento.criado_em : (deploys[idx].aprovado_em || evento.criado_em),
+          validado_em: status === 'validado_pos_deploy' ? evento.criado_em : deploys[idx].validado_em,
+          reprovado_em: status === 'reprovado' ? evento.criado_em : deploys[idx].reprovado_em,
+          rollback_solicitado_em: status === 'rollback_necessario' ? evento.criado_em : deploys[idx].rollback_solicitado_em,
+          aprovacao_observacao: evento.observacao,
+          aprovacao_validacoes: evento.validacoes,
+          historico_command: (Array.isArray(deploys[idx].historico_command) ? deploys[idx].historico_command : []).concat(evento).slice(-30),
+          atualizado_via_command: true,
+          atualizado_em: evento.criado_em
+        });
+        gravarProjectJson('deploys.json', deploys);
+        const audit = registrarCommandAudit(gestor, action, 'deploys.json', id, `Deploy ${status}: ${id}`, { antes, depois: { status: deploys[idx].status, confirmacao_humana: true } });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'deploys.json', id, deploys[idx], audit);
+        return json(res, 200, { ok: true, target: deploys[idx], audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       return json(res, 400, { erro: 'Ação do Command não reconhecida.' });

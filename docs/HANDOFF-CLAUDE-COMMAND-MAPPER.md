@@ -232,3 +232,16 @@ O Claude deve interpretar assim:
 - O registro não significa que EasyPanel foi acionado automaticamente.
 - Deploy real continua exigindo commit/push/deploy explícito e smoke verde.
 - Nenhum token/gatilho de deploy deve ser pedido, salvo ou copiado para documentação.
+
+## Atualização — Aprovação humana de deploy
+
+Data: 2026-06-22
+
+O Command agora registra aprovação/validação humana de deploy por `approve_deploy_record`.
+
+O Claude deve interpretar assim:
+
+- A frase obrigatória é `AUTORIZO DEPLOY`.
+- A aprovação pode marcar deploy como aprovado, validado, reprovado ou rollback necessário.
+- Isso registra intenção humana, mas ainda não aciona EasyPanel automaticamente.
+- Uma aprovação no Command não substitui smoke verde nem revisão de regressão.

@@ -681,27 +681,50 @@
 
     function deployActionPanel(p){
       const latestCommit = p.deploys.slice().reverse().find(d => d.merge_commit)?.merge_commit || '';
+      const deployOptions = p.deploys.slice().reverse().map(d => `<option value="${esc(d.id)}">${esc(d.id)} · ${esc(statusLabel(d.status || '—'))}</option>`).join('');
       return `
-        <div class="card pad callout" style="margin-bottom:14px">
-          <div class="sectionTitle"><h2>Registro governado de deploy</h2><span class="pill ok">confirmação humana</span></div>
-          <div class="sub">Registra um deploy planejado, pronto ou concluído no Command. Isto não aciona EasyPanel automaticamente e não usa token no código.</div>
-          <div class="filters" style="grid-template-columns:1.4fr 1fr 1fr 1fr;margin-top:12px">
-            <input class="field" id="deployTitle" placeholder="Título do deploy / mudança">
-            <select class="field" id="deployStatus">
-              <option value="planejado">Planejado</option>
-              <option value="pronto_para_deploy">Pronto para deploy</option>
-              <option value="concluido">Concluído</option>
-              <option value="falhou">Falhou</option>
-            </select>
-            <input class="field" id="deployBranch" placeholder="Branch" value="main">
-            <input class="field" id="deployCommit" placeholder="Commit" value="${esc(latestCommit)}">
-            <input class="field" id="deployService" placeholder="Serviço" value="mayaproject/github">
-            <input class="field" id="deployDomains" placeholder="Domínios separados por vírgula" value="https://premium.titanatende.com.br, https://tools.titanatende.com.br">
-            <textarea class="field" id="deployValidations" rows="3" placeholder="Validações exigidas/feitas — uma por linha"></textarea>
-            <textarea class="field" id="deployNotes" rows="3" placeholder="Observações, rollback ou aprovação humana"></textarea>
-            <button class="btn primary" id="cmdCreateDeploy">Registrar deploy no Command</button>
+        <div class="cols" style="margin-bottom:14px">
+          <div class="card pad callout">
+            <div class="sectionTitle"><h2>Registro governado de deploy</h2><span class="pill ok">plano/resultado</span></div>
+            <div class="sub">Registra um deploy planejado, pronto ou concluído no Command. Isto não aciona EasyPanel automaticamente e não usa token no código.</div>
+            <div class="filters" style="grid-template-columns:1.4fr 1fr 1fr 1fr;margin-top:12px">
+              <input class="field" id="deployTitle" placeholder="Título do deploy / mudança">
+              <select class="field" id="deployStatus">
+                <option value="planejado">Planejado</option>
+                <option value="pronto_para_deploy">Pronto para deploy</option>
+                <option value="concluido">Concluído</option>
+                <option value="falhou">Falhou</option>
+              </select>
+              <input class="field" id="deployBranch" placeholder="Branch" value="main">
+              <input class="field" id="deployCommit" placeholder="Commit" value="${esc(latestCommit)}">
+              <input class="field" id="deployService" placeholder="Serviço" value="mayaproject/github">
+              <input class="field" id="deployDomains" placeholder="Domínios separados por vírgula" value="https://premium.titanatende.com.br, https://tools.titanatende.com.br">
+              <textarea class="field" id="deployValidations" rows="3" placeholder="Validações exigidas/feitas — uma por linha"></textarea>
+              <textarea class="field" id="deployNotes" rows="3" placeholder="Observações, rollback ou aprovação humana"></textarea>
+              <button class="btn primary" id="cmdCreateDeploy">Registrar deploy no Command</button>
+            </div>
+            <div class="sub" style="margin-top:10px">Regra: registrar aqui não publica código. Publicação real continua com GitHub + EasyPanel + smoke.</div>
           </div>
-          <div class="sub" style="margin-top:10px">Regra: registrar aqui não publica código. Publicação real continua com GitHub + EasyPanel + smoke.</div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Aprovação humana de deploy</h2><span class="pill warn">frase obrigatória</span></div>
+            <div class="sub">Use para aprovar deploy antes da publicação ou validar depois do smoke. Para gravar, digite exatamente <span class="mono">AUTORIZO DEPLOY</span>.</div>
+            <div class="formRow">
+              <label><span class="fieldLabel">Deploy</span><select class="field" id="deployApproveId">${deployOptions}</select></label>
+              <label><span class="fieldLabel">Status de aprovação</span><select class="field" id="deployApproveStatus">
+                <option value="aprovado_para_deploy">Aprovado para deploy</option>
+                <option value="validado_pos_deploy">Validado pós-deploy</option>
+                <option value="reprovado">Reprovado</option>
+                <option value="rollback_necessario">Rollback necessário</option>
+              </select></label>
+              <label><span class="fieldLabel">Confirmação</span><input class="field" id="deployConfirmPhrase" placeholder="Digite AUTORIZO DEPLOY"></label>
+              <textarea class="field" id="deployApproveValidations" rows="3" placeholder="Validações / smoke — uma por linha"></textarea>
+              <textarea class="field" id="deployApproveNotes" rows="3" placeholder="Observação da aprovação, reprovação ou rollback"></textarea>
+              <button class="btn primary" id="cmdApproveDeploy">Registrar aprovação</button>
+            </div>
+            <div class="sub" style="margin-top:10px">Este botão registra a decisão humana; ele ainda não aciona EasyPanel automaticamente.</div>
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
           ${DEPLOY_MSG ? `<div class="sub" style="margin-top:10px">${esc(DEPLOY_MSG)}</div>` : ''}
         </div>`;
     }
@@ -843,7 +866,8 @@
     }
 
     function deployItem(d){
-      return `<div class="item"><span class="tag ${esc(norm(d.status))}">${esc(d.status || '—')}</span><span class="tag ${esc(norm(d.ambiente))}">${esc(d.ambiente || '—')}</span><b>${esc(d.id || 'Deploy')}</b><small>${esc(d.data || '')} · ${esc(d.origem || '')}</small><small>${esc((d.validacoes || []).join(' · '))}</small></div>`;
+      const aprov = d.confirmacao_humana ? ` · aprovado/validado por ${d.aprovado_por_nome || d.aprovado_por || '—'} em ${fmt(d.validado_em || d.aprovado_em || d.atualizado_em)}` : '';
+      return `<div class="item"><span class="tag ${esc(norm(d.status))}">${esc(d.status || '—')}</span><span class="tag ${esc(norm(d.ambiente))}">${esc(d.ambiente || '—')}</span>${d.confirmacao_humana ? '<span class="tag ok">confirmação humana</span>' : ''}<b>${esc(d.id || 'Deploy')}</b><small>${esc(d.data || '')} · ${esc(d.origem || '')}${esc(aprov)}</small><small>${esc((d.validacoes || d.aprovacao_validacoes || []).join(' · '))}</small></div>`;
     }
 
     function decisionItem(d){
@@ -973,6 +997,30 @@
         try{
           const out = await apiPost('/api/mapper/action', payload);
           DEPLOY_MSG = `Deploy registrado: ${out.target?.id || 'registro'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
+          await load();
+          ACTIVE = 'deploys';
+        }catch(e){
+          DEPLOY_MSG = e.message;
+          render();
+        }
+      };
+      const approve = document.getElementById('cmdApproveDeploy');
+      if(approve) approve.onclick = async () => {
+        const payload = {
+          action:'approve_deploy_record',
+          id:document.getElementById('deployApproveId').value,
+          status:document.getElementById('deployApproveStatus').value,
+          confirmacao:document.getElementById('deployConfirmPhrase').value,
+          validacoes:document.getElementById('deployApproveValidations').value,
+          observacoes:document.getElementById('deployApproveNotes').value
+        };
+        if(!payload.id){
+          DEPLOY_MSG = 'Selecione um deploy para aprovar ou validar.';
+          return render();
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          DEPLOY_MSG = `Aprovação registrada: ${out.target?.id || 'deploy'} · ${out.target?.status || 'status'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
           await load();
           ACTIVE = 'deploys';
         }catch(e){

@@ -39,7 +39,7 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.
 - `/api/titan/auth/*` gerencia login real das ferramentas Titan: e-mail autorizado, primeiro acesso, senha com hash e sessão por cookie HttpOnly.
 - `/api/mapper/state` é read-only, restrito a sessão Titan Tools com permissão `ver_project_state` e por host técnico, expõe somente arquivos permitidos de `project-state` e aplica overlay das ações persistidas em `titan_command_actions`.
-- `/api/mapper/action` grava ações auditadas do Command Center, restrito a sessão Titan Tools com permissão `editar_project_state`. Só pode alterar arquivos whitelistados de `project-state`, sempre registra `command-audit-log.json` e também tenta persistir em `titan_command_actions`. A ação `create_deploy_record` registra plano/resultado de deploy em `deploys.json`, mas não aciona EasyPanel automaticamente.
+- `/api/mapper/action` grava ações auditadas do Command Center, restrito a sessão Titan Tools com permissão `editar_project_state`. Só pode alterar arquivos whitelistados de `project-state`, sempre registra `command-audit-log.json` e também tenta persistir em `titan_command_actions`. A ação `create_deploy_record` registra plano/resultado de deploy em `deploys.json`, mas não aciona EasyPanel automaticamente. A ação `approve_deploy_record` registra aprovação/validação humana e exige `confirmacao=AUTORIZO DEPLOY`.
 
 ## Rotas que devem ser evitadas em implementação nova
 
