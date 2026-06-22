@@ -1,0 +1,18 @@
+{
+  "semana": "2026-06-21",
+  "objetivo": "Transformar o inventário do Titan em base operacional confiável.",
+  "prioridades": [
+    "Validar módulos oficiais",
+    "Validar contratos críticos de estoque/produção/contagem",
+    "Classificar tabelas oficiais e legadas",
+    "Criar smoke tests para produção transacional e contagem",
+    "Criar checklist de deploy e produção",
+    "Preparar wireframe do Command Center"
+  ],
+  "nao_fazer_agora": [
+    "Reescrever arquitetura inteira",
+    "Criar Command Center visual antes de validar a base",
+    "Fazer deploy sem checklist",
+    "Ler secrets ou arquivos sensíveis"
+  ]
+}

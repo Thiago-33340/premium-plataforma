@@ -1,0 +1,90 @@
+[
+  {
+    "id": "smoke-estoque-produto-crud",
+    "module": "estoque-v2",
+    "type": "smoke",
+    "priority": "alta",
+    "covers": ["POST /api/est/produto", "PATCH /api/est/produto/:id", "DELETE /api/est/produto/:id"],
+    "preconditions": ["usuário com editar_produtos", "categoria existente"],
+    "expected": "produto cria, edita e inativa preservando histórico",
+    "script": "npm run smoke:mutating",
+    "mutates_data": true
+  },
+  {
+    "id": "smoke-producao-run-transacional",
+    "module": "producao-fichas",
+    "type": "integration",
+    "priority": "critica",
+    "covers": ["PUT /api/est/producao/ficha", "POST /api/est/producao/run"],
+    "preconditions": ["produto pode_produzir", "ficha com porção e ingredientes", "estoque de insumos conhecido"],
+    "expected": "baixa insumos, entra produto produzido, registra movimentos e produção",
+    "script": "pendente: exige ambiente de teste isolado",
+    "mutates_data": true
+  },
+  {
+    "id": "smoke-producao-conversao-unidade",
+    "module": "producao-fichas",
+    "type": "unit/integration",
+    "priority": "critica",
+    "covers": ["conversão g/KG/ml/L usada por POST /api/est/producao/run"],
+    "preconditions": ["produto insumo com peso_g/unidade correta"],
+    "expected": "baixa em unidade de estoque correta, sem multiplicar g como KG",
+    "script": "pendente: teste unitário da função de conversão",
+    "mutates_data": false
+  },
+  {
+    "id": "smoke-contagem-colaborador",
+    "module": "contagem-auditoria",
+    "type": "smoke",
+    "priority": "alta",
+    "covers": ["POST /api/est/contagem/iniciar", "PATCH /api/est/contagem/:id/item/:itemId", "POST /api/est/contagem/:id/encerrar"],
+    "preconditions": ["colaborador com fazer_contagem e setor permitido", "setor com itens"],
+    "expected": "inicia, salva itens, bloqueia setor indevido e encerra com timestamp",
+    "script": "pendente: exige setor de teste",
+    "mutates_data": true
+  },
+  {
+    "id": "smoke-contagem-auditoria",
+    "module": "contagem-auditoria",
+    "type": "integration",
+    "priority": "alta",
+    "covers": ["POST /api/est/contagem/:id/auditar"],
+    "preconditions": ["contagem encerrada", "gestor com auditar_contagem"],
+    "expected": "aprovar atualiza saldo e grava est_movimento; corrigir reabre",
+    "script": "pendente: exige banco de teste para alterar saldos",
+    "mutates_data": true
+  },
+  {
+    "id": "smoke-readonly-api",
+    "module": "core-http",
+    "type": "smoke",
+    "priority": "alta",
+    "covers": ["GET /api/health", "GET /api/est/dashboard", "GET /api/est/produtos", "GET /api/est/producao/produzidos", "GET /api/est/contagens"],
+    "preconditions": ["API rodando"],
+    "expected": "rotas críticas respondem JSON válido sem modificar dados",
+    "script": "npm run smoke:read",
+    "mutates_data": false
+  },
+  {
+    "id": "state-project-check",
+    "module": "command-center",
+    "type": "static",
+    "priority": "alta",
+    "covers": ["project-state/*.json"],
+    "preconditions": ["arquivos project-state presentes"],
+    "expected": "base operacional do Titan está coerente e parseável",
+    "script": "npm run check:project-state",
+    "mutates_data": false
+  },
+  {
+    "id": "rbac-visualizacao-estoque",
+    "module": "permissoes-staff",
+    "type": "rbac/read-only",
+    "priority": "alta",
+    "covers": ["GET /api/est/usuarios", "GET /api/est/permissoes", "GET /api/est/meus-itens", "regras de visualização do public/estoque.html"],
+    "preconditions": ["usuario_id de gestor com editar_permissoes"],
+    "expected": "gestor vê tudo; colaborador vê apenas abas/itens permitidos; não há conflitos de permissão de contagem",
+    "script": "npm run audit:rbac",
+    "mutates_data": false
+  }
+]

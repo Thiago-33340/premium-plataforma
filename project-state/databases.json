@@ -1,0 +1,25 @@
+[
+  {
+    "id": "postgres-principal",
+    "nome": "PostgreSQL principal",
+    "status": "inferido",
+    "drivers": ["pg"],
+    "schema_files": ["estoque-v2.sql", "modelo-completo-v1.sql", "sql/modelo-completo-v1.sql"],
+    "modules": ["estoque-v2", "producao-fichas", "contagem-auditoria", "compras-fornecedores", "loja-pedidos", "mesas-caixa", "permissoes-staff"],
+    "tabelas_por_area": {
+      "estoque-v2": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor", "est_produto_fornecedor", "est_local_fisico", "est_conversao_categoria"],
+      "producao-fichas": ["est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item", "est_producao_run", "est_producao_receita"],
+      "contagem-auditoria": ["est_contagem", "est_contagem_item", "est_auditoria"],
+      "compras-fornecedores": ["est_compra", "est_compra_item", "est_lista_compra", "est_lista_compra_item", "est_visita", "est_visita_item"],
+      "mesas-caixa": ["mesas", "comandas", "comanda_itens", "caixa", "entregadores"],
+      "loja-pedidos": ["produtos", "opcao_grupos", "opcoes", "cupons"],
+      "permissoes-staff": ["est_permissao"]
+    },
+    "pendencias": [
+      "Confirmar banco real em produção sem ler DATABASE_URL",
+      "Documentar tabelas oficiais vs legadas",
+      "Criar política de migração",
+      "Criar diagrama módulo -> tabela -> rota"
+    ]
+  }
+]

@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-06-22T06:15:27.044Z",
+  "base_url": "https://premium.titanatende.com.br",
+  "mode": "read_only",
+  "mutates_data": false,
+  "total": 12,
+  "executed": 10,
+  "skipped": 2,
+  "failed": 0,
+  "ok": true,
+  "checks": [
+    {
+      "name": "health",
+      "path": "/api/health",
+      "ok": true,
+      "ms": 806
+    },
+    {
+      "name": "estoque dashboard",
+      "path": "/api/est/dashboard",
+      "ok": true,
+      "ms": 175
+    },
+    {
+      "name": "produtos",
+      "path": "/api/est/produtos",
+      "ok": true,
+      "ms": 614
+    },
+    {
+      "name": "setores",
+      "path": "/api/est/setores",
+      "ok": true,
+      "ms": 150
+    },
+    {
+      "name": "categorias",
+      "path": "/api/est/categorias",
+      "ok": true,
+      "ms": 151
+    },
+    {
+      "name": "fornecedores",
+      "path": "/api/est/fornecedores",
+      "ok": true,
+      "ms": 151
+    },
+    {
+      "name": "produzidos",
+      "path": "/api/est/producao/produzidos",
+      "ok": true,
+      "ms": 159
+    },
+    {
+      "name": "producoes recentes",
+      "path": "/api/est/producoes",
+      "ok": true,
+      "ms": 149
+    },
+    {
+      "name": "movimentos recentes",
+      "path": "/api/est/movimentos?limit=3",
+      "ok": true,
+      "ms": 151
+    },
+    {
+      "name": "contagens recentes",
+      "path": "/api/est/contagens",
+      "ok": true,
+      "ms": 150
+    },
+    {
+      "name": "permissoes usuário",
+      "path": "/api/est/permissoes?usuario_id=...",
+      "ok": true,
+      "skipped": true,
+      "ms": 0,
+      "error": "sem TITAN_SMOKE_USER_ID"
+    },
+    {
+      "name": "meus itens usuário",
+      "path": "/api/est/meus-itens?usuario_id=...",
+      "ok": true,
+      "skipped": true,
+      "ms": 0,
+      "error": "sem TITAN_SMOKE_USER_ID"
+    }
+  ]
+}

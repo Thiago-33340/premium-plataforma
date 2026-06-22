@@ -6,7 +6,11 @@
   "main": "server-pg.js",
   "scripts": {
     "start": "node server-pg.js",
-    "start:local": "node server.js"
+    "start:local": "node server.js",
+    "check:project-state": "node scripts/check-project-state.mjs",
+    "smoke:read": "node scripts/smoke-critical.mjs",
+    "smoke:mutating": "node scripts/smoke-mutating-sandbox.mjs",
+    "audit:rbac": "node scripts/rbac-audit.mjs"
   },
   "engines": { "node": ">=18" },
   "dependencies": {

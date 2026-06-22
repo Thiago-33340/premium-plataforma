@@ -1,0 +1,32 @@
+[
+  {
+    "fase": 1,
+    "nome": "Inventário",
+    "status": "concluido",
+    "entregas": ["_titan_map", "mapa de rotas complementar", "diagnóstico Codex"]
+  },
+  {
+    "fase": 2,
+    "nome": "Organização",
+    "status": "em_andamento",
+    "entregas": ["docs oficial", "project-state oficial", "módulo -> rota -> banco -> serviço", "mapa operacional crítico estoque/produção/contagem"]
+  },
+  {
+    "fase": 3,
+    "nome": "Command Center inicial",
+    "status": "planejado",
+    "entregas": ["visão geral", "módulos", "tarefas", "riscos", "deploys"]
+  },
+  {
+    "fase": 4,
+    "nome": "Integrações",
+    "status": "em_andamento",
+    "entregas": ["GitHub", "EasyPanel", "logs", "banco", "automações"]
+  },
+  {
+    "fase": 5,
+    "nome": "Operação contínua",
+    "status": "nao_iniciado",
+    "entregas": ["revisão diária", "revisão semanal", "auditoria de deploy", "documentação viva"]
+  }
+]

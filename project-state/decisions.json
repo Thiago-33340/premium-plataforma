@@ -1,14 +1,50 @@
 [
   {
-    "id": "decision-setores-contagem-por-tenant-2026-06-22",
-    "data": "2026-06-22",
-    "decisao": "Setores de contagem sao configuracao por cliente/tenant, nao catalogo fixo do Titan.",
-    "motivo": "Cada operacao pode ter setores diferentes. A Premium usa Borda, Montagem, Finalizacao, Recepcao e Gerais, mas outros clientes podem configurar outra estrutura.",
-    "regra_saas": "Gestor cria, renomeia, ordena, desativa e reativa setores pelo painel. Produtos e colaboradores devem usar setores vivos do tenant em est_setor. Setores inativos preservam historico e nao devem aparecer em novas contagens/novas atribuicoes.",
-    "impacto": [
-      "Tela de estoque passa a permitir gestao dinamica de setores.",
-      "Contagem e cadastro de produto usam apenas setores ativos.",
-      "Painel de equipe mostra setores ativos para novas atribuicoes e preserva setor inativo se ele ja estava vinculado."
-    ]
+    "id": "decision-001",
+    "data": "2026-06-21",
+    "decisao": "Criar project-state como fonte de verdade operacional inicial",
+    "motivo": "Permitir que Codex, Claude e Thiago trabalhem sem perder contexto.",
+    "impacto": "Base para Command Center e governança do Titan.",
+    "modulos_afetados": ["command-center", "infra-deploy", "core-http"],
+    "responsavel": "Thiago",
+    "status": "aceita"
+  },
+  {
+    "id": "decision-002",
+    "data": "2026-06-21",
+    "decisao": "Não iniciar Command Center visual antes de validar inventário",
+    "motivo": "Evitar criar dashboard bonito em cima de estado incompleto.",
+    "impacto": "Foco em mapa, documentação, rotas, banco e pendências antes da UI.",
+    "modulos_afetados": ["command-center"],
+    "responsavel": "Thiago",
+    "status": "aceita"
+  },
+  {
+    "id": "decision-003",
+    "data": "2026-06-21",
+    "decisao": "Tratar /api/estoque/* como legado até revisão",
+    "motivo": "Há fluxo novo em /api/est/* e fluxo antigo em /api/estoque/*.",
+    "impacto": "Reduz confusão durante evolução do estoque.",
+    "modulos_afetados": ["estoque-v2"],
+    "responsavel": "Thiago",
+    "status": "proposta"
+  },
+  {
+    "id": "decision-004",
+    "data": "2026-06-21",
+    "decisao": "Setores de contagem são configuração por cliente/tenant, não catálogo fixo do Titan",
+    "motivo": "Cada operação pode ter setores diferentes. No fluxo novo /api/est, permissões de contagem devem referenciar setores vivos do tenant em est_setor por id ou nome. IDs legados como SET001, SET002 e SET003 pertencem ao fluxo antigo estoque_itens_definicao e não devem ser usados como regra geral.",
+    "impacto": "Permite que cada cliente modele sua operação sem hardcode de Borda/Montagem/Finalização e evita colaboradores com permissão correta, mas sem itens visíveis na contagem.",
+    "modulos_afetados": ["contagem-auditoria", "estoque-v2", "rbac"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regra_saas": "O gestor deve criar/editar/desativar setores pelo painel. Atribuições de colaboradores e produtos devem usar os setores do tenant carregados de /api/est/setores.",
+    "de_para_premium_2026_06_21": {
+      "SET001": "1/Borda",
+      "SET002": "2/Montagem",
+      "SET003": "3/Finalização",
+      "SET004": "5/Gerais",
+      "SET005": "legado Caixas; específico da base antiga da Premium"
+    }
   }
 ]

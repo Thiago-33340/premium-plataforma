@@ -1,0 +1,32 @@
+[
+  {
+    "id": "premium-plataforma-node",
+    "nome": "Premium Plataforma / Titan núcleo atual",
+    "tipo": "node-http",
+    "ambiente": "producao",
+    "entrada": "server-pg.js",
+    "porta_container": 8080,
+    "dockerfile": "Dockerfile",
+    "status": "online",
+    "modulos": ["core-http", "loja-pedidos", "admin-gestor", "estoque-v2", "producao-fichas", "contagem-auditoria", "mesas-caixa"],
+    "observacoes": "Serviço Node principal publicado no EasyPanel como mayaproject/github. package.json usa script start: node server-pg.js."
+  },
+  {
+    "id": "postgres-principal",
+    "nome": "PostgreSQL principal",
+    "tipo": "database",
+    "ambiente": "producao_a_confirmar",
+    "status": "inferido",
+    "modulos": ["estoque-v2", "producao-fichas", "contagem-auditoria", "loja-pedidos", "mesas-caixa"],
+    "observacoes": "Inferido pelo uso da dependência pg e SQLs. Variáveis de ambiente não foram lidas."
+  },
+  {
+    "id": "easypanel",
+    "nome": "EasyPanel",
+    "tipo": "deploy-panel",
+    "ambiente": "producao",
+    "status": "documentado_parcial",
+    "modulos": ["infra-deploy"],
+    "observacoes": "Projeto confirmado: mayaproject. App confirmado: github. Domínios confirmados: premium.titanatende.com.br e pedido.titanatende.com.br. Não registrar valores de variáveis ou secrets."
+  }
+]

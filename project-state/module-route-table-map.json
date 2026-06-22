@@ -1,0 +1,197 @@
+{
+  "generated_by": "Codex Fase 2.1",
+  "scope": ["estoque-v2", "producao-fichas", "contagem-auditoria"],
+  "source_files": ["server-pg.js", "public/estoque.html", "public/admin.html", "estoque-v2.sql"],
+  "modules": [
+    {
+      "id": "estoque-v2",
+      "screens": [
+        {
+          "id": "estoque-produtos",
+          "file": "public/estoque.html",
+          "description": "Listagem, filtro, cadastro, edição e inativação de produtos do estoque.",
+          "routes": [
+            "GET /api/est/dashboard",
+            "GET /api/est/produtos",
+            "GET /api/est/produto/:id",
+            "POST /api/est/produto",
+            "PATCH /api/est/produto/:id",
+            "DELETE /api/est/produto/:id",
+            "GET /api/est/categorias",
+            "POST /api/est/categoria",
+            "PATCH /api/est/categoria/:id",
+            "DELETE /api/est/categoria/:id",
+            "GET /api/est/fornecedores",
+            "POST /api/est/fornecedor",
+            "PATCH /api/est/fornecedor/:id",
+            "DELETE /api/est/fornecedor/:id",
+            "GET /api/est/conversoes",
+            "POST /api/est/conversao",
+            "PATCH /api/est/conversao/:id",
+            "DELETE /api/est/conversao/:id",
+            "GET /api/est/locais",
+            "POST /api/est/local",
+            "PATCH /api/est/local/:id",
+            "DELETE /api/est/local/:id"
+          ],
+          "tables": [
+            "est_produto",
+            "est_categoria",
+            "est_fornecedor",
+            "est_local_fisico",
+            "est_conversao_categoria",
+            "est_produto_setor"
+          ]
+        },
+        {
+          "id": "admin-estoque-dashboard",
+          "file": "public/admin.html",
+          "description": "Cockpit administrativo de estoque com indicadores, movimentos e ajustes rápidos.",
+          "routes": [
+            "GET /api/est/dashboard",
+            "GET /api/est/setores",
+            "GET /api/est/movimentos",
+            "GET /api/est/produtos",
+            "PATCH /api/est/produto/:id"
+          ],
+          "tables": ["est_produto", "est_setor", "est_movimento", "est_contagem", "est_compra"]
+        },
+        {
+          "id": "movimento-manual",
+          "file": "public/estoque.html",
+          "description": "Entrada, saída, perda ou consumo manual de estoque.",
+          "routes": ["POST /api/est/movimento", "GET /api/est/produtos", "GET /api/est/movimentos"],
+          "tables": ["est_produto", "est_movimento"]
+        }
+      ],
+      "critical_tables": [
+        { "table": "est_produto", "role": "cadastro e saldo dos itens" },
+        { "table": "est_movimento", "role": "livro razão do estoque" },
+        { "table": "est_produto_setor", "role": "quais itens pertencem a cada setor de contagem" },
+        { "table": "est_categoria", "role": "agrupamento operacional" },
+        { "table": "est_fornecedor", "role": "origem/preferência de compra" }
+      ],
+      "risks": [
+        "Edição de produto pode afetar contagem, produção e compras.",
+        "Rotas legadas /api/estoque/* ainda coexistem com /api/est/*.",
+        "Campos de conversão/unidade precisam de testes para evitar baixa errada."
+      ]
+    },
+    {
+      "id": "producao-fichas",
+      "screens": [
+        {
+          "id": "admin-producao-fichas",
+          "file": "public/admin.html",
+          "description": "Tela principal para criar, editar e excluir ficha técnica multi-porção.",
+          "routes": [
+            "GET /api/est/vinculos",
+            "GET /api/est/producao/produzidos",
+            "GET /api/est/producao/ficha",
+            "PUT /api/est/producao/ficha",
+            "DELETE /api/est/producao/ficha/:id",
+            "POST /api/est/produto",
+            "POST /api/est/produto/:id/setores",
+            "POST /api/est/produto/:id/peso",
+            "GET /api/est/produtos"
+          ],
+          "tables": [
+            "est_produto",
+            "est_produto_setor",
+            "est_ficha_producao",
+            "est_ficha_porcao",
+            "est_ficha_porcao_item",
+            "est_producao_receita"
+          ]
+        },
+        {
+          "id": "estoque-producao-operacional",
+          "file": "public/estoque.html",
+          "description": "Lançamento de produção, consulta de ficha e histórico de produções.",
+          "routes": [
+            "GET /api/est/producao/produzidos",
+            "GET /api/est/producao/ficha",
+            "GET /api/est/producoes",
+            "POST /api/est/producao/run",
+            "POST /api/est/producao/receita",
+            "DELETE /api/est/producao/receita/:id"
+          ],
+          "tables": [
+            "est_produto",
+            "est_ficha_producao",
+            "est_ficha_porcao",
+            "est_ficha_porcao_item",
+            "est_producao_receita",
+            "est_producao_run",
+            "est_movimento"
+          ]
+        }
+      ],
+      "critical_tables": [
+        { "table": "est_ficha_producao", "role": "cabeçalho da ficha por produto produzido" },
+        { "table": "est_ficha_porcao", "role": "porções/rendimentos da ficha" },
+        { "table": "est_ficha_porcao_item", "role": "ingredientes de cada porção" },
+        { "table": "est_producao_run", "role": "histórico de produções lançadas" },
+        { "table": "est_movimento", "role": "baixa dos insumos e entrada do produzido" }
+      ],
+      "risks": [
+        "Ficha simples em /api/est/produto/:id/ficha pode conflitar com ficha multi-porção se usado incorretamente.",
+        "Baixa usa conversão de unidade; erro aqui distorce todo o estoque.",
+        "Excluir ficha desativa e preserva histórico; UI precisa deixar isso claro."
+      ]
+    },
+    {
+      "id": "contagem-auditoria",
+      "screens": [
+        {
+          "id": "colaborador-contagem",
+          "file": "public/estoque.html",
+          "description": "Colaborador inicia contagem, informa quantidades e encerra para auditoria.",
+          "routes": [
+            "GET /api/est/meus-itens",
+            "GET /api/est/setores",
+            "POST /api/est/contagem/iniciar",
+            "PATCH /api/est/contagem/:id/item/:itemId",
+            "POST /api/est/contagem/:id/encerrar"
+          ],
+          "tables": ["rbac_contacts", "est_setor", "est_produto_setor", "est_contagem", "est_contagem_item"]
+        },
+        {
+          "id": "gestor-auditoria-contagem",
+          "file": "public/estoque.html",
+          "description": "Gestor consulta contagens encerradas, aprova, reprova ou solicita correção.",
+          "routes": [
+            "GET /api/est/contagens",
+            "GET /api/est/contagem/:id",
+            "POST /api/est/contagem/:id/auditar"
+          ],
+          "tables": ["est_contagem", "est_contagem_item", "est_auditoria", "est_produto", "est_movimento"]
+        },
+        {
+          "id": "admin-contagem-geral",
+          "file": "public/admin.html",
+          "description": "Configuração de contagem geral e setores participantes.",
+          "routes": [
+            "GET /api/est/contagem-geral/status",
+            "POST /api/est/contagem-geral/config",
+            "POST /api/est/contagem-geral/iniciar-agora",
+            "POST /api/est/contagem-geral/parar",
+            "PATCH /api/est/setor/:id"
+          ],
+          "tables": ["tenants.config", "est_setor", "est_produto_setor", "est_contagem", "est_contagem_item"]
+        }
+      ],
+      "critical_tables": [
+        { "table": "est_contagem", "role": "cabeçalho da contagem" },
+        { "table": "est_contagem_item", "role": "itens e quantidades contadas" },
+        { "table": "est_auditoria", "role": "decisão do gestor" },
+        { "table": "est_movimento", "role": "ajuste de estoque após aprovação" }
+      ],
+      "risks": [
+        "Aprovar contagem altera estoque_atual e insere movimentos.",
+        "Correção volta contagem para EM_ANDAMENTO; precisa ser claro na UI.",
+        "Permissões/setores_permitidos precisam estar bem configurados para evitar contagem por setor errado."
+      ]
+    }
+  ]
+}
