@@ -84,7 +84,7 @@
     "id": "estoque-v2",
     "nome": "Estoque operacional v2",
     "status": "em_andamento",
-    "progresso": 82,
+    "progresso": 88,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -98,12 +98,13 @@
     "rotas_relacionadas": ["estoque-v2-cadastros-operacao"],
     "tabelas_relacionadas": ["est_produto", "est_categoria", "est_fornecedor", "est_setor", "est_movimento", "est_produto_setor"],
     "pendencias": [
-      "Fechar contratos das APIs de estoque",
+      "Validar pós-deploy a lista de produtos com setores",
       "Testar conversões de unidade",
-      "Documentar catálogo Premium v4 como fonte inicial"
+      "Documentar catálogo Premium v4 como fonte inicial",
+      "Rodar smoke read-only depois do deploy da tela de estoque"
     ],
     "proximos_passos": [
-      "Criar mapa produto -> setor -> ficha -> movimento",
+      "Validar no navegador: produto -> setor -> ficha -> movimento",
       "Criar testes de baixa e entrada",
       "Classificar rotas antigas de estoque como legado"
     ]
@@ -112,7 +113,7 @@
     "id": "producao-fichas",
     "nome": "Produção e fichas técnicas",
     "status": "em_andamento",
-    "progresso": 60,
+    "progresso": 78,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -128,11 +129,12 @@
     "pendencias": [
       "Completar fichas pendentes",
       "Documentar baixa de insumos por produção",
-      "Criar validação de custo/rendimento por porção"
+      "Validar editor avançado no estoque após deploy",
+      "Criar validação automatizada de custo/rendimento por porção"
     ],
     "proximos_passos": [
       "Listar itens produzidos sem ficha completa",
-      "Criar contrato da rota /api/est/producao/run",
+      "Testar salvar/excluir ficha em ambiente controlado",
       "Testar transação produção -> movimento de estoque"
     ]
   },
@@ -279,7 +281,7 @@
     "id": "command-center",
     "nome": "Titan Command Center",
     "status": "em_andamento",
-    "progresso": 70,
+    "progresso": 76,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -295,10 +297,8 @@
     "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["titan-tools-auth", "mapper-state"],
     "pendencias": [
-      "Fazer bootstrap dos e-mails dos sócios em produção",
-      "Validar primeiro acesso autenticado após deploy",
       "Transformar ações do Command Center em registros graváveis auditados",
-      "Criar visão de estoque com métricas reais depois da entrega do Claude"
+      "Criar visão de estoque com métricas reais depois da entrega Premium"
     ],
     "proximos_passos": [
       "Usar /command-center ou /login no host tools.titanatende.com.br",
