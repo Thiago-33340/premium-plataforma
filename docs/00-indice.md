@@ -21,7 +21,7 @@ Este é o ponto de entrada oficial para qualquer pessoa, IA ou ferramenta trabal
 
 A pasta `project-state/` passa a ser a base operacional inicial do Titan.
 
-A primeira visão visual dessa base é o **Titan Mapper**, disponível em `/mapper` após deploy. Ele lê `project-state` via `GET /api/mapper/state`, com acesso restrito a gestor.
+A primeira visão visual dessa base evoluiu para o **Titan Command Center**, disponível em `/command-center` após deploy. O atalho `/mapper` continua funcionando. Ele lê `project-state` via `GET /api/mapper/state`, com acesso restrito a gestor.
 
 Arquivos principais:
 

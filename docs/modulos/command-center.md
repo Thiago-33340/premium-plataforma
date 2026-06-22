@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Criar uma central visual para Thiago controlar o Titan: módulos, status, riscos, tarefas, deploys, containers, decisões e próximos passos.
+Criar uma central visual e operacional para Thiago controlar o Titan: módulos, status, riscos, tarefas, deploys, containers, decisões, próximos passos e divisão de trabalho entre Codex, Claude e Thiago.
 
 ## Fonte de dados inicial
 
@@ -19,6 +19,7 @@ O Command Center deve ler:
 - `project-state/weekly-focus.json`
 - `project-state/health-checks.json`
 - `project-state/rbac-audit.json`
+- `project-state/agent-workflow.json`
 
 ## Telas iniciais
 
@@ -30,6 +31,21 @@ O Command Center deve ler:
 - módulos bloqueados;
 - riscos críticos;
 - próximos passos.
+
+### Estoque
+
+- módulos críticos do estoque;
+- contratos de API;
+- testes obrigatórios;
+- riscos do estoque;
+- divisão Codex/Claude para produtos, fichas, produção, contagem e permissões.
+
+### Agentes
+
+- papéis oficiais de Thiago, Codex e Claude;
+- fluxo do briefing ao deploy;
+- prompt copiável para reposicionar o Claude como revisor/arquiteto;
+- critérios de pronto.
 
 ### Módulos
 
@@ -69,15 +85,24 @@ O Command Center deve ler:
 
 `em_andamento`
 
-A primeira versão visual foi criada como **Titan Mapper**:
+A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Titan Command Center**:
 
-- página: `/mapper`;
+- página oficial: `/command-center`;
+- atalho/compatibilidade: `/mapper`;
 - arquivo: `public/mapper.html`;
 - API read-only: `GET /api/mapper/state`;
 - acesso: restrito a gestor por `admin_id`;
 - fonte: arquivos permitidos de `project-state/`.
 
-Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys e fronteiras críticas enquanto outras ferramentas atuam nos módulos.
+Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompanhar progresso, riscos, tarefas, deploys, fronteiras críticas e divisão de responsabilidades enquanto outras ferramentas atuam nos módulos.
+
+## Regra operacional entre agentes
+
+- Thiago define prioridade e aprova fluxo operacional.
+- Codex implementa código, interface, testes, documentação, PR e deploy.
+- Claude avalia regra, calcula impacto, aponta lacunas, revisa e recomenda a melhor ordem de execução.
+- O briefing para Claude deve ser copiado da aba **Agentes** do Command Center.
+- A aba **Estoque** deve orientar a próxima entrega do estoque usando contratos, riscos, testes e tarefas.
 
 ## Critério de pronto da primeira versão
 
@@ -88,6 +113,10 @@ Esta versão não substitui o trabalho do estoque. Ela existe para Thiago acompa
 - mostra deploys;
 - mostra última blindagem/smoke;
 - mostra última auditoria de permissões/RBAC;
+- mostra workflow dos agentes;
+- mostra briefing copiável para Claude;
+- mostra visão dedicada do estoque;
+- possui filtros por módulo/status/ferramenta;
 - não expõe secrets;
 - exige gestor;
-- pode evoluir depois para GitHub/EasyPanel.
+- pode evoluir depois para ações graváveis auditadas e login integrado.

@@ -13,9 +13,9 @@
   },
   {
     "fase": 3,
-    "nome": "Command Center inicial",
+    "nome": "Command Center operacional",
     "status": "em_andamento",
-    "entregas": ["Titan Mapper visual", "visão geral", "módulos", "tarefas", "riscos", "deploys"]
+    "entregas": ["Titan Mapper visual", "rota /command-center", "abas operacionais", "briefing Claude", "visão de estoque", "filtros", "tarefas", "riscos", "deploys"]
   },
   {
     "fase": 4,

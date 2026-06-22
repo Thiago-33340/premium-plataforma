@@ -93,5 +93,21 @@
       "O mapper não deve expor secrets; a API lê apenas arquivos permitidos de `project-state`.",
       "Toda evolução relevante deve atualizar tarefas, riscos ou decisões."
     ]
+  },
+  {
+    "id": "decision-008",
+    "data": "2026-06-22",
+    "decisao": "Separar funções entre Codex e Claude usando o Command Center",
+    "motivo": "O estoque está crítico e editar em paralelo sem coordenação aumenta retrabalho. O Command Center passa a ser o trilho oficial para orientar implementação, revisão, cálculo, testes e deploy.",
+    "impacto": "Codex assume implementação de código, UI, testes, PR e deploy. Claude assume revisão estratégica, cálculo de impacto, critérios de aceite, lacunas e suporte de arquitetura. Thiago aprova prioridade e valida operação.",
+    "modulos_afetados": ["command-center", "estoque-v2", "producao-fichas", "contagem-auditoria", "permissoes-staff"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "O briefing para Claude deve sair da aba Agentes do Command Center.",
+      "O estoque deve ser guiado pela aba Estoque: contratos, testes, riscos e tarefas.",
+      "Claude não deve implementar no mesmo arquivo em paralelo quando Codex estiver executando a entrega.",
+      "Toda mudança relevante continua registrada em project-state."
+    ]
   }
 ]

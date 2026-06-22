@@ -32,7 +32,7 @@ const PROJECT_STATE_FILES = [
   'tasks.json', 'risks.json', 'dependencies.json', 'decisions.json', 'roadmap.json',
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
-  'test-matrix.json'
+  'test-matrix.json', 'agent-workflow.json'
 ];
 async function gestorBasico(uid) {
   if (!uid) return null;
@@ -2480,7 +2480,9 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
-    if (p === '/mapper' || p === '/mapper/') return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
+    if (p === '/mapper' || p === '/mapper/' || p === '/command-center' || p === '/command-center/') {
+      return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
+    }
     const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
     const fp = path.join(ROOT, 'public', safe);
     if (fp.startsWith(path.join(ROOT, 'public'))) return serveStatic(res, fp);

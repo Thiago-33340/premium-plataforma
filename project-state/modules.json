@@ -196,7 +196,7 @@
     "id": "mesas-caixa",
     "nome": "Mesas, comandas e caixa",
     "status": "detectado",
-    "progresso": 45,
+    "progresso": 70,
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "revisor": "Claude Opus ou Codex",
@@ -289,15 +289,16 @@
     "repositorio": "Thiago-33340/premium-plataforma",
     "container": "a_definir",
     "banco": "project-state",
-    "arquivos_chave": ["public/mapper.html", "project-state/*.json", "docs/00-indice.md", "server-pg.js"],
+    "arquivos_chave": ["public/mapper.html", "project-state/*.json", "project-state/agent-workflow.json", "docs/00-indice.md", "server-pg.js"],
     "rotas_relacionadas": ["mapper-state"],
     "pendencias": [
       "Adicionar login integrado ao admin/estoque",
-      "Permitir filtro por módulo e ferramenta atuante",
-      "Criar visão específica do estoque após a entrega do Claude"
+      "Transformar ações do Command Center em registros graváveis auditados",
+      "Criar visão de estoque com métricas reais depois da entrega do Claude"
     ],
     "proximos_passos": [
-      "Adicionar visão específica do estoque depois da entrega do Claude",
+      "Usar /command-center como rota oficial da central",
+      "Entregar briefing do Claude pela aba Agentes",
       "Registrar cada avanço relevante em project-state"
     ]
   }
