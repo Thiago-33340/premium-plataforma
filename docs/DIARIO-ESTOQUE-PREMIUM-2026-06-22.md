@@ -665,3 +665,16 @@ Critério de aceite pós-deploy:
 - `Massa preparada` e `Brigadeiro de Ninho` aparecerem em `/api/est/produtos`;
 - `/api/est/fichas-cardapio?usuario_id=thiago` retornar resumo com opções preenchidas;
 - smoke read-only permanecer 19/19.
+
+Resultado final desta rodada:
+
+- Deploys aplicados até o commit `941479c`.
+- `ficha_itens=1521` em produção.
+- 285 opções do cardápio com ficha técnica vinculada.
+- 24 opções permanecem sem ficha: todas são opções de borda/estilo de borda e exigem modelagem combinatória para não gerar baixa duplicada.
+- `Massa preparada`, `Brigadeiro de Ninho`, `Morango em cubos` e `Batata frita` foram criados como itens produzidos/contáveis.
+- Smoke read-only pós-import: 19/19.
+
+Pendência consciente:
+
+- Modelar bordas combinatórias usando `fichas_borda` do relatório Claude/Saipos. Não tratar como sabor comum, porque o cardápio separa estilo de borda e recheio da borda.

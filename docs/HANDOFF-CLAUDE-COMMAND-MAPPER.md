@@ -319,3 +319,14 @@ Tarefa sugerida para Claude após validação:
 1. revisar se os aliases escolhidos refletem a operação real da Premium;
 2. propor conversões/pesos para itens comprados por caixa/maço/unidade e consumidos em g/ml/fatias;
 3. separar o que deve virar ficha de produção antes de ser consumido por venda.
+
+Resultado validado em produção:
+
+- `ficha_itens=1521`;
+- 285 opções com ficha técnica;
+- smoke read-only 19/19;
+- 24 opções sem ficha são bordas/estilo de borda.
+
+Primeira tarefa recomendada para Claude no Command:
+
+- revisar `fichas_borda` do relatório Claude/Saipos e propor a modelagem correta para estilo de borda + recheio da borda, evitando baixa duplicada.
