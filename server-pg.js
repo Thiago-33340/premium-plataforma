@@ -157,9 +157,9 @@ const PROJECT_STATE_FILES = [
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
   'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json',
-  'command-audit-log.json'
+  'agent-bridge.json', 'agent-reports.json', 'command-audit-log.json'
 ];
-const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'deploys.json', 'command-audit-log.json']);
+const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'deploys.json', 'agent-reports.json', 'command-audit-log.json']);
 const PROJECT_STATE_DIR = path.join(ROOT, 'project-state');
 async function gestorBasico(uid) {
   if (!uid) return null;
@@ -190,6 +190,7 @@ function aplicarCommandActionsNoState(files, actions) {
   const risks = Array.isArray(files['risks.json']) ? files['risks.json'] : [];
   const decisions = Array.isArray(files['decisions.json']) ? files['decisions.json'] : [];
   const deploys = Array.isArray(files['deploys.json']) ? files['deploys.json'] : [];
+  const agentReports = Array.isArray(files['agent-reports.json']) ? files['agent-reports.json'] : [];
   const auditLog = Array.isArray(files['command-audit-log.json']) ? files['command-audit-log.json'] : [];
 
   for (const row of actions) {
@@ -203,12 +204,14 @@ function aplicarCommandActionsNoState(files, actions) {
     if (row.action === 'create_deploy_record' && target.id) upsertCommandItem(deploys, target, false);
     if (row.action === 'approve_deploy_record' && target.id) upsertCommandItem(deploys, target, true);
     if (row.action === 'trigger_deploy_external' && target.id) upsertCommandItem(deploys, target, true);
+    if (row.action === 'create_agent_report' && target.id) upsertCommandItem(agentReports, target, false);
     if (audit.id) upsertCommandItem(auditLog, audit, false);
   }
   files['tasks.json'] = tasks;
   files['risks.json'] = risks;
   files['decisions.json'] = decisions;
   files['deploys.json'] = deploys;
+  files['agent-reports.json'] = agentReports;
   files['command-audit-log.json'] = auditLog
     .sort((a, b) => String(a.criado_em || '').localeCompare(String(b.criado_em || '')))
     .slice(-500);
@@ -1163,6 +1166,37 @@ async function api(req, res, url) {
         return json(res, 201, { ok: true, target: decision, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
+      if (action === 'create_agent_report') {
+        const state = await lerProjectStateSeguro();
+        const reports = Array.isArray(state['agent-reports.json']) ? state['agent-reports.json'] : lerProjectJson('agent-reports.json', []);
+        const agent = textoLimpo(b.agent || b.agente || 'Claude', 80);
+        const titulo = textoLimpo(b.titulo, 180);
+        if (!titulo) return json(res, 400, { erro: 'Informe o título do relatório do agente.' });
+        const report = {
+          id: proximoId(reports, 'agent-report-', 3),
+          agent,
+          assignment_id: textoLimpo(b.assignment_id || b.missao_id, 120) || null,
+          titulo,
+          status: textoLimpo(b.status, 60) || 'recebido',
+          modulo: textoLimpo(b.modulo, 80) || 'command-center',
+          resumo: textoLimpo(b.resumo || b.detalhe, 3000),
+          achados: listaLinhasLimpa(b.achados, 20, 260),
+          recomendacoes: listaLinhasLimpa(b.recomendacoes || b.proximo_passo, 20, 260),
+          testes_sugeridos: listaLinhasLimpa(b.testes_sugeridos || b.testes, 20, 260),
+          bloqueios: listaLinhasLimpa(b.bloqueios, 12, 260),
+          converte_em: listaLimpa(b.converte_em, 8),
+          criado_via_command: true,
+          criado_por: gestor.email,
+          criado_por_nome: gestor.nome || gestor.email,
+          criado_em: new Date().toISOString()
+        };
+        reports.push(report);
+        gravarProjectJson('agent-reports.json', reports);
+        const audit = registrarCommandAudit(gestor, action, 'agent-reports.json', report.id, `Relatório de agente registrado: ${report.agent} — ${report.titulo}`, { assignment_id: report.assignment_id, status: report.status });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'agent-reports.json', report.id, report, audit);
+        return json(res, 201, { ok: true, target: report, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+      }
+
       if (action === 'create_deploy_record') {
         const state = await lerProjectStateSeguro();
         const deploys = Array.isArray(state['deploys.json']) ? state['deploys.json'] : lerProjectJson('deploys.json', []);
@@ -1615,9 +1649,9 @@ async function api(req, res, url) {
     const uid = url.searchParams.get('usuario_id');
     if (!(await estPode(uid, 'acessar_produtos'))) return json(res, 403, { erro: 'Sem permissão para consultar fichas.' });
     const cats = await db.q('SELECT id,nome,ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem,nome',[TENANT]);
-    const prods = await db.q('SELECT id,categoria_id,nome,status FROM produtos WHERE tenant_id=$1 ORDER BY ordem,nome',[TENANT]);
+    const prods = await db.q('SELECT id,categoria_id,nome,status,codigo_externo,codigo_externo AS codigo FROM produtos WHERE tenant_id=$1 ORDER BY ordem,nome',[TENANT]);
     const grupos = await db.q('SELECT id,produto_id,nome FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem,nome',[TENANT]);
-    const opcoes = await db.q('SELECT o.id,o.grupo_id,o.nome,o.status FROM opcoes o JOIN opcao_grupos g ON g.id=o.grupo_id WHERE o.tenant_id=$1 ORDER BY o.ordem,o.nome',[TENANT]);
+    const opcoes = await db.q('SELECT o.id,o.grupo_id,o.nome,o.status,o.codigo_externo,o.codigo_externo AS codigo FROM opcoes o JOIN opcao_grupos g ON g.id=o.grupo_id WHERE o.tenant_id=$1 ORDER BY o.ordem,o.nome',[TENANT]);
     const resumo = await db.q('SELECT opcao_id,produto_id,count(*)::int n FROM ficha_itens WHERE tenant_id=$1 GROUP BY opcao_id,produto_id',[TENANT]);
     return json(res,200,{categorias:cats.rows,produtos:prods.rows,grupos:grupos.rows,opcoes:opcoes.rows,resumo:resumo.rows});
   }
@@ -3127,12 +3161,12 @@ async function api(req, res, url) {
     // catálogo completo p/ admin (mostra TODOS os itens, qualquer status)
     if (seg[2] === 'catalogo' && req.method === 'GET') {
       const cats = await db.q('SELECT id, codigo, nome, ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem, nome', [TENANT]);
-      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, status, ordem FROM produtos WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, status, codigo_externo, ordem FROM produtos WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
       const grupos = await db.q('SELECT id, produto_id, nome, ordem, min_escolhas, max_escolhas, permite_repeticao, regra_preco, condicao FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
-      const opcoes = await db.q('SELECT id, grupo_id, nome, descricao, preco, status, ordem FROM opcoes WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
-      const opByG = {}; for (const o of opcoes.rows) (opByG[o.grupo_id] = opByG[o.grupo_id] || []).push({ id: o.id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, ordem: o.ordem });
+      const opcoes = await db.q('SELECT id, grupo_id, nome, descricao, preco, status, codigo_externo, ordem FROM opcoes WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
+      const opByG = {}; for (const o of opcoes.rows) (opByG[o.grupo_id] = opByG[o.grupo_id] || []).push({ id: o.id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, codigo: o.codigo_externo || '', ordem: o.ordem });
       const gByP = {}; for (const g of grupos.rows) (gByP[g.produto_id] = gByP[g.produto_id] || []).push({ id: g.id, nome: g.nome, min: g.min_escolhas, max: g.max_escolhas, repete: g.permite_repeticao, regra: g.regra_preco, condicao: g.condicao || {}, opcoes: opByG[g.id] || [] });
-      const pByC = {}; for (const p of prods.rows) (pByC[p.categoria_id] = pByC[p.categoria_id] || []).push({ id: p.id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, status: p.status, ordem: p.ordem, grupos: gByP[p.id] || [] });
+      const pByC = {}; for (const p of prods.rows) (pByC[p.categoria_id] = pByC[p.categoria_id] || []).push({ id: p.id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, status: p.status, codigo: p.codigo_externo || '', ordem: p.ordem, grupos: gByP[p.id] || [] });
       const categorias = cats.rows.map(c => ({ id: c.id, codigo: c.codigo, nome: c.nome, ordem: c.ordem, produtos: pByC[c.id] || [] }));
       return json(res, 200, { categorias });
     }
@@ -3158,19 +3192,21 @@ async function api(req, res, url) {
     if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
       const nome = String(body.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
       const tipo = (body.tipo_montagem === 'MONTAVEL') ? 'MONTAVEL' : 'SIMPLES';
-      const r = await db.q(`INSERT INTO produtos (id,tenant_id,categoria_id,nome,descricao,tipo_montagem,preco_base,regra_preco,gratuito,status,ordem)
-        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,'ATIVO',$9) RETURNING id`,
+      const r = await db.q(`INSERT INTO produtos (id,tenant_id,categoria_id,nome,descricao,tipo_montagem,preco_base,regra_preco,gratuito,status,ordem,codigo_externo)
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,'ATIVO',$9,$10) RETURNING id`,
         [TENANT, body.categoria_id ? Number(body.categoria_id) : null, nome, body.descricao || '', tipo, money(body.preco_base || 0),
-         body.regra_preco || (tipo === 'SIMPLES' ? 'FIXO' : 'SOMA'), !!body.gratuito, Number(body.ordem) || 999]);
+         body.regra_preco || (tipo === 'SIMPLES' ? 'FIXO' : 'SOMA'), !!body.gratuito, Number(body.ordem) || 999,
+         body.codigo != null ? String(body.codigo).trim() || null : null]);
       return json(res, 201, { ok: true, id: r.rows[0].id });
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'PATCH') {
       await db.q(`UPDATE produtos SET nome=COALESCE($2,nome), descricao=COALESCE($3,descricao), preco_base=COALESCE($4,preco_base),
         tipo_montagem=COALESCE($5,tipo_montagem), status=COALESCE($6,status), ordem=COALESCE($7,ordem), categoria_id=COALESCE($8,categoria_id),
-        regra_preco=COALESCE($9,regra_preco), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$10`,
+        regra_preco=COALESCE($9,regra_preco), codigo_externo=COALESCE($10,codigo_externo), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$11`,
         [seg[3], body.nome ?? null, body.descricao ?? null, body.preco_base != null ? money(body.preco_base) : null,
          body.tipo_montagem ?? null, body.status ?? null, body.ordem != null ? Number(body.ordem) : null,
-         body.categoria_id != null ? Number(body.categoria_id) : null, body.regra_preco ?? null, TENANT]);
+         body.categoria_id != null ? Number(body.categoria_id) : null, body.regra_preco ?? null,
+         body.codigo != null ? String(body.codigo).trim() || null : null, TENANT]);
       return json(res, 200, { ok: true });
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {
@@ -3205,16 +3241,18 @@ async function api(req, res, url) {
     // OPÇÃO (escolha dentro de uma variação)
     if (seg[2] === 'opcao' && !seg[3] && req.method === 'POST') {
       const nome = String(body.nome || '').trim(); if (!nome || !body.grupo_id) return json(res, 400, { erro: 'informe grupo_id e nome' });
-      const r = await db.q(`INSERT INTO opcoes (id,tenant_id,grupo_id,nome,descricao,preco,status,ordem)
-        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-        [TENANT, body.grupo_id, nome, body.descricao || '', money(body.preco || 0), body.status || 'ATIVO', Number(body.ordem) || 999]);
+      const r = await db.q(`INSERT INTO opcoes (id,tenant_id,grupo_id,nome,descricao,preco,status,ordem,codigo_externo)
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [TENANT, body.grupo_id, nome, body.descricao || '', money(body.preco || 0), body.status || 'ATIVO', Number(body.ordem) || 999,
+         body.codigo != null ? String(body.codigo).trim() || null : null]);
       return json(res, 201, { ok: true, id: r.rows[0].id });
     }
     if (seg[2] === 'opcao' && seg[3] && req.method === 'PATCH') {
       await db.q(`UPDATE opcoes SET nome=COALESCE($2,nome), preco=COALESCE($3,preco), status=COALESCE($4,status),
-        descricao=COALESCE($5,descricao), ordem=COALESCE($6,ordem), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$7`,
+        descricao=COALESCE($5,descricao), ordem=COALESCE($6,ordem), codigo_externo=COALESCE($7,codigo_externo), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$8`,
         [seg[3], body.nome ?? null, body.preco != null ? money(body.preco) : null, body.status ?? null,
-         body.descricao ?? null, body.ordem != null ? Number(body.ordem) : null, TENANT]);
+         body.descricao ?? null, body.ordem != null ? Number(body.ordem) : null,
+         body.codigo != null ? String(body.codigo).trim() || null : null, TENANT]);
       return json(res, 200, { ok: true });
     }
     if (seg[2] === 'opcao' && seg[3] && req.method === 'DELETE') {

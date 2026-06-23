@@ -47,6 +47,9 @@ O Command Center deve ler:
 - papéis oficiais de Thiago, Codex e Claude;
 - fluxo do briefing ao deploy;
 - prompt copiável para reposicionar o Claude como revisor/arquiteto;
+- Agent Bridge operacional em `project-state/agent-bridge.json`;
+- registro auditado de relatórios de agente em `project-state/agent-reports.json`;
+- formulário **Registrar relatório do Claude** na aba Agentes;
 - critérios de pronto.
 
 ### Módulos
@@ -158,6 +161,13 @@ A aba **Execução** permite, para usuários com `editar_project_state` ou `aces
 - criar risco;
 - criar decisão.
 
+A aba **Agentes** permite registrar relatório do Claude:
+
+- missão ativa vem de `project-state/agent-bridge.json`;
+- relatório é salvo em `project-state/agent-reports.json`;
+- ação auditada: `create_agent_report`;
+- o relatório não altera código, banco operacional ou deploy sozinho.
+
 A aba **Deploys** permite registrar plano/resultado de deploy:
 
 - planejado;
@@ -205,7 +215,8 @@ Limite consciente:
 - Thiago define prioridade e aprova fluxo operacional.
 - Codex implementa código, interface, testes, documentação, PR e deploy.
 - Claude avalia regra, calcula impacto, aponta lacunas, revisa e recomenda a melhor ordem de execução.
-- O briefing para Claude deve ser copiado da aba **Agentes** do Command Center.
+- O briefing para Claude deve ser copiado da aba **Agentes** do Command Center ou lido em `project-state/agent-bridge.json`.
+- O retorno do Claude deve ser registrado em **Agentes → Registrar relatório do Claude**.
 - A aba **Estoque** deve orientar a próxima entrega do estoque usando contratos, riscos, testes e tarefas.
 
 ## Critério de pronto da primeira versão
@@ -219,6 +230,8 @@ Limite consciente:
 - mostra última auditoria de permissões/RBAC;
 - mostra workflow dos agentes;
 - mostra briefing copiável para Claude;
+- mostra missões ativas do Agent Bridge;
+- permite registrar relatório do Claude como ação auditada do Command;
 - mostra visão dedicada do estoque;
 - mostra aba de acessos para usuários com permissão;
 - permite criar tarefa, risco, decisão e atualizar tarefa com auditoria;

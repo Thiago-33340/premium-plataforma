@@ -1,12 +1,12 @@
 {
-  "status": "ativo",
-  "version": "2026-06-22.1",
+  "status": "operacional",
+  "version": "2026-06-23.1",
   "current_mission": {
     "title": "Entregar estoque operacional Premium com governança pelo Command Center",
     "owner": "Thiago",
     "primary_executor": "Codex",
     "strategic_reviewer": "Claude",
-    "context": "O estoque virou o módulo mais crítico. A partir de agora, o Command Center organiza responsabilidades, fronteiras técnicas, riscos, testes e próximos passos para evitar retrabalho entre ferramentas.",
+    "context": "O estoque virou o módulo mais crítico. A partir de agora, o Command Center organiza responsabilidades, fronteiras técnicas, riscos, testes, próximos passos e relatórios de agentes para evitar retrabalho entre ferramentas.",
     "north_star": "Um gestor consegue cadastrar produtos, setores, fichas técnicas, produção, contagem, auditoria e permissões com segurança; colaboradores contam apenas o que foi atribuído; cada mudança passa por smoke e registro no project-state."
   },
   "roles": [
@@ -70,9 +70,9 @@
     {
       "step": 2,
       "name": "Arquitetura e cálculo",
-      "owner": "Codex substituindo Claude nesta execução",
-      "status": "concluido_em_2026-06-22",
-      "output": "Plano, riscos, regras operacionais, cálculos e lacunas registrados em project-state/stock-command-step2.json"
+      "owner": "Claude ativo via Agent Bridge; Codex mantém implementação",
+      "status": "operacional_com_bridge_ativo",
+      "output": "Claude revisa regra/cálculo e registra relatório em project-state/agent-reports.json; Codex implementa a partir do relatório aprovado"
     },
     {
       "step": 3,
@@ -128,7 +128,7 @@
   "handoff_to_claude": {
     "title": "Prompt operacional para o Claude",
     "intent": "Fazer o Claude atuar como revisor/arquiteto, não como executor concorrente no código.",
-    "prompt": "Você agora atua como arquiteto/revisor do Titan, guiado pelo Command Center. Não implemente código em paralelo nos mesmos arquivos sem alinhar. Seu papel é avaliar o plano, calcular impactos de estoque/produção/fichas/conversões, apontar riscos, escrever critérios de aceite e revisar o resultado do Codex. Use as fronteiras oficiais: novas funções de estoque em /api/est/* e tabelas est_*; /api/estoque/* é legado; setores são dinâmicos por cliente; ficha de produção interna é est_ficha_* e não ficha de cardápio. Entregue recomendações objetivas, cenários de teste e priorização para acelerar a Premium sem criar retrabalho."
+    "prompt": "Você agora atua como arquiteto/revisor do Titan, guiado pelo Command Center e pelo Agent Bridge em project-state/agent-bridge.json. Não implemente código em paralelo nos mesmos arquivos sem alinhar. Seu papel é avaliar o plano, calcular impactos de estoque/produção/fichas/conversões, apontar riscos, escrever critérios de aceite e revisar o resultado do Codex. Use as fronteiras oficiais: novas funções de estoque em /api/est/* e tabelas est_*; /api/estoque/* é legado; setores são dinâmicos por cliente; ficha de produção interna usa est_ficha_*; ficha do cardápio é outra camada. Quando concluir, entregue um relatório estruturado para ser registrado em Command Center > Agentes > Registrar relatório do Claude."
   },
   "definition_of_done": [
     "Fluxo principal funciona no desktop e celular",

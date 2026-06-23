@@ -1,0 +1,73 @@
+{
+  "id": "agent-bridge",
+  "status": "operacional",
+  "version": "2026-06-23.1",
+  "updated_at": "2026-06-23T01:45:00-03:00",
+  "purpose": "Transformar a aba Agentes do Command Center em esteira operacional para Claude atuar como revisor/arquiteto, com entrada, missão ativa e saída auditável.",
+  "operating_model": {
+    "claude_role": "Revisor estratégico, cálculo, regra operacional, UX, critérios de aceite e testes.",
+    "codex_role": "Implementação, ajustes de código/UI/API, validação técnica, commit e deploy quando autorizado.",
+    "thiago_tassiano_role": "Prioridade, aprovação operacional e decisão de publicar.",
+    "rule": "Relatório do Claude entra no Command como evidência auditada. Ele não altera código, deploy ou banco automaticamente."
+  },
+  "active_assignments": [
+    {
+      "id": "claude-op-001-mapper-bordas-premium",
+      "agent": "Claude",
+      "status": "ativo",
+      "priority": "critica",
+      "module": "producao-fichas",
+      "title": "Revisar mapper PDV/Saipos das bordas Premium e critérios de aceite antes da migração viva",
+      "objective": "Garantir que a remodelagem de bordas por código pai/filho não gere baixa duplicada, opção impossível no cardápio ou vínculo errado de Pizza Pequena.",
+      "must_read": [
+        "data/premium-border-pdv-mapper-v1.json",
+        "docs/MAPPER-BORDAS-PREMIUM-2026-06-23.md",
+        "project-state/tasks.json",
+        "project-state/stock-readiness.json",
+        "project-state/agent-workflow.json"
+      ],
+      "review_questions": [
+        "O modelo de Pizza Pequena deve permanecer como produto único com grupos condicionais ou ser dividido em quatro produtos?",
+        "Quais opções de borda devem ser ocultadas imediatamente para não vender combinação inexistente?",
+        "Quais ingredientes ainda precisam de conversão antes de baixa automática?",
+        "Quais testes obrigatórios validam pedido com borda doce, salgada, tradicional, pãozinho e sem borda?",
+        "O mapper está ignorando corretamente 'Vulcões montados' sem perder baixa real dos recheios?"
+      ],
+      "expected_output": [
+        "Resumo executivo",
+        "Achados críticos",
+        "Recomendações priorizadas",
+        "Testes sugeridos",
+        "Bloqueios ou dúvidas operacionais",
+        "Veredito: pode migrar agora, migrar com ressalvas, ou não migrar"
+      ],
+      "delivery_path": "Command Center > Agentes > Registrar relatório do Claude",
+      "fallback_delivery": "Se não conseguir usar a tela, entregar em Markdown para Thiago/Codex colar no Command."
+    }
+  ],
+  "report_schema": {
+    "agent": "Claude",
+    "assignment_id": "claude-op-001-mapper-bordas-premium",
+    "titulo": "Título curto da revisão",
+    "status": "recebido | revisado | aprovado_com_ressalvas | bloqueado",
+    "resumo": "Síntese objetiva",
+    "achados": ["Achado 1", "Achado 2"],
+    "recomendacoes": ["Recomendação 1", "Recomendação 2"],
+    "testes_sugeridos": ["Teste 1", "Teste 2"],
+    "bloqueios": ["Bloqueio ou dúvida"],
+    "converte_em": ["task", "risk", "decision", "test"]
+  },
+  "command_center_surface": {
+    "tab": "Agentes",
+    "read_panel": "Agent Bridge operacional",
+    "write_panel": "Registrar relatório do Claude",
+    "audit_file": "project-state/agent-reports.json",
+    "api_action": "POST /api/mapper/action { action: 'create_agent_report' }"
+  },
+  "guards": [
+    "Não expor secrets, .env, tokens, certificados ou bancos locais.",
+    "Não tratar setores da Premium como padrão fixo do Titan.",
+    "Não implementar em paralelo nos mesmos arquivos quando Codex estiver executando.",
+    "Não registrar deploy a partir de relatório do Claude sem aprovação humana."
+  ]
+}

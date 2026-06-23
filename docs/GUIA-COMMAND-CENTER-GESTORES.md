@@ -280,6 +280,17 @@ Regra prática:
 - Diário registra o que mudou.
 - Handoff orienta o Claude.
 
+## Como colocar o Claude para trabalhar pelo Command
+
+1. Abra **Command Center → Agentes**.
+2. Veja o card **Agent Bridge operacional**.
+3. Copie o briefing do Claude ou mande para ele ler `project-state/agent-bridge.json`.
+4. Peça para ele responder seguindo o formato do `report_schema`.
+5. Quando ele devolver a análise, cole em **Registrar relatório do Claude**.
+6. Clique em **Registrar relatório no Command**.
+
+Esse relatório fica salvo em `project-state/agent-reports.json` e também entra na trilha auditada do Command. Ele não publica código e não aciona deploy sozinho; serve para Thiago/Tassiano/Codex decidirem o próximo passo com clareza.
+
 ## Regra de ouro
 
 Thiago e Tassiano decidem a operação.  

@@ -27,6 +27,8 @@ const required = [
   'agent-workflow.json',
   'stock-command-step2.json',
   'stock-readiness.json',
+  'agent-bridge.json',
+  'agent-reports.json',
   'command-audit-log.json'
 ];
 
@@ -132,6 +134,31 @@ if (!agentWorkflow || typeof agentWorkflow !== 'object' || Array.isArray(agentWo
   if (!Array.isArray(agentWorkflow.workflow)) errors.push('agent-workflow.json precisa ter workflow como lista.');
   if (!agentWorkflow.handoff_to_claude || typeof agentWorkflow.handoff_to_claude !== 'object') {
     errors.push('agent-workflow.json precisa ter handoff_to_claude como objeto.');
+  }
+}
+
+const agentBridge = data['agent-bridge.json'];
+if (!agentBridge || typeof agentBridge !== 'object' || Array.isArray(agentBridge)) {
+  errors.push('agent-bridge.json deveria ser um objeto.');
+} else {
+  for (const field of ['id', 'status', 'active_assignments', 'report_schema', 'command_center_surface']) {
+    if (agentBridge[field] == null) errors.push(`agent-bridge.json sem campo ${field}.`);
+  }
+  if (!Array.isArray(agentBridge.active_assignments)) errors.push('agent-bridge.json precisa ter active_assignments como lista.');
+}
+
+const agentReports = data['agent-reports.json'];
+if (!Array.isArray(agentReports)) {
+  errors.push('agent-reports.json deveria ser uma lista.');
+} else {
+  for (const [idx, report] of agentReports.entries()) {
+    if (!report || typeof report !== 'object') {
+      errors.push(`agent-reports.json item ${idx} deveria ser objeto.`);
+      continue;
+    }
+    for (const field of ['id', 'agent', 'titulo', 'status', 'criado_em']) {
+      if (report[field] == null) errors.push(`agent-reports.json item ${idx} sem campo ${field}.`);
+    }
   }
 }
 

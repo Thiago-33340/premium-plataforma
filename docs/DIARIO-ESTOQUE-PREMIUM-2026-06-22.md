@@ -678,3 +678,73 @@ Resultado final desta rodada:
 Pendência consciente:
 
 - Modelar bordas combinatórias usando `fichas_borda` do relatório Claude/Saipos. Não tratar como sabor comum, porque o cardápio separa estilo de borda e recheio da borda.
+
+## Marco 17 — Mapper PDV/Saipos das bordas Premium
+
+Status: mapper criado, ajuste de cardápio preparado em nível de código/base
+
+O que foi analisado:
+
+- Planilha `cardapio_premium_detalhado_ingredientes_v4.xlsx`.
+- Abas principais: `CARDAPIO_DETALHADO`, `EXPLOSAO_INGREDIENTES` e `RECEITAS_BORDAS`.
+- Catálogo atual em produção via `/api/catalogo`.
+- Itens de estoque em produção via `/api/est/produtos`.
+
+Artefatos criados/alterados:
+
+- Criado `data/premium-border-pdv-mapper-v1.json`.
+- Criado `docs/MAPPER-BORDAS-PREMIUM-2026-06-23.md`.
+- Atualizado `project-state/tasks.json`: `task-f2-026` passou para `em_andamento`.
+- `server-pg.js` passou a expor/salvar `codigo_externo` no catálogo admin e nas fichas de cardápio.
+- `public/admin.html` passou a mostrar/editar Código PDV/Saipos em produtos e opções.
+- `public/mesas.html` passou a aceitar `condicao.mostrar_se.igual_a`, igual à loja pública.
+
+Achados principais:
+
+- O cardápio atual simplificou bordas em 10 opções genéricas, mas a Saipos trabalha com códigos pai/filho por estilo real.
+- Pizza Grande + Borda Pãozinho espera 9 opções; faltam 8 e sobram 9 genéricas.
+- Pizza Grande + Borda Tradicional espera 6 opções; sobram 4 genéricas.
+- Pizza Grande + Borda Vulcão espera 21 opções; faltam 13 e sobram 2 genéricas.
+- Pizza Pequena está como produto único, mas a Saipos usa 4 códigos pai por estilo de borda. O modelo correto é manter a experiência simples com grupos condicionais por estilo, ou dividir em quatro produtos.
+- Alguns códigos atuais da Pizza Pequena vieram de Pizza Grande + Borda Pãozinho, portanto não devem ser usados como fonte confiável de baixa.
+
+Decisão importante:
+
+- Não criar item produzido `Vulcões montados`. Esse item foi marcado no mapper como ignorado por decisão operacional; a baixa deve ocorrer nos insumos reais da ficha.
+
+Próximo passo:
+
+- Criar migração idempotente do cardápio Premium usando o mapper:
+  - preencher códigos pai/filho;
+  - ocultar opções genéricas incorretas;
+  - inserir opções faltantes de borda;
+  - remodelar Pizza Pequena com grupos condicionais;
+  - importar fichas faltantes por código;
+  - validar `/api/catalogo`, `/api/est/fichas-cardapio?usuario_id=thiago` e smoke read-only.
+
+## Marco 18 — Agent Bridge do Claude entra em operação
+
+Status: operacional no Command Center
+
+Motivo:
+
+- Claude informou que o Command ainda parecia apenas planejado e não tinha caminho ativo para ele atuar.
+
+O que foi feito:
+
+- Criado `project-state/agent-bridge.json` com missão ativa para Claude.
+- Criado `project-state/agent-reports.json` para receber relatórios auditados de agentes.
+- `server-pg.js` ganhou ação `create_agent_report` em `POST /api/mapper/action`.
+- `public/mapper.html` ganhou painel **Agent Bridge operacional** e formulário **Registrar relatório do Claude** na aba Agentes.
+- `scripts/check-project-state.mjs` passou a validar os arquivos do Agent Bridge.
+- `project-state/agent-workflow.json` saiu de fluxo apenas ativo para `operacional`, indicando Claude ativo via Agent Bridge.
+- Documentados o uso e o handoff em `docs/HANDOFF-CLAUDE-COMMAND-MAPPER.md`, `docs/modulos/command-center.md` e `docs/GUIA-COMMAND-CENTER-GESTORES.md`.
+
+Primeira missão operacional:
+
+- `claude-op-001-mapper-bordas-premium`
+- Revisar o mapper PDV/Saipos das bordas Premium antes da migração viva do cardápio/fichas.
+
+Regra de segurança:
+
+- Relatório do Claude vira evidência auditada no Command, não alteração automática de código ou deploy.

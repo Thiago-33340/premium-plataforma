@@ -330,3 +330,31 @@ Resultado validado em produção:
 Primeira tarefa recomendada para Claude no Command:
 
 - revisar `fichas_borda` do relatório Claude/Saipos e propor a modelagem correta para estilo de borda + recheio da borda, evitando baixa duplicada.
+
+## Atualização — Agent Bridge operacional para Claude
+
+O Command Center deixou de ter apenas briefing copiável e agora possui uma esteira operacional para Claude.
+
+Fonte ativa:
+
+- `project-state/agent-bridge.json`
+- `project-state/agent-reports.json`
+
+Como Claude deve atuar:
+
+1. Ler `project-state/agent-bridge.json`.
+2. Pegar a missão ativa em `active_assignments`.
+3. Ler os arquivos listados em `must_read`.
+4. Responder no formato do `report_schema`.
+5. Thiago/Codex registra a resposta em **Command Center → Agentes → Registrar relatório do Claude**.
+
+Primeira missão ativa:
+
+- `claude-op-001-mapper-bordas-premium`
+- Objetivo: revisar o mapper PDV/Saipos das bordas Premium antes da migração viva do cardápio/fichas.
+
+Importante:
+
+- Relatório do Claude é evidência auditada, não deploy automático.
+- Claude não deve editar código em paralelo nos mesmos arquivos do Codex.
+- O resultado do Claude vira tarefa, risco, decisão, teste ou ajuste de implementação pelo Command.

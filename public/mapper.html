@@ -131,6 +131,7 @@
     let TOOL_USERS = null;
     let ACCESS_MSG = '';
     let COMMAND_MSG = '';
+    let AGENT_MSG = '';
     let DEPLOY_MSG = '';
     let ACTIVE = 'visao';
     let FILTER = { q:'', module:'', status:'', tool:'' };
@@ -313,6 +314,8 @@
         people: file(data, 'people.json', []),
         stockStep2: file(data, 'stock-command-step2.json', {}),
         stockReadiness: file(data, 'stock-readiness.json', {}),
+        agentBridge: file(data, 'agent-bridge.json', {}),
+        agentReports: file(data, 'agent-reports.json', []),
         audit: file(data, 'command-audit-log.json', []),
         dbActions: file(data, 'command-db-actions.json', [])
       };
@@ -379,6 +382,7 @@
       document.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { ACTIVE = btn.dataset.tab; render(); });
       bindFilters();
       bindCommandActions(p);
+      bindAgentActions(p);
       bindDeployActions(p);
       bindCopy(p);
       bindAcessos();
@@ -526,7 +530,48 @@
       const brief = buildClaudeBrief(p);
       const step2 = p.stockStep2 || {};
       const readiness = p.stockReadiness || {};
+      const bridge = p.agentBridge || {};
+      const assignments = bridge.active_assignments || [];
+      const active = assignments.filter(a => !['concluido','cancelado','arquivado'].includes(norm(a.status)));
+      const reports = (p.agentReports || []).slice().reverse();
+      const assignmentOptions = assignments.map(a => `<option value="${esc(a.id)}">${esc(a.id)} · ${esc(a.title || a.agent || 'missão')}</option>`).join('');
       return `
+        <div class="cols" style="margin-bottom:14px">
+          <div class="card pad callout">
+            <div class="sectionTitle"><h2>Agent Bridge operacional</h2><span class="pill ok">${esc(statusLabel(bridge.status || 'operacional'))}</span></div>
+            <div class="sub">${esc(bridge.purpose || 'Esteira ativa para agentes registrarem revisão no Command.')}</div>
+            <div class="list" style="margin-top:12px">${active.map(assignmentItem).join('') || empty('Nenhuma missão ativa para agente.')}</div>
+          </div>
+          <div class="card pad">
+            <div class="sectionTitle"><h2>Relatórios recebidos</h2><span class="pill">${reports.length}</span></div>
+            <div class="list">${reports.slice(0,5).map(agentReportItem).join('') || empty('Nenhum relatório de agente registrado ainda.')}</div>
+          </div>
+        </div>
+        ${temPerm('editar_project_state') ? `
+        <div class="card pad" style="margin-bottom:14px">
+          <div class="sectionTitle"><h2>Registrar relatório do Claude</h2><span class="pill ok">entrada operacional</span></div>
+          <div class="sub">Cole aqui a análise que o Claude devolver. O Command registra como artefato auditado em <span class="mono">agent-reports.json</span>; depois viramos tarefa, risco, decisão ou implementação.</div>
+          <div class="filters" style="margin-top:12px">
+            <select class="field" id="agentReportAssignment">${assignmentOptions || '<option value="">Sem missão ativa</option>'}</select>
+            <select class="field" id="agentReportStatus">
+              <option value="recebido">Recebido</option>
+              <option value="revisado">Revisado</option>
+              <option value="aprovado_com_ressalvas">Aprovado com ressalvas</option>
+              <option value="bloqueado">Bloqueado</option>
+            </select>
+            <input class="field" id="agentReportTitle" placeholder="Título da revisão do Claude">
+            <input class="field" id="agentReportConverts" placeholder="Converter em: task, risk, decision, test">
+          </div>
+          <textarea class="field" id="agentReportSummary" rows="3" placeholder="Resumo executivo"></textarea>
+          <textarea class="field" id="agentReportFindings" rows="3" placeholder="Achados críticos — um por linha"></textarea>
+          <textarea class="field" id="agentReportRecommendations" rows="3" placeholder="Recomendações — uma por linha"></textarea>
+          <textarea class="field" id="agentReportTests" rows="3" placeholder="Testes sugeridos — um por linha"></textarea>
+          <textarea class="field" id="agentReportBlocks" rows="2" placeholder="Bloqueios/dúvidas — um por linha"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+            <button class="btn primary" id="cmdCreateAgentReport">Registrar relatório no Command</button>
+            <span class="sub" id="agentReportMsg">${esc(AGENT_MSG || '')}</span>
+          </div>
+        </div>` : ''}
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad">
             <div class="sectionTitle"><h2>Quem faz o quê</h2><span class="pill ok">novo fluxo</span></div>
@@ -870,6 +915,15 @@
       return `<div class="phase"><div class="num">${esc(f.step)}</div><h3>${esc(f.name)}</h3><p class="mut">${esc(f.owner)}</p><p>${esc(f.output || '')}</p></div>`;
     }
 
+    function assignmentItem(a){
+      const reads = (a.must_read || []).slice(0,5).map(x => `<span class="tag">${esc(x)}</span>`).join('');
+      return `<div class="item"><span class="tag ${esc(norm(a.status))}">${esc(a.status || 'ativo')}</span><span class="tag ${esc(norm(a.priority))}">${esc(a.priority || 'prioridade')}</span><b>${esc(a.title || a.id)}</b><small>${esc(a.objective || '')}</small><small><b>Ler:</b> ${reads}</small><small><b>Entrega:</b> ${esc(a.delivery_path || '')}</small></div>`;
+    }
+
+    function agentReportItem(r){
+      return `<div class="item"><span class="tag ${esc(norm(r.agent))}">${esc(r.agent || 'agente')}</span><span class="tag ${esc(norm(r.status))}">${esc(r.status || 'recebido')}</span><b>${esc(r.titulo || r.id)}</b><small>${esc(r.assignment_id || '')} · ${fmt(r.criado_em)}</small><small>${esc(r.resumo || '')}</small></div>`;
+    }
+
     function testItem(t){
       return `<div class="item"><span class="tag ${esc(norm(t.priority))}">${esc(t.priority)}</span><span class="tag">${esc(t.type)}</span><b>${esc(t.id)}</b><small>${esc(t.expected || '')}</small><small class="mono">${esc(t.script || '')}</small></div>`;
     }
@@ -983,6 +1037,41 @@
           ACTIVE = 'execucao';
         }catch(e){
           COMMAND_MSG = e.message;
+          render();
+        }
+      };
+    }
+
+    function bindAgentActions(p){
+      if(ACTIVE !== 'agentes' || !temPerm('editar_project_state')) return;
+      const btn = document.getElementById('cmdCreateAgentReport');
+      if(!btn) return;
+      btn.onclick = async () => {
+        const payload = {
+          action:'create_agent_report',
+          agent:'Claude',
+          assignment_id:document.getElementById('agentReportAssignment').value,
+          titulo:document.getElementById('agentReportTitle').value,
+          status:document.getElementById('agentReportStatus').value,
+          modulo:'producao-fichas',
+          resumo:document.getElementById('agentReportSummary').value,
+          achados:document.getElementById('agentReportFindings').value,
+          recomendacoes:document.getElementById('agentReportRecommendations').value,
+          testes_sugeridos:document.getElementById('agentReportTests').value,
+          bloqueios:document.getElementById('agentReportBlocks').value,
+          converte_em:document.getElementById('agentReportConverts').value
+        };
+        if(!payload.titulo){
+          AGENT_MSG = 'Informe um título para o relatório do Claude.';
+          return render();
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          AGENT_MSG = `Relatório registrado: ${out.target?.id || 'relatório'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
+          await load();
+          ACTIVE = 'agentes';
+        }catch(e){
+          AGENT_MSG = e.message;
           render();
         }
       };

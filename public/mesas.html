@@ -165,7 +165,7 @@ function renderCardapio(){ const b=$('mBody'); b.innerHTML='';
 function addSimples(p){ enviarItem({nome:p.nome, resumo:'', item:{tipo:'simples',produto_id:p.id}, quantidade:1, preco_unit:Number(p.preco_base||0)}); }
 function abrirBuilder(p){ build={produto:p,sel:{}}; (p.grupos||[]).forEach(g=>build.sel[g.id]=[]); $('mTit').textContent=p.nome; $('mFoot').style.display='flex'; renderBuilder(); }
 function voltarCardapio(){ build=null; $('mTit').textContent='Adicionar item'; $('mFoot').style.display='none'; renderCardapio(); }
-function grupoVisivel(g){ const c=g.condicao&&g.condicao.mostrar_se; if(!c)return true; const gr=(build.produto.grupos||[]).find(x=>x.nome===c.grupo); if(!gr)return true; const e=(build.sel[gr.id]||[])[0]; if(!e)return false; if(c.diferente_de!=null)return e.nome!==c.diferente_de; return true; }
+function grupoVisivel(g){ const c=g.condicao&&g.condicao.mostrar_se; if(!c)return true; const gr=(build.produto.grupos||[]).find(x=>x.nome===c.grupo); if(!gr)return true; const e=(build.sel[gr.id]||[])[0]; if(!e)return false; if(c.diferente_de!=null)return e.nome!==c.diferente_de; if(c.igual_a!=null)return e.nome===c.igual_a; return true; }
 function renderBuilder(){ const p=build.produto, b=$('mBody'); b.innerHTML='';
   (p.grupos||[]).forEach(g=>{ if(!grupoVisivel(g)){ build.sel[g.id]=[]; return; } const arr=build.sel[g.id]||[];
     const w=document.createElement('div'); w.className='grupo'; w.innerHTML=`<div class="gt">${g.nome} <span class="gq">(${g.min>0?'obrigatório':'opcional'} · ${arr.length}/${g.max})</span></div>`;
