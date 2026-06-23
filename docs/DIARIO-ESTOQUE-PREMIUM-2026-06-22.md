@@ -1042,3 +1042,53 @@ Validação:
 Commit de código:
 
 - `4b5c83b` — `Melhora editor de produto e setor no estoque`
+
+## Marco 24 — Sessão temporária e atualização segura após deploy
+
+Data: 2026-06-23
+
+Status: implementado localmente, aguardando publicação/deploy
+
+Motivo:
+
+- Thiago relatou que, após atualizar o deploy, a tela de estoque podia continuar sem refletir a alteração quando a sessão já estava logada.
+- O estoque salvava sempre o usuário em `localStorage`, então o login ficava permanente no navegador.
+- A sessão restaurada usava a cópia antiga do usuário, o que podia atrasar a atualização de perfil, setores ou permissões.
+
+Decisão:
+
+- O login do estoque passa a ter a opção **Manter conectado** ao lado do PIN.
+- O padrão é **não manter conectado**:
+  - a sessão fica em `sessionStorage`;
+  - F5/reload mantém o usuário dentro;
+  - fechar o navegador encerra a sessão.
+- Quando **Manter conectado** é marcado:
+  - a sessão fica em `localStorage`, preservando o comportamento antigo.
+- A tela de estoque passa a verificar se existe versão nova do HTML em produção e exibe aviso para atualizar sem sair da conta.
+
+O que foi alterado:
+
+- `public/estoque.html`:
+  - adicionada a opção visual **Manter conectado** no passo do PIN;
+  - sessão temporária em `sessionStorage` quando a opção não é marcada;
+  - sessão permanente em `localStorage` somente quando marcada;
+  - `sair()` limpa os dois armazenamentos;
+  - restauração de sessão revalida o usuário no servidor antes de abrir o app;
+  - refresh silencioso do usuário a cada 3 minutos para atualizar perfil/setores/permissões;
+  - verificador de versão do estoque via `/api/app-version`;
+  - banner **Nova versão do estoque disponível** com botão **Atualizar agora**.
+- `server-pg.js`:
+  - criado `/api/app-version` com hash do `public/estoque.html`;
+  - criado `/api/staff/session` para revalidar usuário salvo sem pedir PIN novamente;
+  - login staff passou a usar uma função única de serialização pública do usuário;
+  - arquivos `.html` agora são servidos com `Cache-Control: no-store`, evitando cache velho em reload.
+
+Validação local:
+
+- `node --check server-pg.js`: OK.
+- Parse do JavaScript embutido em `public/estoque.html`: OK.
+- `npm run check:project-state`: OK.
+
+Observação:
+
+- A primeira versão com esse mecanismo precisa chegar ao navegador uma vez. Depois disso, novos deploys serão detectados pela própria tela aberta.

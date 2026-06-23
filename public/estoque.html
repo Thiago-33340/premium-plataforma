@@ -20,6 +20,10 @@ input,select,button,textarea{ font-family:inherit; font-size:16px; }
 #login img{ width:180px; max-width:70%; margin-bottom:8px; }
 #login h1{ font-size:18px; margin:6px 0 2px; } #login p{ margin:0 0 18px; }
 .card{ width:100%; max-width:380px; background:var(--bg2); border:1px solid var(--bd); border-radius:16px; padding:18px; }
+.remember-row{ display:flex; align-items:flex-start; gap:10px; margin:8px 0 10px; color:var(--mut); font-size:13px; line-height:1.35; cursor:pointer; }
+.remember-row input{ flex:0 0 auto; width:19px; height:19px; margin:1px 0 0; accent-color:var(--lar); }
+.remember-row b{ display:block; color:var(--tx); font-size:13px; }
+.remember-row small{ display:block; color:var(--mut); font-size:11px; }
 .field{ width:100%; background:var(--bg3); border:1px solid var(--bd); color:var(--tx); border-radius:12px;
   padding:14px; margin:6px 0; outline:none; }
 .field:focus{ border-color:var(--lar); }
@@ -80,6 +84,14 @@ nav button.on{ color:var(--lar); }
   background:#000; border:1px solid var(--bd); color:#fff; padding:10px 16px; border-radius:999px; font-size:14px;
   opacity:0; transition:.2s; z-index:60; pointer-events:none; max-width:90%; text-align:center; }
 #toast.on{ opacity:1; }
+.update-banner{ position:fixed; left:14px; right:14px; bottom:calc(92px + env(safe-area-inset-bottom)); z-index:95;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px; border:1px solid rgba(255,122,24,.55);
+  border-radius:15px; background:linear-gradient(145deg,#1b130b,#111113); box-shadow:0 18px 70px rgba(0,0,0,.5); }
+.update-banner b{ display:block; font-size:13px; }
+.update-banner small{ display:block; margin-top:3px; color:#d7b18d; font-size:11px; line-height:1.35; }
+.update-banner .btn{ width:auto; flex:0 0 auto; padding:10px 13px; }
+@media(min-width:760px){ .update-banner{ left:auto; right:24px; width:min(460px,calc(100vw - 48px)); bottom:24px; } }
+@media(max-width:520px){ .update-banner{ flex-direction:column; align-items:stretch; }.update-banner .btn{ width:100%; } }
 
 .modal{ position:fixed; inset:0; z-index:55; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.6); }
 .modal.on{ display:flex; }
@@ -293,6 +305,10 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
     <div id="stepPin" class="hide">
       <div class="sm mut" style="margin-bottom:4px">Usuário: <b id="uEcho"></b></div>
       <input id="pin" class="field" placeholder="PIN" inputmode="numeric" type="password" autocomplete="current-password">
+      <label class="remember-row">
+        <input id="keepLogin" type="checkbox">
+        <span><b>Manter conectado</b><small>Se não marcar, a sessão cai ao fechar o navegador.</small></span>
+      </label>
       <button class="btn primary" onclick="entrar()">Entrar</button>
       <button class="btn ghost" style="margin-top:8px" onclick="voltarUser()">Voltar</button>
     </div>
@@ -368,8 +384,68 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
 const API = location.origin;
 const $ = id => document.getElementById(id);
 let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {};
+let _sessionKeep = false, _versionWatchStarted = false, _appVersion = null, _updateAvailable = false, _userRefreshStarted = false;
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('on'),2600); }
+function storedUserPayload(){
+  try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) return { user:u, keep:true }; } }catch(e){}
+  try{ const s=sessionStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) return { user:u, keep:false }; } }catch(e){}
+  return null;
+}
+function saveStoredUser(u, keep){
+  const payload=JSON.stringify(u||{});
+  try{
+    if(keep){ localStorage.setItem('est_u',payload); sessionStorage.removeItem('est_u'); }
+    else { sessionStorage.setItem('est_u',payload); localStorage.removeItem('est_u'); }
+  }catch(e){}
+}
+function clearStoredUser(){ try{ localStorage.removeItem('est_u'); }catch(e){} try{ sessionStorage.removeItem('est_u'); }catch(e){} }
+function updateHeaderUser(){ if(!user)return; $('hNome').textContent=user.nome||user.login||'—'; $('hPerfil').textContent=(user.perfil||'').toString().toLowerCase(); }
+async function revalidarUsuario(u){
+  if(!u||!u.id) return null;
+  try{
+    const r=await fetch(API+'/api/staff/session?usuario_id='+encodeURIComponent(u.id)+'&ts='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    const d=await r.json();
+    if(r.status===401||r.status===404) return null;
+    if(d&&d.usuario&&d.usuario.id) return Object.assign({},u,d.usuario);
+  }catch(e){}
+  return u;
+}
+async function refreshCurrentUser(silent){
+  if(!user||!user.id) return;
+  const fresh=await revalidarUsuario(user);
+  if(!fresh){ clearStoredUser(); user=null; if(!silent)toast('Sessão expirada. Entre novamente.'); location.reload(); return; }
+  user=fresh; saveStoredUser(user,_sessionKeep); updateHeaderUser(); carregarPerms();
+}
+function startUserRefresh(){ if(_userRefreshStarted)return; _userRefreshStarted=true; setInterval(()=>refreshCurrentUser(true),180000); }
+async function fetchAppVersion(){
+  try{
+    const r=await fetch(API+'/api/app-version?scope=estoque&ts='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    const d=await r.json();
+    return d&&d.estoque&&(d.estoque.version||d.estoque.mtime);
+  }catch(e){ return null; }
+}
+function startAppVersionWatch(){
+  if(_versionWatchStarted)return; _versionWatchStarted=true;
+  checkAppVersion(true);
+  setInterval(()=>checkAppVersion(false),60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden)checkAppVersion(false); });
+}
+async function checkAppVersion(first){
+  if(_updateAvailable)return;
+  const v=await fetchAppVersion();
+  if(!v)return;
+  if(!_appVersion){ _appVersion=v; return; }
+  if(v!==_appVersion){ _updateAvailable=true; showUpdateBanner(); }
+}
+function showUpdateBanner(){
+  if($('login')&&!$('login').classList.contains('hide')){ setTimeout(()=>location.reload(),250); return; }
+  if($('updateBanner'))return;
+  const b=document.createElement('div'); b.id='updateBanner'; b.className='update-banner';
+  b.innerHTML='<div><b>Nova versão do estoque disponível</b><small>Atualize a tela para receber o deploy sem sair da sua conta.</small></div><button class="btn primary sm" onclick="atualizarAppAgora()">Atualizar agora</button>';
+  document.body.appendChild(b);
+}
+function atualizarAppAgora(){ location.reload(); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function fmt(n){ n=Number(n); return Number.isInteger(n)? n : Number(n.toFixed(2)); }
 function brl(n,dec){ if(n==null||n===''||!isFinite(Number(n))) return '—'; return 'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:dec||2}); }
@@ -385,13 +461,13 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.custom-select'))cs
 function irPin(){ const u=$('usuario').value.trim(); if(!u){ $('lgErr').textContent='Digite o usuário.'; return; }
   $('uEcho').textContent=u; $('lgErr').textContent=''; $('stepUser').classList.add('hide'); $('stepPin').classList.remove('hide'); setTimeout(()=>$('pin').focus(),80); }
 function voltarUser(){ $('stepPin').classList.add('hide'); $('stepUser').classList.remove('hide'); $('pin').value=''; $('lgErr').textContent=''; }
-async function entrar(){ const login=$('usuario').value.trim(), pin=$('pin').value.trim(); $('lgErr').textContent='';
+async function entrar(){ const login=$('usuario').value.trim(), pin=$('pin').value.trim(), keep=!!($('keepLogin')&&$('keepLogin').checked); $('lgErr').textContent='';
   if(!pin){ $('lgErr').textContent='Digite o PIN.'; return; }
   let d; try{ d=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,pin})})).json(); }
   catch(e){ $('lgErr').textContent='Falha de conexão.'; return; }
   if(d.erro){ $('lgErr').textContent=d.erro; return; }
-  if(d.must_change){ _pinCtx={login:(d.usuario&&d.usuario.login)||login, pinAtual:pin}; $('mPin').classList.add('on'); setTimeout(()=>$('np1').focus(),80); return; }
-  abrirApp(d.usuario); }
+  if(d.must_change){ _pinCtx={login:(d.usuario&&d.usuario.login)||login, pinAtual:pin, keep}; $('mPin').classList.add('on'); setTimeout(()=>$('np1').focus(),80); return; }
+  abrirApp(d.usuario,keep); }
 async function confirmaPin(){ const a=$('np1').value.replace(/\D/g,''), b=$('np2').value.replace(/\D/g,''); $('mPinErr').textContent='';
   if(a.length<4){ $('mPinErr').textContent='O PIN precisa ter 4 a 6 dígitos.'; return; }
   if(a!==b){ $('mPinErr').textContent='Os PINs não conferem.'; return; }
@@ -400,13 +476,13 @@ async function confirmaPin(){ const a=$('np1').value.replace(/\D/g,''), b=$('np2
   if(d.erro){ $('mPinErr').textContent=d.erro; return; }
   $('mPin').classList.remove('on');
   const r=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:_pinCtx.login,pin:a})})).json();
-  if(r.usuario) abrirApp(r.usuario); else toast('PIN trocado. Entre de novo.'); }
+  if(r.usuario) abrirApp(r.usuario,!!(_pinCtx&&_pinCtx.keep)); else toast('PIN trocado. Entre de novo.'); }
 
-function abrirApp(u){ user=u; try{ localStorage.setItem('est_u', JSON.stringify(u)); }catch(e){}
+function abrirApp(u, keep){ user=u; _sessionKeep=!!keep; saveStoredUser(u,_sessionKeep);
   $('login').classList.add('hide'); $('app').classList.remove('hide');
-  $('hNome').textContent=u.nome||u.login||'—'; $('hPerfil').textContent=(u.perfil||'').toString().toLowerCase();
-  carregarPerms(); nav('inicio'); }
-function sair(){ try{ localStorage.removeItem('est_u'); }catch(e){} user=null; location.reload(); }
+  updateHeaderUser();
+  carregarPerms(); startUserRefresh(); startAppVersionWatch(); nav('inicio'); }
+function sair(){ clearStoredUser(); user=null; location.reload(); }
 function temPerm(p){ if(!user) return false; if(ehGestor()) return true; return (user.perms||[]).includes(p); }
 async function carregarPerms(){ if(ehGestor()){ aplicaNavPerms(); return; }
   try{ const d=await (await fetch(API+'/api/est/permissoes?usuario_id='+encodeURIComponent(user.id))).json(); user.perms=d.perms||[]; }catch(e){ user.perms=[]; }
@@ -1256,8 +1332,15 @@ async function novoLocal(){ const nome=$('locNovoNome').value.trim(); if(!nome)r
   try{ await estFetch('/api/est/local','POST',{nome,tipo_local:$('locNovoTipo').value,aceita_pereciveis:$('locNovoPer').checked}); await ensureLocais(true); const m=$('locEditor'); if(m)m.remove(); gerenciarLocais(); toast('Local criado'); }catch(e){} }
 async function excluirLocal(id){ if(!await pedirConfirm('Excluir local','Se houver produtos neste local, ele é apenas inativado (histórico preservado).'))return; try{ await estFetch('/api/est/local/'+id,'DELETE'); await ensureLocais(true); const m=$('locEditor'); if(m)m.remove(); gerenciarLocais(); toast('Local removido'); }catch(e){} }
 
-/* mantém logado: restaura sessão ao abrir */
-(function(){ try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) abrirApp(u); } }catch(e){} })();
+/* restaura sessão: localStorage só quando "manter conectado"; sessionStorage cai ao fechar navegador */
+(async function(){
+  startAppVersionWatch();
+  const stored=storedUserPayload();
+  if(!stored)return;
+  const fresh=await revalidarUsuario(stored.user);
+  if(!fresh){ clearStoredUser(); return; }
+  abrirApp(fresh,stored.keep);
+})();
 </script>
 </body>
 </html>

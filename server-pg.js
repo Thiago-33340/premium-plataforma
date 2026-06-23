@@ -70,6 +70,18 @@ function jsonComHeaders(res, code, obj, headers) {
   res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }, headers || {}));
   res.end(b);
 }
+const APP_VERSION_CACHE = {};
+function publicFileVersion(rel) {
+  const fp = path.join(ROOT, 'public', rel);
+  const st = fs.statSync(fp);
+  const key = rel;
+  const cached = APP_VERSION_CACHE[key];
+  if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) return cached.value;
+  const hash = crypto.createHash('sha1').update(fs.readFileSync(fp)).digest('hex').slice(0, 14);
+  const value = { file: rel, version: hash, mtime: st.mtime.toISOString(), size: st.size };
+  APP_VERSION_CACHE[key] = { mtimeMs: st.mtimeMs, size: st.size, value };
+  return value;
+}
 function csvCell(v) {
   const s = String(v == null ? '' : v);
   return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -656,6 +668,22 @@ const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_ca
 const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
 function perfisUsuario(u) { return [u && u.perfil_principal].concat((u && u.perfis_adicionais) || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean); }
 function perfilGestor(u) { return perfisUsuario(u).some(p => p === 'GESTOR' || p === 'GERENTE' || p.startsWith('GESTOR') || p.startsWith('GERENTE')); }
+function staffUsuarioPublico(col) {
+  const perfis = perfisUsuario(col);
+  const ehGarcom = perfis.includes('GARCOM');
+  const ehGestor = perfilGestor(col) || perfis.some(p => ['CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
+  return {
+    id: col.id,
+    nome: col.nome,
+    perfil: col.perfil_principal,
+    login: col.apelido_login,
+    setores_permitidos: setoresPermitidosLista(col.setores_permitidos),
+    pode_mesas: ehGarcom || ehGestor,
+    pode_gestor: ehGestor,
+    so_mesas: ehGarcom && !ehGestor,
+    pode_admin: perfilGestor(col)
+  };
+}
 function setoresPermitidosLista(v) {
   if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
   if (v == null) return [];
@@ -1170,6 +1198,13 @@ async function api(req, res, url) {
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }); return res.end(); }
 
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
+  if (sub === 'app-version' && req.method === 'GET') {
+    try {
+      return jsonComHeaders(res, 200, { ok: true, estoque: publicFileVersion('estoque.html') }, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+    } catch (e) {
+      return jsonComHeaders(res, 200, { ok: false, erro: e.message }, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+    }
+  }
 
   if (sub === 'titan' && seg[2] === 'auth') {
     if (!hostFerramentasPermitido(req)) {
@@ -3366,6 +3401,12 @@ async function api(req, res, url) {
   }
 
   // ===================== STAFF LOGIN (mesas/gestor) por apelido + PIN =====================
+  if (sub === 'staff' && seg[2] === 'session' && req.method === 'GET') {
+    const ref = url.searchParams.get('usuario_id') || url.searchParams.get('id') || url.searchParams.get('login');
+    const col = await rbacUserByRef(ref);
+    if (!col) return json(res, 401, { ok: false, erro: 'Sessão expirada. Entre novamente.' });
+    return jsonComHeaders(res, 200, { ok: true, usuario: staffUsuarioPublico(col) }, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+  }
   if (sub === 'staff' && seg[2] === 'login' && req.method === 'POST') {
     const b = await readBody(req);
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -3380,11 +3421,7 @@ async function api(req, res, url) {
       const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
       if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
     }
-    const perfis = perfisUsuario(col);
-    const ehGarcom = perfis.includes('GARCOM');
-    const ehGestor = perfilGestor(col) || perfis.some(p => ['CHEFE_COZINHA', 'OPERADOR_ATENDIMENTO'].includes(p));
-    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: { id: col.id, nome: col.nome, perfil: col.perfil_principal, login: col.apelido_login, setores_permitidos: col.setores_permitidos || [],
-      pode_mesas: ehGarcom || ehGestor, pode_gestor: ehGestor, so_mesas: ehGarcom && !ehGestor, pode_admin: perfilGestor(col) } });
+    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: staffUsuarioPublico(col) });
   }
   // trocar o proprio PIN (primeiro login obrigatorio): valida o atual, grava o novo.
   if (sub === 'staff' && seg[2] === 'trocar-pin' && req.method === 'POST') {
@@ -3831,7 +3868,16 @@ async function api(req, res, url) {
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-function serveStatic(res, fp) { fs.readFile(fp, (e, buf) => { if (e) { res.writeHead(404); return res.end('404'); } res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' }); res.end(buf); }); }
+function serveStatic(res, fp) {
+  fs.readFile(fp, (e, buf) => {
+    if (e) { res.writeHead(404); return res.end('404'); }
+    const ext = path.extname(fp);
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    if (ext === '.html') Object.assign(headers, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+    res.writeHead(200, headers);
+    res.end(buf);
+  });
+}
 
 const server = http.createServer(async (req, res) => {
   try {
