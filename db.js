@@ -160,6 +160,7 @@ const MIGRATIONS = [
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS unidade_base TEXT",
+  "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS departamento TEXT",
   "ALTER TABLE est_contagem_item ADD COLUMN IF NOT EXISTS geral BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS rendido NUMERIC(14,3)",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS perda NUMERIC(14,3)"

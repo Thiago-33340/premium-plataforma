@@ -1795,6 +1795,7 @@ async function api(req, res, url) {
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
         p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
+        p.departamento, p.subcategoria,
         p.marca_preferida, p.ultima_marca, p.categoria_id, p.fornecedor_preferido_id, p.ultimo_fornecedor_id,
         p.conversao_origem, p.conversao_confianca, p.conversao_precisa_revisao, p.tipo_item, p.nome_nf,
         p.local_fisico_id, l.nome AS local_fisico,
@@ -2039,15 +2040,16 @@ async function api(req, res, url) {
       try {
         const r = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal,
           fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo, subcategoria, marca_preferida, peso_g, unidade_base,
-          conversao_origem, conversao_confianca, conversao_precisa_revisao, tipo_item, nome_nf, local_fisico_id)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+          conversao_origem, conversao_confianca, conversao_precisa_revisao, tipo_item, nome_nf, local_fisico_id, departamento)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id`,
           [TENANT, nome, b.categoria_id || null, String(b.unidade || '').trim() || null,
            b.estoque_minimo !== '' && b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal !== '' && b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
            b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null,
            String(b.subcategoria || '').trim() || null, String(b.marca_preferida || '').trim() || null, b.peso_g !== '' && b.peso_g != null ? Number(b.peso_g) : null,
            String(b.unidade_base || '').trim() || null,
            String(b.conversao_origem || '').trim() || null, String(b.conversao_confianca || '').trim() || null, !!b.conversao_precisa_revisao,
-           String(b.tipo_item || '').trim() || null, String(b.nome_nf || '').trim() || null, b.local_fisico_id || null]);
+           String(b.tipo_item || '').trim() || null, String(b.nome_nf || '').trim() || null, b.local_fisico_id || null,
+           String(b.departamento || '').trim() || null]);
         const pid = r.rows[0].id;
         const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean) : [];
         for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT,pid,sid]);
@@ -2060,14 +2062,14 @@ async function api(req, res, url) {
         const r = await db.q(`UPDATE est_produto SET nome=$2,categoria_id=$3,unidade=$4,estoque_minimo=$5,estoque_ideal=$6,
           fornecedor_preferido_id=$7,pode_contar=$8,pode_comprar=$9,pode_produzir=$10,observacoes=$11,
           subcategoria=$12,marca_preferida=$13,peso_g=$14,ativo=$15,unidade_base=$17,
-          conversao_origem=$18,conversao_confianca=$19,conversao_precisa_revisao=$20,tipo_item=$21,local_fisico_id=$22,atualizado_em=NOW()
+          conversao_origem=$18,conversao_confianca=$19,conversao_precisa_revisao=$20,tipo_item=$21,local_fisico_id=$22,departamento=$23,atualizado_em=NOW()
           WHERE id=$1 AND tenant_id=$16 RETURNING id`, [seg[3],nome,b.categoria_id||null,String(b.unidade||'').trim()||null,
           b.estoque_minimo!==''&&b.estoque_minimo!=null?Number(b.estoque_minimo):null,b.estoque_ideal!==''&&b.estoque_ideal!=null?Number(b.estoque_ideal):null,
           b.fornecedor_preferido_id||null,b.pode_contar!==false,b.pode_comprar!==false,!!b.pode_produzir,b.observacoes||null,
           String(b.subcategoria||'').trim()||null,String(b.marca_preferida||'').trim()||null,b.peso_g!==''&&b.peso_g!=null?Number(b.peso_g):null,b.ativo!==false,TENANT,
           String(b.unidade_base||'').trim()||null,
           String(b.conversao_origem||'').trim()||null,String(b.conversao_confianca||'').trim()||null,!!b.conversao_precisa_revisao,
-          String(b.tipo_item||'').trim()||null,b.local_fisico_id||null]);
+          String(b.tipo_item||'').trim()||null,b.local_fisico_id||null,String(b.departamento||'').trim()||null]);
         if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
         if (Array.isArray(b.setores)) {
           await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,seg[3]]);

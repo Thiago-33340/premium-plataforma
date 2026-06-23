@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS est_produto (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   nome TEXT NOT NULL,
+  departamento TEXT,
   categoria_id INT REFERENCES est_categoria(id),
   subcategoria TEXT,
   unidade TEXT,
@@ -67,6 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_est_prod_cat ON est_produto(tenant_id, categoria_
 -- anterior do schema (CREATE TABLE IF NOT EXISTS não adiciona colunas a uma tabela já existente).
 -- Todas aditivas e idempotentes — seguras contra o banco real.
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS subcategoria TEXT;
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS departamento TEXT;
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS marca_preferida TEXT;
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS ultima_marca TEXT;
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS ultimo_valor NUMERIC(14,4);
