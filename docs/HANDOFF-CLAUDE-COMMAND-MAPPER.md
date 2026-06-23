@@ -312,7 +312,7 @@ O Codex aplicou um segundo patch para:
 
 - garantir colunas ricas de `ficha_itens` por migration direta;
 - ampliar aliases entre nomes do dataset Claude/Saipos e os produtos reais do estoque;
-- criar como itens produzidos/contáveis `Massa preparada`, `Brigadeiro de Ninho` e `Morango em cubos`.
+- criar como itens produzidos/contáveis `Massa preparada`, `Brigadeiro de Ninho`, `Morango em cubos` e `Batata frita`.
 
 Tarefa sugerida para Claude após validação:
 
