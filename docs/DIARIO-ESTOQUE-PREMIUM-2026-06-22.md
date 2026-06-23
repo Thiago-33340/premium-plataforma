@@ -748,3 +748,42 @@ Primeira missão operacional:
 Regra de segurança:
 
 - Relatório do Claude vira evidência auditada no Command, não alteração automática de código ou deploy.
+
+## Marco 19 — Console IA dentro do Command Center
+
+Status: implementado em código, aguardando variável de IA no ambiente para uso real
+
+Motivo:
+
+- Thiago pediu para enviar prompts direto pela IA dentro do Command, sem precisar sair e voltar entre ferramentas.
+- A regra continua sendo governança: IA ajuda e responde, mas o registro oficial exige revisão humana.
+
+O que foi feito:
+
+- Nova rota protegida `POST /api/mapper/ai`.
+- Suporte a Claude/Anthropic via `TITAN_ANTHROPIC_API_KEY` ou `ANTHROPIC_API_KEY`.
+- Suporte a OpenAI via `TITAN_OPENAI_API_KEY` ou `OPENAI_API_KEY`.
+- `TITAN_AI_PROVIDER` e `TITAN_AI_MODEL` opcionais.
+- A aba **Agentes** ganhou o **Console IA do Command**.
+- O usuário pode enviar prompt, receber resposta na tela e preencher o formulário de relatório com essa resposta.
+- A resposta só entra em `agent-reports.json` após clique em **Registrar relatório no Command**.
+- O envio gera auditoria com metadados em `command-audit-log.json` e `titan_command_actions`.
+
+Segurança:
+
+- A chave da IA fica somente no ambiente do serviço.
+- A UI/API não expõe chave.
+- Prompts que parecem conter senha, token, chave ou certificado são bloqueados.
+- O prompt completo não é salvo automaticamente.
+
+Arquivos alterados:
+
+- `server-pg.js`
+- `public/mapper.html`
+- `project-state/routes.json`
+- `project-state/api-contracts-critical.json`
+- `project-state/tasks.json`
+- `project-state/decisions.json`
+- `docs/modulos/command-center.md`
+- `docs/GUIA-COMMAND-CENTER-GESTORES.md`
+- `docs/HANDOFF-CLAUDE-COMMAND-MAPPER.md`

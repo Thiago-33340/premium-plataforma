@@ -136,6 +136,26 @@
     "side_effects": ["acao=aprovar atualiza estoque_atual de cada item contado e grava movimento CONTAGEM", "acao=corrigir volta status para EM_ANDAMENTO"]
   },
   {
+    "id": "command-ai-console",
+    "module": "command-center",
+    "method": "POST",
+    "path": "/api/mapper/ai",
+    "screen": "public/mapper.html / command-center / aba Agentes",
+    "permission": "editar_project_state",
+    "payload_required": ["prompt"],
+    "payload_optional": ["provider", "assignment_id"],
+    "reads": ["project-state/agent-bridge.json", "project-state/agent-workflow.json", "ambiente seguro: TITAN_ANTHROPIC_API_KEY ou TITAN_OPENAI_API_KEY"],
+    "writes": ["project-state/command-audit-log.json", "titan_command_actions"],
+    "success": "200 { ok: true, provider, model, resposta, audit, persisted_db }",
+    "known_errors": ["401 Faça login no Titan Tools.", "403 Sem permissão para esta ferramenta.", "400 prompt vazio ou contendo possível segredo.", "409 IA do Command não configurada.", "502 Falha/timeout ao chamar IA externa."],
+    "side_effects": [
+      "envia o prompt e contexto da missão ativa para provedor externo de IA configurado por variável de ambiente",
+      "não expõe chave/modelo secreto na UI",
+      "não grava prompt completo automaticamente; registra auditoria com provider, modelo, assignment_id e tamanhos",
+      "resposta só vira relatório oficial quando o usuário clicar em Registrar relatório no Command"
+    ]
+  },
+  {
     "id": "command-action",
     "module": "command-center",
     "method": "POST",

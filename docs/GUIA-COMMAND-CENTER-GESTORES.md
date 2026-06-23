@@ -73,8 +73,35 @@ Funções:
 
 - ver papéis oficiais;
 - copiar briefing para o Claude;
+- enviar prompt direto para IA pelo Console IA do Command;
+- receber resposta sem sair da tela;
+- preencher e registrar relatório de agente a partir da resposta revisada;
 - consultar fluxo de trabalho;
 - evitar retrabalho entre ferramentas.
+
+O **Console IA do Command** fica na aba **Agentes**.
+
+Uso recomendado:
+
+1. Escolha a missão ativa.
+2. Escreva ou ajuste o prompt.
+3. Clique em **Enviar prompt para IA**.
+4. Leia a resposta na tela.
+5. Se fizer sentido, clique em **Preencher relatório com esta resposta**.
+6. Revise o texto preenchido.
+7. Clique em **Registrar relatório no Command**.
+
+A resposta da IA não vira verdade oficial automaticamente. Ela só entra na trilha do projeto quando você ou o Tassiano registrarem o relatório.
+
+Se aparecer **IA não configurada no ambiente**, falta configurar no serviço uma das variáveis:
+
+- `TITAN_ANTHROPIC_API_KEY` ou `ANTHROPIC_API_KEY`;
+- `TITAN_OPENAI_API_KEY` ou `OPENAI_API_KEY`.
+
+Opcionalmente:
+
+- `TITAN_AI_PROVIDER=anthropic|openai|auto`;
+- `TITAN_AI_MODEL` para escolher o modelo.
 
 ### Execução
 

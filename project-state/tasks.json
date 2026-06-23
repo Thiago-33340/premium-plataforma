@@ -346,5 +346,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-025"],
     "proximo_passo": "Mapper v1 criado em data/premium-border-pdv-mapper-v1.json a partir da planilha Saipos v4. Próximo: aplicar ajuste controlado do cardápio (opções de borda por estilo, Pizza Pequena com grupos condicionais) e importar fichas faltantes por código sem criar item 'Vulcões montados'."
+  },
+  {
+    "id": "task-f2-027",
+    "titulo": "Criar console IA dentro do Command Center",
+    "modulo": "command-center",
+    "status": "concluido",
+    "prioridade": "alta",
+    "categoria": "agentes-ia",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-026"],
+    "proximo_passo": "Implementado: aba Agentes ganhou Console IA, rota POST /api/mapper/ai protegida por editar_project_state, suporte a Claude/Anthropic ou OpenAI via variável segura de ambiente, auditoria sem gravar prompt completo e preenchimento do relatório para registro humano."
   }
 ]

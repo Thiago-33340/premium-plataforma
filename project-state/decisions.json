@@ -231,5 +231,23 @@
       "A URL do executor externo não aparece na tela nem no retorno da API.",
       "Se a variável segura não existir, o Command mostra executor não configurado e bloqueia o botão."
     ]
+  },
+  {
+    "id": "decision-016",
+    "data": "2026-06-23",
+    "decisao": "Permitir envio de prompts para IA dentro do Command Center com chave somente no ambiente",
+    "motivo": "Thiago quer acionar Claude/IA e receber respostas sem sair do Command, reduzindo cópia manual entre ferramentas e mantendo a trilha operacional no próprio centro de comando.",
+    "impacto": "A aba Agentes passa a ter um Console IA que envia prompt para provedor externo configurado no servidor e retorna a resposta na tela. A resposta não vira registro oficial automaticamente; o usuário revisa e registra como relatório quando quiser.",
+    "modulos_afetados": ["command-center", "mapper", "agent-bridge"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "A rota de IA exige sessão Titan Tools no host técnico e permissão editar_project_state.",
+      "A chave da IA deve ficar somente em variável de ambiente: TITAN_ANTHROPIC_API_KEY/ANTHROPIC_API_KEY ou TITAN_OPENAI_API_KEY/OPENAI_API_KEY.",
+      "A API e a UI nunca expõem a chave.",
+      "O Command bloqueia prompts que parecem conter senha, token, chave ou certificado.",
+      "O envio para IA registra auditoria com metadados, mas não grava o prompt completo automaticamente.",
+      "A resposta só entra em agent-reports.json após revisão humana e clique em Registrar relatório no Command."
+    ]
   }
 ]

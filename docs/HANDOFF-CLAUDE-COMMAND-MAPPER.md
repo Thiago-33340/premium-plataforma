@@ -358,3 +358,29 @@ Importante:
 - Relatório do Claude é evidência auditada, não deploy automático.
 - Claude não deve editar código em paralelo nos mesmos arquivos do Codex.
 - O resultado do Claude vira tarefa, risco, decisão, teste ou ajuste de implementação pelo Command.
+
+## Atualização — Console IA dentro do Command
+
+A aba **Agentes** ganhou um Console IA para reduzir a troca manual entre ferramentas.
+
+Fluxo:
+
+1. Thiago/Tassiano escolhe a missão ativa.
+2. Envia o prompt pelo **Console IA do Command**.
+3. A resposta aparece na própria tela.
+4. O usuário revisa e clica em **Preencher relatório com esta resposta**.
+5. O relatório só vira registro oficial após clique em **Registrar relatório no Command**.
+
+Rota:
+
+- `POST /api/mapper/ai`
+
+Segurança:
+
+- exige sessão Titan Tools e permissão `editar_project_state`;
+- a chave fica apenas no ambiente do serviço;
+- suporta Claude/Anthropic via `TITAN_ANTHROPIC_API_KEY` ou `ANTHROPIC_API_KEY`;
+- suporta OpenAI via `TITAN_OPENAI_API_KEY` ou `OPENAI_API_KEY`;
+- o prompt completo não é salvo automaticamente;
+- o envio gera auditoria apenas com metadados;
+- a resposta não altera código, banco operacional nem deploy sozinha.

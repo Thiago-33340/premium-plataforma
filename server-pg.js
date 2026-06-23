@@ -344,12 +344,157 @@ function fraseAcionamentoOk(v) {
 function deployWebhookUrl() {
   return String(process.env.TITAN_DEPLOY_WEBHOOK_URL || process.env.EASYPANEL_DEPLOY_WEBHOOK_URL || '').trim();
 }
+function commandAiConfig(providerPedido) {
+  const anthropicKey = String(process.env.TITAN_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
+  const openaiKey = String(process.env.TITAN_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
+  let provider = String(providerPedido || process.env.TITAN_AI_PROVIDER || 'auto').trim().toLowerCase();
+  if (provider === 'claude') provider = 'anthropic';
+  if (!provider || provider === 'auto') provider = anthropicKey ? 'anthropic' : (openaiKey ? 'openai' : '');
+  const key = provider === 'anthropic' ? anthropicKey : (provider === 'openai' ? openaiKey : '');
+  const model = String(process.env.TITAN_AI_MODEL || (provider === 'anthropic' ? (process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest') : (process.env.OPENAI_MODEL || 'gpt-4o-mini'))).trim();
+  const maxTokens = Math.max(500, Math.min(6000, Number(process.env.TITAN_AI_MAX_TOKENS || 2200) || 2200));
+  return { provider, key, model, maxTokens, configured: !!(provider && key) };
+}
+function commandAiRuntimePublico() {
+  const cfg = commandAiConfig();
+  return {
+    ai_console_configured: cfg.configured,
+    ai_console_provider: cfg.configured ? cfg.provider : 'not_configured',
+    ai_console_model: cfg.configured ? cfg.model : '',
+    ai_console_requires_permission: 'editar_project_state'
+  };
+}
 function deployRuntimePublico() {
   return {
     deploy_external_configured: !!deployWebhookUrl(),
     deploy_external_provider: deployWebhookUrl() ? 'env' : 'not_configured',
-    deploy_external_requires_phrase: 'ACIONAR DEPLOY'
+    deploy_external_requires_phrase: 'ACIONAR DEPLOY',
+    ...commandAiRuntimePublico()
   };
+}
+function promptContemPossivelSegredo(prompt) {
+  const s = String(prompt || '');
+  return /-----BEGIN [A-Z ]*PRIVATE KEY-----/i.test(s)
+    || /\b(sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})\b/.test(s)
+    || /\b(api[_-]?key|senha|password|secret|token)\s*[:=]\s*["']?[A-Za-z0-9_\-./+=]{12,}/i.test(s);
+}
+function commandAiContextoSistema(assignmentId) {
+  const bridge = lerProjectJson('agent-bridge.json', {});
+  const workflow = lerProjectJson('agent-workflow.json', {});
+  const assignments = Array.isArray(bridge.active_assignments) ? bridge.active_assignments : [];
+  const assignment = assignments.find(a => String(a.id) === String(assignmentId)) || assignments[0] || null;
+  const promptWorkflow = textoLimpo(workflow.prompt || workflow.handoff_prompt || workflow.claude_prompt, 1600);
+  return [
+    'Você é um agente de IA trabalhando dentro do Titan Command Center.',
+    'Responda em português do Brasil, com clareza operacional, priorizando decisões, riscos, critérios de aceite e próximos passos práticos.',
+    'Não invente dados. Quando faltar contexto, diga exatamente o que precisa ser verificado.',
+    'Não peça, copie, gere nem exponha chaves, tokens, senhas, certificados ou dados sensíveis.',
+    'Regra de papéis: Claude/IA avalia, calcula e revisa; Codex implementa e publica; Thiago/Tassiano aprovam decisões de produto e operação.',
+    promptWorkflow ? `Prompt operacional do workflow: ${promptWorkflow}` : '',
+    bridge.purpose ? `Agent Bridge: ${textoLimpo(bridge.purpose, 1000)}` : '',
+    assignment ? `Missão selecionada: ${JSON.stringify({
+      id: assignment.id,
+      agent: assignment.agent,
+      title: assignment.title,
+      objective: assignment.objective,
+      priority: assignment.priority,
+      must_read: assignment.must_read,
+      expected_output: assignment.expected_output
+    })}` : 'Nenhuma missão ativa selecionada.'
+  ].filter(Boolean).join('\n\n');
+}
+async function chamarCommandAi({ provider, prompt, assignmentId, user }) {
+  const cfg = commandAiConfig(provider);
+  if (!cfg.configured) {
+    return { ok: false, status: 409, erro: 'IA do Command não configurada. Defina TITAN_ANTHROPIC_API_KEY ou TITAN_OPENAI_API_KEY no ambiente do serviço.' };
+  }
+  const cleanPrompt = String(prompt || '').trim();
+  if (!cleanPrompt) return { ok: false, status: 400, erro: 'Escreva um prompt para enviar à IA.' };
+  if (cleanPrompt.length > 16000) return { ok: false, status: 400, erro: 'Prompt muito longo. Limite atual: 16.000 caracteres.' };
+  if (promptContemPossivelSegredo(cleanPrompt)) return { ok: false, status: 400, erro: 'O prompt parece conter segredo/token/senha. Remova dados sensíveis antes de enviar para IA externa.' };
+
+  const system = commandAiContextoSistema(assignmentId);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    let resposta = '';
+    let usage = null;
+    if (cfg.provider === 'anthropic') {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': cfg.key,
+          'anthropic-version': '2023-06-01',
+          'User-Agent': 'Titan-Command-Center'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: cfg.model,
+          max_tokens: cfg.maxTokens,
+          temperature: 0.2,
+          system,
+          messages: [{ role: 'user', content: cleanPrompt }]
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return { ok: false, status: 502, erro: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) };
+      resposta = Array.isArray(j.content) ? j.content.map(c => c && c.type === 'text' ? c.text : '').filter(Boolean).join('\n\n') : '';
+      usage = j.usage || null;
+    } else if (cfg.provider === 'openai') {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + cfg.key,
+          'User-Agent': 'Titan-Command-Center'
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: cfg.model,
+          temperature: 0.2,
+          max_tokens: cfg.maxTokens,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: cleanPrompt }]
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return { ok: false, status: 502, erro: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) };
+      resposta = j.choices && j.choices[0] && j.choices[0].message ? String(j.choices[0].message.content || '') : '';
+      usage = j.usage || null;
+    } else {
+      return { ok: false, status: 409, erro: 'Provider de IA inválido. Use auto, anthropic/claude ou openai.' };
+    }
+    resposta = String(resposta || '').trim();
+    const audit = registrarCommandAudit(user, 'send_agent_prompt', 'command-audit-log.json', 'ai-console', `Prompt enviado para IA do Command (${cfg.provider})`, {
+      provider: cfg.provider,
+      model: cfg.model,
+      assignment_id: assignmentId || null,
+      prompt_chars: cleanPrompt.length,
+      resposta_chars: resposta.length
+    });
+    const dbAction = await persistirCommandActionDb(user, 'send_agent_prompt', {
+      action: 'send_agent_prompt',
+      provider: cfg.provider,
+      model: cfg.model,
+      assignment_id: assignmentId || null,
+      prompt_chars: cleanPrompt.length
+    }, 'command-audit-log.json', audit.id, { id: audit.id, provider: cfg.provider, model: cfg.model }, audit);
+    return {
+      ok: true,
+      provider: cfg.provider,
+      model: cfg.model,
+      resposta,
+      usage,
+      assignment_id: assignmentId || null,
+      audit,
+      persisted_db: dbAction.ok,
+      db_action_id: dbAction.id || null
+    };
+  } catch (e) {
+    return { ok: false, status: 502, erro: e.name === 'AbortError' ? 'A IA demorou demais para responder.' : ('Erro ao chamar IA: ' + (e.message || e)) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 async function acionarDeployWebhookSeguro(deploy, user) {
   const url = deployWebhookUrl();
@@ -1064,6 +1209,20 @@ async function api(req, res, url) {
       runtime: deployRuntimePublico(),
       files: await lerProjectStateSeguro()
     });
+  }
+
+  if (sub === 'mapper' && seg[2] === 'ai' && req.method === 'POST') {
+    const gestor = await requerTitanSession(req, res, 'editar_project_state');
+    if (!gestor) return;
+    const b = await readBody(req);
+    const out = await chamarCommandAi({
+      provider: textoLimpo(b.provider || b.provedor || 'auto', 40),
+      prompt: String(b.prompt || b.pergunta || ''),
+      assignmentId: textoLimpo(b.assignment_id || b.missao_id, 120),
+      user: gestor
+    });
+    if (!out.ok) return json(res, out.status || 500, { erro: out.erro || 'Falha ao chamar IA.' });
+    return json(res, 200, out);
   }
 
   if (sub === 'mapper' && seg[2] === 'action' && req.method === 'POST') {

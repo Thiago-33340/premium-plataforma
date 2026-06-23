@@ -48,6 +48,7 @@ O Command Center deve ler:
 - fluxo do briefing ao deploy;
 - prompt copiável para reposicionar o Claude como revisor/arquiteto;
 - Agent Bridge operacional em `project-state/agent-bridge.json`;
+- Console IA do Command para enviar prompt e receber resposta sem sair da aba;
 - registro auditado de relatórios de agente em `project-state/agent-reports.json`;
 - formulário **Registrar relatório do Claude** na aba Agentes;
 - critérios de pronto.
@@ -105,6 +106,7 @@ A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Tita
 - atalho de login: `/login`;
 - arquivo: `public/mapper.html`;
 - API de leitura: `GET /api/mapper/state`;
+- API de IA do Command: `POST /api/mapper/ai`;
 - API de ações auditadas: `POST /api/mapper/action`;
 - API de autenticação: `/api/titan/auth/*`;
 - acesso: restrito a sessão Titan Tools com permissão adequada e a host técnico autorizado;
@@ -167,6 +169,32 @@ A aba **Agentes** permite registrar relatório do Claude:
 - relatório é salvo em `project-state/agent-reports.json`;
 - ação auditada: `create_agent_report`;
 - o relatório não altera código, banco operacional ou deploy sozinho.
+
+A mesma aba possui o **Console IA do Command**:
+
+- seleciona uma missão ativa do Agent Bridge;
+- envia um prompt para o provedor de IA configurado por variável de ambiente;
+- retorna a resposta na própria tela;
+- permite preencher o relatório do agente com a resposta;
+- exige revisão humana antes de registrar o relatório.
+
+Configuração segura:
+
+- `TITAN_ANTHROPIC_API_KEY` ou `ANTHROPIC_API_KEY` para Claude/Anthropic;
+- `TITAN_OPENAI_API_KEY` ou `OPENAI_API_KEY` para OpenAI;
+- `TITAN_AI_PROVIDER=anthropic|openai|auto`;
+- `TITAN_AI_MODEL` opcional para escolher o modelo.
+
+Regras do Console IA:
+
+- rota: `POST /api/mapper/ai`;
+- exige host técnico e sessão Titan Tools;
+- exige permissão `editar_project_state`;
+- a chave nunca aparece na API nem na UI;
+- prompts que parecem conter senha, token, chave ou certificado são bloqueados;
+- o prompt completo não é salvo automaticamente;
+- o envio gera auditoria com metadados em `command-audit-log.json` e `titan_command_actions`;
+- a resposta só entra em `agent-reports.json` após clique humano em **Registrar relatório no Command**.
 
 A aba **Deploys** permite registrar plano/resultado de deploy:
 
