@@ -231,7 +231,7 @@ function componenteEstoqueAliases(nome) {
     'batata frita': ['Batata'],
     'ovo': ['Ovo branco grande (cx 60un)'],
     'morango': ['Morango (caixa)'],
-    'morango em cubos': ['Morango (caixa)'],
+    'morango em cubos': ['Morango em cubos', 'Morango (caixa)'],
     'brigadeiro de ninho': ['Brigadeiro de Ninho', 'Leite em Pó'],
     'chocolate ao leite': ['Chocolate ao Leite - Aberto Finalização', 'Chocolate ao Leite Bisnaga'],
     'chocolate branco': ['Chocolate Branco - Aberto Finalização', 'Chocolate Branco Bisnaga'],
@@ -304,7 +304,7 @@ async function seedInsumosFrescosPremiumV1(client) {
 }
 
 async function seedProdutosComplementaresFichasPremiumV1(client) {
-  const mk = await client.query("SELECT (config->>'estoque_complementos_fichas_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+  const mk = await client.query("SELECT (config->>'estoque_complementos_fichas_v2') AS m FROM tenants WHERE id=$1", [TENANT]);
   if (mk.rows[0] && mk.rows[0].m) {
     console.log('[db] complementos de fichas Premium já aplicados - ignorado');
     return;
@@ -332,7 +332,8 @@ async function seedProdutosComplementaresFichasPremiumV1(client) {
     const setorId = Object.fromEntries(setorRows.map(r => [r.nome, r.id]));
     const itens = [
       { nome: 'Massa preparada', unidade: 'g', base: 'g', peso: 1, categoria: 'Produção interna', setor: 'Montagem' },
-      { nome: 'Brigadeiro de Ninho', unidade: 'g', base: 'g', peso: 1, categoria: 'Confeitaria', setor: 'Finalização' }
+      { nome: 'Brigadeiro de Ninho', unidade: 'g', base: 'g', peso: 1, categoria: 'Confeitaria', setor: 'Finalização' },
+      { nome: 'Morango em cubos', unidade: 'g', base: 'g', peso: 1, categoria: 'Confeitaria', setor: 'Finalização' }
     ];
     let n = 0;
     for (const item of itens) {
@@ -352,7 +353,7 @@ async function seedProdutosComplementaresFichasPremiumV1(client) {
         VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING`, [TENANT, pid, sid]);
       n++;
     }
-    await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_complementos_fichas_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+    await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_complementos_fichas_v2\":true}'::jsonb WHERE id=$1", [TENANT]);
     await client.query('COMMIT');
     console.log('[db] complementos de fichas Premium semeados (' + n + ' produtos)');
   } catch (e) {

@@ -656,7 +656,7 @@ Correção aplicada:
 
 - Garantia explícita das colunas `base_medida`, `fonte` e `meta` em `ficha_itens`.
 - Aliases ampliados para ingredientes genéricos como `Tomate`, `Catupiry`, `Cheddar`, `Azeitona`, `Calabresa`, `Morango`, entre outros.
-- Seed complementar para `Massa preparada` e `Brigadeiro de Ninho`, ambos como itens produzidos/contáveis.
+- Seed complementar para `Massa preparada`, `Brigadeiro de Ninho` e `Morango em cubos`, como itens produzidos/contáveis.
 
 Critério de aceite pós-deploy:
 
