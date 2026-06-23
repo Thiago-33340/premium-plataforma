@@ -117,5 +117,52 @@
       ]
     }
   },
+  "counting_readiness": {
+    "updated_at": "2026-06-23T13:35:00.000-03:00",
+    "status": "liberada_para_primeira_contagem_assistida",
+    "deploy_code_commit": "e736e8c",
+    "documentation_commit": "28fe16c",
+    "rbac_uuid_bug": "corrigido",
+    "users_validated": {
+      "gestores": ["thiago", "tassiano"],
+      "colaboradores_auditados": ["cristina", "dany", "geane", "maria", "sophia"]
+    },
+    "pin_policy": {
+      "colaboradores": "PIN temporário válido com troca obrigatória no primeiro acesso",
+      "gestores": "PINs de Thiago e Tassiano não foram alterados nesta etapa",
+      "observacao": "Valores de PIN não são registrados no project-state."
+    },
+    "old_counts_cleanup": {
+      "contagens_antigas_reprovadas": 4,
+      "contagens_abertas_apos_limpeza": 0
+    },
+    "sector_assignment": {
+      "produtos_ativos_contaveis_sem_setor": 0,
+      "sem_setor_movidos_para": "Gerais",
+      "quantidade_movida_para_gerais": 39,
+      "por_setor_pos_ajuste": {
+        "Montagem": 60,
+        "Finalização": 45,
+        "Gerais": 77,
+        "Borda": 17,
+        "Recepção": 19
+      }
+    },
+    "manager_controls": [
+      "Configurar setores permite adicionar/remover itens contáveis por setor.",
+      "Permissões da equipe permite ajustar setores por colaborador.",
+      "Gestor pode redefinir PIN temporário e obrigar troca.",
+      "Auditoria lista contagens abertas/em andamento e bloqueia aprovação antes da finalização.",
+      "Código local adiciona Contagem geral rápida exclusiva para Thiago: iniciar geral, adicionar item com nome/unidade, contar quantidade, editar item, excluir/inativar e exportar CSV."
+    ],
+    "validation": {
+      "smoke_read_only": "19/19",
+      "rbac_audit": "OK",
+      "thiago_tassiano_uuid": "OK",
+      "dany_temp_pin_must_change": "OK",
+      "contagem_geral_rapida_sintaxe_local": "OK",
+      "contagem_geral_rapida_producao": "pendente_deploy_e_teste_navegador"
+    }
+  },
   "veredito": "O motor de estoque, compra, ficha avançada, produção e Command/Mapper está validado em produção. O catálogo Premium está batendo por setor e unidade. Para declarar 100% de conteúdo de ficha, faltam as receitas reais de Camarão, Molho produzido e Coco Ralado Floco."
 }

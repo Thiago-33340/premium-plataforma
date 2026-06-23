@@ -98,6 +98,9 @@ nav button.on{ color:var(--lar); }
 .cnt-session{ display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:14px 16px; margin-bottom:14px; border:1px solid rgba(255,122,24,.32); border-radius:14px; background:linear-gradient(120deg,rgba(255,122,24,.14),rgba(255,122,24,.025)); }
 .cnt-session .live{ display:flex; align-items:center; gap:7px; color:#ffad70; font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }.cnt-session .live:before{ content:''; width:8px; height:8px; border-radius:50%; background:var(--verd); box-shadow:0 0 0 4px rgba(34,197,94,.12); }
 .cnt-session b{ display:block; margin-top:6px; font-size:14px; }.cnt-session small{ color:var(--mut); font-size:11px; }.cnt-save{ min-width:72px; text-align:right; color:var(--mut); font-size:11px; }
+.cnt-add{ background:linear-gradient(145deg,#171719,#101012); border:1px solid rgba(255,122,24,.35); border-radius:14px; padding:12px; margin:0 0 14px; }
+.cnt-add-title{ display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px; font-size:13px; font-weight:800; color:var(--tx); }
+.cnt-add-grid{ display:grid; grid-template-columns:minmax(160px,1fr) 160px auto; gap:8px; align-items:center; }
 .cnt-item{ background:var(--bg2); border:1px solid var(--bd); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
 .cnt-div{ margin:18px 0 10px; padding:9px 12px; border-radius:10px; background:linear-gradient(90deg,rgba(249,115,22,.18),rgba(249,115,22,.04)); border:1px solid rgba(249,115,22,.4); color:var(--fg); font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
 .cnt-div small{ color:var(--mut); font-weight:600; font-size:11px; }
@@ -105,6 +108,10 @@ nav button.on{ color:var(--lar); }
 .cnt-item .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .cnt-item .pn{ font-weight:600; font-size:15px; }
 .cnt-item .ob{ font-size:10px; padding:2px 7px; border-radius:999px; background:#3a2e10; color:#ffd479; font-weight:700; flex:0 0 auto; }
+.cnt-actions{ display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.cnt-mini{ background:var(--bg3); border:1px solid var(--bd); color:var(--mut); border-radius:9px; padding:6px 8px; font-size:12px; cursor:pointer; }
+.cnt-mini:hover{ color:var(--tx); border-color:#555; }
+.cnt-mini.danger{ color:#ff9d9d; border-color:rgba(239,68,68,.34); }
 .cnt-row{ display:flex; gap:8px; align-items:center; margin-top:8px; }
 .cnt-row input.qt{ flex:1; text-align:center; font-size:18px; font-weight:700; }
 .cnt-row .un{ color:var(--mut); font-size:13px; min-width:56px; }
@@ -113,7 +120,7 @@ nav button.on{ color:var(--lar); }
 .cnt-foot{ position:fixed; left:0; right:0; bottom:calc(62px + env(safe-area-inset-bottom)); padding:10px 14px; background:rgba(11,11,12,.97); border-top:1px solid var(--bd); display:flex; align-items:center; gap:10px; z-index:25; }
 .cnt-foot .prog{ flex:1; font-size:13px; color:var(--mut); line-height:1.3; }
 .cnt-bar{ height:4px; background:#29292f; border-radius:99px; overflow:hidden; margin-top:6px; }.cnt-bar i{ display:block; height:100%; background:var(--lar); border-radius:inherit; transition:width .2s; }
-@media(max-width:520px){ .cnt-item{ padding:13px }.cnt-row{ align-items:stretch }.cnt-row .un{ min-width:64px; display:flex; align-items:center }.cnt-row input.qt{ min-width:0; padding:13px 8px }.cnt-row .ig{ padding:10px 9px }.cnt-session{ grid-template-columns:1fr }.cnt-save{ text-align:left } }
+@media(max-width:520px){ .cnt-item{ padding:13px }.cnt-row{ align-items:stretch }.cnt-row .un{ min-width:64px; display:flex; align-items:center }.cnt-row input.qt{ min-width:0; padding:13px 8px }.cnt-row .ig{ padding:10px 9px }.cnt-session{ grid-template-columns:1fr }.cnt-save{ text-align:left }.cnt-add-grid{ grid-template-columns:1fr }.cnt-actions{ margin-left:auto }.cnt-item .top{ align-items:flex-start } }
 
 /* Titan Inventory — layout operacional */
 :root{ --surface:#141416; --surface2:#1b1b1f; --line:#2b2b31; --accent-soft:rgba(255,122,24,.12); }
@@ -506,6 +513,7 @@ function pedirConfirm(titulo,msg,confirmLabel='Excluir'){ return new Promise(res
 /* ===== CONTAGEM POR SETOR ===== */
 let _cnt = null, _cntSaveTimers={};
 function ehGestor(){ const p=((user&&user.perfil)||'').toUpperCase(); return p==='GESTOR'||p==='GERENTE'||p.startsWith('GESTOR')||p.startsWith('GERENTE'); }
+function ehThiago(){ const login=String((user&&user.login)||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); const nome=String((user&&user.nome)||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().split(/\s+/)[0]; return login==='thiago'||nome==='thiago'; }
 function cntHora(v){ if(!v)return 'agora'; try{return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(new Date(v));}catch(e){return 'agora';} }
 async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem(); return; }
   w.innerHTML='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div><div class="empty">Carregando…</div>';
@@ -515,13 +523,17 @@ async function loadContagem(){ const w=$('contWrap'); if(_cnt){ renderContagem()
   let aud=0; try{ aud=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens||[]).length; }catch(e){}
   let h='<div class="vhead"><h2 class="tit">Contagem por setor</h2></div>';
   if(temPerm('acessar_auditoria')) h+=`<div class="audit-banner" onclick="abrirAuditorias()"><span>⏳ ${aud} aguardando auditoria</span><span>Auditar ›</span></div>`;
+  if(ehThiago()) h+=`<div class="audit-banner" style="border-color:rgba(255,122,24,.62);background:linear-gradient(120deg,rgba(255,122,24,.18),rgba(42,36,16,.55))" onclick="iniciarContagemGeral()"><span>⚡ Contagem geral com edição rápida</span><span>Iniciar ›</span></div>`;
   h+='<p class="mut sm" style="margin:0 0 10px">Escolha o setor. O valor <b>0</b> é válido (item contado e zerado).</p>';
   h+=setores.map(s=>`<button class="setor-btn" onclick="iniciarContagem(${s.id})"><span>${esc(s.nome)}</span><span>Contar ›</span></button>`).join('')||'<div class="empty">Sem setores.</div>';
   w.innerHTML=h; }
 async function iniciarContagem(setorId){ try{ const d=await estFetch('/api/est/contagem/iniciar','POST',{setor_id:setorId}); _cnt=Object.assign({},d.contagem,{itens:d.itens||[]}); renderContagem(); if(d.retomada)toast('Contagem em andamento retomada'); }catch(e){} }
+async function iniciarContagemGeral(){ try{ const d=await estFetch('/api/est/contagem/iniciar-geral','POST',{}); _cnt=Object.assign({},d.contagem,{itens:d.itens||[],geral_total:true}); renderContagem(); toast(d.retomada?'Contagem geral retomada':'Contagem geral iniciada'); }catch(e){} }
 function renderContagem(){ const w=$('contWrap');
-  let h=`<div class="vhead"><h2 class="tit">${esc(_cnt.setor_nome)}</h2><button class="btn ghost sm" onclick="cancelarContagem()">Sair</button></div>`;
+  const podeEditarRapido=ehThiago();
+  let h=`<div class="vhead"><h2 class="tit">${esc(_cnt.setor_nome)}</h2><div class="product-toolbar">${podeEditarRapido?'<button class="btn ghost sm" onclick="exportarContagem()">Exportar CSV</button>':''}<button class="btn ghost sm" onclick="cancelarContagem()">Sair</button></div></div>`;
   h+=`<div class="cnt-session"><div><div class="live">Contagem em andamento</div><b>${esc(_cnt.usuario_nome||user.nome||user.login||'Colaborador')}</b><small>Iniciada automaticamente às ${cntHora(_cnt.iniciada_em)}</small></div><div class="cnt-save" id="cntSave">Dados salvos</div></div><div id="cntList" style="padding-bottom:130px">`;
+  if(podeEditarRapido) h+=`<div class="cnt-add"><div class="cnt-add-title"><span>Adicionar item sem sair da contagem</span><small class="mut">Cai em Gerais para você reatribuir depois</small></div><div class="cnt-add-grid"><input class="field" id="cntNewNome" placeholder="Nome do item"><input class="field" id="cntNewUn" placeholder="Unidade (ex.: KG, UNIDADE)" onkeydown="if(event.key==='Enter')adicionarCntItem()"><button class="btn primary sm" onclick="adicionarCntItem()">Adicionar</button></div></div>`;
   const fixos=_cnt.itens.filter(x=>!x.geral), gerais=_cnt.itens.filter(x=>x.geral);
   h+=fixos.map(cntItemHTML).join('');
   if(gerais.length){ h+=`<div class="cnt-div">📋 Contagem geral de hoje <small>${gerais.length} ${gerais.length===1?'item':'itens'} extras</small></div>`+gerais.map(cntItemHTML).join(''); }
@@ -529,7 +541,8 @@ function renderContagem(){ const w=$('contWrap');
   h+=`<div class="cnt-foot"><div class="prog" id="cntProg"></div><button class="btn primary sm" onclick="encerrarContagem()">Encerrar</button></div>`;
   w.innerHTML=h; atualizaProg(); }
 function cntItemHTML(it){ const val=it.quantidade!=null?it.quantidade:''; const ign=it.status==='IGNORADO';
-  return `<div class="cnt-item ${it.status==='CONTADO'?'done':''}" id="ci-${it.id}"><div class="top"><span class="pn">${esc(it.produto_nome)}</span>${it.obrigatorio?'<span class="ob">obrigatório</span>':''}</div>
+  const acoes=ehThiago()?`<button class="cnt-mini" onclick="editarCntItem('${it.id}')">Editar</button><button class="cnt-mini danger" onclick="excluirCntItem('${it.id}')">Excluir</button>`:'';
+  return `<div class="cnt-item ${it.status==='CONTADO'?'done':''}" id="ci-${it.id}"><div class="top"><span class="pn">${esc(it.produto_nome)}</span><div class="cnt-actions">${it.obrigatorio?'<span class="ob">obrigatório</span>':''}${acoes}</div></div>
   <div class="cnt-row"><span class="un">${esc(it.unidade||'')}</span><input class="field qt" inputmode="decimal" placeholder="0" aria-label="Quantidade de ${esc(it.produto_nome)}" value="${val}" data-it="${it.id}" oninput="onQtd('${it.id}')" ${ign?'disabled':''}>${it.obrigatorio?'':`<button class="ig ${ign?'on':''}" onclick="toggleIgnora('${it.id}')">ignorar</button>`}</div></div>`; }
 function itById(id){ return _cnt.itens.find(x=>String(x.id)===String(id)); }
 function onQtd(id){ const it=itById(id); const el=document.querySelector(`input[data-it="${id}"]`); const v=el.value.trim().replace(',','.');
@@ -542,6 +555,28 @@ function atualizaProg(){ const tot=_cnt.itens.length, cont=_cnt.itens.filter(x=>
   const resolvidos=_cnt.itens.filter(x=>x.status!=='PENDENTE').length,pct=tot?Math.round(resolvidos*100/tot):0;
   $('cntProg').innerHTML=`<b style="color:var(--tx)">${resolvidos}/${tot}</b> conferidos`+(obr?` · <b style="color:var(--amar)">${obr} obrigatório(s)</b>`:'')+`<div class="cnt-bar"><i style="width:${pct}%"></i></div>`; }
 function cancelarContagem(){ _cnt=null; loadContagem(); }
+async function adicionarCntItem(){ if(!ehThiago()||!_cnt)return; const nome=($('cntNewNome')&&$('cntNewNome').value.trim())||'', unidade=($('cntNewUn')&&$('cntNewUn').value.trim())||'';
+  if(!nome){ toast('Informe o nome do item.'); $('cntNewNome')&&$('cntNewNome').focus(); return; }
+  if(!unidade){ toast('Informe a unidade de medida.'); $('cntNewUn')&&$('cntNewUn').focus(); return; }
+  try{ const d=await estFetch('/api/est/contagem/'+_cnt.id+'/item','POST',{nome,unidade}); const antigo=itById(d.item.id); if(antigo)Object.assign(antigo,d.item); else _cnt.itens.push(d.item); renderContagem(); toast('Item adicionado'); setTimeout(()=>{ const el=document.querySelector(`input[data-it="${d.item.id}"]`); if(el)el.focus(); },80); }catch(e){} }
+async function editarCntItem(id){ if(!ehThiago()||!_cnt)return; const it=itById(id); if(!it)return;
+  const v=await pedirForm('Editar item da contagem',[{key:'nome',label:'Nome do item',value:it.produto_nome||''},{key:'unidade',label:'Unidade de medida',value:it.unidade||''}], 'Salvar');
+  if(!v)return; try{ const d=await estFetch('/api/est/contagem/'+_cnt.id+'/item/'+id+'/produto','PATCH',{nome:v.nome,unidade:v.unidade}); Object.assign(it,d.item); renderContagem(); toast('Item atualizado'); }catch(e){} }
+async function excluirCntItem(id){ if(!ehThiago()||!_cnt)return; const it=itById(id); if(!it)return;
+  if(!await pedirConfirm('Excluir item','O item será removido desta contagem e inativado no cadastro, preservando o histórico.','Excluir'))return;
+  try{ await estFetch('/api/est/contagem/'+_cnt.id+'/item/'+id,'DELETE',{}); _cnt.itens=_cnt.itens.filter(x=>String(x.id)!==String(id)); renderContagem(); toast('Item excluído da contagem'); }catch(e){} }
+function csvCellLocal(v){ const s=String(v==null?'':v); return /[",\n\r;]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
+function exportarContagem(){ if(!_cnt||!ehThiago())return; const linhas=[
+    ['Contagem',_cnt.setor_nome||''],
+    ['Responsável',_cnt.usuario_nome||user.nome||user.login||''],
+    ['Iniciada em',_cnt.iniciada_em||''],
+    [],
+    ['Item','Unidade','Quantidade contada','Status','Tipo','Observação']
+  ];
+  (_cnt.itens||[]).slice().sort((a,b)=>String(a.produto_nome||'').localeCompare(String(b.produto_nome||''),'pt-BR')).forEach(it=>linhas.push([it.produto_nome||'',it.unidade||'',it.quantidade==null?'':String(it.quantidade).replace('.',','),it.status||'',it.geral?'geral':'setor',it.observacao||'']));
+  const csv='\ufeff'+linhas.map(l=>l.map(csvCellLocal).join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download='contagem-'+String(_cnt.setor_nome||'estoque').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),500); toast('Planilha exportada'); }
 async function encerrarContagem(){ const obr=_cnt.itens.filter(x=>x.obrigatorio&&x.status==='PENDENTE').length; if(obr){ toast('Faltam '+obr+' obrigatório(s)'); return; }
   const itens=_cnt.itens.map(x=>({id:x.id,quantidade:x.quantidade,status:x.status,observacao:x.observacao}));
   try{ await estFetch('/api/est/contagem/'+_cnt.id+'/encerrar','POST',{itens}); toast('Enviada para auditoria'); _cnt=null; loadContagem(); }catch(e){} }

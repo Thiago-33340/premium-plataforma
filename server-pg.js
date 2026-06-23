@@ -70,6 +70,10 @@ function jsonComHeaders(res, code, obj, headers) {
   res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }, headers || {}));
   res.end(b);
 }
+function csvCell(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
 
 const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'editar_project_state', 'acionar_deploy', 'gerenciar_usuarios'];
@@ -686,6 +690,26 @@ async function estPermsEfetivas(uid) {
   return { user: u, perms: EST_PERMS_COLAB.slice(), gestor: false };
 }
 async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
+function estNormLogin(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function estEhThiago(u) {
+  const login = estNormLogin(u && u.apelido_login);
+  const primeiroNome = estNormLogin(u && u.nome).split(/\s+/)[0];
+  return login === 'thiago' || primeiroNome === 'thiago';
+}
+async function estAcessoThiago(uid) {
+  const e = await estPermsEfetivas(uid);
+  return e.user && estEhThiago(e.user) ? e : null;
+}
+async function estEnsureGeraisSetor(client) {
+  const q = client ? client.query.bind(client) : db.q;
+  const r = await q(`INSERT INTO est_setor (tenant_id, nome, ordem, ativo)
+    VALUES ($1,'Gerais',10,TRUE)
+    ON CONFLICT (tenant_id, nome) DO UPDATE SET ativo=TRUE
+    RETURNING id`, [TENANT]);
+  return r.rows[0].id;
+}
 // Converte uma quantidade de receita para a UNIDADE DE CONTAGEM do insumo bruto.
 // Se a unidade da receita for de massa/volume (g/kg/ml/l) e o bruto tiver peso_g (gramas por unidade), converte; senão usa o número direto.
 function estToGramas(qtd, unidade) {
@@ -2159,6 +2183,36 @@ async function api(req, res, url) {
   // ===== CONTAGEM POR SETOR + AUDITORIA =====
   const estGestor = async (uid) => { if (!uid) return null; try { const u = await rbacUserByRef(uid); return u && perfilGestor(u) ? u : null; } catch (e) { return null; } };
 
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar-geral' && req.method === 'POST') {
+    const b = await readBody(req);
+    const e = await estAcessoThiago(b.usuario_id);
+    if (!e) return json(res, 403, { erro: 'A contagem geral com edição rápida está liberada somente para o Thiago.' });
+    const aberta = await db.q(`SELECT id, setor_nome, usuario_nome, iniciada_em
+      FROM est_contagem
+      WHERE tenant_id=$1 AND setor_id IS NULL AND usuario_id=$2 AND setor_nome='Contagem geral' AND status='EM_ANDAMENTO'
+      ORDER BY iniciada_em DESC LIMIT 1`, [TENANT, e.user.id]);
+    if (aberta.rows[0]) {
+      const ai = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY produto_nome', [aberta.rows[0].id]);
+      return json(res, 200, { contagem: Object.assign({}, aberta.rows[0], { geral_total: true }), itens: ai.rows, retomada: true });
+    }
+    const itens = await db.q(`SELECT id, nome, unidade
+      FROM est_produto
+      WHERE tenant_id=$1 AND ativo AND pode_contar
+      ORDER BY nome`, [TENANT]);
+    if (!itens.rows.length) return json(res, 400, { erro: 'Não há produtos ativos para contar.' });
+    const c = await db.q(`INSERT INTO est_contagem (tenant_id, setor_id, setor_nome, usuario_id, usuario_nome, status, status_auditoria)
+      VALUES ($1,NULL,'Contagem geral',$2,$3,'EM_ANDAMENTO','AGUARDANDO')
+      RETURNING id, setor_nome, usuario_nome, iniciada_em`, [TENANT, e.user.id, e.user.nome || e.user.apelido_login || 'Thiago']);
+    const cid = c.rows[0].id;
+    for (const it of itens.rows) {
+      await db.q(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral)
+        VALUES ($1,$2,$3,$4,$5,FALSE,'PENDENTE',TRUE)`,
+        [TENANT, cid, it.id, it.nome, it.unidade]);
+    }
+    const out = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY produto_nome', [cid]);
+    return json(res, 201, { contagem: Object.assign({}, c.rows[0], { geral_total: true }), itens: out.rows });
+  }
+
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] === 'iniciar' && req.method === 'POST') {
     const b = await readBody(req);
     if (!b.usuario_id || !b.setor_id) return json(res, 400, { erro: 'informe usuario_id e setor_id' });
@@ -2236,6 +2290,128 @@ async function api(req, res, url) {
     conf.contagem_geral = cg;
     await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, conf]);
     return json(res, 200, { ok: true, ativa_hoje: estGeralAtivaHoje(cg) });
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'exportar' && req.method === 'GET') {
+    const e = await estAcessoThiago(url.searchParams.get('usuario_id'));
+    if (!e) return json(res, 403, { erro: 'Exportação rápida liberada somente para o Thiago.' });
+    const cid = seg[3];
+    const c = await db.q('SELECT id, setor_nome, usuario_nome, status, status_auditoria, iniciada_em, encerrada_em FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
+    if (!c.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
+    const itens = await db.q(`SELECT produto_nome, unidade, quantidade, status, observacao, geral
+      FROM est_contagem_item
+      WHERE contagem_id=$1 AND tenant_id=$2
+      ORDER BY produto_nome`, [cid, TENANT]);
+    const linhas = [
+      ['Contagem', c.rows[0].setor_nome],
+      ['Responsável', c.rows[0].usuario_nome],
+      ['Status', c.rows[0].status],
+      ['Auditoria', c.rows[0].status_auditoria],
+      ['Iniciada em', c.rows[0].iniciada_em],
+      ['Encerrada em', c.rows[0].encerrada_em || ''],
+      [],
+      ['Item', 'Unidade', 'Quantidade contada', 'Status', 'Tipo', 'Observação']
+    ];
+    for (const it of itens.rows) linhas.push([it.produto_nome, it.unidade || '', it.quantidade == null ? '' : String(it.quantidade).replace('.', ','), it.status, it.geral ? 'geral' : 'setor', it.observacao || '']);
+    const csv = '\ufeff' + linhas.map(l => l.map(csvCell).join(';')).join('\r\n');
+    const safeId = String(cid).replace(/[^a-z0-9-]/gi, '');
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="contagem-${safeId}.csv"`,
+      'Access-Control-Allow-Origin': '*'
+    });
+    return res.end(csv);
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'item' && !seg[5] && req.method === 'POST') {
+    const b = await readBody(req); const cid = seg[3];
+    const e = await estAcessoThiago(b.usuario_id);
+    if (!e) return json(res, 403, { erro: 'Adicionar item durante a contagem está liberado somente para o Thiago.' });
+    const nome = String(b.nome || '').trim();
+    const unidade = String(b.unidade || '').trim().toUpperCase();
+    if (!nome) return json(res, 400, { erro: 'Informe o nome do item.' });
+    if (!unidade) return json(res, 400, { erro: 'Informe a unidade de medida.' });
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const cont = await client.query(`SELECT id, usuario_id, status FROM est_contagem WHERE id=$1 AND tenant_id=$2 FOR UPDATE`, [cid, TENANT]);
+      if (!cont.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'Contagem não encontrada.' }); }
+      if (String(cont.rows[0].usuario_id) !== String(e.user.id)) { await client.query('ROLLBACK'); return json(res, 403, { erro: 'Esta contagem não pertence ao seu usuário.' }); }
+      if (cont.rows[0].status !== 'EM_ANDAMENTO') { await client.query('ROLLBACK'); return json(res, 409, { erro: 'Esta contagem já foi encerrada.' }); }
+      const setorGeraisId = await estEnsureGeraisSetor(client);
+      let prod = await client.query('SELECT id, nome, unidade, ativo FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2) ORDER BY ativo DESC, id LIMIT 1', [TENANT, nome]);
+      if (prod.rows[0]) {
+        await client.query('UPDATE est_produto SET nome=$2, unidade=$3, pode_contar=TRUE, ativo=TRUE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$4', [prod.rows[0].id, nome, unidade, TENANT]);
+      } else {
+        prod = await client.query(`INSERT INTO est_produto (tenant_id, nome, unidade, pode_contar, pode_comprar, pode_produzir, ativo, observacoes)
+          VALUES ($1,$2,$3,TRUE,TRUE,FALSE,TRUE,$4) RETURNING id, nome, unidade`,
+          [TENANT, nome, unidade, 'Criado durante contagem geral pelo Thiago']);
+      }
+      const produtoId = prod.rows[0].id;
+      await client.query('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, produtoId, setorGeraisId]);
+      let item = await client.query('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE tenant_id=$1 AND contagem_id=$2 AND produto_id=$3 LIMIT 1', [TENANT, cid, produtoId]);
+      if (!item.rows[0]) {
+        item = await client.query(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral)
+          VALUES ($1,$2,$3,$4,$5,FALSE,'PENDENTE',TRUE)
+          RETURNING id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral`,
+          [TENANT, cid, produtoId, nome, unidade]);
+      }
+      await client.query('COMMIT');
+      return json(res, 201, { ok: true, item: item.rows[0], produto_id: produtoId });
+    } catch (e2) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e2.code === '23505' ? 'Já existe um produto com esse nome.' : (e2.code || e2.message) });
+    } finally { client.release(); }
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'item' && seg[5] && seg[6] === 'produto' && req.method === 'PATCH') {
+    const b = await readBody(req); const cid = seg[3], iid = seg[5];
+    const e = await estAcessoThiago(b.usuario_id);
+    if (!e) return json(res, 403, { erro: 'Editar item durante a contagem está liberado somente para o Thiago.' });
+    const nome = String(b.nome || '').trim();
+    const unidade = String(b.unidade || '').trim().toUpperCase();
+    if (!nome) return json(res, 400, { erro: 'Informe o nome do item.' });
+    if (!unidade) return json(res, 400, { erro: 'Informe a unidade de medida.' });
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const item = await client.query(`SELECT ci.id, ci.produto_id, c.usuario_id, c.status
+        FROM est_contagem_item ci JOIN est_contagem c ON c.id=ci.contagem_id AND c.tenant_id=ci.tenant_id
+        WHERE ci.id=$1 AND ci.contagem_id=$2 AND ci.tenant_id=$3 FOR UPDATE OF ci, c`, [iid, cid, TENANT]);
+      if (!item.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'Item da contagem não encontrado.' }); }
+      if (String(item.rows[0].usuario_id) !== String(e.user.id)) { await client.query('ROLLBACK'); return json(res, 403, { erro: 'Esta contagem não pertence ao seu usuário.' }); }
+      if (item.rows[0].status !== 'EM_ANDAMENTO') { await client.query('ROLLBACK'); return json(res, 409, { erro: 'Esta contagem já foi encerrada.' }); }
+      if (!item.rows[0].produto_id) { await client.query('ROLLBACK'); return json(res, 400, { erro: 'Este item não está vinculado a um produto.' }); }
+      await client.query('UPDATE est_produto SET nome=$2, unidade=$3, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$4', [item.rows[0].produto_id, nome, unidade, TENANT]);
+      const up = await client.query(`UPDATE est_contagem_item SET produto_nome=$3, unidade=$4
+        WHERE id=$1 AND contagem_id=$2 AND tenant_id=$5
+        RETURNING id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral`,
+        [iid, cid, nome, unidade, TENANT]);
+      await client.query('COMMIT');
+      return json(res, 200, { ok: true, item: up.rows[0] });
+    } catch (e2) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e2.code === '23505' ? 'Já existe outro produto com esse nome.' : (e2.code || e2.message) });
+    } finally { client.release(); }
+  }
+  if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'item' && seg[5] && req.method === 'DELETE') {
+    const b = await readBody(req); const cid = seg[3], iid = seg[5];
+    const e = await estAcessoThiago(b.usuario_id);
+    if (!e) return json(res, 403, { erro: 'Excluir item durante a contagem está liberado somente para o Thiago.' });
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const item = await client.query(`SELECT ci.id, ci.produto_id, c.usuario_id, c.status
+        FROM est_contagem_item ci JOIN est_contagem c ON c.id=ci.contagem_id AND c.tenant_id=ci.tenant_id
+        WHERE ci.id=$1 AND ci.contagem_id=$2 AND ci.tenant_id=$3 FOR UPDATE OF ci, c`, [iid, cid, TENANT]);
+      if (!item.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'Item da contagem não encontrado.' }); }
+      if (String(item.rows[0].usuario_id) !== String(e.user.id)) { await client.query('ROLLBACK'); return json(res, 403, { erro: 'Esta contagem não pertence ao seu usuário.' }); }
+      if (item.rows[0].status !== 'EM_ANDAMENTO') { await client.query('ROLLBACK'); return json(res, 409, { erro: 'Esta contagem já foi encerrada.' }); }
+      await client.query('DELETE FROM est_contagem_item WHERE id=$1 AND contagem_id=$2 AND tenant_id=$3', [iid, cid, TENANT]);
+      if (item.rows[0].produto_id) await client.query('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [item.rows[0].produto_id, TENANT]);
+      await client.query('COMMIT');
+      return json(res, 200, { ok: true });
+    } catch (e2) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e2.code || e2.message });
+    } finally { client.release(); }
   }
   if (sub === 'est' && seg[2] === 'contagem' && seg[3] && seg[4] === 'item' && seg[5] && req.method === 'PATCH') {
     const b = await readBody(req); const cid = seg[3], iid = seg[5];

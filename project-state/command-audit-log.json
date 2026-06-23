@@ -12,5 +12,116 @@
     "extra": {
       "escopo": "tarefas, riscos e decisões"
     }
+  },
+  {
+    "id": "command-log-estoque-contagem-premium-2026-06-23",
+    "criado_em": "2026-06-23T13:35:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "registrar_estado_operacional_estoque",
+    "target_file": "project-state/stock-readiness.json",
+    "target_id": "stock-readiness-premium-2026-06-22",
+    "resumo": "Registrada liberação operacional da contagem Premium após correção RBAC UUID, gestão de PINs, limpeza de contagens antigas e vinculação de produtos sem setor ao setor Gerais.",
+    "extra": {
+      "commit_deployado": "e736e8c",
+      "commit_registro": "28fe16c",
+      "smoke_read_only": "19/19",
+      "rbac_audit": "OK",
+      "contagens_abertas": 0,
+      "produtos_ativos_contaveis_sem_setor": 0,
+      "observacao": "PINs temporários não são registrados neste arquivo por segurança."
+    }
+  },
+  {
+    "id": "command-log-n8n-jessica-audit-2026-06-23",
+    "criado_em": "2026-06-23T13:55:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "registrar_auditoria_n8n_jessica",
+    "target_file": "docs/N8N-JESSICA-AUDITORIA-2026-06-23.md",
+    "target_id": "task-f2-030",
+    "resumo": "Registrada auditoria read-only dos workflows n8n/Jessica, com foco em humanização, economia de tokens, segurança de webhooks, mensagens Meta e workflows legados.",
+    "extra": {
+      "workflows_encontrados": 67,
+      "achados_criticos": [
+        "Health Check falhando a cada 5 minutos",
+        "segredos hardcoded em workflows",
+        "mensagens proativas livres bloqueadas pela Meta fora da janela de 24h",
+        "Delivery Direto calcula HMAC mas não bloqueia assinatura inválida",
+        "AI Agent ativo sem tráfego real recente",
+        "workflows legados de estoque e gestão ainda ativos"
+      ],
+      "sem_mutacao_no_n8n": true
+    }
+  },
+  {
+    "id": "command-log-n8n-healthcheck-fix-2026-06-23",
+    "criado_em": "2026-06-23T14:12:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "corrigir_health_check_n8n",
+    "target_file": "docs/N8N-JESSICA-AUDITORIA-2026-06-23.md",
+    "target_id": "task-f2-030",
+    "resumo": "Corrigido, publicado e validado o workflow n8n de Health Check Sistemas v1, que falhava a cada 5 minutos por tentar consolidar pings paralelos antes de todos os nós executarem.",
+    "extra": {
+      "workflow": "PROD - Titan Khardela - Health Check Sistemas v1",
+      "workflow_id": "doXrU4fvikgMRzp3",
+      "resultado_teste_manual": "success",
+      "resultado_primeira_execucao_agendada_pos_fix": "success",
+      "alteracao": "sequenciamento dos pings Saipos, Delivery Direto e Meta antes de Consolidar Status",
+      "sem_segredos_registrados": true
+    }
+  },
+  {
+    "id": "command-log-n8n-turno-gateway-docs-2026-06-23",
+    "criado_em": "2026-06-23T14:45:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "corrigir_turno_criar_gateway_documentar_hardening",
+    "target_file": "project-state/tasks.json",
+    "target_id": "task-f2-031/task-f2-032/task-f2-033/task-f2-034",
+    "resumo": "Corrigidos schedules de pré-turno/início de turno no n8n, criado gateway de pedidos com Saipos como destino padrão e documentados planos de credenciais, blindagem Saipos, iFood e consolidação da gestão v5.",
+    "extra": {
+      "pre_turno_workflow_id": "guDszOucwTr19zb4",
+      "inicio_turno_workflow_id": "IGr5oHLFIFcmWBgO",
+      "pedido_gateway_workflow_id": "lZEl4AUUCE2xUElC",
+      "pedido_gateway_destino_default": "SAIPOS",
+      "pedido_gateway_teste_seguro": "manual success: destino_pedido NOSSO sem itens retornou erro controlado sem chamada externa de pedido",
+      "docs_criados": [
+        "docs/N8N-CREDENCIAIS-ROTACAO-SEGURA-2026-06-23.md",
+        "docs/SAIPOS-GATEWAY-BLINDAGEM-2026-06-23.md",
+        "docs/IFOOD-PLANEJAMENTO-INTEGRACAO-2026-06-23.md",
+        "docs/GESTAO-OPERACIONAL-V5-CONSOLIDACAO-BRIEFING-2026-06-23.md"
+      ],
+      "observacao": "AI Agent da Jessica ainda não foi publicado apontando para o gateway porque há divergência entre rascunho e versão ativa; publicar sem comparar pode ativar mudanças antigas não validadas."
+    }
+  },
+  {
+    "id": "command-log-stock-fast-general-count-2026-06-23",
+    "criado_em": "2026-06-23T15:20:00.000-03:00",
+    "usuario_id": "codex-local",
+    "usuario_email": "codex@local",
+    "usuario_nome": "Codex",
+    "action": "ativar_contagem_geral_rapida_thiago",
+    "target_file": "public/estoque.html, server-pg.js",
+    "target_id": "task-f2-035",
+    "resumo": "Implementada contagem geral rápida exclusiva para o usuário Thiago, com criação de item durante a contagem, edição de nome/unidade, exclusão segura por inativação e exportação CSV.",
+    "extra": {
+      "rotas_adicionadas": [
+        "POST /api/est/contagem/iniciar-geral",
+        "POST /api/est/contagem/:id/item",
+        "PATCH /api/est/contagem/:id/item/:itemId/produto",
+        "DELETE /api/est/contagem/:id/item/:itemId",
+        "GET /api/est/contagem/:id/exportar"
+      ],
+      "restricao": "Servidor valida usuário resolvido como Thiago; UI só exibe botões para login/apelido Thiago.",
+      "seguranca": "Exclusão é soft delete/inativação do produto; histórico é preservado.",
+      "validacao_local": ["node --check server-pg.js", "parse do script embutido em public/estoque.html"],
+      "pendente": "Deploy e teste real no navegador autenticado como Thiago."
+    }
   }
 ]
