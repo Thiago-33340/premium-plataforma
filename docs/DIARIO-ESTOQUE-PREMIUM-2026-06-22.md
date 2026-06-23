@@ -885,3 +885,104 @@ Estado operacional:
 - Colaboradores enxergam apenas os itens dos setores atribuídos, exceto Sophia que está com `TUDO`.
 - O gestor já pode entrar em **Estoque > Mais > Configurar setores** para adicionar/remover itens da contagem de cada setor.
 - O gestor já pode entrar em **Estoque > Mais > Permissões da equipe** para ajustar setores permitidos e redefinir PIN temporário dos colaboradores.
+
+## Marco 22 — Reorganização de departamentos, categorias e setores da Premium
+
+Data: 2026-06-23
+
+Status: aplicado em produção via API do próprio sistema
+
+Motivo:
+
+- Após a primeira contagem/auditoria, Thiago identificou que a organização por categorias estava bagunçada e dificultava encontrar ingredientes.
+- A operação precisa separar três departamentos principais: **Cozinha**, **Salão** e **Limpeza**.
+- As categorias devem representar a família operacional do item: **Matéria Prima**, **Insumos Produzidos**, **Bebidas**, **Limpeza**, **Embalagens e Descartáveis**, **Utensílios da cozinha**, **Utensílios do Salão** e **Material de escritório**.
+- A subcategoria do produto passou a representar o setor de contagem: **Gerais**, **Borda**, **Montagem**, **Finalização** e **Recepção**.
+
+Decisão técnica:
+
+- O campo `departamento` foi mantido no próprio `est_produto`, não apenas em `est_categoria`.
+- Isso evita gambiarra quando a mesma categoria precisa existir em departamentos diferentes, por exemplo:
+  - `Cozinha > Matéria Prima > Montagem`;
+  - `Salão > Matéria Prima > Recepção`.
+- A categoria segue como classificação funcional e a subcategoria segue como setor operacional/contagem.
+
+Execução:
+
+- Criado script auditável: `scripts/migrate-premium-taxonomy.mjs`.
+- O script possui modo simulação por padrão e só aplica quando chamado com `--apply`.
+- A migração foi feita usando `usuario_id=thiago`, sem leitura de `.env`, sem acesso direto ao banco e sem alterar valores de estoque.
+
+Resultado aplicado:
+
+- Categorias criadas:
+  - `Matéria Prima`;
+  - `Insumos Produzidos`;
+  - `Limpeza`;
+  - `Embalagens e Descartáveis`;
+  - `Utensílios da cozinha`;
+  - `Utensílios do Salão`;
+  - `Material de escritório`.
+- 14 produtos novos foram adicionados com estoque inicial zero:
+  - `Ferrero Rocher caixa c/ 8`;
+  - `Ferrero Rocher caixa c/ 4`;
+  - `Raffaello cx c/ 12`;
+  - `Pimenta 60ml`;
+  - `Palito de dente`;
+  - `Brigadeiro de Ninho - Bisnaga P 240g`;
+  - `Camarão 200g`;
+  - `Caixas de Pedaço - Branca`;
+  - `Caixas de Pedaço - Amarela`;
+  - `Caneta BIC`;
+  - `Pincel Pilot`;
+  - `Grampeador`;
+  - `Caixa de Grampo`;
+  - `Espetos de aço`.
+- 176 produtos foram reclassificados/renomeados para departamento, categoria, subcategoria e setor corretos.
+- `Morango em cubos` ficou ativo para uso em ficha técnica, mas fora da contagem (`pode_contar=false`), classificado como `Cozinha > Insumos Produzidos > Finalização`.
+- 5 produtos foram desativados de forma suave (`ativo=false`), sem apagar histórico e sem alterar `estoque_atual`:
+  - `Café Cajuba`;
+  - `Milho`;
+  - `Nutella`;
+  - `Recheio Scala choc. branco 1,05kg`;
+  - `Lombo Fracionado`.
+
+Permissões:
+
+- Eva foi conferida e já estava correta:
+  - perfil `GESTOR`;
+  - setores `["TUDO"]`;
+  - acesso total igual Thiago/Tassiano.
+- Sophia foi ajustada para enxergar somente `Recepção`:
+  - antes: `["TUDO"]`;
+  - depois: `["4"]`;
+  - resultado: vê apenas as abas de início/contagem e os itens da Recepção.
+
+Validação pós-migração:
+
+- Produção `/api/health`: OK.
+- Produtos ativos: 190.
+- Produtos ativos contáveis: 189.
+- Produtos ativos sem departamento/categoria/subcategoria: 0.
+- Produtos contáveis sem setor: 0.
+- Thiago, Tassiano e Eva:
+  - acesso total;
+  - 189 itens contáveis;
+  - setores: Borda, Finalização, Gerais, Montagem e Recepção.
+- Sophia:
+  - acesso restrito;
+  - 31 itens contáveis;
+  - setor: Recepção.
+- `npm run smoke:read -- --base-url=https://premium.titanatende.com.br --user-id=thiago`: OK nos checks executados.
+- `npm run audit:rbac -- --base-url=https://premium.titanatende.com.br --manager-id=thiago --user-id=thiago,tassiano,eva,sophia`: OK.
+
+Ponto de decisão pendente:
+
+- Não foi feita transferência/soma de estoque entre produtos.
+- Dois itens desativados ainda preservam saldo histórico:
+  - `Milho`: `4.000 LATA DE 1,7 KG`;
+  - `Nutella`: `2.000 BALDE DE 3KG`.
+- Os itens ativos atuais são:
+  - `Milho Lata`: `4.000 UN`;
+  - `Nutella 3Kg`: `0.000 UN`.
+- Se o gestor quiser reaproveitar esses saldos no item ativo, deve decidir manualmente se transfere, descarta ou ajusta o valor. A migração não alterou contagem para evitar perda de auditoria.
