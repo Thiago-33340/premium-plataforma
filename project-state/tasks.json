@@ -372,5 +372,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-027"],
     "proximo_passo": "V1 implementada: Command cria tarefas locais, backend expõe poll/report por bearer token, script scripts/titan-local-agent.mjs roda no PC com ações permitidas codex_handoff, claude_handoff, git_status, project_checks e open_command_center. Próximo degrau: configurar TITAN_LOCAL_AGENT_TOKEN no EasyPanel e no PC; depois evoluir para execução Codex/App Server com confirmações próprias."
+  },
+  {
+    "id": "task-f2-029",
+    "titulo": "Liberar contagem Premium com RBAC UUID, PIN e gestão de setores",
+    "modulo": "estoque-v2",
+    "status": "em_andamento",
+    "prioridade": "alta",
+    "categoria": "operacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-017", "task-f2-028"],
+    "proximo_passo": "Deployar correção UUID/RBAC, redefinir PINs temporários, limpar contagens antigas, vincular produtos sem setor ao Gerais e rodar smoke/RBAC até passar."
   }
 ]

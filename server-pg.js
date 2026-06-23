@@ -665,9 +665,9 @@ async function rbacUserByRef(ref) {
   const r = UUID_RE.test(v)
     ? await db.q(`SELECT ${cols}
         FROM rbac_contacts
-        WHERE tenant_id=$2 AND ativo AND (id=$1::uuid OR lower(COALESCE(apelido_login,''))=lower($1) OR lower(split_part(COALESCE(nome,''),' ',1))=lower($1))
-        ORDER BY CASE WHEN id=$1::uuid THEN 0 WHEN lower(COALESCE(apelido_login,''))=lower($1) THEN 1 ELSE 2 END, nome
-        LIMIT 1`, [v, TENANT])
+        WHERE tenant_id=$2 AND ativo AND (id=$1::uuid OR lower(COALESCE(apelido_login,''))=lower($3) OR lower(split_part(COALESCE(nome,''),' ',1))=lower($3))
+        ORDER BY CASE WHEN id=$1::uuid THEN 0 WHEN lower(COALESCE(apelido_login,''))=lower($3) THEN 1 ELSE 2 END, nome
+        LIMIT 1`, [v, TENANT, v])
     : await db.q(`SELECT ${cols}
         FROM rbac_contacts
         WHERE tenant_id=$2 AND ativo AND (lower(COALESCE(apelido_login,''))=lower($1) OR lower(split_part(COALESCE(nome,''),' ',1))=lower($1))
@@ -2293,8 +2293,11 @@ async function api(req, res, url) {
     const e = await estPermsEfetivas(b.usuario_id);
     if (!e.user || !(e.gestor || e.perms.includes('auditar_contagem'))) return json(res, 403, { erro: 'Sem permissão para auditar.' });
     const g = e.user;
+    const cab = await db.q('SELECT status, status_auditoria FROM est_contagem WHERE id=$1 AND tenant_id=$2', [cid, TENANT]);
+    if (!cab.rows[0]) return json(res, 404, { erro: 'Contagem não encontrada.' });
     const acao = b.acao;
     if (acao === 'aprovar') {
+      if (cab.rows[0].status !== 'ENCERRADA') return json(res, 409, { erro: 'Só é possível aprovar contagem encerrada.' });
       const its = await db.q('SELECT produto_id, quantidade FROM est_contagem_item WHERE contagem_id=$1 AND quantidade IS NOT NULL AND produto_id IS NOT NULL', [cid]);
       for (const it of its.rows) {
         const cur = await db.q('SELECT estoque_atual FROM est_produto WHERE id=$1', [it.produto_id]);
@@ -2815,13 +2818,45 @@ async function api(req, res, url) {
   // ---- Permissões (configuráveis por usuário) ----
   if (sub === 'est' && seg[2] === 'usuarios' && req.method === 'GET') {
     if (!(await estPode(url.searchParams.get('usuario_id'), 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
-    const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal FROM rbac_contacts WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
+    const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos,
+        ativo, (pin_hash IS NOT NULL) AS tem_pin, pin_must_change
+      FROM rbac_contacts WHERE tenant_id=$1 AND ativo ORDER BY nome`, [TENANT]);
     return json(res, 200, { usuarios: r.rows, catalogo: EST_PERMS });
+  }
+  if (sub === 'est' && seg[2] === 'usuario' && seg[3] && req.method === 'PATCH') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const alvo = await rbacUserByRef(seg[3]);
+    if (!alvo) return json(res, 404, { erro: 'Usuário alvo não encontrado.' });
+    const setores = Array.isArray(b.setores_permitidos)
+      ? b.setores_permitidos.map(String).map(s => s.trim()).filter(Boolean)
+      : null;
+    const apelido = b.apelido_login != null ? String(b.apelido_login).trim().toLowerCase() : null;
+    await db.q(`UPDATE rbac_contacts
+      SET setores_permitidos=COALESCE($2,setores_permitidos),
+          apelido_login=COALESCE($3,apelido_login),
+          ativo=COALESCE($4,ativo)
+      WHERE id=$1 AND tenant_id=$5`,
+      [alvo.id, setores, apelido || null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+    return json(res, 200, { ok: true, setores_permitidos: setores });
+  }
+  if (sub === 'est' && seg[2] === 'usuario' && seg[3] && seg[4] === 'pin' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (!(await estPode(b.usuario_id, 'editar_permissoes'))) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const alvo = await rbacUserByRef(seg[3]);
+    if (!alvo) return json(res, 404, { erro: 'Usuário alvo não encontrado.' });
+    const pin = String(b.pin || '').replace(/\D/g, '');
+    if (pin.length < 4 || pin.length > 6) return json(res, 400, { erro: 'PIN precisa ter 4 a 6 dígitos.' });
+    const mustChange = b.pin_must_change !== false;
+    await db.q(`UPDATE rbac_contacts
+      SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=$3
+      WHERE id=$1 AND tenant_id=$4`, [alvo.id, pin, mustChange, TENANT]);
+    return json(res, 200, { ok: true, pin_must_change: mustChange });
   }
   if (sub === 'est' && seg[2] === 'permissoes' && req.method === 'GET') {
     const alvo = url.searchParams.get('alvo_id') || url.searchParams.get('usuario_id');
     const e = await estPermsEfetivas(alvo);
-    return json(res, 200, { perms: e.perms, gestor: !!e.gestor, catalogo: EST_PERMS });
+    return json(res, 200, { perms: e.perms, gestor: !!e.gestor, user: e.user || null, catalogo: EST_PERMS });
   }
   if (sub === 'est' && seg[2] === 'permissoes' && req.method === 'POST') {
     const b = await readBody(req);
@@ -3289,14 +3324,16 @@ async function api(req, res, url) {
     }
     if (seg[2] === 'usuario' && !seg[3] && req.method === 'POST') {
       const ph = '+' + Date.now();
-      const r = await db.q(`INSERT INTO rbac_contacts (tenant_id, phone, nome, apelido_login, perfil_principal, setores_permitidos, ativo, pin_hash, pin_changed_at)
-        VALUES ($1,$2,$3,$4,$5,$6,TRUE, CASE WHEN $7<>'' THEN crypt($7, gen_salt('bf',8)) ELSE NULL END, NOW()) RETURNING id`,
-        [TENANT, body.phone || ph, body.nome || '', String(body.apelido_login || '').toLowerCase(), body.perfil_principal || 'COLABORADOR', body.setores_permitidos || [], String(body.pin || '').replace(/\D/g, '')]);
+      const pinNovo = String(body.pin || '').replace(/\D/g, '');
+      const r = await db.q(`INSERT INTO rbac_contacts (tenant_id, phone, nome, apelido_login, perfil_principal, setores_permitidos, ativo, pin_hash, pin_changed_at, pin_must_change)
+        VALUES ($1,$2,$3,$4,$5,$6,TRUE, CASE WHEN $7<>'' THEN crypt($7, gen_salt('bf',8)) ELSE NULL END, NOW(), $8) RETURNING id`,
+        [TENANT, body.phone || ph, body.nome || '', String(body.apelido_login || '').toLowerCase(), body.perfil_principal || 'COLABORADOR', body.setores_permitidos || [], pinNovo, !!pinNovo]);
       return json(res, 201, { ok: true, id: r.rows[0].id });
     }
     if (seg[2] === 'usuario' && seg[3] && seg[4] === 'pin' && req.method === 'POST') {
       const pin = String(body.pin || '').replace(/\D/g, ''); if (pin.length < 4) return json(res, 400, { erro: 'PIN curto' });
-      await db.q(`UPDATE rbac_contacts SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=FALSE WHERE id=$1 AND tenant_id=$3`, [seg[3], pin, TENANT]);
+      const mustChange = body.pin_must_change !== false;
+      await db.q(`UPDATE rbac_contacts SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=$4 WHERE id=$1 AND tenant_id=$3`, [seg[3], pin, TENANT, mustChange]);
       return json(res, 200, { ok: true });
     }
     if (seg[2] === 'usuario' && seg[3] && req.method === 'PATCH') {

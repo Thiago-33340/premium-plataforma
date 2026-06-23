@@ -132,8 +132,36 @@
     "payload_optional": ["observacao"],
     "writes": ["est_contagem", "est_auditoria", "est_produto", "est_movimento"],
     "success": "200 { ok: true }",
-    "known_errors": ["403 Sem permissão", "400 ação inválida"],
+    "known_errors": ["403 Sem permissão", "400 ação inválida", "409 Só é possível aprovar contagem encerrada"],
     "side_effects": ["acao=aprovar atualiza estoque_atual de cada item contado e grava movimento CONTAGEM", "acao=corrigir volta status para EM_ANDAMENTO"]
+  },
+  {
+    "id": "estoque-usuario-setores",
+    "module": "permissoes-staff",
+    "method": "PATCH",
+    "path": "/api/est/usuario/:id",
+    "screen": "public/estoque.html / Mais / Permissões da equipe",
+    "permission": "editar_permissoes",
+    "payload_required": ["usuario_id"],
+    "payload_optional": ["setores_permitidos", "apelido_login", "ativo"],
+    "writes": ["rbac_contacts"],
+    "success": "200 { ok: true, setores_permitidos }",
+    "known_errors": ["403 Apenas gestor ou gerente", "404 Usuário alvo não encontrado"],
+    "side_effects": ["altera remotamente quais setores o colaborador pode contar sem precisar do PIN dele"]
+  },
+  {
+    "id": "estoque-usuario-pin",
+    "module": "permissoes-staff",
+    "method": "POST",
+    "path": "/api/est/usuario/:id/pin",
+    "screen": "public/estoque.html / Mais / Permissões da equipe",
+    "permission": "editar_permissoes",
+    "payload_required": ["usuario_id", "pin"],
+    "payload_optional": ["pin_must_change"],
+    "writes": ["rbac_contacts.pin_hash", "rbac_contacts.pin_changed_at", "rbac_contacts.pin_must_change"],
+    "success": "200 { ok: true, pin_must_change }",
+    "known_errors": ["403 Apenas gestor ou gerente", "400 PIN precisa ter 4 a 6 dígitos", "404 Usuário alvo não encontrado"],
+    "side_effects": ["define PIN temporário com hash pgcrypto; por padrão obriga o usuário a trocar no primeiro acesso"]
   },
   {
     "id": "command-ai-console",

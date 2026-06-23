@@ -547,14 +547,18 @@ async function encerrarContagem(){ const obr=_cnt.itens.filter(x=>x.obrigatorio&
   try{ await estFetch('/api/est/contagem/'+_cnt.id+'/encerrar','POST',{itens}); toast('Enviada para auditoria'); _cnt=null; loadContagem(); }catch(e){} }
 
 /* ===== AUDITORIA ===== */
-async function abrirAuditorias(){ let cs=[]; try{ cs=((await (await fetch(API+'/api/est/contagens?aguardando=1')).json()).contagens)||[]; }catch(e){}
-  const body= cs.length? cs.map(c=>`<div class="prow" onclick="abrirAuditoria('${c.id}')"><div class="nm"><b>${esc(c.setor_nome)}</b><small>${esc(c.usuario_nome||'')} · ${c.itens_contados||0} itens</small></div><div class="qt"><span class="tag low">auditar</span></div></div>`).join('') : '<div class="empty">Nada aguardando auditoria.</div>';
+async function abrirAuditorias(){ let all=[]; try{ all=((await (await fetch(API+'/api/est/contagens')).json()).contagens)||[]; }catch(e){}
+  const pend=all.filter(c=>c.status==='ENCERRADA'&&c.status_auditoria==='AGUARDANDO'), abertas=all.filter(c=>c.status==='EM_ANDAMENTO');
+  let body='';
+  body+=`<div class="sec">Aguardando aprovação</div>`+(pend.length?pend.map(c=>`<div class="prow" onclick="abrirAuditoria('${c.id}')"><div class="nm"><b>${esc(c.setor_nome)}</b><small>${esc(c.usuario_nome||'')} · ${c.itens_contados||0} itens</small></div><div class="qt"><span class="tag low">auditar</span></div></div>`).join(''):'<div class="empty">Nada aguardando auditoria.</div>');
+  body+=`<div class="sec">Contagens abertas</div>`+(abertas.length?abertas.map(c=>`<div class="prow" onclick="abrirAuditoria('${c.id}')"><div class="nm"><b>${esc(c.setor_nome)}</b><small>${esc(c.usuario_nome||'')} · iniciada ${cntHora(c.iniciada_em)}</small></div><div class="qt"><span class="tag low">em andamento</span></div></div>`).join(''):'<div class="empty">Nenhuma contagem aberta.</div>');
   modalHTML('Auditoria de contagens', body); }
 async function abrirAuditoria(id){ let d; try{ d=await (await fetch(API+'/api/est/contagem/'+id)).json(); }catch(e){ return; }
   const its=d.itens||[];
   let body=`<div class="mut sm" style="margin-bottom:8px">${esc(d.contagem.setor_nome)} · ${esc(d.contagem.usuario_nome||'')}</div><div style="max-height:44vh;overflow:auto;margin-bottom:8px">`;
   body+=its.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto_nome)}</b><small>${it.status==='IGNORADO'?'ignorado':(it.obrigatorio?'obrigatório':'')}</small></div><div class="qt"><span class="big">${it.quantidade!=null?fmt(it.quantidade):'—'}</span> <span class="mut xs">${esc(it.unidade||'')}</span></div></div>`).join('')+'</div>';
-  body+=`<div class="mfoot"><button class="btn ghost" onclick="auditar('${id}','corrigir')">Corrigir</button><button class="btn danger" onclick="auditar('${id}','reprovar')">Reprovar</button><button class="btn primary" onclick="auditar('${id}','aprovar')">Aprovar</button></div>`;
+  const aberta=d.contagem&&d.contagem.status==='EM_ANDAMENTO';
+  body+=`<div class="mfoot"><button class="btn ghost" onclick="auditar('${id}','corrigir')">Corrigir</button><button class="btn danger" onclick="auditar('${id}','reprovar')">Reprovar</button>${aberta?'':`<button class="btn primary" onclick="auditar('${id}','aprovar')">Aprovar</button>`}</div>`;
   modalHTML('Conferir contagem', body); }
 async function auditar(id,acao){ try{ await estFetch('/api/est/contagem/'+id+'/auditar','POST',{acao}); fecharModais(); toast(acao==='aprovar'?'Aprovada — estoque atualizado':acao==='reprovar'?'Reprovada':'Correção solicitada'); loadContagem(); }catch(e){} }
 function modalHTML(titulo, body){ const ov=document.createElement('div'); ov.className='modal on est-modal';
@@ -805,20 +809,35 @@ async function lancarProducao(){ const q=(($('prodQtd')&&$('prodQtd').value)||''
 
 /* ===== PERMISSÕES DA EQUIPE ===== */
 const PERM_LABEL={ acessar_estoque_premium_rp:'Acessar o estoque', acessar_produtos:'Ver produtos', acessar_categorias:'Ver categorias', acessar_fornecedores:'Ver fornecedores', acessar_visitas:'Acessar visitas', acessar_mapa_comparativo_fornecedores:'Ver mapa de fornecedores', acessar_lista_compras_inteligente:'Lista de compras inteligente', acessar_contagem:'Acessar contagem', acessar_auditoria:'Acessar auditoria', acessar_producao_interna:'Acessar produção interna', acessar_lancamentos:'Acessar lançamentos', acessar_configuracoes:'Acessar configurações', ver_valores:'Ver valores/preços', ver_maior_valor_pago:'Ver maior valor já pago', editar_produtos:'Editar produtos', editar_categorias:'Editar categorias', registrar_compra:'Registrar compra', registrar_visita:'Registrar visita', fazer_contagem:'Lançar contagem', auditar_contagem:'Auditar contagem', aprovar_contagem:'Aprovar contagem', reprovar_contagem:'Reprovar contagem', exportar_dados:'Exportar dados', criar_usuarios:'Criar usuários', editar_permissoes:'Editar permissões' };
-let _permCat=[], _permUsers=[];
+let _permCat=[], _permUsers=[], _permEditing=null;
 async function permTela(){ const w=$('maisWrap'); w.innerHTML=`<div class="vhead"><h2 class="tit">Permissões da equipe</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div><p class="mut sm" style="margin:0 0 8px">Gestores e gerentes têm acesso total. Configure abaixo o que cada colaborador pode fazer.</p><div id="permUsers"><div class="empty">Carregando…</div></div>`;
+  await ensureSetores().catch(()=>{});
   let d; try{ d=await (await fetch(API+'/api/est/usuarios?usuario_id='+encodeURIComponent(user.id))).json(); }catch(e){ d={}; }
   _permCat=d.catalogo||[]; _permUsers=d.usuarios||[];
-  $('permUsers').innerHTML=_permUsers.length? _permUsers.map(u=>{ const g=/GESTOR|GERENTE/i.test(u.perfil_principal||''); return `<button class="setor-btn" ${g?'disabled style="opacity:.55"':`onclick="permEditar('${u.id}')"`}><span>${esc(u.nome||u.apelido_login)} <small class="mut">${esc((u.perfil_principal||'').toLowerCase())}</small></span><span>${g?'acesso total':'Configurar ›'}</span></button>`; }).join('') : '<div class="empty">Sem usuários.</div>'; }
+  $('permUsers').innerHTML=_permUsers.length? _permUsers.map(u=>{ const g=/GESTOR|GERENTE/i.test(u.perfil_principal||''); const ss=permSetores(u).map(permSetorLabel).join(', ')||'sem setor'; return `<button class="setor-btn" onclick="permEditar('${u.id}')"><span>${esc(u.nome||u.apelido_login)} <small class="mut">${esc((u.perfil_principal||'').toLowerCase())} · ${esc(ss)}</small></span><span>${g?'acesso total':'Configurar ›'}</span></button>`; }).join('') : '<div class="empty">Sem usuários.</div>'; }
+function permSetores(u){ const v=u&&u.setores_permitidos; if(Array.isArray(v))return v.map(String); if(v==null)return []; return String(v).replace(/[{}"]/g,'').split(',').map(s=>s.trim()).filter(Boolean); }
+function permSetorLabel(s){ if(String(s)==='TUDO')return 'Todos'; const f=(_setores||[]).find(x=>String(x.id)===String(s)||x.nome===s); return f?f.nome:String(s); }
 async function permEditar(uid){ const u=_permUsers.find(x=>String(x.id)===String(uid)); if(!u) return;
   let d; try{ d=await (await fetch(API+'/api/est/permissoes?alvo_id='+encodeURIComponent(uid))).json(); }catch(e){ d={}; }
-  const have=new Set(d.perms||[]);
-  const rows=_permCat.map(p=>`<label class="fcheck"><input type="checkbox" data-p="${p}" ${have.has(p)?'checked':''}> ${esc(PERM_LABEL[p]||p)}</label>`).join('');
+  const gestor=!!d.gestor||/GESTOR|GERENTE/i.test(u.perfil_principal||''); _permEditing={uid,gestor};
+  const have=new Set(d.perms||[]), setores=new Set(permSetores(u));
+  const rows=gestor?'<div class="empty">Gestor/gerente tem acesso total ao estoque.</div>':_permCat.map(p=>`<label class="fcheck"><input type="checkbox" data-p="${p}" ${have.has(p)?'checked':''}> ${esc(PERM_LABEL[p]||p)}</label>`).join('');
+  const setorBtns=[{id:'TUDO',nome:'Todos os setores'}].concat(_setores||[]).map(s=>`<button type="button" class="sector-chip ${setores.has(String(s.id))||setores.has(s.nome)?'on':''}" data-ps="${esc(s.id)}" onclick="permToggleSetor(this)">${esc(s.nome)}</button>`).join('');
   $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">${esc(u.nome||u.apelido_login)}</h2><button class="btn ghost sm" onclick="permTela()">Voltar</button></div>
-   <div style="padding-bottom:96px">${rows}</div>
-   <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="permSalvar('${uid}')">Salvar permissões</button></div>`; }
+   <div style="padding-bottom:120px">
+    <div class="sec">Setores que este usuário pode contar</div><div class="sector-grid" style="margin-bottom:12px">${setorBtns}</div>
+    <div class="sec">Permissões</div>${rows}
+    <div class="sec">PIN de acesso</div>
+    <div class="cnt-item"><p class="mut sm" style="margin:0 0 8px">${u.tem_pin?'PIN já definido.':'Sem PIN definido.'} Ao redefinir, o usuário será obrigado a trocar no primeiro acesso.</p>
+      <div class="cnt-row"><input id="permPin" class="field" inputmode="numeric" type="password" maxlength="6" placeholder="Novo PIN temporário"><button class="btn ghost sm" onclick="permSalvarPin('${uid}')">Redefinir PIN</button></div></div>
+   </div>
+   <div class="cnt-foot"><div class="prog"></div><button class="btn primary sm" onclick="permSalvar('${uid}')">Salvar usuário</button></div>`; }
+function permToggleSetor(btn){ btn.classList.toggle('on'); if(btn.dataset.ps==='TUDO'&&btn.classList.contains('on'))document.querySelectorAll('[data-ps]').forEach(x=>{ if(x!==btn)x.classList.remove('on'); }); if(btn.dataset.ps!=='TUDO'&&btn.classList.contains('on')){ const t=document.querySelector('[data-ps="TUDO"]'); if(t)t.classList.remove('on'); } }
 async function permSalvar(uid){ const sel=[]; document.querySelectorAll('[data-p]').forEach(el=>{ if(el.checked) sel.push(el.dataset.p); });
-  try{ await estFetch('/api/est/permissoes','POST',{alvo_id:uid,permissoes:sel}); toast('Permissões salvas'); permTela(); }catch(e){} }
+  const setores=[...document.querySelectorAll('[data-ps].on')].map(el=>el.dataset.ps).filter(Boolean);
+  try{ await estFetch('/api/est/usuario/'+uid,'PATCH',{setores_permitidos:setores}); if(!(_permEditing&&_permEditing.gestor)) await estFetch('/api/est/permissoes','POST',{alvo_id:uid,permissoes:sel}); toast('Usuário salvo'); permTela(); }catch(e){} }
+async function permSalvarPin(uid){ const pin=($('permPin')&&$('permPin').value||'').replace(/\D/g,''); if(pin.length<4||pin.length>6){ toast('PIN precisa ter 4 a 6 dígitos'); return; }
+  try{ await estFetch('/api/est/usuario/'+uid+'/pin','POST',{pin,pin_must_change:true}); if($('permPin'))$('permPin').value=''; toast('PIN temporário definido'); }catch(e){} }
 
 /* ===== LISTA AUTOMÁTICA POR PERÍODO ===== */
 let _la={ per:'semanal', base:'ideal', ativo:false, dia:1 };

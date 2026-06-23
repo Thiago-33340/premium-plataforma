@@ -831,3 +831,36 @@ Próximo passo:
 - Configurar token no EasyPanel.
 - Rodar `npm run local-agent -- --once` no PC para validar.
 - Depois avaliar V2 com Codex App Server/execução real e confirmações próprias.
+
+## Marco 21 — Correção de RBAC UUID e preparo da contagem Premium
+
+Status: implementado em código, pendente de deploy/teste em produção
+
+Motivo:
+
+- A auditoria read-only mostrou que `/api/est/meus-itens` funcionava com apelidos (`thiago`, `dany`, `geane`), mas quebrava com o UUID real retornado pelo login da tela de estoque.
+- Como `public/estoque.html` salva e usa `user.id`, o bug poderia impedir colaborador/gestor de iniciar contagem corretamente.
+- Thiago pediu para deixar o gestor com controle direto sobre usuários, PINs, setores e itens de contagem antes de iniciar a primeira contagem oficial.
+
+O que foi feito:
+
+- Corrigida a busca `rbacUserByRef()` para UUID não conflitar com `lower($1)` no Postgres.
+- `GET /api/est/usuarios` passou a retornar setores permitidos, perfil, status de PIN e troca obrigatória.
+- Criadas rotas protegidas por `editar_permissoes`:
+  - `PATCH /api/est/usuario/:id`;
+  - `POST /api/est/usuario/:id/pin`.
+- A tela **Mais > Permissões da equipe** passou a permitir:
+  - editar setores que o colaborador pode contar;
+  - redefinir PIN temporário;
+  - obrigar troca do PIN no primeiro acesso;
+  - manter gestores como acesso total.
+- A auditoria de contagens passou a listar contagens abertas/em andamento, além das encerradas aguardando aprovação.
+- O backend passou a bloquear aprovação de contagem ainda em andamento; para limpar sessão antiga, o gestor deve reprovar.
+- Rotas e contratos atualizados em `project-state/routes.json` e `project-state/api-contracts-critical.json`.
+
+Operação planejada após deploy:
+
+- Redefinir PINs temporários válidos para os usuários ativos.
+- Reprovar/limpar contagens antigas abertas de 17/06/2026.
+- Vincular produtos sem setor ao setor **Gerais** temporariamente.
+- Rodar smoke read-only e auditoria RBAC até passar completamente.
