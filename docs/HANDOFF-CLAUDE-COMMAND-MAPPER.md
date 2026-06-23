@@ -301,3 +301,21 @@ Regras para Claude/Codex:
 - não registrar token/webhook em Git, docs, project-state ou mensagens;
 - usar o Command como cockpit/auditoria de deploy quando o Executor externo estiver ativo;
 - se o botão de deploy externo ainda aparecer como não configurado, validar primeiro se o deploy atual já carregou a variável de ambiente.
+
+## Atualização — Correção de compatibilidade do import de fichas
+
+Data: 2026-06-22
+
+Após o deploy inicial do import de fichas, o app permaneceu saudável, mas `ficha_itens` continuou `0`.
+
+O Codex aplicou um segundo patch para:
+
+- garantir colunas ricas de `ficha_itens` por migration direta;
+- ampliar aliases entre nomes do dataset Claude/Saipos e os produtos reais do estoque;
+- criar como itens produzidos/contáveis `Massa preparada` e `Brigadeiro de Ninho`.
+
+Tarefa sugerida para Claude após validação:
+
+1. revisar se os aliases escolhidos refletem a operação real da Premium;
+2. propor conversões/pesos para itens comprados por caixa/maço/unidade e consumidos em g/ml/fatias;
+3. separar o que deve virar ficha de produção antes de ser consumido por venda.

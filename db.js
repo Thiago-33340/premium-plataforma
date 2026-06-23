@@ -153,6 +153,9 @@ const MIGRATIONS = [
   "CREATE INDEX IF NOT EXISTS idx_estmov_item ON estoque_movimentos(tenant_id, item_id, criado_em DESC)",
   "ALTER TABLE preparos ADD COLUMN IF NOT EXISTS modo_preparo TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
+  "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS base_medida TEXT",
+  "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS fonte TEXT",
+  "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS unidade_base TEXT",
@@ -204,13 +207,32 @@ function componenteEstoqueAliases(nome) {
     'coco chips': ['Coco Ralado Floco'],
     'coco ralado': ['Coco Ralado'],
     'avela triturada': ['Avelã', 'Avelã 30g'],
+    'massa preparada': ['Massa preparada', 'Massa para pizza'],
     'frango': ['Frango temperado'],
     'file mignon preparado': ['Mignon 240g', 'File Mignon'],
     'camarao preparado': ['Camarão'],
     'bacon cubos': ['Bacon em cubos 110g', 'Bacon'],
+    'bacon em cubos': ['Bacon', 'Bacon Sadia (granel)', 'Bacon em cubos 110g'],
     'bacon fatiado': ['Bacon'],
     'calabresa ralada': ['Calabresa Reta', 'Calabresa picada 80g'],
+    'calabresa': ['Calabresa Reta', 'Calabresa defumada Sadia 2,5kg'],
     'presunto picado': ['Presunto'],
+    'tomate': ['Tomate salada', 'Tomate italiano'],
+    'tomate cereja': ['Tomate sweet grape 180g'],
+    'alho poro': ['Alho-poró (maço)'],
+    'catupiry': ['Catupiry Aberto da Montagem', 'Requeijão Catupiry', 'Requeijão Scala 1,5kg'],
+    'cheddar': ['Cheddar Aberto da Montagem', 'Requeijão Cheddar'],
+    'azeite': ['Azeite Andorinha'],
+    'limao siciliano': ['Limão taiti'],
+    'azeitona': ['Azeitona Preta'],
+    'lombo fatiado': ['Lombo Canadense', 'Lombo 150g'],
+    'manteiga': ['Manteiga Sem Sal', 'Manteiga Italac c/ sal 500g', 'Manteiga Itambé c/ sal 500g'],
+    'cebola': ['Cebola roxa'],
+    'batata frita': ['Batata'],
+    'ovo': ['Ovo branco grande (cx 60un)'],
+    'morango': ['Morango (caixa)'],
+    'morango em cubos': ['Morango (caixa)'],
+    'brigadeiro de ninho': ['Brigadeiro de Ninho', 'Leite em Pó'],
     'chocolate ao leite': ['Chocolate ao Leite - Aberto Finalização', 'Chocolate ao Leite Bisnaga'],
     'chocolate branco': ['Chocolate Branco - Aberto Finalização', 'Chocolate Branco Bisnaga'],
     'nutella': ['Nutella'],
@@ -275,6 +297,64 @@ async function seedInsumosFrescosPremiumV1(client) {
     await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_insumos_frescos_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
     await client.query('COMMIT');
     console.log('[db] insumos frescos Premium semeados (' + n + ' produtos, setor Montagem)');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  }
+}
+
+async function seedProdutosComplementaresFichasPremiumV1(client) {
+  const mk = await client.query("SELECT (config->>'estoque_complementos_fichas_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
+  if (mk.rows[0] && mk.rows[0].m) {
+    console.log('[db] complementos de fichas Premium já aplicados - ignorado');
+    return;
+  }
+  await client.query('BEGIN');
+  try {
+    const categorias = [
+      ['Produção interna', 'Produção interna', 50],
+      ['Confeitaria', 'Alimentos', 17]
+    ];
+    for (const [nome, dep, ordem] of categorias) {
+      await client.query(`INSERT INTO est_categoria (tenant_id,nome,departamento,ordem,ativo)
+        VALUES ($1,$2,$3,$4,TRUE)
+        ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE, departamento=COALESCE(est_categoria.departamento,EXCLUDED.departamento)`,
+        [TENANT, nome, dep, ordem]);
+    }
+    const setores = [['Montagem', 40], ['Finalização', 30]];
+    for (const [nome, ordem] of setores) {
+      await client.query(`INSERT INTO est_setor (tenant_id,nome,ordem,ativo)
+        VALUES ($1,$2,$3,TRUE) ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE`, [TENANT, nome, ordem]);
+    }
+    const catRows = (await client.query("SELECT id,nome FROM est_categoria WHERE tenant_id=$1 AND nome = ANY($2::text[])", [TENANT, categorias.map(c => c[0])])).rows;
+    const setorRows = (await client.query("SELECT id,nome FROM est_setor WHERE tenant_id=$1 AND nome = ANY($2::text[])", [TENANT, setores.map(s => s[0])])).rows;
+    const catId = Object.fromEntries(catRows.map(r => [r.nome, r.id]));
+    const setorId = Object.fromEntries(setorRows.map(r => [r.nome, r.id]));
+    const itens = [
+      { nome: 'Massa preparada', unidade: 'g', base: 'g', peso: 1, categoria: 'Produção interna', setor: 'Montagem' },
+      { nome: 'Brigadeiro de Ninho', unidade: 'g', base: 'g', peso: 1, categoria: 'Confeitaria', setor: 'Finalização' }
+    ];
+    let n = 0;
+    for (const item of itens) {
+      const r = await client.query(`INSERT INTO est_produto
+        (tenant_id,nome,categoria_id,tipo_item,unidade,unidade_base,peso_g,pode_contar,pode_comprar,pode_produzir,ativo,conversao_origem,conversao_confianca,conversao_precisa_revisao)
+        VALUES ($1,$2,$3,'produzido internamente',$4,$5,$6,TRUE,FALSE,TRUE,TRUE,'seed_complementos_fichas','media',FALSE)
+        ON CONFLICT (tenant_id,nome) DO UPDATE SET ativo=TRUE,
+          categoria_id=COALESCE(est_produto.categoria_id,EXCLUDED.categoria_id),
+          unidade=COALESCE(est_produto.unidade,EXCLUDED.unidade),
+          unidade_base=COALESCE(est_produto.unidade_base,EXCLUDED.unidade_base),
+          peso_g=COALESCE(est_produto.peso_g,EXCLUDED.peso_g),
+          pode_contar=TRUE,pode_produzir=TRUE,atualizado_em=NOW()
+        RETURNING id`, [TENANT, item.nome, catId[item.categoria] || null, item.unidade, item.base, item.peso]);
+      const pid = r.rows[0] && r.rows[0].id;
+      const sid = setorId[item.setor];
+      if (pid && sid) await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
+        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING`, [TENANT, pid, sid]);
+      n++;
+    }
+    await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_complementos_fichas_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
+    await client.query('COMMIT');
+    console.log('[db] complementos de fichas Premium semeados (' + n + ' produtos)');
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
@@ -637,6 +717,10 @@ async function init(retries) {
         const freshClient = await pool.connect();
         try { await seedInsumosFrescosPremiumV1(freshClient); } finally { freshClient.release(); }
       } catch (eif) { console.error('[db] FALHA insumos frescos Premium:', eif.stack || eif.message); }
+      try {
+        const compClient = await pool.connect();
+        try { await seedProdutosComplementaresFichasPremiumV1(compClient); } finally { compClient.release(); }
+      } catch (ecp) { console.error('[db] FALHA complementos fichas Premium:', ecp.stack || ecp.message); }
       try {
         const fichaClient = await pool.connect();
         try { await importarFichasPremiumCardapioV1(fichaClient); } finally { fichaClient.release(); }

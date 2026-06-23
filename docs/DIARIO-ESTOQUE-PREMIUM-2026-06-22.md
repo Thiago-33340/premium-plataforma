@@ -641,3 +641,26 @@ Próximo uso esperado:
 
 - Após o próximo deploy, o Executor externo do Command deve deixar de aparecer como "não configurado".
 - A ação de deploy via Command deve registrar resultado em `deploys.json`, `command-audit-log.json` e `titan_command_actions`, sem expor o webhook.
+
+## Marco 16 — Pós-deploy: import das fichas precisava de compatibilidade
+
+Status: correção aplicada no código, aguardando novo deploy/validação
+
+O que foi observado:
+
+- O deploy do commit `ea7dfe8` manteve o app saudável e o smoke read-only passou 19/19.
+- O diagnóstico de produção ainda mostrou `ficha_itens=0`.
+- A simulação via API confirmou que as 45 fichas casam com 290 opções do cardápio, mas alguns nomes genéricos do dataset precisavam de alias para produtos reais do estoque.
+
+Correção aplicada:
+
+- Garantia explícita das colunas `base_medida`, `fonte` e `meta` em `ficha_itens`.
+- Aliases ampliados para ingredientes genéricos como `Tomate`, `Catupiry`, `Cheddar`, `Azeitona`, `Calabresa`, `Morango`, entre outros.
+- Seed complementar para `Massa preparada` e `Brigadeiro de Ninho`, ambos como itens produzidos/contáveis.
+
+Critério de aceite pós-deploy:
+
+- `ficha_itens` sair de `0`;
+- `Massa preparada` e `Brigadeiro de Ninho` aparecerem em `/api/est/produtos`;
+- `/api/est/fichas-cardapio?usuario_id=thiago` retornar resumo com opções preenchidas;
+- smoke read-only permanecer 19/19.
