@@ -864,3 +864,24 @@ Operação planejada após deploy:
 - Reprovar/limpar contagens antigas abertas de 17/06/2026.
 - Vincular produtos sem setor ao setor **Gerais** temporariamente.
 - Rodar smoke read-only e auditoria RBAC até passar completamente.
+
+Resultado pós-deploy:
+
+- Commit publicado: `e736e8c`.
+- Deploy acionado no EasyPanel e confirmado em produção.
+- `/api/est/meus-itens` e `/api/est/permissoes` passaram a responder corretamente com UUID real de Thiago e Tassiano.
+- PINs temporários foram resetados para Cristina, Dany, Geane, Maria e Sophia com `pin_must_change=true`.
+- Contagens antigas em andamento de Dany, Geane e Maria foram reprovadas para limpar a operação.
+- 39 produtos ativos/contáveis sem setor foram vinculados ao setor **Gerais**.
+- Verificação final:
+  - smoke read-only: 19/19;
+  - RBAC audit: OK para Cristina, Dany, Geane, Maria e Sophia;
+  - contagens abertas: 0;
+  - produtos ativos/contáveis sem setor: 0.
+
+Estado operacional:
+
+- Thiago e Tassiano enxergam todos os 218 itens contáveis via UUID e têm permissões completas.
+- Colaboradores enxergam apenas os itens dos setores atribuídos, exceto Sophia que está com `TUDO`.
+- O gestor já pode entrar em **Estoque > Mais > Configurar setores** para adicionar/remover itens da contagem de cada setor.
+- O gestor já pode entrar em **Estoque > Mais > Permissões da equipe** para ajustar setores permitidos e redefinir PIN temporário dos colaboradores.

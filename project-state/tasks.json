@@ -377,13 +377,13 @@
     "id": "task-f2-029",
     "titulo": "Liberar contagem Premium com RBAC UUID, PIN e gestão de setores",
     "modulo": "estoque-v2",
-    "status": "em_andamento",
+    "status": "concluido",
     "prioridade": "alta",
     "categoria": "operacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-017", "task-f2-028"],
-    "proximo_passo": "Deployar correção UUID/RBAC, redefinir PINs temporários, limpar contagens antigas, vincular produtos sem setor ao Gerais e rodar smoke/RBAC até passar."
+    "proximo_passo": "Concluído em produção: UUID/RBAC corrigido, PINs temporários resetados com troca obrigatória, contagens antigas reprovadas, produtos sem setor movidos para Gerais, smoke read-only 19/19 e RBAC audit OK."
   }
 ]
