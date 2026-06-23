@@ -986,3 +986,59 @@ Ponto de decisão pendente:
   - `Milho Lata`: `4.000 UN`;
   - `Nutella 3Kg`: `0.000 UN`.
 - Se o gestor quiser reaproveitar esses saldos no item ativo, deve decidir manualmente se transfere, descarta ou ajusta o valor. A migração não alterou contagem para evitar perda de auditoria.
+
+## Marco 23 — Polimento do editor de produto, setor e ficha técnica
+
+Data: 2026-06-23
+
+Status: implementado, publicado no GitHub e implantado em produção
+
+Motivo:
+
+- Thiago identificou desconfortos na edição do item:
+  - `Subcategoria / setor` aparecia como campo de texto livre em **Dados gerais**;
+  - `Departamento`, `Categoria` e `Tipo de item` abriam selects nativos do Chrome, destoando da identidade visual;
+  - no celular, o teclado reduzia a área útil e deixava o editor ruim de enxergar;
+  - setor aparecia em mais de um ponto, criando risco de divergência operacional;
+  - havia dúvida sobre o estado da ficha técnica.
+
+Decisão:
+
+- O setor oficial do produto fica em **Produto > Operação > Setores de contagem**.
+- `Subcategoria` deixa de ser editável manualmente e passa a ser derivada automaticamente dos setores selecionados.
+- A ficha técnica deixa de ser outro local para editar setor:
+  - exibe o setor como contexto;
+  - salva porções, ingredientes, rendimento, custo e instruções;
+  - não altera vínculo de setor do produto.
+
+O que foi alterado:
+
+- Em **Dados gerais**:
+  - `Departamento`, `Categoria` e `Tipo de item` agora usam seletor visual customizado com identidade Titan/Premium;
+  - `Subcategoria / setor` virou resumo somente leitura;
+  - texto explica que a alteração deve ser feita na aba **Operação**.
+- Em **Operação**:
+  - chips de setor seguem sendo o ponto oficial de edição;
+  - ao salvar, `subcategoria` é atualizada automaticamente a partir dos setores escolhidos;
+  - se o item estiver marcado como contável, o sistema exige pelo menos um setor.
+- No celular:
+  - modal usa altura real da viewport (`visualViewport`);
+  - quando o teclado abre, o cabeçalho compacta e a área útil fica maior;
+  - o editor não foca automaticamente o nome do produto no celular, evitando abrir teclado antes da hora.
+- Na ficha técnica:
+  - setor aparece como contexto readonly;
+  - editor mantém porções, ingredientes, custo estimado, instruções, salvar e excluir ficha;
+  - salvar ficha não muda setores do produto.
+
+Validação:
+
+- Parse do JavaScript embutido em `public/estoque.html`: OK.
+- `node --check server-pg.js`: OK.
+- `npm run check:project-state`: OK.
+- Produção passou a servir a nova versão de `/estoque`.
+- `npm run smoke:read -- --base-url=https://premium.titanatende.com.br --user-id=thiago`: OK nos checks executados.
+- `npm run audit:rbac -- --base-url=https://premium.titanatende.com.br --manager-id=thiago --user-id=thiago,tassiano,eva,sophia`: OK.
+
+Commit de código:
+
+- `4b5c83b` — `Melhora editor de produto e setor no estoque`
