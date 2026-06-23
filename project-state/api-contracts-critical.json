@@ -156,6 +156,43 @@
     ]
   },
   {
+    "id": "command-local-agent-poll",
+    "module": "command-center",
+    "method": "POST",
+    "path": "/api/mapper/local-agent/poll",
+    "screen": "scripts/titan-local-agent.mjs",
+    "permission": "Bearer TITAN_LOCAL_AGENT_TOKEN",
+    "payload_required": ["agent_id"],
+    "payload_optional": ["host", "workspace"],
+    "reads": ["project-state/local-agent-queue.json", "titan_command_actions"],
+    "writes": [],
+    "success": "200 { ok: true, agent_id, tasks[] }",
+    "known_errors": ["401 Token do Titan Local Agent inválido ou ausente.", "409 Titan Local Agent não configurado no ambiente do serviço."],
+    "side_effects": [
+      "não executa nada no servidor",
+      "retorna até 3 tarefas pendentes/aprovadas para o agent_id informado",
+      "requer token configurado fora do Git/project-state"
+    ]
+  },
+  {
+    "id": "command-local-agent-report",
+    "module": "command-center",
+    "method": "POST",
+    "path": "/api/mapper/local-agent/report",
+    "screen": "scripts/titan-local-agent.mjs",
+    "permission": "Bearer TITAN_LOCAL_AGENT_TOKEN",
+    "payload_required": ["agent_id", "task_id", "status"],
+    "payload_optional": ["message", "result"],
+    "writes": ["project-state/local-agent-queue.json", "project-state/command-audit-log.json", "titan_command_actions"],
+    "success": "200 { ok: true, target, audit, persisted_db }",
+    "known_errors": ["400 status inválido", "401 token inválido", "404 tarefa local não encontrada"],
+    "side_effects": [
+      "atualiza status e logs da tarefa local",
+      "registra auditoria como local-agent:<agent_id>",
+      "não altera código, Git, deploy ou banco operacional"
+    ]
+  },
+  {
     "id": "command-action",
     "module": "command-center",
     "method": "POST",
@@ -163,8 +200,8 @@
     "screen": "public/mapper.html / command-center",
     "permission": "editar_project_state",
     "payload_required": ["action"],
-    "payload_optional": ["titulo", "modulo", "prioridade", "categoria", "detalhe", "bloqueada", "id", "status", "proximo_passo", "severidade", "impacto", "mitigacao", "decisao", "motivo", "branch", "commit", "merge_commit", "servico", "ambiente", "dominios", "validacoes", "observacoes", "confirmacao", "agent", "assignment_id", "resumo", "achados", "recomendacoes", "testes_sugeridos", "bloqueios", "converte_em"],
-    "writes": ["project-state/tasks.json", "project-state/risks.json", "project-state/decisions.json", "project-state/deploys.json", "project-state/agent-reports.json", "project-state/command-audit-log.json", "titan_command_actions"],
+    "payload_optional": ["titulo", "modulo", "prioridade", "categoria", "detalhe", "bloqueada", "id", "status", "proximo_passo", "severidade", "impacto", "mitigacao", "decisao", "motivo", "branch", "commit", "merge_commit", "servico", "ambiente", "dominios", "validacoes", "observacoes", "confirmacao", "agent", "assignment_id", "resumo", "achados", "recomendacoes", "testes_sugeridos", "bloqueios", "converte_em", "agent_id", "local_action", "prompt"],
+    "writes": ["project-state/tasks.json", "project-state/risks.json", "project-state/decisions.json", "project-state/deploys.json", "project-state/agent-reports.json", "project-state/local-agent-queue.json", "project-state/command-audit-log.json", "titan_command_actions"],
     "success": "200/201 { ok: true, target, audit, persisted_db, db_action_id }",
     "known_errors": ["401 Faça login no Titan Tools.", "403 Sem permissão para esta ferramenta.", "400 Ação do Command não reconhecida.", "404 Tarefa não encontrada.", "409 Executor externo não configurado no ambiente."],
     "side_effects": [
@@ -176,6 +213,7 @@
       "approve_deploy_record atualiza deploys.json com aprovação/validação humana e exige confirmacao=AUTORIZO DEPLOY",
       "trigger_deploy_external aciona webhook configurado somente com permissão acionar_deploy, confirmação=ACIONAR DEPLOY e deploy previamente aprovado",
       "create_agent_report registra relatório do Claude/agente em agent-reports.json sem alterar código ou deploy",
+      "create_local_agent_task cria tarefa aprovada para o Titan Local Agent sem executar comando livre",
       "toda ação gera command-audit-log.json",
       "toda ação tenta persistir em titan_command_actions; GET /api/mapper/state aplica overlay do banco sobre project-state"
     ]

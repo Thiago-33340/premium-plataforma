@@ -157,9 +157,9 @@ const PROJECT_STATE_FILES = [
   'weekly-focus.json', 'deploys.json', 'incidents.json', 'health-checks.json',
   'rbac-audit.json', 'people.json', 'module-route-table-map.json', 'api-contracts-critical.json',
   'test-matrix.json', 'agent-workflow.json', 'stock-command-step2.json', 'stock-readiness.json',
-  'agent-bridge.json', 'agent-reports.json', 'command-audit-log.json'
+  'agent-bridge.json', 'agent-reports.json', 'local-agent-queue.json', 'command-audit-log.json'
 ];
-const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'deploys.json', 'agent-reports.json', 'command-audit-log.json']);
+const PROJECT_STATE_MUTABLE_FILES = new Set(['tasks.json', 'risks.json', 'decisions.json', 'deploys.json', 'agent-reports.json', 'local-agent-queue.json', 'command-audit-log.json']);
 const PROJECT_STATE_DIR = path.join(ROOT, 'project-state');
 async function gestorBasico(uid) {
   if (!uid) return null;
@@ -191,6 +191,8 @@ function aplicarCommandActionsNoState(files, actions) {
   const decisions = Array.isArray(files['decisions.json']) ? files['decisions.json'] : [];
   const deploys = Array.isArray(files['deploys.json']) ? files['deploys.json'] : [];
   const agentReports = Array.isArray(files['agent-reports.json']) ? files['agent-reports.json'] : [];
+  const localAgentQueue = jsonObjeto(files['local-agent-queue.json']);
+  localAgentQueue.tasks = Array.isArray(localAgentQueue.tasks) ? localAgentQueue.tasks : [];
   const auditLog = Array.isArray(files['command-audit-log.json']) ? files['command-audit-log.json'] : [];
 
   for (const row of actions) {
@@ -205,6 +207,8 @@ function aplicarCommandActionsNoState(files, actions) {
     if (row.action === 'approve_deploy_record' && target.id) upsertCommandItem(deploys, target, true);
     if (row.action === 'trigger_deploy_external' && target.id) upsertCommandItem(deploys, target, true);
     if (row.action === 'create_agent_report' && target.id) upsertCommandItem(agentReports, target, false);
+    if (row.action === 'create_local_agent_task' && target.id) upsertCommandItem(localAgentQueue.tasks, target, false);
+    if (row.action === 'update_local_agent_task' && target.id) upsertCommandItem(localAgentQueue.tasks, target, true);
     if (audit.id) upsertCommandItem(auditLog, audit, false);
   }
   files['tasks.json'] = tasks;
@@ -212,6 +216,7 @@ function aplicarCommandActionsNoState(files, actions) {
   files['decisions.json'] = decisions;
   files['deploys.json'] = deploys;
   files['agent-reports.json'] = agentReports;
+  files['local-agent-queue.json'] = localAgentQueue;
   files['command-audit-log.json'] = auditLog
     .sort((a, b) => String(a.criado_em || '').localeCompare(String(b.criado_em || '')))
     .slice(-500);
@@ -308,6 +313,13 @@ function gravarProjectJson(file, data) {
 function textoLimpo(v, max) {
   return String(v || '').replace(/\s+/g, ' ').trim().slice(0, max || 240);
 }
+function normStatus(v) {
+  return String(v || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .trim();
+}
 function listaLimpa(v, maxItems) {
   const arr = Array.isArray(v) ? v : String(v || '').split(',');
   return arr.map(x => textoLimpo(x, 80)).filter(Boolean).slice(0, maxItems || 8);
@@ -344,6 +356,77 @@ function fraseAcionamentoOk(v) {
 function deployWebhookUrl() {
   return String(process.env.TITAN_DEPLOY_WEBHOOK_URL || process.env.EASYPANEL_DEPLOY_WEBHOOK_URL || '').trim();
 }
+function localAgentTokenRaw() {
+  return String(process.env.TITAN_LOCAL_AGENT_TOKEN || '').trim();
+}
+function localAgentTokenSha256() {
+  return String(process.env.TITAN_LOCAL_AGENT_TOKEN_SHA256 || '').trim().toLowerCase();
+}
+function localAgentConfigured() {
+  return !!(localAgentTokenRaw() || localAgentTokenSha256());
+}
+function localAgentRuntimePublico() {
+  return {
+    local_agent_configured: localAgentConfigured(),
+    local_agent_auth: localAgentConfigured() ? 'bearer_token' : 'not_configured',
+    local_agent_default_id: process.env.TITAN_LOCAL_AGENT_DEFAULT_ID || 'thiago-windows-codex',
+    local_agent_actions: ['codex_handoff', 'claude_handoff', 'git_status', 'project_checks', 'open_command_center']
+  };
+}
+function bearerToken(req) {
+  const h = String(req.headers.authorization || '');
+  const m = /^Bearer\s+(.+)$/i.exec(h);
+  return m ? m[1].trim() : String(req.headers['x-titan-local-agent-token'] || '').trim();
+}
+function safeCompare(a, b) {
+  const ba = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  if (!ba.length || !bb.length || ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+function localAgentAuthOk(req) {
+  const token = bearerToken(req);
+  if (!token || !localAgentConfigured()) return false;
+  const raw = localAgentTokenRaw();
+  if (raw && safeCompare(token, raw)) return true;
+  const hash = localAgentTokenSha256();
+  if (hash) return safeCompare(crypto.createHash('sha256').update(token).digest('hex'), hash);
+  return false;
+}
+function requerLocalAgent(req, res) {
+  if (!hostFerramentasPermitido(req)) { notFound(res); return false; }
+  if (!localAgentConfigured()) { json(res, 409, { erro: 'Titan Local Agent não configurado no ambiente do serviço.' }); return false; }
+  if (!localAgentAuthOk(req)) { json(res, 401, { erro: 'Token do Titan Local Agent inválido ou ausente.' }); return false; }
+  return true;
+}
+const LOCAL_AGENT_ACTIONS = new Set(['codex_handoff', 'claude_handoff', 'git_status', 'project_checks', 'open_command_center']);
+function normalizarLocalAgentTask(raw, gestor) {
+  const action = textoLimpo(raw.local_action || raw.agent_action || raw.acao_local || 'codex_handoff', 80);
+  const titulo = textoLimpo(raw.titulo || raw.title, 180);
+  if (!titulo) throw new Error('Informe um título para a tarefa do agente local.');
+  if (!LOCAL_AGENT_ACTIONS.has(action)) throw new Error('Ação local não permitida nesta versão.');
+  const prompt = String(raw.prompt || raw.detalhe || raw.proximo_passo || '').trim().slice(0, 12000);
+  if (!prompt && ['codex_handoff', 'claude_handoff'].includes(action)) throw new Error('Informe o briefing/prompt para enviar ao agente local.');
+  if (promptContemPossivelSegredo(prompt)) throw new Error('O prompt parece conter segredo/token/senha. Remova dados sensíveis antes de enviar ao agente local.');
+  return {
+    id: null,
+    agent_id: textoLimpo(raw.agent_id || raw.local_agent_id || process.env.TITAN_LOCAL_AGENT_DEFAULT_ID || 'thiago-windows-codex', 120),
+    action,
+    titulo,
+    prompt,
+    status: 'pendente',
+    prioridade: textoLimpo(raw.prioridade, 40) || 'alta',
+    origem: 'Command Center',
+    criado_via_command: true,
+    criado_por: gestor.email,
+    criado_por_nome: gestor.nome || gestor.email,
+    criado_em: new Date().toISOString(),
+    logs: []
+  };
+}
+function proximoLocalAgentTaskId(queue) {
+  return proximoId(Array.isArray(queue && queue.tasks) ? queue.tasks : [], 'local-agent-task-', 3);
+}
 function commandAiConfig(providerPedido) {
   const anthropicKey = String(process.env.TITAN_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim();
   const openaiKey = String(process.env.TITAN_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
@@ -369,6 +452,7 @@ function deployRuntimePublico() {
     deploy_external_configured: !!deployWebhookUrl(),
     deploy_external_provider: deployWebhookUrl() ? 'env' : 'not_configured',
     deploy_external_requires_phrase: 'ACIONAR DEPLOY',
+    ...localAgentRuntimePublico(),
     ...commandAiRuntimePublico()
   };
 }
@@ -1225,6 +1309,66 @@ async function api(req, res, url) {
     return json(res, 200, out);
   }
 
+  if (sub === 'mapper' && seg[2] === 'local-agent' && seg[3] === 'poll' && req.method === 'POST') {
+    if (!requerLocalAgent(req, res)) return;
+    const b = await readBody(req);
+    const agentId = textoLimpo(b.agent_id || b.agentId || process.env.TITAN_LOCAL_AGENT_DEFAULT_ID || 'thiago-windows-codex', 120);
+    const state = await lerProjectStateSeguro();
+    const queue = jsonObjeto(state['local-agent-queue.json']);
+    const tasks = Array.isArray(queue.tasks) ? queue.tasks : [];
+    const pendentes = tasks
+      .filter(t => String(t.agent_id || '') === agentId && ['pendente', 'aprovado', 'reexecutar'].includes(normStatus(t.status)))
+      .slice(0, 3)
+      .map(t => ({
+        id: t.id,
+        agent_id: t.agent_id,
+        action: t.action,
+        titulo: t.titulo,
+        prompt: t.prompt || '',
+        prioridade: t.prioridade || 'media',
+        criado_em: t.criado_em || null,
+        criado_por_nome: t.criado_por_nome || t.criado_por || ''
+      }));
+    return json(res, 200, { ok: true, agent_id: agentId, tasks: pendentes, server_time: new Date().toISOString() });
+  }
+
+  if (sub === 'mapper' && seg[2] === 'local-agent' && seg[3] === 'report' && req.method === 'POST') {
+    if (!requerLocalAgent(req, res)) return;
+    const b = await readBody(req);
+    const agentId = textoLimpo(b.agent_id || b.agentId || process.env.TITAN_LOCAL_AGENT_DEFAULT_ID || 'thiago-windows-codex', 120);
+    const id = textoLimpo(b.task_id || b.id, 120);
+    const status = textoLimpo(b.status, 80) || 'em_execucao';
+    const allowed = new Set(['em_execucao', 'concluido', 'falhou', 'bloqueado', 'ignorado']);
+    if (!id) return json(res, 400, { erro: 'Informe task_id.' });
+    if (!allowed.has(status)) return json(res, 400, { erro: 'Status local inválido.' });
+    const state = await lerProjectStateSeguro();
+    const queue = jsonObjeto(state['local-agent-queue.json']);
+    queue.tasks = Array.isArray(queue.tasks) ? queue.tasks : [];
+    const idx = queue.tasks.findIndex(t => String(t.id) === id && String(t.agent_id || '') === agentId);
+    if (idx < 0) return json(res, 404, { erro: 'Tarefa local não encontrada para este agente.' });
+    const entry = {
+      at: new Date().toISOString(),
+      status,
+      message: textoLimpo(b.message || b.mensagem || b.log, 900),
+      result: textoLimpo(b.result || b.resultado, 1800)
+    };
+    queue.tasks[idx] = Object.assign({}, queue.tasks[idx], {
+      status,
+      ultimo_retorno_em: entry.at,
+      atualizado_em: entry.at,
+      resultado: entry.result || queue.tasks[idx].resultado || '',
+      erro: status === 'falhou' ? entry.message : queue.tasks[idx].erro || '',
+      logs: (Array.isArray(queue.tasks[idx].logs) ? queue.tasks[idx].logs : []).concat(entry).slice(-30)
+    });
+    if (status === 'em_execucao' && !queue.tasks[idx].iniciado_em) queue.tasks[idx].iniciado_em = entry.at;
+    if (['concluido', 'falhou', 'bloqueado', 'ignorado'].includes(status)) queue.tasks[idx].concluido_em = entry.at;
+    gravarProjectJson('local-agent-queue.json', queue);
+    const localUser = { id: null, email: `local-agent:${agentId}`, nome: `Local Agent ${agentId}` };
+    const audit = registrarCommandAudit(localUser, 'update_local_agent_task', 'local-agent-queue.json', id, `Agente local atualizou tarefa: ${id} -> ${status}`, { agent_id: agentId, status });
+    const dbAction = await persistirCommandActionDb(localUser, 'update_local_agent_task', payloadCommandSeguro(b), 'local-agent-queue.json', id, queue.tasks[idx], audit);
+    return json(res, 200, { ok: true, target: queue.tasks[idx], audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+  }
+
   if (sub === 'mapper' && seg[2] === 'action' && req.method === 'POST') {
     const gestor = await requerTitanSession(req, res, 'editar_project_state');
     if (!gestor) return;
@@ -1354,6 +1498,19 @@ async function api(req, res, url) {
         const audit = registrarCommandAudit(gestor, action, 'agent-reports.json', report.id, `Relatório de agente registrado: ${report.agent} — ${report.titulo}`, { assignment_id: report.assignment_id, status: report.status });
         const dbAction = await persistirCommandActionDb(gestor, action, b, 'agent-reports.json', report.id, report, audit);
         return json(res, 201, { ok: true, target: report, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
+      }
+
+      if (action === 'create_local_agent_task') {
+        const state = await lerProjectStateSeguro();
+        const queue = jsonObjeto(state['local-agent-queue.json']);
+        queue.tasks = Array.isArray(queue.tasks) ? queue.tasks : [];
+        const task = normalizarLocalAgentTask(b, gestor);
+        task.id = proximoLocalAgentTaskId(queue);
+        queue.tasks.push(task);
+        gravarProjectJson('local-agent-queue.json', queue);
+        const audit = registrarCommandAudit(gestor, action, 'local-agent-queue.json', task.id, `Tarefa enviada ao agente local: ${task.titulo}`, { agent_id: task.agent_id, action: task.action });
+        const dbAction = await persistirCommandActionDb(gestor, action, b, 'local-agent-queue.json', task.id, task, audit);
+        return json(res, 201, { ok: true, target: task, audit, persisted_db: dbAction.ok, db_action_id: dbAction.id || null });
       }
 
       if (action === 'create_deploy_record') {

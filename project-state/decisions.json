@@ -249,5 +249,24 @@
       "O envio para IA registra auditoria com metadados, mas não grava o prompt completo automaticamente.",
       "A resposta só entra em agent-reports.json após revisão humana e clique em Registrar relatório no Command."
     ]
+  },
+  {
+    "id": "decision-017",
+    "data": "2026-06-23",
+    "decisao": "Criar Titan Local Agent como ponte segura entre Command Center e PC do Thiago",
+    "motivo": "Thiago quer comandar o projeto pelo celular e acionar o PC local, aproximando o Command da experiência do Codex desktop sem expor controle livre do computador pela internet.",
+    "impacto": "A aba Agentes passa a criar tarefas para um agente local. O script local busca tarefas por token, executa apenas ações permitidas na V1 e devolve logs/status para o Command.",
+    "modulos_afetados": ["command-center", "agent-bridge", "infra-deploy"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "regras": [
+      "O agente local exige TITAN_LOCAL_AGENT_TOKEN no servidor e no PC local, ou hash seguro no servidor via TITAN_LOCAL_AGENT_TOKEN_SHA256.",
+      "A V1 não executa comando arbitrário vindo da tela web.",
+      "Ações permitidas na V1: codex_handoff, claude_handoff, git_status, project_checks e open_command_center.",
+      "Secrets, .env, certificados, bancos locais e chaves não devem ser lidos nem enviados.",
+      "Commit, push, deploy, delete recursivo e ações destrutivas continuam fora da V1.",
+      "Toda criação e retorno de tarefa local entra em auditoria do Command.",
+      "Uma evolução para Codex App Server/execução real precisa de confirmação humana e permissões próprias."
+    ]
   }
 ]

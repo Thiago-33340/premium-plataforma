@@ -137,6 +137,7 @@
     let AI_MSG = '';
     let AI_PROMPT = '';
     let AI_RESULT = null;
+    let LOCAL_AGENT_MSG = '';
     let DEPLOY_MSG = '';
     let ACTIVE = 'visao';
     let FILTER = { q:'', module:'', status:'', tool:'' };
@@ -322,6 +323,7 @@
         stockReadiness: file(data, 'stock-readiness.json', {}),
         agentBridge: file(data, 'agent-bridge.json', {}),
         agentReports: file(data, 'agent-reports.json', []),
+        localAgentQueue: file(data, 'local-agent-queue.json', {}),
         audit: file(data, 'command-audit-log.json', []),
         dbActions: file(data, 'command-db-actions.json', [])
       };
@@ -546,6 +548,18 @@
       const aiSeed = AI_PROMPT || `Atue como revisor/arquiteto do Titan usando a missão ativa do Agent Bridge.\n\nTarefa: revise o mapper de bordas Premium e me devolva riscos, critérios de aceite e próximos passos para Codex implementar sem baixa duplicada.`;
       const aiProvider = runtime.ai_console_provider || 'not_configured';
       const aiModel = runtime.ai_console_model || 'modelo não configurado';
+      const localQueue = p.localAgentQueue || {};
+      const localAgents = Array.isArray(localQueue.agents) ? localQueue.agents : [];
+      const localTasks = (Array.isArray(localQueue.tasks) ? localQueue.tasks : []).slice().reverse();
+      const localAllowed = Array.isArray(localQueue.allowed_actions) ? localQueue.allowed_actions : [];
+      const localConfigured = !!runtime.local_agent_configured;
+      const localAgentOptions = localAgents.map(a => `<option value="${esc(a.id)}">${esc(a.name || a.id)}</option>`).join('');
+      const localActionOptions = localAllowed.map(a => `<option value="${esc(a.id)}">${esc(a.label || a.id)}</option>`).join('') || `
+        <option value="codex_handoff">Enviar briefing para Codex Local</option>
+        <option value="claude_handoff">Enviar briefing para Claude Code</option>
+        <option value="git_status">Verificar Git local</option>
+        <option value="project_checks">Rodar checks seguros do projeto</option>
+        <option value="open_command_center">Abrir Command Center no PC</option>`;
       return `
         <div class="cols" style="margin-bottom:14px">
           <div class="card pad callout">
@@ -559,6 +573,23 @@
           </div>
         </div>
         ${temPerm('editar_project_state') ? `
+        <div class="card pad" style="margin-bottom:14px">
+          <div class="sectionTitle">
+            <h2>Codex Local / PC Thiago</h2>
+            <span class="pill ${localConfigured ? 'ok' : 'warn'}">${localConfigured ? 'ponte local configurada no servidor' : 'aguardando token local no servidor'}</span>
+          </div>
+          <div class="sub">Crie tarefas aprovadas para o agente local rodando no seu PC. A V1 usa ações permitidas e auditadas; não executa comando livre vindo do navegador.</div>
+          <div class="filters" style="margin-top:12px">
+            <select class="field" id="localAgentId">${localAgentOptions || '<option value="thiago-windows-codex">PC Thiago — Codex Local</option>'}</select>
+            <select class="field" id="localAgentAction">${localActionOptions}</select>
+            <input class="field" id="localAgentTitle" placeholder="Título da tarefa para o PC">
+            <button class="btn primary" id="cmdCreateLocalAgentTask">Enviar para agente local</button>
+          </div>
+          <textarea class="field" id="localAgentPrompt" rows="4" placeholder="Briefing/prompt. Para git status/checks pode deixar curto; para Codex/Claude descreva a missão."></textarea>
+          <div class="sub" style="margin-top:8px">${esc(LOCAL_AGENT_MSG || 'Dica: comece com handoff para Codex Local; depois evoluímos para execução com confirmação.')}</div>
+          <div class="sectionTitle" style="margin-top:16px"><h2>Fila local</h2><span class="pill">${localTasks.length}</span></div>
+          <div class="list">${localTasks.slice(0,6).map(localAgentTaskItem).join('') || empty('Nenhuma tarefa local enviada ainda.')}</div>
+        </div>
         <div class="card pad aiBox" style="margin-bottom:14px">
           <div class="sectionTitle">
             <h2>Console IA do Command</h2>
@@ -960,6 +991,17 @@
       return `<div class="item"><span class="tag ${esc(norm(r.agent))}">${esc(r.agent || 'agente')}</span><span class="tag ${esc(norm(r.status))}">${esc(r.status || 'recebido')}</span><b>${esc(r.titulo || r.id)}</b><small>${esc(r.assignment_id || '')} · ${fmt(r.criado_em)}</small><small>${esc(r.resumo || '')}</small></div>`;
     }
 
+    function localAgentTaskItem(t){
+      const last = Array.isArray(t.logs) && t.logs.length ? t.logs[t.logs.length - 1] : null;
+      return `<div class="item">
+        <span class="tag ${esc(norm(t.status))}">${esc(statusLabel(t.status || 'pendente'))}</span>
+        <span class="tag">${esc(t.action || 'ação')}</span>
+        <b>${esc(t.titulo || t.id)}</b>
+        <small>${esc(t.agent_id || '')} · ${fmt(t.criado_em)}</small>
+        <small>${esc(last?.message || t.resultado || t.prompt || '')}</small>
+      </div>`;
+    }
+
     function testItem(t){
       return `<div class="item"><span class="tag ${esc(norm(t.priority))}">${esc(t.priority)}</span><span class="tag">${esc(t.type)}</span><b>${esc(t.id)}</b><small>${esc(t.expected || '')}</small><small class="mono">${esc(t.script || '')}</small></div>`;
     }
@@ -1080,6 +1122,31 @@
 
     function bindAgentActions(p){
       if(ACTIVE !== 'agentes' || !temPerm('editar_project_state')) return;
+      const localBtn = document.getElementById('cmdCreateLocalAgentTask');
+      if(localBtn) localBtn.onclick = async () => {
+        const payload = {
+          action:'create_local_agent_task',
+          agent_id:document.getElementById('localAgentId').value,
+          local_action:document.getElementById('localAgentAction').value,
+          titulo:document.getElementById('localAgentTitle').value,
+          prompt:document.getElementById('localAgentPrompt').value,
+          prioridade:'alta'
+        };
+        if(!payload.titulo){
+          LOCAL_AGENT_MSG = 'Informe um título para enviar ao agente local.';
+          return render();
+        }
+        try{
+          const out = await apiPost('/api/mapper/action', payload);
+          LOCAL_AGENT_MSG = `Enviado para fila local: ${out.target?.id || 'tarefa'} · ${out.audit?.id || 'auditado'} · ${out.persisted_db ? 'Postgres OK' : 'Postgres pendente'}`;
+          await load();
+          ACTIVE = 'agentes';
+        }catch(e){
+          LOCAL_AGENT_MSG = e.message;
+          render();
+        }
+      };
+
       const sendAi = document.getElementById('cmdSendAgentAi');
       if(sendAi) sendAi.onclick = async () => {
         const promptEl = document.getElementById('agentAiPrompt');

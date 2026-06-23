@@ -41,6 +41,7 @@ Arquivos principais:
 - `project-state/module-route-table-map.json`
 - `project-state/api-contracts-critical.json`
 - `project-state/test-matrix.json`
+- `project-state/local-agent-queue.json`
 - `project-state/command-audit-log.json`
 
 ## Documentos de módulos
@@ -50,6 +51,7 @@ Arquivos principais:
 - [Contagem e auditoria](./modulos/contagem-auditoria.md)
 - [Infraestrutura e deploy](./modulos/infra-deploy.md)
 - [Titan Command Center](./modulos/command-center.md)
+- [Guia Titan Local Agent](./GUIA-TITAN-LOCAL-AGENT.md)
 
 ## Regra para próximas ferramentas
 

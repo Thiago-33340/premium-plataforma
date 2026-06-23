@@ -35,11 +35,12 @@ Isso significa que scanners automáticos comuns podem não detectar as rotas. Po
 - `/api/catalogo`, `/api/pedidos`, `/api/meus-pedidos` e rotas públicas de loja são oficiais do módulo loja/cardápio/pedidos.
 - `/api/staff`, `/api/mesas`, `/api/caixa` e `/api/entregadores` estão ativos. As leituras de mesas/caixa/entregadores já têm smoke read-only; abertura/fechamento ainda precisa de staging antes de virar contrato fechado.
 - `/command-center` é a rota oficial da central operacional interna do Titan. `/mapper` continua como atalho/compatibilidade e `/login` aponta para a mesma tela de autenticação.
-- `/command-center`, `/mapper`, `/mapper.html`, `/login`, `/api/titan/auth/*`, `/api/mapper/state` e `/api/mapper/action` são ferramentas internas e devem responder apenas em host técnico autorizado.
+- `/command-center`, `/mapper`, `/mapper.html`, `/login`, `/api/titan/auth/*`, `/api/mapper/state`, `/api/mapper/ai`, `/api/mapper/action` e `/api/mapper/local-agent/*` são ferramentas internas e devem responder apenas em host técnico autorizado.
 - `premium.titanatende.com.br` e `pedido.titanatende.com.br` devem retornar 404 para essas ferramentas.
 - `/api/titan/auth/*` gerencia login real das ferramentas Titan: e-mail autorizado, primeiro acesso, senha com hash e sessão por cookie HttpOnly.
 - `/api/mapper/state` é read-only, restrito a sessão Titan Tools com permissão `ver_project_state` e por host técnico, expõe somente arquivos permitidos de `project-state` e aplica overlay das ações persistidas em `titan_command_actions`.
 - `/api/mapper/action` grava ações auditadas do Command Center, restrito a sessão Titan Tools com permissão `editar_project_state`. Só pode alterar arquivos whitelistados de `project-state`, sempre registra `command-audit-log.json` e também tenta persistir em `titan_command_actions`. A ação `create_deploy_record` registra plano/resultado de deploy em `deploys.json`. A ação `approve_deploy_record` registra aprovação/validação humana e exige `confirmacao=AUTORIZO DEPLOY`. A ação `trigger_deploy_external` exige também permissão `acionar_deploy`, deploy aprovado/validado, `confirmacao=ACIONAR DEPLOY` e variável segura `TITAN_DEPLOY_WEBHOOK_URL` ou `EASYPANEL_DEPLOY_WEBHOOK_URL` no ambiente.
+- `/api/mapper/local-agent/poll` e `/api/mapper/local-agent/report` são a ponte do Titan Local Agent. Exigem bearer token configurado no ambiente (`TITAN_LOCAL_AGENT_TOKEN` ou `TITAN_LOCAL_AGENT_TOKEN_SHA256`). A V1 só permite ações controladas pelo script local e não executa comando livre enviado pelo navegador.
 
 ## Rotas que devem ser evitadas em implementação nova
 

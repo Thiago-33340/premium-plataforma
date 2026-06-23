@@ -49,6 +49,7 @@ O Command Center deve ler:
 - prompt copiável para reposicionar o Claude como revisor/arquiteto;
 - Agent Bridge operacional em `project-state/agent-bridge.json`;
 - Console IA do Command para enviar prompt e receber resposta sem sair da aba;
+- ponte **Codex Local / PC Thiago** usando Titan Local Agent;
 - registro auditado de relatórios de agente em `project-state/agent-reports.json`;
 - formulário **Registrar relatório do Claude** na aba Agentes;
 - critérios de pronto.
@@ -107,6 +108,7 @@ A primeira versão visual foi criada como **Titan Mapper** e evoluiu para **Tita
 - arquivo: `public/mapper.html`;
 - API de leitura: `GET /api/mapper/state`;
 - API de IA do Command: `POST /api/mapper/ai`;
+- API do Titan Local Agent: `POST /api/mapper/local-agent/poll` e `POST /api/mapper/local-agent/report`;
 - API de ações auditadas: `POST /api/mapper/action`;
 - API de autenticação: `/api/titan/auth/*`;
 - acesso: restrito a sessão Titan Tools com permissão adequada e a host técnico autorizado;
@@ -195,6 +197,33 @@ Regras do Console IA:
 - o prompt completo não é salvo automaticamente;
 - o envio gera auditoria com metadados em `command-audit-log.json` e `titan_command_actions`;
 - a resposta só entra em `agent-reports.json` após clique humano em **Registrar relatório no Command**.
+
+A aba **Agentes** também possui a ponte **Codex Local / PC Thiago**.
+
+Ela permite:
+
+- criar uma tarefa local aprovada no Command;
+- escolher ação permitida;
+- deixar o script `scripts/titan-local-agent.mjs` no PC buscar e executar essa ação;
+- receber status/log de volta na fila local.
+
+Ações permitidas na V1:
+
+- `codex_handoff`;
+- `claude_handoff`;
+- `git_status`;
+- `project_checks`;
+- `open_command_center`.
+
+Regras do Titan Local Agent:
+
+- criação de tarefa usa `POST /api/mapper/action` com `action=create_local_agent_task`;
+- busca usa `POST /api/mapper/local-agent/poll`;
+- retorno usa `POST /api/mapper/local-agent/report`;
+- `poll` e `report` exigem bearer token configurado por `TITAN_LOCAL_AGENT_TOKEN` ou `TITAN_LOCAL_AGENT_TOKEN_SHA256`;
+- a V1 não executa comando livre enviado pelo navegador;
+- commit, push, deploy, deletes e ações destrutivas ficam fora da V1;
+- guia operacional: `docs/GUIA-TITAN-LOCAL-AGENT.md`.
 
 A aba **Deploys** permite registrar plano/resultado de deploy:
 

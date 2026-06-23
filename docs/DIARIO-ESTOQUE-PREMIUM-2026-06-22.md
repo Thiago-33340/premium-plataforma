@@ -787,3 +787,47 @@ Arquivos alterados:
 - `docs/modulos/command-center.md`
 - `docs/GUIA-COMMAND-CENTER-GESTORES.md`
 - `docs/HANDOFF-CLAUDE-COMMAND-MAPPER.md`
+
+## Marco 20 — Titan Local Agent V1
+
+Status: implementado em código, aguardando configuração do token no EasyPanel e no PC
+
+Motivo:
+
+- Thiago quer usar o Command pelo celular para acionar o PC local, aproximando o Command da experiência do Codex desktop.
+- A solução precisa evitar abrir controle remoto livre do computador pela internet.
+
+O que foi feito:
+
+- Criado `project-state/local-agent-queue.json`.
+- Criado `scripts/titan-local-agent.mjs`.
+- Criado `docs/GUIA-TITAN-LOCAL-AGENT.md`.
+- Backend passou a expor:
+  - `POST /api/mapper/local-agent/poll`;
+  - `POST /api/mapper/local-agent/report`;
+  - `POST /api/mapper/action` com `action=create_local_agent_task`.
+- Aba **Agentes** ganhou card **Codex Local / PC Thiago**.
+- O card cria tarefas locais auditadas.
+- O script local busca tarefas por token, executa ações permitidas e devolve status/log.
+
+Ações permitidas na V1:
+
+- `codex_handoff`;
+- `claude_handoff`;
+- `git_status`;
+- `project_checks`;
+- `open_command_center`.
+
+Segurança:
+
+- Exige `TITAN_LOCAL_AGENT_TOKEN` ou `TITAN_LOCAL_AGENT_TOKEN_SHA256` no serviço.
+- Exige `TITAN_LOCAL_AGENT_TOKEN` no PC local.
+- Não executa comando livre vindo do navegador.
+- Não faz commit, push, deploy, delete ou ação destrutiva.
+- Não lê `.env`, chaves, certificados ou bancos locais.
+
+Próximo passo:
+
+- Configurar token no EasyPanel.
+- Rodar `npm run local-agent -- --once` no PC para validar.
+- Depois avaliar V2 com Codex App Server/execução real e confirmações próprias.

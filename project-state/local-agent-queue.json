@@ -1,0 +1,56 @@
+{
+  "id": "local-agent-queue",
+  "status": "operacional_v1",
+  "purpose": "Fila governada para o Command Center enviar tarefas aprovadas a agentes locais rodando no PC do Thiago, sem expor acesso direto ao computador pela internet.",
+  "security_model": {
+    "auth": "Bearer token configurado apenas no ambiente do serviço e no PC local",
+    "env_server": ["TITAN_LOCAL_AGENT_TOKEN ou TITAN_LOCAL_AGENT_TOKEN_SHA256"],
+    "env_local": ["TITAN_COMMAND_URL", "TITAN_LOCAL_AGENT_TOKEN", "TITAN_LOCAL_AGENT_ID", "TITAN_WORKSPACE"],
+    "rules": [
+      "O Command cria tarefas com sessão Titan Tools e permissão editar_project_state.",
+      "O agente local só busca tarefas se apresentar token válido.",
+      "A V1 não executa comando arbitrário enviado pelo navegador.",
+      "Ações permitidas são controladas pelo script local.",
+      "Secrets, .env, certificados, bancos locais e chaves não devem ser lidos nem enviados.",
+      "Commit, push, deploy, delete recursivo e alterações destrutivas exigem etapa futura com confirmação própria."
+    ]
+  },
+  "agents": [
+    {
+      "id": "thiago-windows-codex",
+      "name": "PC Thiago — Codex Local",
+      "kind": "codex-local",
+      "status": "aguardando_configuracao_local",
+      "workspace_hint": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\premium-plataforma-setores",
+      "allowed_actions": ["codex_handoff", "claude_handoff", "git_status", "project_checks", "open_command_center"]
+    }
+  ],
+  "tasks": [],
+  "allowed_actions": [
+    {
+      "id": "codex_handoff",
+      "label": "Enviar briefing para Codex Local",
+      "description": "Cria um arquivo markdown no inbox local para abrir/colar no Codex do PC."
+    },
+    {
+      "id": "claude_handoff",
+      "label": "Enviar briefing para Claude Code",
+      "description": "Cria um arquivo markdown no inbox local para abrir/colar no Claude Code do PC."
+    },
+    {
+      "id": "git_status",
+      "label": "Verificar Git local",
+      "description": "Executa git status e commit atual no workspace configurado."
+    },
+    {
+      "id": "project_checks",
+      "label": "Rodar checks seguros do projeto",
+      "description": "Executa node --check server-pg.js e scripts/check-project-state.mjs."
+    },
+    {
+      "id": "open_command_center",
+      "label": "Abrir Command Center no PC",
+      "description": "Abre a URL do Command Center no navegador padrão do Windows."
+    }
+  ]
+}

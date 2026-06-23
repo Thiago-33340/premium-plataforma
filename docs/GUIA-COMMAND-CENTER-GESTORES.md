@@ -76,6 +76,7 @@ Funções:
 - enviar prompt direto para IA pelo Console IA do Command;
 - receber resposta sem sair da tela;
 - preencher e registrar relatório de agente a partir da resposta revisada;
+- enviar tarefa para o PC local pelo card **Codex Local / PC Thiago**;
 - consultar fluxo de trabalho;
 - evitar retrabalho entre ferramentas.
 
@@ -102,6 +103,32 @@ Opcionalmente:
 
 - `TITAN_AI_PROVIDER=anthropic|openai|auto`;
 - `TITAN_AI_MODEL` para escolher o modelo.
+
+O card **Codex Local / PC Thiago** fica na mesma aba **Agentes**.
+
+Uso recomendado:
+
+1. Deixe o `scripts/titan-local-agent.mjs` rodando no PC.
+2. No celular ou desktop, abra o Command.
+3. Entre em **Agentes**.
+4. No card **Codex Local / PC Thiago**, escolha a ação.
+5. Escreva título e briefing.
+6. Clique em **Enviar para agente local**.
+7. Aguarde a fila mostrar `em execução`, `concluído` ou `falhou`.
+
+A V1 é segura e limitada. Ela permite:
+
+- handoff para Codex;
+- handoff para Claude Code;
+- git status;
+- checks seguros;
+- abrir o Command no navegador.
+
+Ela não permite comando livre, commit, push, deploy ou delete pelo celular.
+
+Guia técnico:
+
+- `docs/GUIA-TITAN-LOCAL-AGENT.md`
 
 ### Execução
 

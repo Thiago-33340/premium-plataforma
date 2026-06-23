@@ -359,5 +359,18 @@
     "bloqueada": false,
     "dependencias": ["task-f2-026"],
     "proximo_passo": "Implementado: aba Agentes ganhou Console IA, rota POST /api/mapper/ai protegida por editar_project_state, suporte a Claude/Anthropic ou OpenAI via variável segura de ambiente, auditoria sem gravar prompt completo e preenchimento do relatório para registro humano."
+  },
+  {
+    "id": "task-f2-028",
+    "titulo": "Criar ponte Titan Local Agent para controlar o PC via Command",
+    "modulo": "command-center",
+    "status": "concluido",
+    "prioridade": "alta",
+    "categoria": "agente-local",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-027"],
+    "proximo_passo": "V1 implementada: Command cria tarefas locais, backend expõe poll/report por bearer token, script scripts/titan-local-agent.mjs roda no PC com ações permitidas codex_handoff, claude_handoff, git_status, project_checks e open_command_center. Próximo degrau: configurar TITAN_LOCAL_AGENT_TOKEN no EasyPanel e no PC; depois evoluir para execução Codex/App Server com confirmações próprias."
   }
 ]

@@ -29,6 +29,7 @@ const required = [
   'stock-readiness.json',
   'agent-bridge.json',
   'agent-reports.json',
+  'local-agent-queue.json',
   'command-audit-log.json'
 ];
 
@@ -160,6 +161,18 @@ if (!Array.isArray(agentReports)) {
       if (report[field] == null) errors.push(`agent-reports.json item ${idx} sem campo ${field}.`);
     }
   }
+}
+
+const localAgentQueue = data['local-agent-queue.json'];
+if (!localAgentQueue || typeof localAgentQueue !== 'object' || Array.isArray(localAgentQueue)) {
+  errors.push('local-agent-queue.json deveria ser um objeto.');
+} else {
+  for (const field of ['id', 'status', 'security_model', 'agents', 'tasks', 'allowed_actions']) {
+    if (localAgentQueue[field] == null) errors.push(`local-agent-queue.json sem campo ${field}.`);
+  }
+  if (!Array.isArray(localAgentQueue.agents)) errors.push('local-agent-queue.json precisa ter agents como lista.');
+  if (!Array.isArray(localAgentQueue.tasks)) errors.push('local-agent-queue.json precisa ter tasks como lista.');
+  if (!Array.isArray(localAgentQueue.allowed_actions)) errors.push('local-agent-queue.json precisa ter allowed_actions como lista.');
 }
 
 const stockStep2 = data['stock-command-step2.json'];

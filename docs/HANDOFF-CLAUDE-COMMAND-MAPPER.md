@@ -384,3 +384,41 @@ Segurança:
 - o prompt completo não é salvo automaticamente;
 - o envio gera auditoria apenas com metadados;
 - a resposta não altera código, banco operacional nem deploy sozinha.
+
+## Atualização — Titan Local Agent
+
+O Command Center ganhou uma ponte para um agente local rodando no PC do Thiago.
+
+Objetivo:
+
+- permitir que Thiago acione tarefas pelo celular no Command;
+- o PC local busca a tarefa;
+- o script local executa apenas ações permitidas;
+- o resultado volta para a fila auditada do Command.
+
+Arquivos:
+
+- `project-state/local-agent-queue.json`
+- `scripts/titan-local-agent.mjs`
+- `docs/GUIA-TITAN-LOCAL-AGENT.md`
+
+Rotas:
+
+- `POST /api/mapper/local-agent/poll`
+- `POST /api/mapper/local-agent/report`
+- `POST /api/mapper/action` com `action=create_local_agent_task`
+
+Ações permitidas na V1:
+
+- `codex_handoff`;
+- `claude_handoff`;
+- `git_status`;
+- `project_checks`;
+- `open_command_center`.
+
+Importante:
+
+- A V1 não executa comando livre vindo do navegador.
+- Não faz commit, push, deploy ou delete.
+- Não lê `.env`, chaves, certificados ou bancos locais.
+- Para funcionar, precisa configurar token seguro no EasyPanel e no PC.
