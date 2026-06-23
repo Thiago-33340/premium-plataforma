@@ -155,6 +155,7 @@ const MIGRATIONS = [
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS base_medida TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS fonte TEXT",
+  "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS observacao TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
