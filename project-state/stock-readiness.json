@@ -165,8 +165,8 @@
     }
   },
   "admin_cardapio_inventory": {
-    "updated_at": "2026-06-24T00:00:00.000-03:00",
-    "status": "implementado_local_deploy_script_corrigido_pendente_snapshot_deploy_smoke_producao",
+    "updated_at": "2026-06-24T03:30:00.000-03:00",
+    "status": "validado_em_producao_smoke_21_21_teste_mutavel_status_revertido_ok",
     "decision_gate": "decision-018 / gate-white-label-4-perguntas",
     "escopo": "Primeira fatia — aba admin Estoque do cardápio, sem duplicar operação do estoque.html.",
     "fontes_unicas": {
@@ -191,11 +191,11 @@
       "sync_ativo": false
     },
     "smoke": {
-      "read_only": "scripts/smoke-critical.mjs inclui GET /api/est/configuracoes e GET /api/admin/estoque-cardapio?admin_id=<gestor>&limit=5",
-      "mutating": "rotas PUT/DELETE/lote existem; teste mutável deve ser controlado para não alterar disponibilidade real sem janela aprovada"
+      "read_only": "Produção/tools validado em 2026-06-24: scripts/smoke-critical.mjs --base-url=https://premium.titanatende.com.br --tools-base-url=https://tools.titanatende.com.br --user-id=thiago => 21/21 OK.",
+      "mutating": "Teste controlado realizado pelo gestor no admin: status de item vendável alterado e revertido. Pós-teste API confirmou todos os 334 itens ATIVO, 0 EM_FALTA, 0 OCULTO."
     },
     "deployment_guardrail": {
-      "status": "bloqueio_deploy_path_identificado_e_script_corrigido_localmente",
+      "status": "deploy_manual_e_validacao_producao_concluidos",
       "script": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\deploy-premium.ps1",
       "source_dir_correto": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\premium-plataforma-setores",
       "source_dir_antigo_bloqueado": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\premium-plataforma",
@@ -210,14 +210,115 @@
         "Smoke read-only de produção/tools.",
         "Teste mutável controlado alternando status de um item vendável e revertendo antes de qualquer ação em massa."
       ],
-      "observacao": "O script de deploy foi ajustado, mas não foi executado nesta etapa."
+      "observacao": "Commit daba920 enviado para GitHub main. Webhook local falhou por variável com URL inválida; deploy foi acionado manualmente no EasyPanel e produção passou no smoke. Script local atualizado para normalizar URL do webhook em execução futura."
+    },
+    "production_validation": {
+      "validated_at": "2026-06-24T03:30:00.000-03:00",
+      "commit": "daba920cb4330b390797821c3c9f9ffc39f14069",
+      "deploy_method": "Push GitHub main + Implantar manual no EasyPanel",
+      "smoke_read_only": "21/21 OK",
+      "controlled_mutation": "Status alterado pelo gestor e revertido para ATIVO antes de qualquer ação em massa.",
+      "status_mirror_observed": {
+        "titan": "ATIVO",
+        "delivery_direto": "ACTIVE",
+        "campo_api": "dd_status"
+      },
+      "kpis_after_revert": {
+        "total": 334,
+        "ativos": 334,
+        "em_falta": 0,
+        "ocultos": 0,
+        "controle_on": 0,
+        "quantidade_vendavel_total": 0
+      }
     },
     "gate_white_label_4_perguntas": {
       "a_white_label_config_first": "OK local — título do estoque e tipos/departamentos vêm de tenants.config.estoque + valores existentes; seeds Premium travadas por tenant.",
       "b_modelo_unico_sem_terceiro_modelo": "OK — sem tabela nova; usa produtos/opcoes/ficha_itens/est_produto.",
-      "c_contrato_dd_inventory": "OK — CRUD vendável/status/massa com status map ACTIVE/SHORT_SUPPLY/HIDDEN e mapper DD preparado sem sync.",
-      "d_guardrail_smoke": "OK local — decision-018 registrada, rotas adicionadas ao smoke e project-state; pendente rodar smoke pós-deploy."
+      "c_contrato_dd_inventory": "OK produção — CRUD vendável/status/massa com status map ATIVO/EM_FALTA/OCULTO ↔ ACTIVE/SHORT_SUPPLY/HIDDEN e mapper DD preparado sem sync.",
+      "d_guardrail_smoke": "OK produção — decision-018 registrada, rotas no smoke, snapshot pré-deploy feito, smoke 21/21 e teste mutável controlado revertido."
     }
+  },
+  "border_mapper_dry_run": {
+    "updated_at": "2026-06-24T03:55:00.000-03:00",
+    "status": "ajuste_seguro_parcial_aplicado_em_producao_smoke_21_21",
+    "fonte_mapper": "data/premium-border-pdv-mapper-v1.json",
+    "endpoints_read_only": {
+      "fichas_cardapio": "/api/est/fichas-cardapio?usuario_id=thiago",
+      "estoque_produtos": "/api/est/produtos",
+      "ficha_cardapio_detalhe": "/api/est/ficha-cardapio?usuario_id=thiago&tipo=opcao&id=<id>"
+    },
+    "dry_run_confirmacao": "Dry-run inicial executado somente com GET HTTP contra producao.",
+    "mapper": {
+      "bordas_recheio_total": 99,
+      "por_tipo": {
+        "Borda Paozinho": 30,
+        "Borda Tradicional": 12,
+        "Borda Vulcao": 57
+      },
+      "decisao_operacional": "Vulcoes montados nao vira item produzido; fichas devem debitar os insumos reais do recheio."
+    },
+    "producao_observada": {
+      "produtos_cardapio": 25,
+      "grupos_cardapio": 24,
+      "opcoes_cardapio": 309,
+      "resumos_ficha": 285,
+      "produtos_estoque": 237
+    },
+    "diagnostico_principal": {
+      "produto_grupo_existente": "72/99 recheios do mapper apontam para produto+grupo existente. Os 27 restantes sao Combo Premium e Especiais do Dia presentes no Saipos/mapper, mas ausentes como produtos no catalogo Titan atual.",
+      "opcoes_existentes_com_alias_mucarela_mussarela": "30/72 opcoes esperadas existem nominalmente; 42 faltam nas pizzas principais atuais.",
+      "codigos_pdv": "Produtos e opcoes de borda atuais estao sem codigo_externo; precisa preencher codigo_pai/codigo_filho sem inventar outro modelo.",
+      "fichas_existentes": "12 opcoes existentes tinham ficha detalhada consultavel; 12/12 divergiram do mapper.",
+      "insumos_ausentes_ou_pendentes": "Brigadeiro de Ninho nao foi encontrado como est_produto ativo; bolinhas de Vulcao exigem conversao pacote 4un <-> unidade; chocolates da Finalizacao exigem conversao BISNAGA <-> g; Morango (caixa) e Uva tambem aparecem com conversao pendente no mapper."
+    },
+    "ajuste_producao_2026_06_24": {
+      "escopo": "Correção segura somente em Pizza Grande, usando opções de borda já existentes. Nenhuma opção foi criada, excluída ou ocultada; Pizza Pequena não foi alterada.",
+      "aplicado_por": "Codex via APIs de produção, com admin_id/usuario_id thiago.",
+      "alteracoes": {
+        "produtos_codigo_pai": [
+          "Pizza Grande + Borda Paozinho => 6005397",
+          "Pizza Grande + Borda Tradicional Recheada => 6005444",
+          "Pizza Grande + Borda Vulcao => 6005342"
+        ],
+        "opcoes_ficha_ok": [
+          "Pizza Grande + Borda Paozinho > Presunto e Mussarela => Rolinho de presunto e mucarela 5.5 rolinhos",
+          "Pizza Grande + Borda Tradicional Recheada > Catupiry => Catupiry Aberto da Borda 150g",
+          "Pizza Grande + Borda Tradicional Recheada > Cheddar => Cheddar Aberto da Borda 150g",
+          "Pizza Grande + Borda Tradicional Recheada > Chocolate ao Leite => Chocolate ao Leite - Aberto Borda 150g",
+          "Pizza Grande + Borda Tradicional Recheada > Chocolate Branco => Chocolate Branco - Aberto Borda 150g",
+          "Pizza Grande + Borda Tradicional Recheada > Mussarela => Rolinho de mucarela 4 rolinhos",
+          "Pizza Grande + Borda Tradicional Recheada > Presunto e Mussarela => Rolinho de presunto e mucarela 4 rolinhos",
+          "Pizza Grande + Borda Vulcao > Catupiry => Catupiry Aberto da Borda 150g",
+          "Pizza Grande + Borda Vulcao > Cheddar => Cheddar Aberto da Borda 150g"
+        ]
+      },
+      "bloqueios_mantidos": [
+        "Pizza Grande + Borda Vulcao > Chocolate ao Leite/Chocolate Branco: mapper pede 150g da Finalizacao, mas item ativo esta em BISNAGA; precisa conversao/ajuste de unidade antes de baixar saldo.",
+        "Pizza Grande + Borda Vulcao > Mussarela/Presunto e Mussarela: mapper fala 4 unidades; estoque ativo esta como pacote 4un; precisa conversao explicita para 1 pacote ou item unitario antes da ficha.",
+        "Pizza Grande + Borda Vulcao > Ninho com Morango/Ninho com Uva: Brigadeiro de Ninho nao existe como est_produto ativo; Morango/Uva tambem exigem conversao de fruta antes da ficha.",
+        "Pizza Grande + Borda Paozinho ainda precisa criar 8 combinacoes ausentes; nao foi feito para nao alterar a vitrine sem revisao.",
+        "Pizza Pequena exige grupos condicionais por Estilo de borda ou split de produto; nao foi alterada nesta etapa."
+      ],
+      "validacao_pos_ajuste": {
+        "pizza_grande_opcoes_existentes_validadas": "9 OK / 15 existentes",
+        "smoke_read_only": "21/21 OK em https://premium.titanatende.com.br e https://tools.titanatende.com.br",
+        "observacao": "Uma tentativa intermediaria de ficha parou ao encontrar insumo inativo; o passe seguro posterior reconciliou o subconjunto permitido e manteve bloqueadas as conversoes inseguras."
+      }
+    },
+    "falhas_confirmadas": [
+      "Catupiry/Cheddar de borda estao debitando Aberto da Montagem em algumas fichas, mas o mapper exige Aberto da Borda.",
+      "Algumas opcoes Mussarela/Presunto e Mussarela de borda carregam ficha de pizza inteira (massa, molho, tomate, etc.), entao nao podem ser reutilizadas sem ajuste.",
+      "Borda Paozinho no cardapio Titan atual usa opcoes genericas; o mapper/Saipos exige combinacoes como Calabresa + Catupiry e Frango + Cheddar.",
+      "Pizza Pequena usa produto unico com grupo Estilo de borda + grupo Recheio da borda; para mapear corretamente precisa de grupos condicionais por estilo ou split de produto."
+    ],
+    "plano_seguro": [
+      "Aplicar primeiro somente Pizza Grande + Borda Paozinho, Tradicional e Vulcao, pois cada uma tem produto proprio e nao depende de condicao de estilo.",
+      "Criar/atualizar opcoes faltantes com codigo_filho e preencher codigo_pai nos produtos quando o codigo for unico por produto.",
+      "Substituir fichas das opcoes de borda usando ficha_itens -> est_produto, somente quando todos os insumos estiverem resolvidos.",
+      "Nao apagar opcoes extras em producao no primeiro passe; marcar como OCULTO/avaliar com gestor antes de remocao.",
+      "Modelar Pizza Pequena em etapa separada com grupos condicionais por Estilo de borda, pois o mesmo produto precisa exibir recheios diferentes conforme Paozinho/Tradicional/Vulcao."
+    ]
   },
   "veredito": "O motor de estoque, compra, ficha avançada, produção e Command/Mapper está validado em produção. O catálogo Premium está batendo por setor e unidade. Para declarar 100% de conteúdo de ficha, faltam as receitas reais de Camarão, Molho produzido e Coco Ralado Floco."
 }

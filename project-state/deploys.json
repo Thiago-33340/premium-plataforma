@@ -129,5 +129,29 @@
       "Command Center mantém ações em project-state e tenta persistir em titan_command_actions"
     ],
     "observacoes": "Deploy acionado manualmente no EasyPanel pelo botão Implantar. Não foram registrados secrets; gatilho/token do EasyPanel não foi copiado."
+  },
+  {
+    "id": "deploy-2026-06-24-admin-estoque-cardapio",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "daba920cb4330b390797821c3c9f9ffc39f14069",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque o host interno do banco não resolve no Windows.",
+      "Push para GitHub main OK: 17bfa41 -> daba920.",
+      "Deploy acionado manualmente no EasyPanel após falha local do webhook por URL inválida na variável do PowerShell.",
+      "Smoke read-only produção/tools OK: 21/21.",
+      "Teste mutável controlado OK: gestor alternou status de item vendável e reverteu.",
+      "Espelhamento de status validado: Titan ATIVO -> Delivery Direto ACTIVE via campo dd_status.",
+      "KPIs pós-reversão: 334 vendáveis ativos, 0 em falta, 0 ocultos."
+    ],
+    "observacoes": "Entrega da primeira fatia do Estoque do cardápio no admin: dados compartilhados com produtos/opcoes/ficha_itens/est_produto, sem tabela nova, config-first e mapper Delivery Direto preparado sem sync. Nenhum token/webhook foi registrado."
   }
 ]
