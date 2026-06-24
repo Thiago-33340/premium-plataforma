@@ -1388,6 +1388,14 @@ function peCustomSelect(id,label,value,items,help,hiddenAttrs=''){
 function peSelectedSetorNames(){ const ids=(_pe.selecionados||[]).map(Number); return ids.map(id=>{ const s=(_pe.setores||[]).find(x=>Number(x.id)===id); return s&&s.nome; }).filter(Boolean); }
 function peSetorResumoText(){ const names=peSelectedSetorNames(); return names.length?names.join(' / '):((_pe.produto&&_pe.produto.subcategoria)||'Nenhum setor definido'); }
 function peUpdateSetorResumo(){ const el=$('peSetorResumo'); if(el)el.textContent=peSetorResumoText(); }
+function peTemFichaOuProducao(p){ return !!(_pe.id && ((p&&p.pode_produzir) || (_pe.ficha&&_pe.ficha.length))); }
+function peTemConversaoConfigurada(p){ return !!(p && (p.unidade_base || p.peso_g!=null || p.conversao_origem || p.conversao_confianca || p.conversao_precisa_revisao)); }
+function peUnidadePedeConversao(unidade){
+  const u=String(unidade||'').trim().toUpperCase();
+  if(!u || ['G','KG','ML','L','LITRO','UN','UNIDADE'].includes(u))return false;
+  return /(PACOTE|CAIXA|BALDE|GAL[AÃ]O|ROLO|ROLOS|BISNAGA|MA[CÇ]O|SACO|SACH[ÊE]|LATA|VIDRO|POTE|BARRA|FOLHA|PE[CÇ]A|MANGA)/.test(u);
+}
+function peMostrarConversao(p){ return peTemConversaoConfigurada(p) || peUnidadePedeConversao(p&&p.unidade); }
 function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorAll('.product-modal').forEach(x=>x.remove());
   const m=document.createElement('div'); m.className='modal on product-modal'; m.id='productEditor';
   const opts=(arr,cur,label='nome')=>'<option value="">— selecione —</option>'+arr.map(x=>`<option value="${x.id}" ${String(cur||'')===String(x.id)?'selected':''}>${esc(x[label])}</option>`).join('');
@@ -1395,9 +1403,35 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
   const tipoOpts=cfgOptions((_estoqueCfg&&_estoqueCfg.tipos_item)||[],'— não definido —');
   const catOpts=[{v:'',t:'— selecione —'}].concat(_cats.map(c=>({v:c.id,t:c.nome})));
   const unidadeOpts=unidadeOptions('— selecione —');
+  const mostraFicha=peTemFichaOuProducao(p);
+  const fichaTab=mostraFicha?`<button class="editor-tab" data-tab="ficha" onclick="peTab('ficha')">Ficha técnica <span id="peFichaCount">${_pe.ficha.length}</span></button>`:'';
+  const fichaPane=mostraFicha?`<section class="editor-pane" data-pane="ficha">
+        <div class="recipe-cta">
+          <div><h4>Ficha técnica de produção</h4><p>Use o editor completo para criar porções, ingredientes, custo estimado e instruções. A produção usa essa ficha para baixar insumos brutos e dar entrada no item produzido.</p></div>
+          <button class="btn primary sm" onclick="peOpenFicha()">Abrir editor de ficha</button>
+        </div>
+        <div class="recipe-summary">
+          <div><small>Status</small><b>${p.pode_produzir?'Produzido':'Ficha existente'}</b></div>
+          <div><small>Ingredientes espelhados</small><b>${_pe.ficha.length}</b></div>
+          <div><small>Setor</small><b>${esc(peSetorResumoText())}</b></div>
+        </div>
+        <div class="recipe-empty" style="text-align:left">
+          <b>Regra operacional:</b> esta aba aparece somente para itens produzidos ou com ficha cadastrada. Para item apenas comprado/contado, a ficha técnica fica oculta.
+        </div>
+        ${_pe.id&&(_pe.ficha.length||p.pode_produzir)?'<button class="btn danger sm" style="margin-top:12px" onclick="peDeleteFichaDirect()">Excluir ficha técnica</button>':''}
+      </section>`:'';
+  const mostraConversao=peMostrarConversao(p);
+  const conversaoPane=mostraConversao?`<div class="sec">Conversão de unidade deste produto</div>
+        <div class="form-grid">
+          <label class="label">Base canônica<select class="field" id="peUnidadeBase" onchange="peConvManual();peNormaliza()"><option value="">— selecione —</option><option value="g" ${p.unidade_base==='g'?'selected':''}>g (massa)</option><option value="ml" ${p.unidade_base==='ml'?'selected':''}>ml (volume)</option><option value="un" ${p.unidade_base==='un'?'selected':''}>un (discreto)</option></select><span class="help">Use somente quando uma unidade de compra precisa virar base operacional. Ex.: pacote, caixa, balde, bisnaga, maço.</span></label>
+          <label class="label">Fator por unidade de controle<input class="field" id="pePeso" inputmode="decimal" value="${p.peso_g!=null?esc(p.peso_g):''}" placeholder="Ex.: 900" oninput="peConvManual();peNormaliza()"><span class="help">Quanto vale 1 ${esc((p.unidade||'unidade').toLowerCase())} na base escolhida. É específico deste produto.</span></label>
+        </div>
+        <label class="switch-card" style="margin:8px 0"><input type="checkbox" id="peRevisao" ${p.conversao_precisa_revisao?'checked':''} onchange="peNormaliza()"><span><b>Conversão precisa de revisão</b><small>Marque quando a nota/embalagem não deixa o fator claro. Sem fator confirmado, o sistema não inventa preço derivado.</small></span></label>
+        <div class="norm-readout" id="peNormReadout"></div>
+        <div id="peSugestoes" class="sugestao-wrap"></div>`:'';
   m.innerHTML=`<div class="box">
     <div class="editor-head"><div><h3>${_pe.id?esc((p.nome||'').trim()||'Editar produto'):'Novo produto'}</h3><p>${_pe.id?'Editar produto · cadastro #'+_pe.id+' · alterações ficam registradas no estoque':'Cadastre o item uma vez e configure onde ele participa'}</p></div><button class="icon-btn" onclick="peClose()" aria-label="Fechar">×</button></div>
-    <div class="editor-tabs"><button class="editor-tab on" data-tab="geral" onclick="peTab('geral')">Dados gerais</button><button class="editor-tab" data-tab="estoque" onclick="peTab('estoque')">Estoque</button><button class="editor-tab" data-tab="operacao" onclick="peTab('operacao')">Operação</button><button class="editor-tab" data-tab="ficha" onclick="peTab('ficha')">Ficha técnica <span id="peFichaCount">${_pe.ficha.length}</span></button></div>
+    <div class="editor-tabs"><button class="editor-tab on" data-tab="geral" onclick="peTab('geral')">Dados gerais</button><button class="editor-tab" data-tab="estoque" onclick="peTab('estoque')">Estoque</button><button class="editor-tab" data-tab="operacao" onclick="peTab('operacao')">Operação</button>${fichaTab}</div>
     <div class="editor-body">
       <section class="editor-pane on" data-pane="geral"><div class="form-grid">
         <label class="label span2">Nome do produto *<input class="field" id="peNome" value="${esc(p.nome||'')}" placeholder="Ex.: Muçarela, Molho produzido, Massa 480g"><span class="help">Nome padronizado, editável.</span></label>
@@ -1417,14 +1451,7 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
         <label class="label">Fornecedor preferido<select class="field" id="peFornecedor">${opts(_forns,p.fornecedor_preferido_id)}</select><span class="help">Quem você prefere comprar este item.</span></label>
         <label class="label">Local físico<select class="field" id="peLocal">${opts(_locais,p.local_fisico_id)}</select><span class="help">Onde o item fica guardado (geladeira, estoque seco…).</span></label></div>
 
-        <div class="sec">Normalização (conversão deste produto)</div>
-        <div class="form-grid">
-          <label class="label">Base canônica<select class="field" id="peUnidadeBase" onchange="peConvManual();peNormaliza()"><option value="">— selecione —</option><option value="g" ${p.unidade_base==='g'?'selected':''}>g (massa)</option><option value="ml" ${p.unidade_base==='ml'?'selected':''}>ml (volume)</option><option value="un" ${p.unidade_base==='un'?'selected':''}>un (discreto)</option></select><span class="help">Uma fonte de preço por unidade-base; kg/L são vista derivada.</span></label>
-          <label class="label">Peso/volume por unidade-base (fator)<input class="field" id="pePeso" inputmode="decimal" value="${p.peso_g!=null?esc(p.peso_g):''}" placeholder="Ex.: 900" oninput="peConvManual();peNormaliza()"><span class="help">Quanto vale 1 ${esc((p.unidade||'unidade').toLowerCase())} na base (ex.: 1 PT = 5000 g; 1 maço = 200 g). É o fator <b>deste</b> produto.</span></label>
-        </div>
-        <label class="switch-card" style="margin:8px 0"><input type="checkbox" id="peRevisao" ${p.conversao_precisa_revisao?'checked':''} onchange="peNormaliza()"><span><b>Conversão precisa de revisão</b><small>Marque quando a NF não deixa o fator claro. Sem fator confirmado não há preço derivado — nada é inventado.</small></span></label>
-        <div class="norm-readout" id="peNormReadout"></div>
-        <div id="peSugestoes" class="sugestao-wrap"></div>
+        ${conversaoPane}
 
         <div class="sec">Histórico de valor & fornecedor</div>
         <div class="hist-grid">
@@ -1441,24 +1468,10 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
       <section class="editor-pane" data-pane="operacao"><div class="sec" style="margin-top:0">Comportamento</div><div class="switch-grid">
         <label class="switch-card"><input type="checkbox" id="peContar" ${p.pode_contar!==false?'checked':''}><span><b>Entra nas contagens</b><small>Disponível para os setores selecionados.</small></span></label>
         <label class="switch-card"><input type="checkbox" id="peComprar" ${p.pode_comprar!==false?'checked':''}><span><b>Pode ser comprado</b><small>Aparece em compras e fornecedores.</small></span></label>
-        <label class="switch-card"><input type="checkbox" id="peProduzir" ${p.pode_produzir?'checked':''}><span><b>Produzido internamente</b><small>Habilita ficha e lançamento de produção.</small></span></label>
+        <label class="switch-card"><input type="checkbox" id="peProduzir" ${p.pode_produzir?'checked':''}><span><b>Produzido internamente</b><small>Ao salvar, libera a ficha técnica e o lançamento de produção.</small></span></label>
         <label class="switch-card"><input type="checkbox" id="peAtivo" ${p.ativo!==false?'checked':''}><span><b>Produto ativo</b><small>Desative sem apagar o histórico.</small></span></label>
       </div><div class="sec">Setores de contagem</div><div class="sector-grid">${_pe.setores.map(s=>`<button type="button" class="sector-chip ${_pe.selecionados.includes(Number(s.id))?'on':''}" data-sid="${s.id}" onclick="peToggleSetor(this)">${esc(s.nome)}</button>`).join('')||'<span class="mut sm">Nenhum setor cadastrado.</span>'}</div></section>
-      <section class="editor-pane" data-pane="ficha">
-        <div class="recipe-cta">
-          <div><h4>Ficha técnica de produção</h4><p>Use o editor completo para criar porções, ingredientes, custo estimado e instruções. A produção usa essa ficha para baixar insumos brutos e dar entrada no item produzido.</p></div>
-          <button class="btn primary sm" onclick="peOpenFicha()">${_pe.id?'Abrir editor de ficha':'Salvar produto primeiro'}</button>
-        </div>
-        <div class="recipe-summary">
-          <div><small>Status</small><b>${p.pode_produzir?'Produzido':'Não produzido'}</b></div>
-          <div><small>Ingredientes espelhados</small><b>${_pe.ficha.length}</b></div>
-          <div><small>Setores</small><b>${_pe.selecionados.length||'—'}</b></div>
-        </div>
-        <div class="recipe-empty" style="text-align:left">
-          <b>Regra operacional:</b> o produto pode ser cadastrado agora e a ficha aberta em seguida. Para produzir de verdade, a ficha precisa ter pelo menos uma porção com ingredientes válidos.
-        </div>
-        ${_pe.id&&(_pe.ficha.length||p.pode_produzir)?'<button class="btn danger sm" style="margin-top:12px" onclick="peDeleteFichaDirect()">Excluir ficha técnica</button>':''}
-      </section>
+      ${fichaPane}
       <div class="editor-foot"><div class="status" id="peStatus">${_pe.id?(p.ativo===false?'Produto excluído da tela. Marque “Produto ativo” e salve para restaurar.':'Última configuração carregada do banco.'):'Preencha os campos obrigatórios.'}</div>${_pe.id&&p.ativo!==false?'<button class="btn danger sm" onclick="peDelete()">Excluir produto</button>':''}<button class="btn ghost sm" onclick="peClose()">Cancelar</button><button class="btn primary sm" id="peSave" onclick="peSave()">Salvar produto</button></div>
     </div></div>`;
   document.body.appendChild(m); peRenderRecipe(); peRenderSugestoes(); peNormaliza(); peUpdateSetorResumo(); if(window.innerWidth>700)setTimeout(()=>$('peNome').focus(),60);
@@ -1480,7 +1493,7 @@ function peRemoveRecipe(i){ peSyncRecipe(); _pe.ficha.splice(i,1); peRenderRecip
 function peOpenFicha(){ if(!_pe.id){ peTab('geral'); const st=$('peStatus'); if(st)st.textContent='Salve o produto primeiro; depois abrimos a ficha técnica completa.'; return; } abrirFichaProd(_pe.id); }
 async function peDeleteFichaDirect(){ if(!_pe.id)return; if(!await pedirConfirm('Excluir ficha técnica','A ficha e suas porções serão desativadas. O produto e o histórico serão preservados.','Excluir ficha'))return;
   try{ await estFetch('/api/est/producao/ficha/'+_pe.id,'DELETE',{}); toast('Ficha técnica excluída'); await abrirEditorProduto(_pe.id); await loadProdutos(); }catch(e){} }
-function peNum(id){ const v=($(id).value||'').trim().replace(',','.'); return v===''?null:Number(v); }
+function peNum(id){ const el=$(id); if(!el)return null; const v=(el.value||'').trim().replace(',','.'); return v===''?null:Number(v); }
 // Marca a conversão como editada manualmente (o gestor mexeu na base/fator deste produto).
 function peConvManual(){ _pe.conversao=_pe.conversao||{}; _pe.conversao.origem='manual'; }
 // Sugestões da categoria do produto (ex.: hortifruti). Mostradas SÓ se a categoria casar — nunca de outra.
@@ -1529,7 +1542,7 @@ async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus
   if(b.pode_contar&&!b.setores.length){ peTab('operacao'); status.textContent='Escolha pelo menos um setor de contagem ou desmarque “Entra nas contagens”.'; return; }
   if((b.estoque_minimo!=null&&!Number.isFinite(b.estoque_minimo))||(b.estoque_ideal!=null&&!Number.isFinite(b.estoque_ideal))){ peTab('estoque'); status.textContent='Revise os valores de estoque.'; return; }
   btn.disabled=true; status.textContent='Validando e salvando…';
-  try{ let id=_pe.id, d=null; const abrirFichaDepois=!_pe.id&&b.pode_produzir; if(!id){ d=await estFetch('/api/est/produto','POST',b); id=d.id; _pe.id=id; } else d=await estFetch('/api/est/produto/'+id,'PATCH',b);
+  try{ let id=_pe.id, d=null; const eraProduzido=!!((_pe.produto&&_pe.produto.pode_produzir)||(_pe.ficha&&_pe.ficha.length)); const abrirFichaDepois=!!b.pode_produzir&&!eraProduzido; if(!id){ d=await estFetch('/api/est/produto','POST',b); id=d.id; _pe.id=id; } else d=await estFetch('/api/est/produto/'+id,'PATCH',b);
     d=await estFetch('/api/est/produto/'+id+'/setores','POST',{setores:b.setores});
     if(d&&Array.isArray(d.setores)){ const a=[...b.setores].map(Number).sort((x,y)=>x-y).join(','), salvo=[...d.setores].map(Number).sort((x,y)=>x-y).join(','); if(a!==salvo)throw new Error('O produto salvou, mas os setores retornaram diferentes. Reabra o item e confira antes de continuar.'); }
     toast(_pe.produto&&_pe.produto.nome?'Produto atualizado':'Produto criado'); peClose(); await loadProdutos(); if(abrirFichaDepois)setTimeout(()=>abrirFichaProd(id),120);
