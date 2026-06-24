@@ -10,6 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const TENANT = process.env.TENANT_ID || 'khardela:premiumpizzas:sjrp';
+const PREMIUM_TENANT_ID = 'khardela:premiumpizzas:sjrp';
+const IS_PREMIUM_TENANT = TENANT === PREMIUM_TENANT_ID;
 
 const pool = new Pool(
   process.env.DATABASE_URL
@@ -157,6 +159,9 @@ const MIGRATIONS = [
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS fonte TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS observacao TEXT",
   "ALTER TABLE ficha_itens ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
+  "ALTER TABLE produtos ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
+  "ALTER TABLE opcoes ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
+  "ALTER TABLE opcao_grupos ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb",
   "ALTER TABLE preparo_itens ADD COLUMN IF NOT EXISTS est_produto_id INT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS peso_g NUMERIC(14,3)",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS unidade_base TEXT",
@@ -557,28 +562,32 @@ async function init(retries) {
       } catch (et) { console.log('[db] titan tools bootstrap aviso:', et.code || et.message); }
       try {
         const r = await pool.query('SELECT COUNT(*)::int AS n FROM produtos WHERE tenant_id=$1', [TENANT]);
-        if (r.rows[0].n === 0) {
+        if (r.rows[0].n === 0 && IS_PREMIUM_TENANT) {
           const seed = fs.readFileSync(path.join(__dirname, 'seed-cardapio.sql'), 'utf8');
           await pool.query(seed);
           const r2 = await pool.query('SELECT COUNT(*)::int AS n FROM produtos WHERE tenant_id=$1', [TENANT]);
           console.log('[db] seed do cardapio (modelo novo) aplicado - produtos: ' + r2.rows[0].n);
+        } else if (r.rows[0].n === 0) {
+          console.log('[db] seed do cardapio Premium ignorado: tenant nao e Premium');
         } else {
           console.log('[db] produtos ja populados (' + r.rows[0].n + ') - seed ignorado');
         }
       } catch (es) { console.log('[db] seed-cardapio aviso:', es.code || es.message); }
       try {
         const rp = await pool.query('SELECT COUNT(*)::int AS n FROM preparos WHERE tenant_id=$1', [TENANT]);
-        if (rp.rows[0].n === 0) {
+        if (rp.rows[0].n === 0 && IS_PREMIUM_TENANT) {
           const seed2 = fs.readFileSync(path.join(__dirname, 'seed-fase2.sql'), 'utf8');
           await pool.query(seed2);
           console.log('[db] seed fase2 (pizza pequena + preparos + insumos) aplicado');
+        } else if (rp.rows[0].n === 0) {
+          console.log('[db] seed fase2 Premium ignorado: tenant nao e Premium');
         } else {
           console.log('[db] preparos ja populados (' + rp.rows[0].n + ') - seed fase2 ignorado');
         }
       } catch (es2) { console.log('[db] seed-fase2 aviso:', es2.code || es2.message); }
       try {
         const rf = await pool.query('SELECT COUNT(*)::int AS n FROM ficha_itens WHERE tenant_id=$1', [TENANT]);
-        if (rf.rows[0].n === 0) {
+        if (rf.rows[0].n === 0 && IS_PREMIUM_TENANT) {
           if (fs.existsSync(path.join(__dirname, 'data', 'fichas-premium-cardapio-v1.json'))) {
             console.log('[db] seed fase3 legado adiado: import Premium v1 será usado após estoque/catalogo');
           } else {
@@ -586,25 +595,33 @@ async function init(retries) {
             await pool.query(seed3);
             console.log('[db] seed fase3 (fichas tecnicas) aplicado');
           }
+        } else if (rf.rows[0].n === 0) {
+          console.log('[db] seed fase3 Premium ignorado: tenant nao e Premium');
         } else {
           console.log('[db] fichas ja populadas (' + rf.rows[0].n + ') - seed fase3 ignorado');
         }
       } catch (es3) { console.error('[db] seed-fase3 aviso:', es3.stack || es3.message); }
       try {
-        const seed4 = fs.readFileSync(path.join(__dirname, 'seed-fase4-pizzagrande.sql'), 'utf8');
-        await pool.query(seed4);
-        console.log('[db] seed fase4 (pizza grande 4 bordas) aplicado/verificado');
+        if (IS_PREMIUM_TENANT) {
+          const seed4 = fs.readFileSync(path.join(__dirname, 'seed-fase4-pizzagrande.sql'), 'utf8');
+          await pool.query(seed4);
+          console.log('[db] seed fase4 (pizza grande 4 bordas) aplicado/verificado');
+        } else {
+          console.log('[db] seed fase4 Premium ignorado: tenant nao e Premium');
+        }
       } catch (es4) { console.log('[db] seed-fase4 aviso:', es4.code || es4.message); }
       try {
         const estv2 = fs.readFileSync(path.join(__dirname, 'estoque-v2.sql'), 'utf8');
         await pool.query(estv2);
         console.log('[db] estoque v2 (schema) aplicado/verificado');
         const rep = await pool.query('SELECT COUNT(*)::int AS n FROM est_produto WHERE tenant_id=$1', [TENANT]);
-        if (rep.rows[0].n === 0) {
+        if (rep.rows[0].n === 0 && IS_PREMIUM_TENANT) {
           const seedE = fs.readFileSync(path.join(__dirname, 'seed-estoque-rp.sql'), 'utf8');
           await pool.query(seedE);
           const r2 = await pool.query('SELECT COUNT(*)::int AS n FROM est_produto WHERE tenant_id=$1', [TENANT]);
           console.log('[db] seed estoque RP aplicado - produtos: ' + r2.rows[0].n);
+        } else if (rep.rows[0].n === 0) {
+          console.log('[db] seed estoque RP ignorado: tenant nao e Premium');
         } else {
           console.log('[db] est_produto ja populado (' + rep.rows[0].n + ') - seed estoque ignorado');
         }
@@ -652,6 +669,9 @@ async function init(retries) {
         // Seed real da Premium a partir das NFs (dados reais, não adivinhação). Guardado por flag —
         // roda uma vez; não clobbera edições do gestor depois. ALTA: fator preenchido. BAIXA:
         // precisa_revisao=true e fator em branco quando a NF não suporta. Idempotente (ON CONFLICT).
+        if (!IS_PREMIUM_TENANT) {
+          console.log('[db] seed Premium NFs ignorado: tenant nao e Premium');
+        } else {
         const mk = await pool.query("SELECT (config->>'estoque_seed_nfs_v1') AS m FROM tenants WHERE id=$1", [TENANT]);
         if (!mk.rows[0] || !mk.rows[0].m) {
           const seedNF = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'seed-premium-nfs-v1.json'), 'utf8').replace(/^﻿/, ''));
@@ -690,14 +710,22 @@ async function init(retries) {
           await pool.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_seed_nfs_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
           console.log('[db] seed real Premium NFs aplicado (' + n + ' produtos, ' + seedNF.fornecedores.length + ' fornecedores)');
         } else { console.log('[db] seed Premium NFs já aplicado - ignorado'); }
+        }
       } catch (enf) { console.log('[db] seed Premium NFs aviso:', enf.code || enf.message); }
       try {
-        const seedProd = fs.readFileSync(path.join(__dirname, 'seed-produzidos-rp.sql'), 'utf8');
-        await pool.query(seedProd);
-        const rpd = await pool.query("SELECT COUNT(*)::int AS n FROM est_produto p JOIN est_categoria c ON c.id=p.categoria_id WHERE p.tenant_id=$1 AND c.nome='Produtos produzidos internamente'", [TENANT]);
-        console.log('[db] seed produzidos (idempotente) aplicado - produzidos: ' + rpd.rows[0].n);
+        if (IS_PREMIUM_TENANT) {
+          const seedProd = fs.readFileSync(path.join(__dirname, 'seed-produzidos-rp.sql'), 'utf8');
+          await pool.query(seedProd);
+          const rpd = await pool.query("SELECT COUNT(*)::int AS n FROM est_produto p JOIN est_categoria c ON c.id=p.categoria_id WHERE p.tenant_id=$1 AND c.nome='Produtos produzidos internamente'", [TENANT]);
+          console.log('[db] seed produzidos (idempotente) aplicado - produzidos: ' + rpd.rows[0].n);
+        } else {
+          console.log('[db] seed produzidos RP ignorado: tenant nao e Premium');
+        }
       } catch (epd) { console.log('[db] seed-produzidos aviso:', epd.code || epd.message); }
       try {
+        if (!IS_PREMIUM_TENANT) {
+          console.log('[db] seed setores Premium ignorado: tenant nao e Premium');
+        } else {
         const mk = await pool.query("SELECT (config->>'setores_premium_v3') AS m FROM tenants WHERE id=$1", [TENANT]);
         if (!mk.rows[0] || !mk.rows[0].m) {
           const seedSet = fs.readFileSync(path.join(__dirname, 'seed-setores-premium.sql'), 'utf8');
@@ -705,29 +733,44 @@ async function init(retries) {
           await pool.query("UPDATE tenants SET config = COALESCE(config,'{}'::jsonb) || '{\"setores_premium_v3\":true}'::jsonb WHERE id=$1", [TENANT]);
           console.log('[db] layout de setores Premium aplicado (carga unica v3)');
         } else { console.log('[db] layout de setores ja aplicado - ignorado'); }
+        }
       } catch (est) { console.log('[db] seed-setores aviso:', est.code || est.message); }
       try {
-        await migrarFichasProducaoV2(pool);
+        if (IS_PREMIUM_TENANT) await migrarFichasProducaoV2(pool);
         const mk = await pool.query("SELECT (config->>'estoque_catalogo_premium_v4') AS m FROM tenants WHERE id=$1", [TENANT]);
-        if (!mk.rows[0] || !mk.rows[0].m) {
+        if ((!mk.rows[0] || !mk.rows[0].m) && IS_PREMIUM_TENANT) {
           const syncClient = await pool.connect();
           let cat4; try { cat4 = await sincronizarCatalogoEstoqueV4(syncClient); } finally { syncClient.release(); }
           await pool.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_catalogo_premium_v4\":true}'::jsonb WHERE id=$1", [TENANT]);
           const total = Object.values(cat4.setores || {}).reduce((n, itens) => n + itens.length, 0);
           console.log('[db] catalogo operacional Premium v4 aplicado - vinculos: ' + total);
+        } else if (!IS_PREMIUM_TENANT) {
+          console.log('[db] catalogo/fichas Premium v4 ignorado: tenant nao e Premium');
         } else { console.log('[db] catalogo operacional Premium v4 ja aplicado - ignorado'); }
       } catch (ef4) { console.log('[db] catalogo/fichas v4 aviso:', ef4.code || '', ef4.message || ''); }
       try {
+        if (!IS_PREMIUM_TENANT) {
+          console.log('[db] insumos frescos Premium ignorado: tenant nao e Premium');
+        } else {
         const freshClient = await pool.connect();
         try { await seedInsumosFrescosPremiumV1(freshClient); } finally { freshClient.release(); }
+        }
       } catch (eif) { console.error('[db] FALHA insumos frescos Premium:', eif.stack || eif.message); }
       try {
+        if (!IS_PREMIUM_TENANT) {
+          console.log('[db] complementos fichas Premium ignorado: tenant nao e Premium');
+        } else {
         const compClient = await pool.connect();
         try { await seedProdutosComplementaresFichasPremiumV1(compClient); } finally { compClient.release(); }
+        }
       } catch (ecp) { console.error('[db] FALHA complementos fichas Premium:', ecp.stack || ecp.message); }
       try {
+        if (!IS_PREMIUM_TENANT) {
+          console.log('[db] fichas Premium cardápio v1 ignorado: tenant nao e Premium');
+        } else {
         const fichaClient = await pool.connect();
         try { await importarFichasPremiumCardapioV1(fichaClient); } finally { fichaClient.release(); }
+        }
       } catch (efp) { console.error('[db] FALHA fichas Premium cardápio v1:', efp.stack || efp.message); }
       try {
         const seedp = fs.readFileSync(path.join(__dirname, 'seed-pins.sql'), 'utf8');

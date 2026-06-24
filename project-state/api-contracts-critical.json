@@ -26,6 +26,43 @@
     "known_errors": ["400 Informe o nome.", "404 Produto não encontrado.", "400 Já existe um produto com esse nome."]
   },
   {
+    "id": "est-configuracoes-tenant",
+    "module": "estoque-v2",
+    "method": "GET",
+    "path": "/api/est/configuracoes",
+    "screen": "public/estoque.html",
+    "permission": "leitura não sensível do tenant",
+    "reads": ["tenants.config.estoque", "est_produto.tipo_item/departamento", "est_categoria.departamento"],
+    "writes": [],
+    "success": "200 { config: { titulo, departamentos[], tipos_item[] }, fonte }",
+    "known_errors": ["500 erro inesperado"],
+    "side_effects": [
+      "remove hardcodes do front de estoque sem apagar classificações existentes",
+      "faz merge entre config do tenant, defaults neutros e valores já usados no cadastro"
+    ]
+  },
+  {
+    "id": "admin-estoque-cardapio-inventory",
+    "module": "admin-gestor/estoque-vendavel",
+    "method": "GET/PUT/DELETE",
+    "path": "/api/admin/estoque-cardapio",
+    "screen": "public/admin.html / aba Estoque do cardápio",
+    "permission": "gestor",
+    "payload_required": ["admin_id para escritas e leituras protegidas"],
+    "payload_optional": ["status", "controle_enabled", "quantidade_vendavel", "dd_external_id", "itens[] em massa"],
+    "reads": ["produtos", "opcoes", "opcao_grupos", "menu_categorias", "ficha_itens", "est_produto", "est_produto_setor", "tenants.config"],
+    "writes": ["produtos.status/meta", "opcoes.status/meta", "tenants.config.estoque"],
+    "success": "GET 200 { itens[], kpis, status_map, mapper }; PUT/DELETE 200 { ok: true }",
+    "known_errors": ["403 acesso restrito ao gestor", "400 status inválido", "404 item do cardápio não encontrado"],
+    "side_effects": [
+      "não cria tabela nova",
+      "quantidade vendável fica em produtos/opcoes.meta.inventory e não altera est_produto.estoque_atual",
+      "status Titan ATIVO/EM_FALTA/OCULTO é mapeado para DD ACTIVE/SHORT_SUPPLY/HIDDEN",
+      "mapper Delivery Direto fica preparado em meta.mapper.delivery_direto, sem sync ativo",
+      "operação física continua em public/estoque.html e rotas /api/est/*"
+    ]
+  },
+  {
     "id": "est-compra-manual",
     "module": "estoque-v2",
     "method": "POST",

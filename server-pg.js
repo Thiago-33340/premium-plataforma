@@ -763,12 +763,238 @@ function estCustoReceita(qtd, unidadeReceita, produto) {
   return Number.isFinite(custo) ? unidades * custo : null;
 }
 
+/* ===== Estoque config-first + inventário vendável do cardápio =====
+   Regras decision-018:
+   - valores configuráveis vêm de tenants.config, com defaults neutros;
+   - produtos/opcoes continuam sendo a fonte do item vendável;
+   - quantidade vendável fica separada do saldo operacional de est_produto;
+   - mapper DD fica preparado em meta, sem sync. */
+const ESTOQUE_CONFIG_DEFAULTS = {
+  titulo: 'Estoque',
+  departamentos: [],
+  tipos_item: [
+    { valor: 'insumo', rotulo: 'Insumo' },
+    { valor: 'produzido internamente', rotulo: 'Produzido internamente' },
+    { valor: 'semiacabado', rotulo: 'Semiacabado' },
+    { valor: 'embalagem', rotulo: 'Embalagem' },
+    { valor: 'bebida', rotulo: 'Bebida' },
+    { valor: 'material de limpeza', rotulo: 'Material de limpeza' },
+    { valor: 'higiene', rotulo: 'Higiene' },
+    { valor: 'utensílio', rotulo: 'Utensílio' },
+    { valor: 'material de escritório', rotulo: 'Material de escritório' },
+    { valor: 'revenda', rotulo: 'Revenda' },
+    { valor: 'outro', rotulo: 'Outro' }
+  ]
+};
+const DD_STATUS_FROM_TITAN = { ATIVO: 'ACTIVE', EM_FALTA: 'SHORT_SUPPLY', OCULTO: 'HIDDEN' };
+const TITAN_STATUS_FROM_ANY = { ACTIVE: 'ATIVO', SHORT_SUPPLY: 'EM_FALTA', HIDDEN: 'OCULTO', ATIVO: 'ATIVO', EM_FALTA: 'EM_FALTA', OCULTO: 'OCULTO' };
+
+function cfgOpt(v, rotulo) {
+  if (v && typeof v === 'object') {
+    const valor = String(v.valor ?? v.value ?? v.id ?? v.nome ?? '').trim();
+    const label = String(v.rotulo ?? v.label ?? v.nome ?? valor).trim();
+    return valor ? { valor, rotulo: label || valor } : null;
+  }
+  const valor = String(v || '').trim();
+  return valor ? { valor, rotulo: rotulo || valor } : null;
+}
+function uniqCfgOptions() {
+  const out = [], seen = new Set();
+  for (const arr of arguments) {
+    for (const raw of Array.isArray(arr) ? arr : []) {
+      const item = cfgOpt(raw);
+      if (!item) continue;
+      const key = item.valor.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+function estoqueConfigSanitize(input, descobertos) {
+  const raw = input && typeof input === 'object' ? input : {};
+  const descob = descobertos || {};
+  return {
+    titulo: textoLimpo(raw.titulo || ESTOQUE_CONFIG_DEFAULTS.titulo, 60) || ESTOQUE_CONFIG_DEFAULTS.titulo,
+    departamentos: uniqCfgOptions(raw.departamentos, descob.departamentos),
+    tipos_item: uniqCfgOptions(raw.tipos_item, ESTOQUE_CONFIG_DEFAULTS.tipos_item, descob.tipos_item)
+  };
+}
+async function estoqueTenantConfig() {
+  const [cfgR, tiposR, depsR] = await Promise.all([
+    db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]),
+    db.q(`SELECT DISTINCT tipo_item AS v FROM est_produto
+      WHERE tenant_id=$1 AND tipo_item IS NOT NULL AND btrim(tipo_item)<>'' ORDER BY tipo_item`, [TENANT]).catch(() => ({ rows: [] })),
+    db.q(`SELECT DISTINCT v FROM (
+        SELECT departamento AS v FROM est_produto WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
+        UNION
+        SELECT departamento AS v FROM est_categoria WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
+      ) x ORDER BY v`, [TENANT]).catch(() => ({ rows: [] }))
+  ]);
+  const cfg = (cfgR.rows[0] && cfgR.rows[0].config) || {};
+  return estoqueConfigSanitize(cfg.estoque || cfg.estoque_config || {}, {
+    tipos_item: tiposR.rows.map(r => r.v),
+    departamentos: depsR.rows.map(r => r.v)
+  });
+}
+function statusTitan(v) {
+  return TITAN_STATUS_FROM_ANY[String(v || '').trim().toUpperCase()] || null;
+}
+function nOrNull(v) {
+  if (v === '' || v == null) return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+function metaObj(m) {
+  return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+}
+function invFromMeta(meta) {
+  const m = metaObj(meta);
+  const inv = metaObj(m.inventory || m.estoque_cardapio);
+  const dd = metaObj(metaObj(m.mapper || m.integration_map).delivery_direto || metaObj(m.mapper || m.integration_map).dd);
+  return {
+    controle_enabled: inv.enabled === true,
+    quantidade_vendavel: nOrNull(inv.quantity ?? inv.quantidade_vendavel),
+    atualizado_em: inv.updated_at || null,
+    atualizado_por: inv.updated_by || null,
+    dd_mapper: {
+      provider: 'delivery_direto',
+      external_id: dd.external_id || dd.id || '',
+      preparado: true,
+      sync_ativo: false
+    }
+  };
+}
+function mergeInventoryMeta(meta, patch, gestor) {
+  const base = metaObj(meta);
+  const inv = metaObj(base.inventory);
+  const mapper = metaObj(base.mapper || base.integration_map);
+  const dd = metaObj(mapper.delivery_direto || mapper.dd);
+  if (Object.prototype.hasOwnProperty.call(patch, 'controle_enabled')) inv.enabled = patch.controle_enabled === true;
+  if (Object.prototype.hasOwnProperty.call(patch, 'quantidade_vendavel')) inv.quantity = nOrNull(patch.quantidade_vendavel);
+  if (Object.prototype.hasOwnProperty.call(patch, 'dd_external_id')) {
+    dd.external_id = textoLimpo(patch.dd_external_id || '', 120);
+    dd.provider = 'delivery_direto';
+    dd.sync_enabled = false;
+    dd.updated_at = new Date().toISOString();
+    dd.updated_by = gestor && (gestor.apelido_login || gestor.nome || gestor.id) || null;
+    mapper.delivery_direto = dd;
+  }
+  inv.updated_at = new Date().toISOString();
+  inv.updated_by = gestor && (gestor.apelido_login || gestor.nome || gestor.id) || null;
+  base.inventory = inv;
+  base.mapper = mapper;
+  return base;
+}
+async function adminEstoqueCardapioSnapshot(params) {
+  const cfg = await estoqueTenantConfig();
+  const [produtosR, opcoesR, fichasR] = await Promise.all([
+    db.q(`SELECT 'produto' AS tipo, p.id::text AS id, p.nome, c.nome AS categoria, NULL::text AS produto_pai,
+        NULL::text AS grupo, p.status, p.codigo_externo, p.meta, p.ordem, COALESCE(c.ordem,999) AS categoria_ordem
+      FROM produtos p
+      LEFT JOIN menu_categorias c ON c.id=p.categoria_id AND c.tenant_id=p.tenant_id
+      WHERE p.tenant_id=$1
+      ORDER BY COALESCE(c.ordem,999), p.ordem, p.nome`, [TENANT]),
+    db.q(`SELECT 'opcao' AS tipo, o.id::text AS id, o.nome, c.nome AS categoria, p.nome AS produto_pai,
+        g.nome AS grupo, o.status, o.codigo_externo, o.meta, o.ordem, COALESCE(c.ordem,999) AS categoria_ordem
+      FROM opcoes o
+      JOIN opcao_grupos g ON g.id=o.grupo_id AND g.tenant_id=o.tenant_id
+      JOIN produtos p ON p.id=g.produto_id AND p.tenant_id=o.tenant_id
+      LEFT JOIN menu_categorias c ON c.id=p.categoria_id AND c.tenant_id=p.tenant_id
+      WHERE o.tenant_id=$1
+      ORDER BY COALESCE(c.ordem,999), p.ordem, g.ordem, o.ordem, o.nome`, [TENANT]),
+    db.q(`SELECT CASE WHEN f.opcao_id IS NOT NULL THEN 'opcao' ELSE 'produto' END AS tipo,
+        COALESCE(f.opcao_id::text, f.produto_id::text) AS target_id,
+        json_agg(json_build_object(
+          'id', f.id,
+          'est_produto_id', f.est_produto_id,
+          'insumo_nome', COALESCE(e.nome, f.insumo_nome),
+          'quantidade', f.quantidade,
+          'unidade', f.unidade,
+          'observacao', f.observacao,
+          'estoque_atual', e.estoque_atual,
+          'unidade_estoque', e.unidade,
+          'ativo', e.ativo,
+          'setores', COALESCE(sx.setores, '')
+        ) ORDER BY f.id) AS itens
+      FROM ficha_itens f
+      LEFT JOIN est_produto e ON e.id=f.est_produto_id AND e.tenant_id=f.tenant_id
+      LEFT JOIN LATERAL (
+        SELECT string_agg(s.nome, ', ' ORDER BY s.ordem, s.nome) AS setores
+        FROM est_produto_setor ps
+        JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+        WHERE ps.tenant_id=f.tenant_id AND ps.produto_id=f.est_produto_id
+      ) sx ON TRUE
+      WHERE f.tenant_id=$1 AND (f.opcao_id IS NOT NULL OR f.produto_id IS NOT NULL)
+      GROUP BY 1,2`, [TENANT])
+  ]);
+  const fichaMap = new Map();
+  for (const f of fichasR.rows) fichaMap.set(f.tipo + ':' + f.target_id, Array.isArray(f.itens) ? f.itens : []);
+  const all = produtosR.rows.concat(opcoesR.rows).map(r => {
+    const inv = invFromMeta(r.meta);
+    const ficha = fichaMap.get(r.tipo + ':' + r.id) || [];
+    return {
+      tipo: r.tipo,
+      id: r.id,
+      nome: r.nome,
+      categoria: r.categoria || '',
+      produto_pai: r.produto_pai || '',
+      grupo: r.grupo || '',
+      contexto: [r.categoria, r.produto_pai, r.grupo].filter(Boolean).join(' › ') || (r.tipo === 'produto' ? 'Item direto' : 'Opção'),
+      status: r.status,
+      dd_status: DD_STATUS_FROM_TITAN[r.status] || r.status,
+      codigo_externo: r.codigo_externo || '',
+      controle_enabled: inv.controle_enabled,
+      quantidade_vendavel: inv.quantidade_vendavel,
+      inventory_updated_at: inv.atualizado_em,
+      inventory_updated_by: inv.atualizado_por,
+      dd_mapper: inv.dd_mapper,
+      ficha_count: ficha.length,
+      ficha
+    };
+  });
+  const q = String(params && params.q || '').toLowerCase().trim();
+  const status = String(params && params.status || '').toUpperCase().trim();
+  const fichaFiltro = String(params && params.ficha || '').toLowerCase().trim();
+  const controleFiltro = String(params && params.controle || '').toLowerCase().trim();
+  let itens = all.filter(x => {
+    if (q && !(x.nome + ' ' + x.contexto + ' ' + x.codigo_externo).toLowerCase().includes(q)) return false;
+    if (status && x.status !== status && x.dd_status !== status) return false;
+    if (fichaFiltro === 'sem' && x.ficha_count > 0) return false;
+    if (fichaFiltro === 'com' && x.ficha_count === 0) return false;
+    if (controleFiltro === 'on' && !x.controle_enabled) return false;
+    if (controleFiltro === 'off' && x.controle_enabled) return false;
+    return true;
+  });
+  const limit = Math.max(1, Math.min(Number(params && params.limit) || 350, 1000));
+  const kpis = {
+    total: all.length,
+    ativos: all.filter(x => x.status === 'ATIVO').length,
+    em_falta: all.filter(x => x.status === 'EM_FALTA').length,
+    ocultos: all.filter(x => x.status === 'OCULTO').length,
+    controle_on: all.filter(x => x.controle_enabled).length,
+    sem_ficha: all.filter(x => x.ficha_count === 0).length,
+    quantidade_vendavel_total: all.reduce((n, x) => n + (x.controle_enabled && x.quantidade_vendavel != null ? Number(x.quantidade_vendavel) : 0), 0)
+  };
+  return {
+    tenant: TENANT,
+    config: cfg,
+    status_map: DD_STATUS_FROM_TITAN,
+    mapper: { delivery_direto: { schema_preparado: true, sync_ativo: false, storage: 'produtos/opcoes.meta.mapper.delivery_direto' } },
+    kpis,
+    filtros: { q, status, ficha: fichaFiltro, controle: controleFiltro, limit },
+    itens: itens.slice(0, limit),
+    total_filtrado: itens.length
+  };
+}
+
 /* ===== Contagem Geral (periódica, genérica por tenant) =====
    Os itens do setor "Gerais" (sem dono fixo) são divididos entre os setores
    participantes no dia da contagem geral, de forma equilibrada pela carga:
    quem tem menos itens fixos recebe mais, nivelando os totais sem sobrecarregar.
    O que já pertence a um setor permanece no setor (não entra na divisão). */
-const GERAL_DEFAULTS = { ativo: false, dia: 1, escopo: 'gerais', setores_participantes: ['Borda', 'Montagem', 'Finalização'], forcar_data: null };
+const GERAL_DEFAULTS = { ativo: false, dia: 1, escopo: 'gerais', setores_participantes: [], forcar_data: null };
 function estHojeISO() {
   const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
@@ -822,7 +1048,7 @@ async function estDivisaoGeral(cfg) {
 }
 
 /* ===== Tema white-label da loja (storefront por tenant) ===== */
-const TEMA_DEFAULTS = { marca: 'Premium Pizzas', dominio: '', modo: 'escuro', cor_primaria: '#F97316', cor_primaria_texto: '#160a02', fonte: 'Sora', logo_url: '/logo.png', layout_card: 'lista', mostrar_busca: true, mostrar_descricao: true, mostrar_preco_a_partir: true, mostrar_destaques: false, mostrar_avaliacoes: false, texto_funcionamento: '' };
+const TEMA_DEFAULTS = { marca: 'Restaurante', dominio: '', modo: 'escuro', cor_primaria: '#F97316', cor_primaria_texto: '#160a02', fonte: 'Sora', logo_url: '/logo.png', layout_card: 'lista', mostrar_busca: true, mostrar_descricao: true, mostrar_preco_a_partir: true, mostrar_destaques: false, mostrar_avaliacoes: false, texto_funcionamento: '' };
 const FONTES_OK = ['Sora', 'Inter', 'Archivo', 'Nunito', 'Baloo 2', 'Jost', 'Cormorant Garamond', 'Poppins', 'Montserrat', 'Roboto'];
 function temaSanitize(input, base) {
   const t = Object.assign({}, base || TEMA_DEFAULTS);
@@ -1797,6 +2023,11 @@ async function api(req, res, url) {
       setores: await n('SELECT count(*)::int n FROM est_setor WHERE tenant_id=$1'),
       por_categoria: await one('SELECT c.nome, count(*)::int itens FROM est_produto p JOIN est_categoria c ON c.id=p.categoria_id WHERE p.tenant_id=$1 GROUP BY c.nome ORDER BY c.nome')
     });
+  }
+
+  if (sub === 'est' && seg[2] === 'configuracoes' && req.method === 'GET') {
+    const cfg = await estoqueTenantConfig();
+    return json(res, 200, { config: cfg, fonte: 'tenants.config.estoque + valores existentes em est_produto/est_categoria' });
   }
 
   if (sub === 'est' && seg[2] === 'categorias' && req.method === 'GET') {
@@ -3556,6 +3787,100 @@ async function api(req, res, url) {
         [seg[3], body.perfil_principal ?? null, body.setores_permitidos ?? null, body.apelido_login ? String(body.apelido_login).toLowerCase() : null, typeof body.ativo === 'boolean' ? body.ativo : null, TENANT]);
       return json(res, 200, { ok: true });
     }
+
+    // Estoque do cardápio: visão vendável sobre produtos/opcoes, com ponte ficha_itens -> est_produto.
+    // Não duplica o estoque operacional; saldo físico continua em est_produto/estoque.html.
+    if (seg[2] === 'estoque-cardapio' && !seg[3] && req.method === 'GET') {
+      const snap = await adminEstoqueCardapioSnapshot({
+        q: url.searchParams.get('q') || '',
+        status: url.searchParams.get('status') || '',
+        ficha: url.searchParams.get('ficha') || '',
+        controle: url.searchParams.get('controle') || '',
+        limit: url.searchParams.get('limit') || ''
+      });
+      return json(res, 200, snap);
+    }
+    if (seg[2] === 'estoque-config' && req.method === 'GET') {
+      const cfg = await estoqueTenantConfig();
+      return json(res, 200, { config: cfg, fonte: 'tenants.config.estoque + valores existentes' });
+    }
+    if (seg[2] === 'estoque-config' && req.method === 'POST') {
+      const curR = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+      const cur = (curR.rows[0] && curR.rows[0].config) || {};
+      cur.estoque = estoqueConfigSanitize(body.config || body.estoque || body, {});
+      await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
+      return json(res, 200, { ok: true, config: await estoqueTenantConfig() });
+    }
+    if (seg[2] === 'estoque-cardapio' && seg[3] === 'status' && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const st = statusTitan(body.status);
+      if (!st) return json(res, 400, { erro: 'Status inválido. Use ATIVO/EM_FALTA/OCULTO ou ACTIVE/SHORT_SUPPLY/HIDDEN.' });
+      const itens = (Array.isArray(body.itens) ? body.itens : []).map(x => ({
+        tipo: String(x.tipo || '').trim(),
+        id: String(x.id || '').trim()
+      })).filter(x => ['produto', 'opcao'].includes(x.tipo) && x.id);
+      if (!itens.length) return json(res, 400, { erro: 'Informe ao menos um item para atualização em massa.' });
+      if (itens.length > 1000) return json(res, 400, { erro: 'Limite de 1000 itens por operação em massa.' });
+      const client = await db.pool.connect();
+      try {
+        await client.query('BEGIN');
+        let afetados = 0;
+        for (const it of itens) {
+          const tabela = it.tipo === 'produto' ? 'produtos' : 'opcoes';
+          const r = await client.query(`UPDATE ${tabela}
+            SET status=$3, status_ts=NOW(), status_by=$4, status_motivo=$5, atualizado_em=NOW()
+            WHERE tenant_id=$1 AND id=$2 RETURNING id`, [TENANT, it.id, st, g.apelido_login || g.nome || g.id, body.motivo || 'admin estoque-cardapio massa']);
+          afetados += r.rowCount || 0;
+        }
+        await client.query('COMMIT');
+        return json(res, 200, { ok: true, status: st, dd_status: DD_STATUS_FROM_TITAN[st], itens_recebidos: itens.length, afetados });
+      } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        return json(res, 400, { erro: e.code || e.message });
+      } finally { client.release(); }
+    }
+    if (seg[2] === 'estoque-cardapio' && seg[3] && seg[4] && req.method === 'GET') {
+      const tipo = String(seg[3] || '').trim();
+      const id = String(seg[4] || '').trim();
+      if (!['produto', 'opcao'].includes(tipo) || !id) return json(res, 400, { erro: 'Item inválido.' });
+      const snap = await adminEstoqueCardapioSnapshot({ limit: 1000 });
+      const item = snap.itens.find(x => x.tipo === tipo && x.id === id);
+      if (!item) return json(res, 404, { erro: 'Item do cardápio não encontrado.' });
+      return json(res, 200, { item, status_map: snap.status_map, mapper: snap.mapper });
+    }
+    if (seg[2] === 'estoque-cardapio' && seg[3] && seg[4] && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const tipo = String(seg[3] || '').trim();
+      const id = String(seg[4] || '').trim();
+      if (!['produto', 'opcao'].includes(tipo) || !id) return json(res, 400, { erro: 'Item inválido.' });
+      const tabela = tipo === 'produto' ? 'produtos' : 'opcoes';
+      const atual = await db.q(`SELECT id, nome, status, meta FROM ${tabela} WHERE tenant_id=$1 AND id=$2`, [TENANT, id]);
+      if (!atual.rows[0]) return json(res, 404, { erro: 'Item do cardápio não encontrado.' });
+      const st = Object.prototype.hasOwnProperty.call(body, 'status') ? statusTitan(body.status) : null;
+      if (Object.prototype.hasOwnProperty.call(body, 'status') && !st) return json(res, 400, { erro: 'Status inválido. Use ATIVO/EM_FALTA/OCULTO ou ACTIVE/SHORT_SUPPLY/HIDDEN.' });
+      const meta = mergeInventoryMeta(atual.rows[0].meta, body, g);
+      const r = await db.q(`UPDATE ${tabela}
+        SET status=COALESCE($3,status),
+            status_ts=CASE WHEN $3 IS NULL THEN status_ts ELSE NOW() END,
+            status_by=CASE WHEN $3 IS NULL THEN status_by ELSE $4 END,
+            status_motivo=CASE WHEN $3 IS NULL THEN status_motivo ELSE $5 END,
+            meta=$6,
+            atualizado_em=NOW()
+        WHERE tenant_id=$1 AND id=$2
+        RETURNING id, nome, status, meta`, [TENANT, id, st, g.apelido_login || g.nome || g.id, body.motivo || 'admin estoque-cardapio', JSON.stringify(meta)]);
+      const inv = invFromMeta(r.rows[0].meta);
+      return json(res, 200, { ok: true, item: { id: r.rows[0].id, nome: r.rows[0].nome, tipo, status: r.rows[0].status, dd_status: DD_STATUS_FROM_TITAN[r.rows[0].status], ...inv } });
+    }
+    if (seg[2] === 'estoque-cardapio' && seg[3] && seg[4] && req.method === 'DELETE') {
+      const tipo = String(seg[3] || '').trim();
+      const id = String(seg[4] || '').trim();
+      if (!['produto', 'opcao'].includes(tipo) || !id) return json(res, 400, { erro: 'Item inválido.' });
+      const tabela = tipo === 'produto' ? 'produtos' : 'opcoes';
+      const atual = await db.q(`SELECT id, nome, meta FROM ${tabela} WHERE tenant_id=$1 AND id=$2`, [TENANT, id]);
+      if (!atual.rows[0]) return json(res, 404, { erro: 'Item do cardápio não encontrado.' });
+      const meta = mergeInventoryMeta(atual.rows[0].meta, { controle_enabled: false, quantidade_vendavel: null }, g);
+      await db.q(`UPDATE ${tabela} SET meta=$3, atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2`, [TENANT, id, JSON.stringify(meta)]);
+      return json(res, 200, { ok: true, removido: 'controle_vendavel', tipo, id });
+    }
+
     // Compatibilidade do admin antigo: a rota permanece, mas a fonte oficial agora é est_produto.
     if (seg[2] === 'estoque-itens' && req.method === 'GET') {
       const r = await db.q(`

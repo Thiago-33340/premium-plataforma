@@ -268,5 +268,65 @@
       "Toda criação e retorno de tarefa local entra em auditoria do Command.",
       "Uma evolução para Codex App Server/execução real precisa de confirmação humana e permissões próprias."
     ]
+  },
+  {
+    "id": "decision-018",
+    "data": "2026-06-24",
+    "decisao": "Trava white-label e modelo único para evolução do Estoque Admin compatível com Delivery Direto",
+    "motivo": "O Titan é um SaaS multi-restaurante e não pode evoluir a aba Estoque como vitrine da Premium nem criar um terceiro modelo paralelo ao catálogo/estoque/fichas já existentes.",
+    "impacto": "Antes de implementar rotas, telas ou tabelas novas no Estoque Admin, a entrega deve passar por diagnóstico, revisão humana e gate explícito de white-label, modelo único, contrato Delivery Direto e testes.",
+    "modulos_afetados": ["admin-gestor", "estoque-v2", "loja-pedidos", "producao-fichas", "command-center", "integracoes"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "guardrail": true,
+    "regras": [
+      "Todo valor configurável deve vir da configuração do tenant ou de tela admin; não chumbar valores, setores, textos, marcas, tipos de restaurante ou suposições de pizzaria.",
+      "Toda tabela nova, se inevitável, deve ter tenant_id e justificativa escrita; primeiro verificar produtos, opcoes, est_produto, est_produto_setor, ficha_itens e est_ficha_*.",
+      "A disponibilidade do vendável deve assentar sobre produtos/opcoes: status compatível ACTIVE/SHORT_SUPPLY/HIDDEN, quantidade, liga/desliga e massa; não criar catálogo paralelo.",
+      "A ponte item vendido -> ficha -> insumos deve ligar tabelas existentes e ser documentada.",
+      "Mapper Delivery Direto nesta fase fica apenas com schema preparado para provider/external_id; não construir sync antes de aprovação.",
+      "Cada rota nova ou alterada deve entrar no smoke test/readiness antes de deploy.",
+      "A entrega deve confirmar o gate de quatro perguntas: white-label, modelo único, contrato DD inventory e testes/guardrails.",
+      "Diagnóstico vem primeiro e deve parar para revisão antes de implementação."
+    ]
+  },
+  {
+    "id": "gate-white-label-4-perguntas",
+    "data": "2026-06-24",
+    "decisao": "Gate white-label de 4 perguntas como checklist obrigatório e verificável de toda entrega de feature",
+    "motivo": "Tornar a decision-018 acionável: o gate de quatro perguntas (white-label, modelo único, contrato Delivery Direto e testes/guardrails) precisa ser confirmado item a item em cada entrega, não apenas declarado.",
+    "impacto": "Nenhuma rota, tela ou tabela nova/alterada entra sem responder as 4 perguntas abaixo na entrega. Vale para Estoque Admin, loja, fichas e integracoes.",
+    "modulos_afetados": ["admin-gestor", "estoque-v2", "loja-pedidos", "producao-fichas", "command-center", "integracoes"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "guardrail": true,
+    "referencia": "decision-018",
+    "aplica_quando": "Toda entrega de feature: rota, tela ou tabela nova ou alterada.",
+    "checklist": [
+      {
+        "id": "gate-a-config-tenant",
+        "pergunta": "Todo valor configuravel vem de config do tenant (tabela + tela no admin), nunca chumbado?",
+        "criterio": "Nenhum valor, texto, setor, prazo, taxa ou marca hardcoded no codigo; tudo le do tenant e e editavel no admin.",
+        "checado": false
+      },
+      {
+        "id": "gate-b-tabela-tenant-id",
+        "pergunta": "Toda tabela nova tem tenant_id e nao assume pizzaria (tipo de item vem do catalogo do tenant)?",
+        "criterio": "Tabela nova so se inevitavel, com tenant_id e justificativa escrita; primeiro verificar produtos, opcoes, est_produto, ficha_itens e est_ficha_*. Tipo de item/restaurante vem do catalogo do tenant, nao de suposicao de pizzaria.",
+        "checado": false
+      },
+      {
+        "id": "gate-c-zero-marca-ui",
+        "pergunta": "Zero string de marca na UI servida e defaults neutros (nao Premium)?",
+        "criterio": "Nenhuma string de marca fixa na UI (title, labels, defaults); branding vem do tema do tenant; defaults sao neutros.",
+        "checado": false
+      },
+      {
+        "id": "gate-d-smoke-e-gate-confirmado",
+        "pergunta": "Rota nova entra no smoke read-only antes de deploy e o gate foi confirmado item a item na entrega?",
+        "criterio": "Rota nova/alterada coberta pelo smoke read-only (health-checks.json) antes do deploy, e as 4 perguntas marcadas como respondidas na entrega.",
+        "checado": false
+      }
+    ]
   }
 ]

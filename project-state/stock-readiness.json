@@ -164,5 +164,60 @@
       "contagem_geral_rapida_producao": "pendente_deploy_e_teste_navegador"
     }
   },
+  "admin_cardapio_inventory": {
+    "updated_at": "2026-06-24T00:00:00.000-03:00",
+    "status": "implementado_local_deploy_script_corrigido_pendente_snapshot_deploy_smoke_producao",
+    "decision_gate": "decision-018 / gate-white-label-4-perguntas",
+    "escopo": "Primeira fatia — aba admin Estoque do cardápio, sem duplicar operação do estoque.html.",
+    "fontes_unicas": {
+      "vendavel": ["produtos", "opcoes", "opcao_grupos"],
+      "ponte": ["ficha_itens"],
+      "operacional": ["est_produto", "est_produto_setor"],
+      "config": ["tenants.config.estoque"]
+    },
+    "sem_tabela_nova": true,
+    "quantidade_vendavel": {
+      "storage": "produtos/opcoes.meta.inventory",
+      "separada_de": "est_produto.estoque_atual",
+      "observacao": "Controle vendável e quantidade vendável não alteram saldo físico operacional."
+    },
+    "delivery_direto": {
+      "status_map": {
+        "ATIVO": "ACTIVE",
+        "EM_FALTA": "SHORT_SUPPLY",
+        "OCULTO": "HIDDEN"
+      },
+      "mapper_schema_preparado": "produtos/opcoes.meta.mapper.delivery_direto",
+      "sync_ativo": false
+    },
+    "smoke": {
+      "read_only": "scripts/smoke-critical.mjs inclui GET /api/est/configuracoes e GET /api/admin/estoque-cardapio?admin_id=<gestor>&limit=5",
+      "mutating": "rotas PUT/DELETE/lote existem; teste mutável deve ser controlado para não alterar disponibilidade real sem janela aprovada"
+    },
+    "deployment_guardrail": {
+      "status": "bloqueio_deploy_path_identificado_e_script_corrigido_localmente",
+      "script": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\deploy-premium.ps1",
+      "source_dir_correto": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\premium-plataforma-setores",
+      "source_dir_antigo_bloqueado": "C:\\Users\\Thiago Ribeiro\\Titan\\workspace\\premium-plataforma",
+      "origem_servico": "GitHub main -> EasyPanel",
+      "branch": "main",
+      "pre_deploy_obrigatorio": [
+        "Snapshot read-only de tenants.config usando process.env.DATABASE_URL e scripts/snapshot-tenant-config.mjs; quando o DATABASE_URL usa host interno do EasyPanel indisponível no Windows, usar fallback HTTP read-only da produção (/api/config) com sanitização local.",
+        "Commit/push a partir de premium-plataforma-setores/main, nunca da pasta premium-plataforma.",
+        "Webhook do EasyPanel somente por variável de ambiente EASYPANEL_DEPLOY_WEBHOOK_URL ou TITAN_DEPLOY_WEBHOOK_URL."
+      ],
+      "post_deploy_obrigatorio": [
+        "Smoke read-only de produção/tools.",
+        "Teste mutável controlado alternando status de um item vendável e revertendo antes de qualquer ação em massa."
+      ],
+      "observacao": "O script de deploy foi ajustado, mas não foi executado nesta etapa."
+    },
+    "gate_white_label_4_perguntas": {
+      "a_white_label_config_first": "OK local — título do estoque e tipos/departamentos vêm de tenants.config.estoque + valores existentes; seeds Premium travadas por tenant.",
+      "b_modelo_unico_sem_terceiro_modelo": "OK — sem tabela nova; usa produtos/opcoes/ficha_itens/est_produto.",
+      "c_contrato_dd_inventory": "OK — CRUD vendável/status/massa com status map ACTIVE/SHORT_SUPPLY/HIDDEN e mapper DD preparado sem sync.",
+      "d_guardrail_smoke": "OK local — decision-018 registrada, rotas adicionadas ao smoke e project-state; pendente rodar smoke pós-deploy."
+    }
+  },
   "veredito": "O motor de estoque, compra, ficha avançada, produção e Command/Mapper está validado em produção. O catálogo Premium está batendo por setor e unidade. Para declarar 100% de conteúdo de ficha, faltam as receitas reais de Camarão, Molho produzido e Coco Ralado Floco."
 }

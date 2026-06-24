@@ -76,6 +76,7 @@ function skip(name, path, error) {
 
 await check('health', '/api/health', (j) => j && j.ok === true);
 await check('estoque dashboard', '/api/est/dashboard', (j) => j && typeof j === 'object' && 'produtos_ativos' in j);
+await check('estoque configuracoes tenant', '/api/est/configuracoes', (j) => j && j.config && Array.isArray(j.config.tipos_item));
 await check('produtos', '/api/est/produtos', (j) => Array.isArray(j?.produtos));
 await check('setores', '/api/est/setores', (j) => Array.isArray(j?.setores));
 await check('categorias', '/api/est/categorias', (j) => Array.isArray(j?.categorias));
@@ -112,9 +113,11 @@ if (toolsBaseUrl) {
 if (userId) {
   await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms), '/api/est/permissoes?usuario_id=<usuario>');
   await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens), '/api/est/meus-itens?usuario_id=<usuario>');
+  await check('admin estoque do cardapio', `/api/admin/estoque-cardapio?admin_id=${encodeURIComponent(userId)}&limit=5`, (j) => j && Array.isArray(j.itens) && j.kpis && j.mapper?.delivery_direto?.schema_preparado === true, '/api/admin/estoque-cardapio?admin_id=<gestor>&limit=5');
 } else {
   skip('permissoes usuário', '/api/est/permissoes?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
   skip('meus itens usuário', '/api/est/meus-itens?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
+  skip('admin estoque do cardapio', '/api/admin/estoque-cardapio?admin_id=...', 'sem TITAN_SMOKE_USER_ID');
 }
 
 const failed = checks.filter((c) => !c.ok);

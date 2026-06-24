@@ -132,6 +132,31 @@
   input.pz{ width:96px; text-align:right; } input.mn{ width:66px; text-align:center; }
   details{ background:var(--card); border:1px solid var(--linha); border-radius:13px; margin-bottom:10px; } summary{ padding:13px 15px; font-weight:700; cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; } summary::-webkit-details-marker{ display:none; } summary .cnt{ margin-left:auto; color:var(--mut); font-weight:400; font-size:12px; } details .in{ padding:0 8px 8px; }
   .pill{ font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; } .pill.cat{ background:#231807; color:var(--laranja); }
+  .inv-questions{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:16px 0; }
+  .inv-q{ border:1px solid var(--linha); background:linear-gradient(145deg,#17171a,#101012); border-radius:16px; padding:15px; min-height:112px; }
+  .inv-q b{ display:block; font-size:14px; margin-bottom:5px; }.inv-q p{ color:var(--mut); font-size:12px; line-height:1.45; margin:0; }
+  .inv-toolbar{ display:grid; grid-template-columns:minmax(220px,1fr) 150px 140px 140px auto; gap:8px; align-items:end; margin:15px 0; }
+  .inv-toolbar .field{ margin:0; }
+  .inv-list{ display:grid; gap:10px; }
+  .inv-card{ border:1px solid var(--linha); border-radius:16px; background:linear-gradient(145deg,#17171a,#101012); overflow:hidden; }
+  .inv-head{ display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:12px; padding:14px 15px; border-bottom:1px solid #202026; }
+  .inv-title{ min-width:0; }.inv-title b{ display:block; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.inv-title small{ display:block; color:var(--mut); font-size:11px; margin-top:3px; }
+  .inv-actions{ display:flex; gap:6px; align-items:flex-start; justify-content:flex-end; flex-wrap:wrap; }
+  .inv-status{ border:1px solid var(--linha2); border-radius:999px; padding:5px 9px; font-size:10px; font-weight:900; letter-spacing:.4px; text-transform:uppercase; }
+  .inv-status.ativo{ background:#0f2a18; border-color:#245b35; color:#87e3a4; }.inv-status.em_falta{ background:#2a2410; border-color:#5b4b1e; color:#f6d36d; }.inv-status.oculto{ background:#2a1414; border-color:#5a2323; color:#ff9a9a; }
+  .inv-body{ padding:12px 15px; display:grid; grid-template-columns:240px minmax(0,1fr); gap:14px; }
+  .inv-control{ display:flex; flex-direction:column; gap:8px; }
+  .inv-switch{ display:flex; align-items:center; gap:8px; color:var(--txt); font-weight:700; font-size:12px; }
+  .inv-switch input{ accent-color:var(--laranja); width:18px; height:18px; }
+  .inv-qty{ display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; }
+  .inv-qty input{ text-align:right; }
+  .inv-map{ display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; }
+  .inv-bridge{ border-left:1px solid #292930; padding-left:14px; min-width:0; }
+  .inv-bridge h4{ margin:0 0 8px; font-size:12px; color:var(--mut); text-transform:uppercase; letter-spacing:.7px; }
+  .inv-line{ display:grid; grid-template-columns:minmax(160px,1fr) 90px 130px; gap:8px; padding:7px 0; border-bottom:1px solid #202026; font-size:12px; }
+  .inv-line:last-child{ border-bottom:0; }.inv-line b{ font-size:12px; }.inv-line small{ color:var(--mut); }
+  .inv-empty{ color:var(--amar); font-size:12px; padding:10px 0; }
+  .inv-mass{ display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; color:var(--mut); font-size:11px; margin-bottom:10px; }
 
   .modal{ position:fixed; inset:0; z-index:80; background:#000b; display:none; align-items:center; justify-content:center; padding:18px; }
   .modal.on{ display:flex; } .modal .box{ background:var(--panel); border:1px solid var(--linha); border-radius:18px; width:100%; max-width:400px; padding:24px; box-shadow:0 20px 60px #000a; }
@@ -148,6 +173,8 @@
     .tabsm{ display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--linha); position:sticky; top:51px; background:var(--bg); z-index:19; scrollbar-width:none; } .tabsm::-webkit-scrollbar{ display:none; }
     .tabsm button{ flex:0 0 auto; background:var(--card); border:1px solid var(--linha2); color:var(--mut); border-radius:9px; padding:8px 13px; font-weight:700; font-size:13px; } .tabsm button.on{ background:var(--laranja); color:#0b0b0c; border-color:var(--laranja); }
     .content{ padding:16px 14px; }
+    .inv-questions{ grid-template-columns:1fr; }.inv-toolbar{ grid-template-columns:1fr 1fr; }.inv-toolbar .field:first-child{ grid-column:1/-1; }.inv-toolbar .btn{ width:100%; }
+    .inv-head{ grid-template-columns:1fr; }.inv-actions{ justify-content:flex-start; }.inv-body{ grid-template-columns:1fr; }.inv-bridge{ border-left:0; border-top:1px solid #292930; padding-left:0; padding-top:12px; }.inv-line{ grid-template-columns:1fr; gap:3px; }
     .prod-hero{align-items:flex-start}.prod-hero h2{font-size:23px}.prod-hero .btn{white-space:nowrap}.prod-summary{grid-template-columns:1fr 1fr}.prod-grid{grid-template-columns:1fr}
     .fp-modal{padding:0;align-items:flex-end}.modal.fp-modal .box{width:100%;max-height:98vh;border-radius:18px 18px 0 0}.fp-body{padding:16px;max-height:calc(98vh - 76px)}.fp-general{grid-template-columns:1fr}.fp-portion-head{grid-template-columns:1fr 1fr}.fp-portion-head .fp-cost{grid-column:1/-1;text-align:left}.fp-foot{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;flex-wrap:wrap}.fp-foot .status{flex-basis:100%}
     .fp-table{min-width:0}.fp-table thead{display:none}.fp-table,.fp-table tbody,.fp-table tr{display:block}.fp-table tr{padding:10px 12px;border-bottom:1px solid #28282e}.fp-table td{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:8px;padding:5px 0;border:0}.fp-table td:before{color:var(--mut2);font-size:9px;text-transform:uppercase;letter-spacing:.5px}.fp-table td:nth-child(1):before{content:'Ingrediente'}.fp-table td:nth-child(2):before{content:'Un. estoque'}.fp-table td:nth-child(3):before{content:'Custo médio'}.fp-table td:nth-child(4):before{content:'Quantidade'}.fp-table td:nth-child(5):before{content:'Un. consumo'}.fp-table td:nth-child(6):before{content:'Custo'}.fp-table td:nth-child(7){display:flex;justify-content:flex-end}.fp-table td:nth-child(7):before{display:none}
@@ -326,13 +353,27 @@
 
         <!-- ESTOQUE -->
         <section class="scr2" id="s_estoque">
-          <div class="pagehead"><h2>Estoque</h2><a class="btn primary" href="/estoque" target="_blank" style="margin-left:auto">Abrir app de estoque ↗</a></div>
-          <p class="mut sm" style="margin:0 0 12px">Visão do estoque real do app (contagem, compras, perdas, produção). Aqui você ajusta mínimo/ideal e renomeia setores; contagem e lançamentos são feitos no app de estoque.</p>
+          <div class="pagehead"><h2>Estoque do cardápio</h2><a class="btn primary" href="/estoque" target="_blank" style="margin-left:auto">Abrir operação de estoque ↗</a></div>
+          <p class="mut sm" style="margin:0 0 12px">Visão vendável do cardápio. A operação física continua no app de estoque; aqui você controla disponibilidade, quantidade vendável e enxerga a ponte <b>item vendido → ficha técnica → insumo operacional</b>.</p>
+          <div class="inv-questions">
+            <div class="inv-q"><b>1. Posso vender agora?</b><p>Status do item/opção, controle ligado/desligado e quantidade vendável separada do saldo físico.</p></div>
+            <div class="inv-q"><b>2. O que existe no estoque?</b><p>A resposta operacional permanece no app de estoque, em <code>est_produto</code>, compras, contagens e produção.</p></div>
+            <div class="inv-q"><b>3. O que baixa ao vender?</b><p>A ponte mostra as linhas de <code>ficha_itens</code> ligadas aos insumos reais de <code>est_produto</code>.</p></div>
+          </div>
           <div class="kpis" id="estKpis"></div>
-          <h3 class="sec">Setores</h3><div class="panel" id="setoresBox" style="margin-bottom:18px"></div>
-<h3 class="sec">Contagem geral periódica</h3><div class="panel" id="contGeralBox" style="margin-bottom:18px"></div>
-          <h3 class="sec">Movimentações recentes</h3><div class="panel" id="movBox" style="margin-bottom:18px"></div>
-          <h3 class="sec">Produtos — mínimo / ideal</h3><div id="estItens"></div>
+          <div class="inv-toolbar">
+            <input class="field" id="estBusca" placeholder="Buscar item, opção, grupo ou código…" oninput="renderEstoqueCardapio()">
+            <select class="field" id="estStatus" onchange="renderEstoqueCardapio()"><option value="">Todos status</option><option value="ATIVO">Ativo</option><option value="EM_FALTA">Em falta</option><option value="OCULTO">Oculto</option></select>
+            <select class="field" id="estFicha" onchange="renderEstoqueCardapio()"><option value="">Todas fichas</option><option value="sem">Sem ficha</option><option value="com">Com ficha</option></select>
+            <select class="field" id="estControle" onchange="renderEstoqueCardapio()"><option value="">Todo controle</option><option value="on">Controle ligado</option><option value="off">Controle desligado</option></select>
+            <button class="btn ghost" onclick="loadEstoque()">Atualizar</button>
+          </div>
+          <div class="inv-mass">
+            <span id="estResumoFiltro">—</span>
+            <select class="field" id="estMassStatus" style="max-width:180px"><option value="">Status em massa…</option><option value="ATIVO">Ativo</option><option value="EM_FALTA">Em falta</option><option value="OCULTO">Oculto</option></select>
+            <button class="btn sm ghost" onclick="aplicarStatusCardapioFiltrado()">Aplicar aos filtrados</button>
+          </div>
+          <div id="estItens" class="inv-list"><div class="empty">Carregando estoque do cardápio…</div></div>
         </section>
 
         <!-- EQUIPE -->
@@ -709,6 +750,7 @@ async function delFichaItem(id,opcaoId,nome){ try{ await apiAdmin('/api/admin/fi
 /* ===== CARDÁPIO — CRUD completo (Categoria → Item → Variação → Opção) ===== */
 let _cat={categoria:{},prod:{},grupo:{},opc:{}};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function num(v){ const n=Number(v); if(!Number.isFinite(n))return '—'; return Number.isInteger(n)?String(n):String(Number(n.toFixed(3))).replace('.',','); }
 function segBtns(tp,id,status){return ['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('');}
 
 async function loadCardapio(){
@@ -794,41 +836,102 @@ function pedirForm(titulo,campos,okLabel='Salvar'){ return new Promise(resolve=>
   foot.appendChild(cancel); foot.appendChild(ok); document.body.appendChild(ov);
   const f=ov.querySelector('input,select,textarea'); if(f)setTimeout(()=>f.focus(),60);
 }); }
-function pedirConfirm(titulo,msg){ return new Promise(resolve=>{
+function pedirConfirm(titulo,msg,okLabel){ return new Promise(resolve=>{
   const ov=document.createElement('div'); ov.className='modal on';
   ov.innerHTML=`<div class="box"><h3 style="margin:0 0 8px">${titulo}</h3><p class="mut sm" style="margin:0 0 14px">${msg}</p><div class="mfoot"></div></div>`;
   const foot=ov.querySelector('.mfoot');
   const c=document.createElement('button'); c.className='btn ghost'; c.textContent='Cancelar'; c.onclick=()=>{document.body.removeChild(ov);resolve(false);};
-  const d=document.createElement('button'); d.className='btn danger'; d.textContent='Excluir'; d.onclick=()=>{document.body.removeChild(ov);resolve(true);};
+  const d=document.createElement('button'); d.className='btn danger'; d.textContent=okLabel||'Excluir'; d.onclick=()=>{document.body.removeChild(ov);resolve(true);};
   foot.appendChild(c); foot.appendChild(d); document.body.appendChild(ov);
 }); }
 async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo:tp,id,preco:reais(preco)})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
 async function setStatus(tp,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tp,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
 
 /* ===== ESTOQUE ===== */
-let _estProd=[];
+let _estCardapio=[], _estCardapioView=[], _estCardapioMeta={};
 async function loadEstoque(){
-  let dash={}; try{ dash=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){}
-  $('estKpis').innerHTML=[
-    kpi('Produtos ativos', dash.produtos_ativos||0, 'azu','📦',''),
-    kpi('Abaixo do mínimo', dash.abaixo_minimo||0, (dash.abaixo_minimo>0?'am':'ver'),'⚠️',''),
-    kpi('Zerados', dash.zerados||0, (dash.zerados>0?'am':'ver'),'🚫',''),
-    kpi('Contagens p/ auditar', dash.contagens_aguardando||0, (dash.contagens_aguardando>0?'am':'ver'),'📋','')
-  ].join('');
-  const set=(await (await fetch(API+'/api/est/setores')).json()).setores||[];
-  $('setoresBox').innerHTML = set.length? set.map(s=>`<div class="row"><div class="nm">${esc(s.nome)}<small>${s.ativo?'ativo':'inativo'}</small></div><button class="btn sm ghost" onclick="renomearSetorEst(${s.id},'${esc(s.nome).replace(/'/g,"\\'")}')">Renomear</button></div>`).join('') : '<div class="empty">Sem setores. Configure no app de estoque.</div>';
-  const mv=(await (await fetch(API+'/api/est/movimentos?limit=12')).json()).movimentos||[]; const ent=t=>/ENTRADA|COMPRA|PRODUCAO_ENTRADA/.test(t||'');
-  $('movBox').innerHTML = mv.length? mv.map(m=>`<div class="litem"><div class="nm">${esc(m.produto_nome||'—')}<small>${esc(String(m.tipo||'').replace(/_/g,' ').toLowerCase())} · ${esc(m.origem||'')} ${m.usuario_nome?('· '+esc(m.usuario_nome)):''} · ${fmtData(m.criado_em)}</small></div><div class="sm" style="color:${ent(m.tipo)?'var(--verde)':'var(--verm)'}">${ent(m.tipo)?'+':'−'}${Number(m.qtd_movimentada)}</div></div>`).join('') : '<div class="empty">Nenhuma movimentação ainda.</div>';
-  _estProd=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[];
-  const box=$('estItens'); box.innerHTML=''; const by={}; _estProd.filter(p=>p.ativo).forEach(p=>{ const k=p.categoria||'Sem categoria'; (by[k]=by[k]||[]).push(p); });
-  Object.entries(by).forEach(([cat,arr])=>{ const det=document.createElement('details'); let h=`<summary>${esc(cat)} <span class="cnt">${arr.length} itens</span></summary><div class="in">`;
-    arr.forEach(i=>{ h+=`<div class="row" data-id="${i.id}"><div class="nm">${esc(i.nome)}<small>${esc(i.unidade||'')} · atual ${Number(i.estoque_atual)}</small></div>
-      <label class="xs mut">mín<input class="field mn" data-f="estoque_minimo" value="${i.estoque_minimo!=null?Number(i.estoque_minimo):''}"></label>
-      <label class="xs mut">ideal<input class="field mn" data-f="estoque_ideal" value="${i.estoque_ideal!=null?Number(i.estoque_ideal):''}"></label>
-      <button class="btn sm" data-save>Salvar</button></div>`; });
-    det.innerHTML=h+'</div>'; box.appendChild(det); });
-  box.querySelectorAll('[data-save]').forEach(b=> b.onclick=()=>salvarItemEst(b.closest('.row')));
-  loadContagemGeral(set);
+  const box=$('estItens'); if(box)box.innerHTML='<div class="empty">Carregando estoque do cardápio…</div>';
+  try{
+    const r=await fetch(API+'/api/admin/estoque-cardapio?admin_id='+encodeURIComponent(user.id)+'&limit=1000');
+    const d=await r.json(); if(!r.ok)throw new Error(d.erro||'Erro ao carregar estoque do cardápio');
+    _estCardapio=d.itens||[]; _estCardapioMeta=d||{};
+    const k=d.kpis||{};
+    $('estKpis').innerHTML=[
+      kpi('Vendáveis no cardápio', k.total||0, 'azu','🧾','produtos + opções'),
+      kpi('Ativos', k.ativos||0, 'ver','✅','ACTIVE no DD'),
+      kpi('Em falta', k.em_falta||0, (k.em_falta>0?'am':'ver'),'⚠️','SHORT_SUPPLY no DD'),
+      kpi('Sem ficha técnica', k.sem_ficha||0, (k.sem_ficha>0?'am':'ver'),'🔗','ponte ainda incompleta')
+    ].join('');
+    renderEstoqueCardapio();
+  }catch(e){ if(box)box.innerHTML=`<div class="empty">${esc(e.message||'Erro ao carregar.')}</div>`; toast(e.message||'Erro ao carregar estoque do cardápio'); }
+}
+function estFiltroAtual(){
+  const q=(($('estBusca')&&$('estBusca').value)||'').toLowerCase().trim();
+  const status=($('estStatus')&&$('estStatus').value)||'', ficha=($('estFicha')&&$('estFicha').value)||'', controle=($('estControle')&&$('estControle').value)||'';
+  return {q,status,ficha,controle};
+}
+function estStatusClass(s){ return String(s||'').toLowerCase(); }
+function estStatusLabel(s){ return ({ATIVO:'ATIVO · ACTIVE',EM_FALTA:'EM FALTA · SHORT_SUPPLY',OCULTO:'OCULTO · HIDDEN'}[s]||s||'—'); }
+function renderEstoqueCardapio(){
+  const f=estFiltroAtual(); let arr=(_estCardapio||[]).filter(x=>{
+    const hay=(x.nome+' '+x.contexto+' '+(x.codigo_externo||'')+' '+((x.dd_mapper&&x.dd_mapper.external_id)||'')).toLowerCase();
+    if(f.q&&!hay.includes(f.q))return false;
+    if(f.status&&x.status!==f.status)return false;
+    if(f.ficha==='sem'&&x.ficha_count>0)return false; if(f.ficha==='com'&&x.ficha_count===0)return false;
+    if(f.controle==='on'&&!x.controle_enabled)return false; if(f.controle==='off'&&x.controle_enabled)return false;
+    return true;
+  });
+  _estCardapioView=arr;
+  if($('estResumoFiltro'))$('estResumoFiltro').textContent=`${arr.length} item(ns) filtrado(s) · ${(_estCardapioMeta.kpis&&_estCardapioMeta.kpis.controle_on)||0} com controle vendável ligado`;
+  const box=$('estItens'); if(!box)return;
+  box.innerHTML=arr.slice(0,300).map(estCardHtml).join('')||'<div class="empty">Nenhum item encontrado com esses filtros.</div>';
+}
+function estCardHtml(x){
+  const ficha=(x.ficha||[]).slice(0,8).map(l=>`<div class="inv-line"><div><b>${esc(l.insumo_nome||'—')}</b><small>${l.est_produto_id?`#${l.est_produto_id}`:'sem vínculo'} ${l.ativo===false?'· inativo':''}</small></div><div>${num(l.quantidade)} ${esc(l.unidade||'')}</div><small>${l.estoque_atual!=null?`saldo operacional ${num(l.estoque_atual)} ${esc(l.unidade_estoque||'')}`:'sem saldo operacional'}${l.setores?' · '+esc(l.setores):''}</small></div>`).join('');
+  const safeId=esc(x.id), tipo=esc(x.tipo), dd=(x.dd_mapper&&x.dd_mapper.external_id)||'';
+  return `<article class="inv-card" data-tipo="${tipo}" data-id="${safeId}">
+    <div class="inv-head">
+      <div class="inv-title"><b>${esc(x.nome)}</b><small>${esc(x.contexto||'—')} ${x.codigo_externo?`· código ${esc(x.codigo_externo)}`:''}</small></div>
+      <div class="inv-actions">
+        <span class="inv-status ${estStatusClass(x.status)}">${esc(estStatusLabel(x.status))}</span>
+        ${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button class="btn sm ${x.status===s?'':'ghost'}" onclick="salvarCardapioInv('${tipo}','${safeId}',{status:'${s}'},this)">${s==='ATIVO'?'Ativar':s==='EM_FALTA'?'Falta':'Ocultar'}</button>`).join('')}
+      </div>
+    </div>
+    <div class="inv-body">
+      <div class="inv-control">
+        <label class="inv-switch"><input type="checkbox" ${x.controle_enabled?'checked':''} onchange="salvarCardapioInv('${tipo}','${safeId}',{controle_enabled:this.checked},this)"> Controle vendável ligado</label>
+        <div class="inv-qty"><input class="field" inputmode="decimal" value="${x.quantidade_vendavel!=null?num(x.quantidade_vendavel):''}" placeholder="Qtd vendável"><button class="btn sm ghost" onclick="salvarQtdVendavel(this,'${tipo}','${safeId}')">Salvar qtd</button></div>
+        <div class="inv-map"><input class="field" value="${esc(dd)}" placeholder="DD external_id (preparado, sem sync)"><button class="btn sm ghost" onclick="salvarDdMapper(this,'${tipo}','${safeId}')">Mapper</button></div>
+        <small class="mut">Quantidade vendável não altera o saldo operacional do estoque.</small>
+      </div>
+      <div class="inv-bridge">
+        <h4>Ponte ficha_itens → est_produto (${x.ficha_count||0})</h4>
+        ${ficha || '<div class="inv-empty">Sem ficha: este item ainda não baixa insumo operacional.</div>'}
+        ${(x.ficha||[]).length>8?`<small class="mut">+ ${(x.ficha||[]).length-8} linha(s) na ficha.</small>`:''}
+      </div>
+    </div>
+  </article>`;
+}
+async function salvarCardapioInv(tipo,id,patch,el){
+  if(el)el.disabled=true;
+  try{
+    const r=await fetch(API+`/api/admin/estoque-cardapio/${tipo}/${encodeURIComponent(id)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({admin_id:user.id},patch||{}))});
+    const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.erro||'Erro ao salvar');
+    toast('Estoque do cardápio atualizado'); await loadEstoque();
+  }catch(e){ toast(e.message||'Erro ao salvar'); if(el)el.disabled=false; }
+}
+function salvarQtdVendavel(btn,tipo,id){ const input=btn&&btn.parentElement&&btn.parentElement.querySelector('input'); salvarCardapioInv(tipo,id,{quantidade_vendavel:input?input.value:''},btn); }
+function salvarDdMapper(btn,tipo,id){ const input=btn&&btn.parentElement&&btn.parentElement.querySelector('input'); salvarCardapioInv(tipo,id,{dd_external_id:input?input.value:''},btn); }
+async function aplicarStatusCardapioFiltrado(){
+  const st=($('estMassStatus')&&$('estMassStatus').value)||''; if(!st)return toast('Escolha um status para aplicar.');
+  const itens=(_estCardapioView||[]).map(x=>({tipo:x.tipo,id:x.id}));
+  if(!itens.length)return toast('Nenhum item filtrado para alterar.');
+  if(!await pedirConfirm('Aplicar status em massa',`Alterar ${itens.length} item(ns) filtrado(s) para ${st}?`,'Aplicar'))return;
+  try{
+    const r=await fetch(API+'/api/admin/estoque-cardapio/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,status:st,itens,motivo:'admin estoque-cardapio filtro'})});
+    const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.erro||'Erro ao aplicar em massa');
+    toast(`Status aplicado: ${d.afetados||0} item(ns)`); await loadEstoque();
+  }catch(e){ toast(e.message||'Erro ao aplicar em massa'); }
 }
 let _cgSet=[];
 async function loadContagemGeral(setores){

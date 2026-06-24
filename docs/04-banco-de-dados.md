@@ -46,6 +46,26 @@ Cada tabela deve ser tratada em uma destas classes:
 - Rotas `/api/est/*` são o caminho oficial novo do estoque.
 - Rotas `/api/estoque/*` são legado de contagem/estoque antigo.
 - Rotas `/api/admin/estoque-*` e `/api/admin/setor/*/rename` são compatibilidade de admin antigo e devem ler/escrever `est_produto`/`est_setor`.
+- A aba admin **Estoque do cardápio** não cria um terceiro modelo: lê/escreve disponibilidade e inventário vendável em `produtos`/`opcoes`, mostra a ponte por `ficha_itens` e consulta saldo/setor em `est_produto`/`est_produto_setor`.
+
+## Ponte vendável → ficha → insumo
+
+Fluxo oficial da primeira fatia do Estoque Admin:
+
+```text
+produtos/opcoes
+  status: ATIVO | EM_FALTA | OCULTO
+  meta.inventory: controle ligado/desligado + quantidade vendável
+  meta.mapper.delivery_direto: provider/external_id preparado, sem sync
+        ↓
+ficha_itens
+  produto_id/opcao_id + est_produto_id + quantidade/unidade
+        ↓
+est_produto
+  saldo operacional, unidade, setores e histórico de movimentos
+```
+
+Quantidade vendável não é saldo operacional. O saldo físico continua apenas em `est_produto.estoque_atual` e é alterado por compras, contagens, movimentações e produção.
 
 ## Zonas de risco
 

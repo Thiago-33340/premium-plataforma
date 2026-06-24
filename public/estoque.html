@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>Estoque Premium RP</title>
+<title>Estoque</title>
 <style>
 :root{ --bg:#0b0b0c; --bg2:#121214; --bg3:#1a1a1e; --bd:#26262c; --tx:#f2f2f3; --mut:#8a8a93; --vvh:100vh;
   --lar:#ff7a18; --verd:#22c55e; --amar:#f5b50a; --verm:#ef4444; --azul:#3b82f6; }
@@ -294,8 +294,8 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
 <body>
 
 <div id="login">
-  <img src="/logo.png" alt="Premium Pizzas" onerror="this.style.display='none'">
-  <h1>Estoque Premium RP</h1>
+  <img src="/logo.png" alt="Marca do restaurante" onerror="this.style.display='none'">
+  <h1 id="loginTitulo">Estoque</h1>
   <p class="mut sm">Acesso da equipe</p>
   <div class="card">
     <div id="stepUser">
@@ -319,7 +319,7 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
 
 <div id="app" class="hide">
   <header>
-    <img src="/logo.png" class="logo" alt="Premium" onerror="this.style.display='none'">
+    <img src="/logo.png" class="logo" alt="Marca do restaurante" onerror="this.style.display='none'">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="who"><b id="hNome"></b><br><span id="hPerfil"></span></div>
       <button class="btn ghost sm" onclick="sair()">Sair</button>
@@ -384,9 +384,35 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
 const API = location.origin;
 const $ = id => document.getElementById(id);
 let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {};
+let _estoqueCfg = { titulo:'Estoque', departamentos:[], tipos_item:[] }, _estoqueCfgLoaded = false;
 let _sessionKeep = false, _versionWatchStarted = false, _appVersion = null, _updateAvailable = false, _userRefreshStarted = false;
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('on'),2600); }
+function applyEstoqueConfig(){
+  const titulo=(_estoqueCfg&&_estoqueCfg.titulo)||'Estoque';
+  document.title=titulo;
+  if($('loginTitulo'))$('loginTitulo').textContent=titulo;
+}
+async function ensureEstoqueConfig(force){
+  if(_estoqueCfgLoaded&&!force)return _estoqueCfg;
+  try{
+    const qs=user&&user.id?('?usuario_id='+encodeURIComponent(user.id)):'';
+    const r=await fetch(API+'/api/est/configuracoes'+qs,{cache:'no-store'});
+    const d=await r.json();
+    if(r.ok&&d.config)_estoqueCfg=d.config;
+  }catch(e){}
+  _estoqueCfgLoaded=true; applyEstoqueConfig(); return _estoqueCfg;
+}
+function cfgOptions(list, vazio){
+  const base=vazio?[{v:'',t:vazio}]:[];
+  const seen=new Set(base.map(x=>String(x.v).toLowerCase()));
+  for(const raw of Array.isArray(list)?list:[]){
+    const v=String(raw.valor??raw.value??raw.v??raw.nome??'').trim();
+    if(!v||seen.has(v.toLowerCase()))continue;
+    seen.add(v.toLowerCase()); base.push({v,t:String(raw.rotulo??raw.label??raw.t??raw.nome??v)});
+  }
+  return base;
+}
 function storedUserPayload(){
   try{ const s=localStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) return { user:u, keep:true }; } }catch(e){}
   try{ const s=sessionStorage.getItem('est_u'); if(s){ const u=JSON.parse(s); if(u&&u.id) return { user:u, keep:false }; } }catch(e){}
@@ -478,8 +504,9 @@ async function confirmaPin(){ const a=$('np1').value.replace(/\D/g,''), b=$('np2
   const r=await (await fetch(API+'/api/staff/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:_pinCtx.login,pin:a})})).json();
   if(r.usuario) abrirApp(r.usuario,!!(_pinCtx&&_pinCtx.keep)); else toast('PIN trocado. Entre de novo.'); }
 
-function abrirApp(u, keep){ user=u; _sessionKeep=!!keep; saveStoredUser(u,_sessionKeep);
+async function abrirApp(u, keep){ user=u; _sessionKeep=!!keep; saveStoredUser(u,_sessionKeep);
   $('login').classList.add('hide'); $('app').classList.remove('hide');
+  await ensureEstoqueConfig(true);
   updateHeaderUser();
   carregarPerms(); startUserRefresh(); startAppVersionWatch(); nav('inicio'); }
 function sair(){ clearStoredUser(); user=null; location.reload(); }
@@ -1061,8 +1088,8 @@ let _pe={id:null,produto:{},setores:[],selecionados:[],ficha:[],produtos:[],rend
 let _setores=[];
 async function ensureSetores(){ if(!_setores.length){ const r=await fetch(API+'/api/est/setores'); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Erro ao carregar setores'); _setores=(d.setores||[]).filter(s=>s.ativo!==false); } }
 async function abrirEditorProduto(id){
-  await Promise.all([ensureCats(),ensureForns(),ensureSetores(),ensureConversoes(),ensureLocais()]).catch(e=>toast(e.message));
-  let p={nome:'',departamento:'Cozinha',unidade:'UNIDADE',estoque_atual:0,pode_contar:true,pode_comprar:true,pode_produzir:false,ativo:true}, setores=[], ficha=[];
+  await Promise.all([ensureCats(),ensureForns(),ensureSetores(),ensureConversoes(),ensureLocais(),ensureEstoqueConfig()]).catch(e=>toast(e.message));
+  let p={nome:'',departamento:'',unidade:'UNIDADE',estoque_atual:0,pode_contar:true,pode_comprar:true,pode_produzir:false,ativo:true}, setores=[], ficha=[];
   try{
     if(id){ const r=await fetch(API+'/api/est/produto/'+id); const d=await r.json(); if(!r.ok) throw new Error(d.erro||'Produto não encontrado'); p=d.produto; setores=d.setores||[]; ficha=d.ficha||[]; }
     const rp=await fetch(API+'/api/est/produtos'); const dp=await rp.json();
@@ -1080,8 +1107,8 @@ function peUpdateSetorResumo(){ const el=$('peSetorResumo'); if(el)el.textConten
 function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorAll('.product-modal').forEach(x=>x.remove());
   const m=document.createElement('div'); m.className='modal on product-modal'; m.id='productEditor';
   const opts=(arr,cur,label='nome')=>'<option value="">— selecione —</option>'+arr.map(x=>`<option value="${x.id}" ${String(cur||'')===String(x.id)?'selected':''}>${esc(x[label])}</option>`).join('');
-  const depOpts=[{v:'',t:'— não definido —'},{v:'Cozinha',t:'Cozinha'},{v:'Salão',t:'Salão'},{v:'Limpeza',t:'Limpeza'}];
-  const tipoOpts=['','insumo','produzido internamente','semiacabado','embalagem','bebida','material de limpeza','higiene','utensílio','material de escritório','revenda','outro'].map(t=>({v:t,t:t||'— não definido —'}));
+  const depOpts=cfgOptions((_estoqueCfg&&_estoqueCfg.departamentos)||[],'— não definido —');
+  const tipoOpts=cfgOptions((_estoqueCfg&&_estoqueCfg.tipos_item)||[],'— não definido —');
   const catOpts=[{v:'',t:'— selecione —'}].concat(_cats.map(c=>({v:c.id,t:c.nome})));
   m.innerHTML=`<div class="box">
     <div class="editor-head"><div><h3>${_pe.id?esc((p.nome||'').trim()||'Editar produto'):'Novo produto'}</h3><p>${_pe.id?'Editar produto · cadastro #'+_pe.id+' · alterações ficam registradas no estoque':'Cadastre o item uma vez e configure onde ele participa'}</p></div><button class="icon-btn" onclick="peClose()" aria-label="Fechar">×</button></div>
@@ -1334,6 +1361,7 @@ async function excluirLocal(id){ if(!await pedirConfirm('Excluir local','Se houv
 
 /* restaura sessão: localStorage só quando "manter conectado"; sessionStorage cai ao fechar navegador */
 (async function(){
+  await ensureEstoqueConfig();
   startAppVersionWatch();
   const stored=storedUserPayload();
   if(!stored)return;
