@@ -799,6 +799,26 @@ async function estSyncReceitaCompat(client, produtoId, fichaId) {
 const ESTOQUE_CONFIG_DEFAULTS = {
   titulo: 'Estoque',
   departamentos: [],
+  unidades_medida: [
+    { valor: 'UNIDADE', rotulo: 'UNIDADE' },
+    { valor: 'KG', rotulo: 'KG' },
+    { valor: 'G', rotulo: 'G' },
+    { valor: 'LITRO', rotulo: 'LITRO' },
+    { valor: 'ML', rotulo: 'ML' },
+    { valor: 'PACOTE', rotulo: 'PACOTE' },
+    { valor: 'CAIXA', rotulo: 'CAIXA' },
+    { valor: 'BALDE', rotulo: 'BALDE' },
+    { valor: 'BISNAGA', rotulo: 'BISNAGA' },
+    { valor: 'ROLO', rotulo: 'ROLO' },
+    { valor: 'ROLOS', rotulo: 'ROLOS' },
+    { valor: 'GALAO', rotulo: 'GALAO' },
+    { valor: 'SACHE', rotulo: 'SACHE' },
+    { valor: 'LATA', rotulo: 'LATA' },
+    { valor: 'VIDRO', rotulo: 'VIDRO' },
+    { valor: 'PECA', rotulo: 'PECA' },
+    { valor: 'BANDEJA', rotulo: 'BANDEJA' },
+    { valor: 'MACO', rotulo: 'MACO' }
+  ],
   tipos_item: [
     { valor: 'insumo', rotulo: 'Insumo' },
     { valor: 'produzido internamente', rotulo: 'Produzido internamente' },
@@ -845,11 +865,12 @@ function estoqueConfigSanitize(input, descobertos) {
   return {
     titulo: textoLimpo(raw.titulo || ESTOQUE_CONFIG_DEFAULTS.titulo, 60) || ESTOQUE_CONFIG_DEFAULTS.titulo,
     departamentos: uniqCfgOptions(raw.departamentos, descob.departamentos),
+    unidades_medida: uniqCfgOptions(raw.unidades_medida, ESTOQUE_CONFIG_DEFAULTS.unidades_medida, descob.unidades_medida),
     tipos_item: uniqCfgOptions(raw.tipos_item, ESTOQUE_CONFIG_DEFAULTS.tipos_item, descob.tipos_item)
   };
 }
 async function estoqueTenantConfig() {
-  const [cfgR, tiposR, depsR] = await Promise.all([
+  const [cfgR, tiposR, depsR, unR] = await Promise.all([
     db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]),
     db.q(`SELECT DISTINCT tipo_item AS v FROM est_produto
       WHERE tenant_id=$1 AND tipo_item IS NOT NULL AND btrim(tipo_item)<>'' ORDER BY tipo_item`, [TENANT]).catch(() => ({ rows: [] })),
@@ -857,12 +878,15 @@ async function estoqueTenantConfig() {
         SELECT departamento AS v FROM est_produto WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
         UNION
         SELECT departamento AS v FROM est_categoria WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
-      ) x ORDER BY v`, [TENANT]).catch(() => ({ rows: [] }))
+      ) x ORDER BY v`, [TENANT]).catch(() => ({ rows: [] })),
+    db.q(`SELECT DISTINCT unidade AS v FROM est_produto
+      WHERE tenant_id=$1 AND unidade IS NOT NULL AND btrim(unidade)<>'' ORDER BY unidade`, [TENANT]).catch(() => ({ rows: [] }))
   ]);
   const cfg = (cfgR.rows[0] && cfgR.rows[0].config) || {};
   return estoqueConfigSanitize(cfg.estoque || cfg.estoque_config || {}, {
     tipos_item: tiposR.rows.map(r => r.v),
-    departamentos: depsR.rows.map(r => r.v)
+    departamentos: depsR.rows.map(r => r.v),
+    unidades_medida: unR.rows.map(r => r.v)
   });
 }
 function statusTitan(v) {
