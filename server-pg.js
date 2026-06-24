@@ -1093,7 +1093,7 @@ function impressaoSanitize(input, base) {
 function estNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function estLev(a, b) { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; }
 function estSim(a, b) { if (!a || !b) return 0; return 1 - estLev(a, b) / Math.max(a.length, b.length); }
-const EST_MATCH_STOPWORDS = new Set('de da do das dos para pra com sem e o a os as em no na nos nas ao aos item produto un und unidade unidades kg kgs kilo kilos quilo quilos g gr grama gramas l lt litro litros ml pct pc'.split(' '));
+const EST_MATCH_STOPWORDS = new Set('de da do das dos para pra com sem e o a os as em no na nos nas ao aos item produto un und unidade unidades kg kgs kilo kilos quilo quilos g gr grama gramas l lt litro litros ml pct pc bisnaga pacote pacotes caixa caixas cx fardo fardos saco sacos rolo rolos lata latas balde baldes vidro vidros'.split(' '));
 const EST_MATCH_SYNONYMS = {
   mussarela: 'mucarela', muzarela: 'mucarela', mozarela: 'mucarela', mozzarella: 'mucarela', mucarela: 'mucarela',
   calabreza: 'calabresa', catupiri: 'catupiry', caturipy: 'catupiry', requeijao: 'requeijao',
