@@ -245,5 +245,29 @@
       "GET /api/est/configuracoes confirmou unidades_medida vindo de config do tenant + unidades existentes no banco."
     ],
     "observacoes": "Unidades de medida deixam de ser texto livre nos pontos operacionais principais: cadastro do produto, adicao/edicao rapida na contagem, compras, lista de compras, fichas tecnicas, receitas/producao, perdas/consumo e sugestoes de conversao. Cadastro principal usa lista visual customizada; tabelas operacionais usam select travado para preservar responsividade. Nenhum token/webhook/segredo foi registrado."
+  },
+  {
+    "id": "deploy-2026-06-24-estoque-exclusao-produto",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "d002b6a",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 70185e7 -> d002b6a.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 23/23.",
+      "HTML de /estoque confirmou botao/texto de Excluir produto e chips de status dos produtos.",
+      "GET /api/est/produtos?status=ativos retornou 194 itens e 0 inativos.",
+      "GET /api/est/produtos?status=inativos retornou 43 itens e 0 ativos."
+    ],
+    "observacoes": "Produto agora tem exclusao explicita para gestor: o botao Excluir produto remove o item das listas e rotinas operacionais por exclusao logica (ativo=false), preservando historico no banco. A listagem de produtos passou a filtrar ativos por padrao e ganhou chips Ativos/Excluidos/Todos para auditoria e recuperacao. Nenhum produto real foi excluido durante os testes; validacao foi read-only."
   }
 ]
