@@ -287,8 +287,8 @@
     }
   },
   "loss_consumption_khardela": {
-    "updated_at": "2026-06-24T16:45:00.000-03:00",
-    "status": "segunda_fatia_local_pendente_validacao_deploy",
+    "updated_at": "2026-06-24T15:35:00.000-03:00",
+    "status": "segunda_fatia_validada_em_producao_smoke_23_23",
     "escopo": "Tela Perda/Consumo com resolvedor de produto existente, unidade travada em opcoes cadastradas, foto opcional da balanca, dashboard operacional e confirmacao WhatsApp pela automacao Khardela antes de baixar estoque.",
     "rotas": {
       "foto_read_only": "POST /api/est/movimento/foto",
@@ -306,7 +306,6 @@
       "WhatsApp/Khardela cria pendencia e so baixa estoque apos resposta SIM; CANCELAR descarta sem alterar saldo."
     ],
     "pendente": [
-      "Validar em producao smoke 23/23 apos deploy.",
       "Testar manualmente um fluxo WhatsApp de texto com SIM/CANCELAR em janela controlada."
     ],
     "validacao_producao": {
@@ -316,8 +315,15 @@
       "observacao": "Primeira fatia valida: sugestao/revisao no site."
     },
     "validacao_segunda_fatia": {
-      "status": "pendente",
-      "esperado": "node --check server-pg.js, parse script public/estoque.html, check project-state, smoke read-only 23/23 em producao apos deploy"
+      "status": "validada_em_producao",
+      "commit": "331e3da",
+      "validacoes_locais": ["node --check server-pg.js", "node --check scripts/smoke-critical.mjs", "parse script public/estoque.html", "check-project-state OK"],
+      "validacoes_producao": [
+        "Deploy acionado manualmente no EasyPanel apos push GitHub main.",
+        "Smoke read-only producao/tools OK: 23/23 incluindo /api/est/perdas-consumo/dashboard.",
+        "GET /api/est/perdas-consumo/dashboard?usuario_id=thiago&dias=7 OK e read-only.",
+        "POST /api/est/match-produtos com escopo=movimento OK e read-only."
+      ]
     }
   },
   "recipes_tab_khardela": {

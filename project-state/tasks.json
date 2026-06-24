@@ -482,13 +482,13 @@
     "id": "task-f2-037",
     "titulo": "Implementar abas Receitas e Perdas/Consumo com Khardela",
     "modulo": "estoque-v2",
-    "status": "segunda_fatia_local_pendente_validacao_deploy",
+    "status": "segunda_fatia_validada_em_producao",
     "prioridade": "alta",
     "categoria": "produto",
     "responsavel_humano": "Thiago + Tassiano",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-036"],
-    "proximo_passo": "Receitas, entrada de compra inteligente e primeira fatia de Perdas/Consumo estao em producao. Segunda fatia em codigo local: dashboard de perdas/consumo, permissao registrar_perda_consumo, match sem restringir itens compraveis e confirmacao WhatsApp SIM/CANCELAR antes de baixar estoque. Proximo: validar sintaxe/project-state, deployar e rodar smoke 23/23."
+    "proximo_passo": "Receitas, entrada de compra inteligente e Perdas/Consumo segunda fatia estao em producao com smoke 23/23. Ativos: dashboard de perdas/consumo, permissao registrar_perda_consumo, match sem restringir itens compraveis e confirmacao WhatsApp SIM/CANCELAR antes de baixar estoque. Proximo: testar manualmente um fluxo WhatsApp controlado e desenhar consolidacao v5 da gestao operacional."
   }
 ]

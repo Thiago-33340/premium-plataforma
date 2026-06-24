@@ -176,5 +176,28 @@
       "KPIs de receitas em producao: total 69, ativas 34, incompletas 21, inativas 14."
     ],
     "observacoes": "Entrega da aba Receitas no estoque operacional, restauracao de ficha excluida logicamente, rota read-only /api/est/receitas no smoke, e primeira fatia de Perdas/Consumo/Khardela mantida ativa. Nenhum token/webhook/segredo foi registrado."
+  },
+  {
+    "id": "deploy-2026-06-24-perdas-consumo-khardela-v2",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "331e3da",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 0044f01 -> 331e3da.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 23/23, incluindo GET /api/est/perdas-consumo/dashboard.",
+      "GET /api/est/perdas-consumo/dashboard?usuario_id=thiago&dias=7 OK e read-only.",
+      "POST /api/est/match-produtos com escopo=movimento OK e read-only."
+    ],
+    "observacoes": "Segunda fatia de Perdas/Consumo/Khardela: dashboard operacional, permissao granular registrar_perda_consumo, match de movimento sem limitar a itens compraveis, conversao de quantidade para unidade operacional e WhatsApp com pendencia SIM/CANCELAR antes de baixar estoque. Nenhum token/webhook/segredo foi registrado."
   }
 ]
