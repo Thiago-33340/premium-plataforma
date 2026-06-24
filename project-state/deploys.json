@@ -222,5 +222,28 @@
       "Teste controlado em Frango temperado reenviou os mesmos setores: antes=2, resposta=2, depois=2, subcategoria=Montagem."
     ],
     "observacoes": "Correcoes: no mobile, rodape de acoes do editor vira parte normal do formulario quando o teclado abre; setor do produto passa por rota transacional dedicada, atualizando est_produto_setor e subcategoria juntos; ficha tecnica nao altera setores sem flag explicita. Nenhum token/webhook/segredo foi registrado."
+  },
+  {
+    "id": "deploy-2026-06-24-estoque-unidades-medida-lista",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "2722feb",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 6926f76 -> 2722feb.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 23/23.",
+      "HTML de /estoque confirmou HAS_UNIDADE_CUSTOM=true, HAS_UNIDADE_DATALIST=false, HAS_UNIDADES_CONFIG=true, HAS_UNIDADE_SELECT_OPTIONS=true e HAS_CNT_UNIDADE_CUSTOM=true.",
+      "GET /api/est/configuracoes confirmou unidades_medida vindo de config do tenant + unidades existentes no banco."
+    ],
+    "observacoes": "Unidades de medida deixam de ser texto livre nos pontos operacionais principais: cadastro do produto, adicao/edicao rapida na contagem, compras, lista de compras, fichas tecnicas, receitas/producao, perdas/consumo e sugestoes de conversao. Cadastro principal usa lista visual customizada; tabelas operacionais usam select travado para preservar responsividade. Nenhum token/webhook/segredo foi registrado."
   }
 ]
