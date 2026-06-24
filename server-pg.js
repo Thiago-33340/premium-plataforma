@@ -2252,6 +2252,8 @@ async function api(req, res, url) {
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
     const setor = url.searchParams.get('setor') || '';
+    const status = String(url.searchParams.get('status') || url.searchParams.get('ativos') || 'ativos').toLowerCase();
+    const ativosMode = ['todos', 'all'].includes(status) ? 'todos' : (['inativos', 'inativo', 'excluidos', 'excluídos', 'false', '0'].includes(status) ? 'inativos' : 'ativos');
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
         p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
@@ -2284,8 +2286,9 @@ async function api(req, res, url) {
             JOIN est_setor s2 ON s2.id=ps2.setor_id AND s2.tenant_id=ps2.tenant_id
            WHERE ps2.tenant_id=p.tenant_id AND ps2.produto_id=p.id AND (s2.nome=$5 OR s2.id::text=$5)
         ))
-      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor]);
-    return json(res, 200, { produtos: r.rows });
+        AND ($6='todos' OR ($6='ativos' AND p.ativo) OR ($6='inativos' AND NOT p.ativo))
+      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor, ativosMode]);
+    return json(res, 200, { produtos: r.rows, status: ativosMode });
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
     const pid = parseInt(seg[3], 10);
@@ -2583,8 +2586,9 @@ async function api(req, res, url) {
       } catch(e) { return json(res,400,{erro:e.code==='23505'?'Já existe um produto com esse nome.':(e.code||e.message)}); }
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {
-      await db.q('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
-      return json(res, 200, { ok: true });
+      const r = await db.q('UPDATE est_produto SET ativo=FALSE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$2 RETURNING id, nome', [seg[3], TENANT]);
+      if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
+      return json(res, 200, { ok: true, excluido_da_tela: true, historico_preservado: true, id: r.rows[0].id, nome: r.rows[0].nome });
     }
 
     // FORNECEDOR

@@ -346,6 +346,7 @@ body.keyboard-open .editor-foot .status{ flex-basis:100%; }
       <div id="prodSummary" class="product-summary">Carregando cadastro…</div>
       <div class="searchbar">
         <input id="busca" class="field" placeholder="Buscar produto…" oninput="buscaDebounce()">
+        <div class="chips" id="chipsProdStatus"></div>
         <div class="chips" id="chipsCat"></div>
         <div class="chips" id="chipsSetor"></div>
       </div>
@@ -566,7 +567,7 @@ async function loadInicioColab(){
   sec.innerHTML=h;
 }
 
-let _bt=null;
+let _bt=null, _prodStatus='ativos';
 function buscaDebounce(){ clearTimeout(_bt); _bt=setTimeout(loadProdutos,300); }
 async function ensureCats(){ if(!_cats.length){ try{ _cats=(await (await fetch(API+'/api/est/categorias')).json()).categorias||[]; }catch(e){} } }
 async function ensureForns(){ if(!_forns.length){ try{ _forns=(await (await fetch(API+'/api/est/fornecedores')).json()).fornecedores||[]; }catch(e){} } }
@@ -575,11 +576,13 @@ async function ensureLocais(force){ if(force)_locais=[]; if(!_locais.length){ tr
 async function loadProdutos(){
   await Promise.all([ensureCats(),ensureSetores()]).catch(e=>toast(e.message)); renderChips();
   const busca=encodeURIComponent($('busca').value.trim()); const cat=encodeURIComponent(_catSel);
-  let d; try{ const r=await fetch(API+`/api/est/produtos?busca=${busca}&categoria=${cat}`); d=await r.json(); if(!r.ok) throw new Error(d.erro||'Falha ao carregar'); }catch(e){ $('plist').innerHTML='<div class="empty">Não foi possível carregar os produtos.</div>'; return; }
+  const status=encodeURIComponent(_prodStatus||'ativos');
+  let d; try{ const r=await fetch(API+`/api/est/produtos?busca=${busca}&categoria=${cat}&status=${status}`); d=await r.json(); if(!r.ok) throw new Error(d.erro||'Falha ao carregar'); }catch(e){ $('plist').innerHTML='<div class="empty">Não foi possível carregar os produtos.</div>'; return; }
   const todos=d.produtos||[]; const ps=_setorSel?todos.filter(p=>Array.isArray(p.setores)&&p.setores.some(s=>String(s.id)===String(_setorSel)||s.nome===_setorSel)):todos; _prodMap={}; ps.forEach(p=>_prodMap[p.id]=p);
   const ativos=ps.filter(p=>p.ativo).length, baixos=ps.filter(p=>p.ativo&&p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal)).length;
   const setorAtual=_setorSel&&(_setores.find(s=>String(s.id)===String(_setorSel))||null);
-  $('prodSummary').textContent=`${ps.length} produto${ps.length===1?'':'s'} encontrado${ps.length===1?'':'s'} · ${ativos} ativos · ${baixos} abaixo do ideal${setorAtual?' · setor '+setorAtual.nome:''}`;
+  const statusTxt=_prodStatus==='inativos'?'excluídos':(_prodStatus==='todos'?'todos':'ativos');
+  $('prodSummary').textContent=`${ps.length} produto${ps.length===1?'':'s'} ${statusTxt} encontrado${ps.length===1?'':'s'} · ${ativos} ativos · ${baixos} abaixo do ideal${setorAtual?' · setor '+setorAtual.nome:''}`;
   $('plist').innerHTML = ps.length? ps.map(p=>{
     const at=Number(p.estoque_atual||0), id=p.estoque_ideal!=null?Number(p.estoque_ideal):null;
     let tag=''; if(!p.ativo) tag='<span class="tag off">inativo</span>'; else if(at===0) tag='<span class="tag zero">zerado</span>'; else if(id!=null&&at<id) tag='<span class="tag low">abaixo</span>'; else tag='<span class="tag ok">ok</span>';
@@ -588,8 +591,10 @@ async function loadProdutos(){
       <div class="qt">${tag}<div class="big">${fmt(at)} <span class="mut xs">${esc(p.unidade||'')}</span></div><div class="mut xs">ideal ${id!=null?fmt(id):'—'}</div></div></div>`;
   }).join('') : '<div class="empty">Nenhum produto encontrado com esses filtros.</div>';
 }
-function renderChips(){ const all=[{nome:''}].concat(_cats);
+function renderChips(){ renderProdStatusChips(); const all=[{nome:''}].concat(_cats);
   $('chipsCat').innerHTML = all.map(c=>`<button class="chip ${(_catSel===c.nome)?'on':''}" onclick="selCat('${(c.nome||'').replace(/'/g,"\\'")}')">${c.nome||'Todas'}</button>`).join(''); renderSetorChips(); }
+function renderProdStatusChips(){ const el=$('chipsProdStatus'); if(!el)return; const opts=[['ativos','Ativos'],['inativos','Excluídos'],['todos','Todos']]; el.innerHTML=opts.map(o=>`<button class="chip ${_prodStatus===o[0]?'on':''}" onclick="selProdStatus('${o[0]}')">${o[1]}</button>`).join(''); }
+function selProdStatus(v){ _prodStatus=v||'ativos'; renderProdStatusChips(); loadProdutos(); }
 function selCat(c){ _catSel=c; renderChips(); loadProdutos(); }
 function renderSetorChips(){ const el=$('chipsSetor'); if(!el)return; const all=[{id:'',nome:'Todos os setores'}].concat(_setores||[]); el.innerHTML=all.map(s=>`<button class="chip ${String(_setorSel)===String(s.id)?'on':''}" onclick="selSetor('${String(s.id||'').replace(/'/g,"\\'")}')">${esc(s.nome)}</button>`).join(''); }
 function selSetor(id){ _setorSel=id; renderSetorChips(); loadProdutos(); }
@@ -1454,7 +1459,7 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
         </div>
         ${_pe.id&&(_pe.ficha.length||p.pode_produzir)?'<button class="btn danger sm" style="margin-top:12px" onclick="peDeleteFichaDirect()">Excluir ficha técnica</button>':''}
       </section>
-      <div class="editor-foot"><div class="status" id="peStatus">${_pe.id?'Última configuração carregada do banco.':'Preencha os campos obrigatórios.'}</div>${_pe.id?'<button class="btn danger sm" onclick="peDelete()">Inativar</button>':''}<button class="btn ghost sm" onclick="peClose()">Cancelar</button><button class="btn primary sm" id="peSave" onclick="peSave()">Salvar produto</button></div>
+      <div class="editor-foot"><div class="status" id="peStatus">${_pe.id?(p.ativo===false?'Produto excluído da tela. Marque “Produto ativo” e salve para restaurar.':'Última configuração carregada do banco.'):'Preencha os campos obrigatórios.'}</div>${_pe.id&&p.ativo!==false?'<button class="btn danger sm" onclick="peDelete()">Excluir produto</button>':''}<button class="btn ghost sm" onclick="peClose()">Cancelar</button><button class="btn primary sm" id="peSave" onclick="peSave()">Salvar produto</button></div>
     </div></div>`;
   document.body.appendChild(m); peRenderRecipe(); peRenderSugestoes(); peNormaliza(); peUpdateSetorResumo(); if(window.innerWidth>700)setTimeout(()=>$('peNome').focus(),60);
 }
@@ -1525,7 +1530,9 @@ async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus
     toast(_pe.produto&&_pe.produto.nome?'Produto atualizado':'Produto criado'); peClose(); await loadProdutos(); if(abrirFichaDepois)setTimeout(()=>abrirFichaProd(id),120);
   }catch(e){ status.textContent=e.message||'Não foi possível salvar. Revise os campos.'; btn.disabled=false; }
 }
-async function peDelete(){ if(!await pedirConfirm('Inativar produto','O item some das rotinas, mas todo o histórico é preservado.'))return; try{ await estFetch('/api/est/produto/'+_pe.id,'DELETE'); toast('Produto inativado'); peClose(); loadProdutos(); }catch(e){} }
+async function peDelete(){ if(!_pe.id)return; const nome=(_pe.produto&&_pe.produto.nome)||'este produto';
+  if(!await pedirConfirm('Excluir produto da tela','“'+nome+'” sairá das listas, contagens, compras e rotinas operacionais. O histórico continuará preservado no banco para recuperação se necessário.','Excluir produto'))return;
+  try{ await estFetch('/api/est/produto/'+_pe.id,'DELETE',{motivo:'exclusao_gestor'}); toast('Produto excluído da tela'); peClose(); await loadProdutos(); }catch(e){} }
 async function abrirMovProduto(id){ const p=_prodMap[id]||_pe.produto; peClose(); nav('mais'); await movTela(); if($('movProd'))$('movProd').value=p.nome||''; }
 
 /* ===== EDITOR AVANÇADO DE FICHA DE PRODUÇÃO ===== */
