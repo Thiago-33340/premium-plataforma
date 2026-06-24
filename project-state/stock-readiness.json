@@ -241,7 +241,7 @@
   },
   "border_mapper_dry_run": {
     "updated_at": "2026-06-24T03:55:00.000-03:00",
-    "status": "ajuste_seguro_parcial_aplicado_em_producao_smoke_21_21",
+    "status": "ajuste_seguro_parcial_expandido_em_producao_smoke_21_21",
     "fonte_mapper": "data/premium-border-pdv-mapper-v1.json",
     "endpoints_read_only": {
       "fichas_cardapio": "/api/est/fichas-cardapio?usuario_id=thiago",
@@ -290,20 +290,27 @@
           "Pizza Grande + Borda Tradicional Recheada > Mussarela => Rolinho de mucarela 4 rolinhos",
           "Pizza Grande + Borda Tradicional Recheada > Presunto e Mussarela => Rolinho de presunto e mucarela 4 rolinhos",
           "Pizza Grande + Borda Vulcao > Catupiry => Catupiry Aberto da Borda 150g",
-          "Pizza Grande + Borda Vulcao > Cheddar => Cheddar Aberto da Borda 150g"
+          "Pizza Grande + Borda Vulcao > Cheddar => Cheddar Aberto da Borda 150g",
+          "Pizza Grande + Borda Vulcao > Chocolate ao Leite => Chocolate ao Leite - Aberto Finalizacao 150g",
+          "Pizza Grande + Borda Vulcao > Chocolate Branco => Chocolate Branco - Aberto Finalizacao 150g",
+          "Pizza Grande + Borda Vulcao > Mussarela => Bolinha de mucarela 4un 1 pacote",
+          "Pizza Grande + Borda Vulcao > Presunto e Mussarela => Bolinha de presunto e mucarela 4un 1 pacote"
         ]
       },
+      "conversoes_aprovadas_e_aplicadas": {
+        "bolinhas": "Confirmado pelo gestor: 4 bolinhas = 1 pacote. Fichas de Vulcao usam 1 Pacote nos itens Bolinha de mucarela 4un e Bolinha de presunto e mucarela 4un.",
+        "chocolate_finalizacao": "Confirmado pelo gestor: chocolates abertos da Finalizacao controlados em g. Unidade dos produtos 192 e 194 alterada de BISNAGA para g; saldo atual mantido sem conversao automatica.",
+        "brigadeiro_de_ninho": "Confirmado pelo gestor. Item existente Brigadeiro de Ninho - Bisnaga G 500g recebeu ficha de producao: rendimento 3875g; Leite Condensado 4.7468 UNIDADE (1875g/395g), Creme de Leite 2 LITRO, Leite em Po 250g."
+      },
       "bloqueios_mantidos": [
-        "Pizza Grande + Borda Vulcao > Chocolate ao Leite/Chocolate Branco: mapper pede 150g da Finalizacao, mas item ativo esta em BISNAGA; precisa conversao/ajuste de unidade antes de baixar saldo.",
-        "Pizza Grande + Borda Vulcao > Mussarela/Presunto e Mussarela: mapper fala 4 unidades; estoque ativo esta como pacote 4un; precisa conversao explicita para 1 pacote ou item unitario antes da ficha.",
-        "Pizza Grande + Borda Vulcao > Ninho com Morango/Ninho com Uva: Brigadeiro de Ninho nao existe como est_produto ativo; Morango/Uva tambem exigem conversao de fruta antes da ficha.",
+        "Pizza Grande + Borda Vulcao > Ninho com Morango/Ninho com Uva: Brigadeiro de Ninho agora existe com ficha, mas Morango caixa e Uva ainda exigem conversao operacional de fruta antes da ficha.",
         "Pizza Grande + Borda Paozinho ainda precisa criar 8 combinacoes ausentes; nao foi feito para nao alterar a vitrine sem revisao.",
         "Pizza Pequena exige grupos condicionais por Estilo de borda ou split de produto; nao foi alterada nesta etapa."
       ],
       "validacao_pos_ajuste": {
-        "pizza_grande_opcoes_existentes_validadas": "9 OK / 15 existentes",
+        "pizza_grande_opcoes_existentes_validadas": "13 OK / 15 existentes",
         "smoke_read_only": "21/21 OK em https://premium.titanatende.com.br e https://tools.titanatende.com.br",
-        "observacao": "Uma tentativa intermediaria de ficha parou ao encontrar insumo inativo; o passe seguro posterior reconciliou o subconjunto permitido e manteve bloqueadas as conversoes inseguras."
+        "observacao": "A segunda leva aplicou as conversoes aprovadas pelo gestor. Saldo do Chocolate ao Leite - Aberto Finalizacao permaneceu 1.000, agora em g; requer recontagem/correcao manual pelo gestor se esse 1.000 representava 1 bisnaga."
       }
     },
     "falhas_confirmadas": [
