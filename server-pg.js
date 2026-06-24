@@ -664,7 +664,7 @@ function registrarCommandAudit(user, action, targetFile, targetId, resumo, extra
 }
 
 /* ===== Permissões do Estoque (configuráveis por usuário) ===== */
-const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
+const EST_PERMS = ['acessar_estoque_premium_rp', 'acessar_produtos', 'acessar_categorias', 'acessar_fornecedores', 'acessar_visitas', 'acessar_mapa_comparativo_fornecedores', 'acessar_lista_compras_inteligente', 'acessar_contagem', 'acessar_auditoria', 'acessar_producao_interna', 'acessar_lancamentos', 'acessar_configuracoes', 'ver_valores', 'ver_maior_valor_pago', 'editar_produtos', 'editar_categorias', 'registrar_compra', 'registrar_perda_consumo', 'registrar_visita', 'fazer_contagem', 'auditar_contagem', 'aprovar_contagem', 'reprovar_contagem', 'exportar_dados', 'criar_usuarios', 'editar_permissoes'];
 const EST_PERMS_COLAB = ['acessar_estoque_premium_rp', 'acessar_contagem', 'fazer_contagem'];
 function perfisUsuario(u) { return [u && u.perfil_principal].concat((u && u.perfis_adicionais) || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean); }
 function perfilGestor(u) { return perfisUsuario(u).some(p => p === 'GESTOR' || p === 'GERENTE' || p.startsWith('GESTOR') || p.startsWith('GERENTE')); }
@@ -718,6 +718,12 @@ async function estPermsEfetivas(uid) {
   return { user: u, perms: EST_PERMS_COLAB.slice(), gestor: false };
 }
 async function estPode(uid, perm) { const e = await estPermsEfetivas(uid); return e.gestor || e.perms.includes(perm); }
+function estPodeMovimento(e) {
+  return !!(e && e.user && (e.gestor || e.perms.includes('acessar_lancamentos') || e.perms.includes('registrar_perda_consumo')));
+}
+async function estPodeMovimentoUid(uid) {
+  return estPodeMovimento(await estPermsEfetivas(uid));
+}
 function estNormLogin(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
@@ -1212,12 +1218,14 @@ function estScoreProdutoEntrada(texto, p) {
   }
   return best;
 }
-async function estMatchProdutosEntrada(textos, minScore) {
+async function estMatchProdutosEntrada(textos, minScore, opts) {
   minScore = minScore == null ? 0.45 : minScore;
+  opts = opts || {};
+  const onlyCompraveis = opts.onlyCompraveis !== false;
   const rows = (await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.nome_nf, p.marca_preferida, p.ultima_marca, p.subcategoria, p.legado, c.nome AS categoria
     FROM est_produto p
     LEFT JOIN est_categoria c ON c.id=p.categoria_id AND c.tenant_id=p.tenant_id
-    WHERE p.tenant_id=$1 AND p.ativo AND COALESCE(p.pode_comprar, TRUE)
+    WHERE p.tenant_id=$1 AND p.ativo ${onlyCompraveis ? 'AND COALESCE(p.pode_comprar, TRUE)' : ''}
     ORDER BY p.nome`, [TENANT])).rows;
   return (Array.isArray(textos) ? textos : []).map((t, idxDefault) => {
     const entrada = typeof t === 'string' ? { texto: t, idx: idxDefault } : Object.assign({ idx: idxDefault }, t || {});
@@ -1232,8 +1240,23 @@ async function estMatchProdutosEntrada(textos, minScore) {
   });
 }
 async function estAchaProduto(texto, minScore) {
-  const r = await estMatchProdutosEntrada([{ texto }], minScore == null ? 0.5 : minScore);
+  const r = await estMatchProdutosEntrada([{ texto }], minScore == null ? 0.5 : minScore, { onlyCompraveis: false });
   return r[0] && r[0].melhor ? r[0].melhor : null;
+}
+function estQtdMovimento(qtd, unidadeInformada, produto) {
+  const n = Number(String(qtd == null ? '' : qtd).replace(',', '.'));
+  if (!(n > 0)) return null;
+  const ui = String(unidadeInformada || '').trim();
+  if (!ui) return n;
+  const conv = estBaixaEmUnidades(n, ui, produto && produto.peso_g, produto && produto.unidade);
+  return conv > 0 ? conv : n;
+}
+function estObsMovimento(unidadeInformada, qtdOriginal, qtdLancada, produto, observacao) {
+  const parts = [];
+  if (unidadeInformada) parts.push('informado: ' + qtdOriginal + ' ' + unidadeInformada);
+  if (unidadeInformada && qtdLancada != null && produto && produto.unidade) parts.push('lançado no estoque: ' + Number(qtdLancada).toFixed(3) + ' ' + produto.unidade);
+  if (observacao) parts.push(String(observacao));
+  return parts.filter(Boolean).join(' | ') || null;
 }
 async function estLancaMov(tipo, user, produto, qtd, motivo, origem, observacao) {
   const antes = Number(produto.estoque_atual); const depois = (tipo === 'ENTRADA') ? antes + qtd : antes - qtd;
@@ -1306,6 +1329,29 @@ async function estInterpretaWA(texto) {
     if (!r.ok) return { acao: 'consulta', via: 'fallback' };
     const o = JSON.parse(j.choices[0].message.content); o.via = 'ia'; return o;
   } catch (e) { return { acao: 'consulta', via: 'fallback' }; }
+}
+function estWaConfirmaTexto(texto) {
+  return /^(sim|s|ok|confirmo|confirmar|confirma|pode|pode lancar|pode lançar)$/i.test(String(texto || '').trim());
+}
+function estWaCancelaTexto(texto) {
+  return /^(nao|não|n|cancelar|cancela|cancela isso|descartar|descarta)$/i.test(String(texto || '').trim());
+}
+async function estWaPendente(telefone) {
+  const r = await db.q(`SELECT id, interpretado
+    FROM est_whatsapp_msg
+    WHERE tenant_id=$1 AND telefone=$2 AND direcao='OUT'
+      AND interpretado->>'tipo'='movimento_pendente'
+      AND interpretado->>'status'='aguardando_confirmacao'
+      AND criado_em > NOW() - INTERVAL '30 minutes'
+    ORDER BY criado_em DESC
+    LIMIT 1`, [TENANT, telefone]);
+  return r.rows[0] || null;
+}
+async function estWaAtualizaPendente(id, status, extra) {
+  const payload = Object.assign({ status, atualizado_em: new Date().toISOString() }, extra || {});
+  await db.q(`UPDATE est_whatsapp_msg
+    SET interpretado=COALESCE(interpretado,'{}'::jsonb) || $3::jsonb
+    WHERE id=$1 AND tenant_id=$2`, [id, TENANT, JSON.stringify(payload)]).catch(() => {});
 }
 async function estMontaRota(inItens) {
   inItens = (inItens || []).filter(x => x && x.produto_id);
@@ -2293,6 +2339,36 @@ async function api(req, res, url) {
     return json(res, 200, { movimentos: r.rows });
   }
   // Vínculos: produtos com setores + ligação bruto->produzido (para conferência sem erro)
+  if (sub === 'est' && seg[2] === 'perdas-consumo' && seg[3] === 'dashboard' && req.method === 'GET') {
+    const e = await estPermsEfetivas(url.searchParams.get('usuario_id') || url.searchParams.get('admin_id'));
+    if (!estPodeMovimento(e)) return json(res, 403, { erro: 'Sem permissao para ver perdas/consumo.' });
+    const dias = Math.max(1, Math.min(parseInt(url.searchParams.get('dias'), 10) || 7, 90));
+    const ownOnly = !(e.gestor || e.perms.includes('acessar_lancamentos'));
+    const params = [TENANT, dias];
+    const userSql = ownOnly ? ' AND usuario_id=$3' : '';
+    if (ownOnly) params.push(e.user.id);
+    const kpis = (await db.q(`SELECT tipo, COUNT(*)::int AS lancamentos, COALESCE(SUM(qtd_movimentada),0)::float AS quantidade
+      FROM est_movimento
+      WHERE tenant_id=$1 AND tipo IN ('PERDA','CONSUMO') AND criado_em >= NOW() - ($2::int * INTERVAL '1 day') ${userSql}
+      GROUP BY tipo ORDER BY tipo`, params)).rows;
+    const porProduto = (await db.q(`SELECT produto_id, produto_nome, tipo, COUNT(*)::int AS lancamentos, COALESCE(SUM(qtd_movimentada),0)::float AS quantidade
+      FROM est_movimento
+      WHERE tenant_id=$1 AND tipo IN ('PERDA','CONSUMO') AND criado_em >= NOW() - ($2::int * INTERVAL '1 day') ${userSql}
+      GROUP BY produto_id, produto_nome, tipo
+      ORDER BY lancamentos DESC, quantidade DESC
+      LIMIT 12`, params)).rows;
+    const porUsuario = (await db.q(`SELECT usuario_nome, COUNT(*)::int AS lancamentos, COALESCE(SUM(qtd_movimentada),0)::float AS quantidade
+      FROM est_movimento
+      WHERE tenant_id=$1 AND tipo IN ('PERDA','CONSUMO') AND criado_em >= NOW() - ($2::int * INTERVAL '1 day') ${userSql}
+      GROUP BY usuario_nome
+      ORDER BY lancamentos DESC, quantidade DESC
+      LIMIT 12`, params)).rows;
+    const recentes = (await db.q(`SELECT id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_nome, motivo, observacao, criado_em
+      FROM est_movimento
+      WHERE tenant_id=$1 AND tipo IN ('PERDA','CONSUMO') AND criado_em >= NOW() - ($2::int * INTERVAL '1 day') ${userSql}
+      ORDER BY criado_em DESC LIMIT 30`, params)).rows;
+    return json(res, 200, { dias, escopo: ownOnly ? 'proprio_usuario' : 'tenant', kpis, por_produto: porProduto, por_usuario: porUsuario, recentes });
+  }
   if (sub === 'est' && seg[2] === 'vinculos' && req.method === 'GET') {
     const setores = (await db.q('SELECT id, nome FROM est_setor WHERE tenant_id=$1 AND ativo ORDER BY ordem, nome', [TENANT])).rows;
     const prods = (await db.q(`SELECT p.id, p.nome, p.unidade, p.peso_g, p.pode_produzir, c.nome AS categoria,
@@ -2920,8 +2996,10 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'match-produtos' && req.method === 'POST') {
     const b = await readBody(req);
     const e = await estPermsEfetivas(b.usuario_id);
-    const pode = e.user && (e.gestor || e.perms.includes('registrar_compra') || e.perms.includes('acessar_lancamentos') || e.perms.includes('acessar_produtos'));
+    const pode = e.user && (e.gestor || e.perms.includes('registrar_compra') || e.perms.includes('acessar_lancamentos') || e.perms.includes('registrar_perda_consumo') || e.perms.includes('acessar_produtos'));
     if (!pode) return json(res, 403, { erro: 'Sem permissao para consultar vinculos de produtos.' });
+    const escopo = String(b.escopo || b.modo || '').toLowerCase();
+    const onlyCompraveis = !(escopo === 'movimento' || escopo === 'perda' || escopo === 'consumo' || escopo === 'estoque');
     const textos = Array.isArray(b.textos) ? b.textos : [{ texto: b.texto || b.produto || '', idx: 0, marca: b.marca || '', unidade: b.unidade || '' }];
     const limpos = textos.slice(0, 80).map((x, i) => typeof x === 'string' ? { texto: x, idx: i } : {
       idx: x.idx != null ? x.idx : i,
@@ -2929,7 +3007,7 @@ async function api(req, res, url) {
       marca: String(x.marca || '').slice(0, 80),
       unidade: String(x.unidade || '').slice(0, 30)
     }).filter(x => x.texto || x.marca);
-    return json(res, 200, { resultados: await estMatchProdutosEntrada(limpos, 0.45) });
+    return json(res, 200, { resultados: await estMatchProdutosEntrada(limpos, 0.45, { onlyCompraveis }) });
   }
 
   if (sub === 'est' && seg[2] === 'compra' && seg[3] === 'foto' && req.method === 'POST') {
@@ -3558,7 +3636,7 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'movimento' && seg[3] === 'foto' && req.method === 'POST') {
     const b = await readBody(req);
     const e = await estPermsEfetivas(b.usuario_id);
-    if (!e.user || !(e.gestor || e.perms.includes('acessar_lancamentos'))) return json(res, 403, { erro: 'Sem permissao para interpretar movimento.' });
+    if (!estPodeMovimento(e)) return json(res, 403, { erro: 'Sem permissao para interpretar movimento.' });
     const key = process.env.OPENAI_API_KEY;
     if (!key) return json(res, 400, { erro: 'Leitura por imagem nao configurada (defina OPENAI_API_KEY no Easypanel).' });
     if (!b.image) return json(res, 400, { erro: 'envie a imagem' });
@@ -3581,7 +3659,7 @@ async function api(req, res, url) {
       const j = await r.json();
       if (!r.ok) return json(res, 502, { erro: 'Leitura da foto falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
       let p = {}; try { p = JSON.parse(j.choices[0].message.content); } catch (_) { p = {}; }
-      const match = await estMatchProdutosEntrada([{ idx: 0, texto: p.produto || '', unidade: p.unidade || '' }], 0.45);
+      const match = await estMatchProdutosEntrada([{ idx: 0, texto: p.produto || '', unidade: p.unidade || '' }], 0.45, { onlyCompraveis: false });
       return json(res, 200, { produto: p.produto || null, quantidade: p.quantidade ?? null, unidade: p.unidade || null, leitura_balanca: p.leitura_balanca || null, observacao: p.observacao || null, confianca: p.confianca ?? null, match: match[0] || null });
     } catch (e) {
       return json(res, 502, { erro: 'Erro na leitura da foto: ' + (e.message || e) });
@@ -3592,15 +3670,20 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'movimento' && req.method === 'POST') {
     const b = await readBody(req);
     const e = await estPermsEfetivas(b.usuario_id);
+    if (e.user && e.perms.includes('registrar_perda_consumo') && !e.perms.includes('acessar_lancamentos')) e.perms.push('acessar_lancamentos');
     if (!e.user || !(e.gestor || e.perms.includes('acessar_lancamentos'))) return json(res, 403, { erro: 'Sem permissão para lançar movimento.' });
     const tipo = String(b.tipo || '').toUpperCase();
     if (!['PERDA', 'CONSUMO', 'ENTRADA'].includes(tipo)) return json(res, 400, { erro: 'tipo deve ser PERDA, CONSUMO ou ENTRADA' });
-    const qtd = Number(String(b.quantidade).replace(',', '.'));
-    if (!b.produto_id || !(qtd > 0)) return json(res, 400, { erro: 'informe produto e quantidade (>0)' });
-    const p = (await db.q('SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2', [b.produto_id, TENANT])).rows[0];
+    const qtdOriginal = Number(String(b.quantidade).replace(',', '.'));
+    if (!b.produto_id || !(qtdOriginal > 0)) return json(res, 400, { erro: 'informe produto e quantidade (>0)' });
+    const p = (await db.q('SELECT id, nome, unidade, estoque_atual, peso_g FROM est_produto WHERE id=$1 AND tenant_id=$2', [b.produto_id, TENANT])).rows[0];
     if (!p) return json(res, 404, { erro: 'produto não encontrado' });
-    const mv = await estLancaMov(tipo, e.user, p, qtd, b.motivo || null, 'MANUAL', b.observacao || null);
-    return json(res, 200, { ok: true, produto: p.nome, antes: mv.antes, depois: mv.depois, unidade: p.unidade });
+    const unidadeInformada = b.unidade || b.unidade_informada || '';
+    const qtd = estQtdMovimento(qtdOriginal, unidadeInformada, p);
+    if (!(qtd > 0)) return json(res, 400, { erro: 'quantidade convertida invalida' });
+    const obs = estObsMovimento(unidadeInformada, qtdOriginal, qtd, p, b.observacao || null);
+    const mv = await estLancaMov(tipo, e.user, p, qtd, b.motivo || null, 'MANUAL', obs);
+    return json(res, 200, { ok: true, produto: p.nome, antes: mv.antes, depois: mv.depois, unidade: p.unidade, quantidade_lancada: qtd, unidade_informada: unidadeInformada || null });
   }
 
   // ---- WhatsApp: webhook de entrada (Khardela recebe e lança) ----
@@ -3625,20 +3708,73 @@ async function api(req, res, url) {
       return json(res, 200, { resposta, usuario: null });
     }
     await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto, interpretado) VALUES ($1,$2,'IN',$3,$4)`, [TENANT, telefone, texto, JSON.stringify(interp)]).catch(() => {});
+    const pend = await estWaPendente(telefone);
+    if (pend && estWaCancelaTexto(texto)) {
+      await estWaAtualizaPendente(pend.id, 'cancelado', { cancelado_por: u.id });
+      resposta = 'Combinado, descartei o lancamento pendente. Nada foi alterado no estoque.';
+      await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto) VALUES ($1,$2,'OUT',$3)`, [TENANT, telefone, resposta]).catch(() => {});
+      return json(res, 200, { resposta, usuario: u.nome, pendente_cancelado: true });
+    }
+    if (pend && estWaConfirmaTexto(texto)) {
+      const p = pend.interpretado || {};
+      if (String(p.usuario_id || '') !== String(u.id)) {
+        resposta = 'Existe um lancamento pendente, mas ele pertence a outro usuario. Envie novamente o lancamento.';
+      } else if (!(await estPodeMovimentoUid(u.id))) {
+        resposta = 'Voce nao tem permissao para confirmar perdas/consumos. Fale com o gestor.';
+      } else {
+        const prod = (await db.q('SELECT id, nome, unidade, estoque_atual, peso_g FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo', [p.produto_id, TENANT])).rows[0];
+        if (!prod) {
+          resposta = 'O produto pendente nao esta mais ativo no estoque. Envie o lancamento novamente.';
+          await estWaAtualizaPendente(pend.id, 'erro_produto_inativo', { confirmado_por: u.id });
+        } else {
+          const tipo = String(p.tipo_movimento || p.acao || '').toUpperCase();
+          const qtdOriginal = Number(p.quantidade);
+          const qtd = estQtdMovimento(qtdOriginal, p.unidade_informada || '', prod);
+          const obs = estObsMovimento(p.unidade_informada || '', qtdOriginal, qtd, prod, p.observacao || null);
+          const mv = await estLancaMov(tipo, u, prod, qtd, p.motivo || null, 'WHATSAPP', obs);
+          await estWaAtualizaPendente(pend.id, 'confirmado', { confirmado_por: u.id, quantidade_lancada: qtd, estoque_antes: mv.antes, estoque_depois: mv.depois });
+          const rotuloConfirmado = tipo === 'PERDA' ? 'Perda' : (tipo === 'CONSUMO' ? 'Consumo' : 'Entrada');
+          resposta = `✅ ${rotuloConfirmado} registrada: ${qtdOriginal} ${p.unidade_informada || prod.unidade || ''} de ${prod.nome}.\nEstoque: ${mv.antes} → ${mv.depois} ${prod.unidade || ''}.${p.motivo ? '\nMotivo: ' + p.motivo : ''}\n(${u.nome})`;
+        }
+      }
+      await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto) VALUES ($1,$2,'OUT',$3)`, [TENANT, telefone, resposta]).catch(() => {});
+      return json(res, 200, { resposta, usuario: u.nome, pendente_confirmado: true });
+    }
     if (['perda', 'consumo', 'entrada'].includes(interp.acao)) {
-      if (!(await estPode(u.id, 'acessar_lancamentos'))) {
+      if (!(await estPodeMovimentoUid(u.id))) {
         resposta = 'Você não tem permissão para lançar movimentações no estoque. Fale com o gestor.';
       } else if (!interp.produto || !(Number(interp.quantidade) > 0)) {
         resposta = 'Entendi que é um lançamento, mas faltou o produto ou a quantidade. Ex: "perda muçarela 2 peças motivo caiu no chão".';
       } else {
-        const prod = await estAchaProduto(interp.produto, 0.5);
+        const found = await estAchaProduto(interp.produto, 0.5);
+        const prod = found ? (await db.q('SELECT id, nome, unidade, estoque_atual, peso_g FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo', [found.id, TENANT])).rows[0] : null;
         if (!prod) {
           resposta = `Não encontrei o produto "${interp.produto}" no cadastro. Confira o nome e tente de novo.`;
         } else {
           const tipo = interp.acao.toUpperCase();
+          const rotulo = tipo === 'PERDA' ? 'Perda' : (tipo === 'CONSUMO' ? 'Consumo' : 'Entrada');
+          const qtdConvertida = estQtdMovimento(Number(interp.quantidade), interp.unidade || '', prod);
+          const pendente = {
+            tipo: 'movimento_pendente',
+            status: 'aguardando_confirmacao',
+            usuario_id: u.id,
+            acao: interp.acao,
+            produto_id: prod.id,
+            produto_nome: prod.nome,
+            tipo_movimento: tipo,
+            quantidade: Number(interp.quantidade),
+            unidade_informada: interp.unidade || null,
+            quantidade_lancada: qtdConvertida,
+            unidade_estoque: prod.unidade || null,
+            motivo: interp.motivo || null,
+            observacao: 'confirmacao_whatsapp'
+          };
+          resposta = `Entendi assim:\n${rotulo}: ${interp.quantidade} ${interp.unidade || prod.unidade || ''} de ${prod.nome}\nLancamento no estoque: ${Number(qtdConvertida).toFixed(3)} ${prod.unidade || ''}${interp.motivo ? '\nMotivo: ' + interp.motivo : ''}\n\nResponda SIM para confirmar ou CANCELAR para descartar.`;
+          await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto, interpretado) VALUES ($1,$2,'OUT',$3,$4)`, [TENANT, telefone, resposta, JSON.stringify(pendente)]).catch(() => {});
+          return json(res, 200, { resposta, usuario: u.nome, aguardando_confirmacao: true, movimento: pendente });
           const obs = interp.unidade ? ('informado: ' + interp.quantidade + ' ' + interp.unidade) : null;
           const mv = await estLancaMov(tipo, u, prod, Number(interp.quantidade), interp.motivo || null, 'WHATSAPP', obs);
-          const rotulo = tipo === 'PERDA' ? 'Perda' : (tipo === 'CONSUMO' ? 'Consumo' : 'Entrada');
+          const rotuloConfirmado = tipo === 'PERDA' ? 'Perda' : (tipo === 'CONSUMO' ? 'Consumo' : 'Entrada');
           resposta = `✅ ${rotulo} registrada: ${interp.quantidade} ${prod.unidade || ''} de ${prod.nome}.\nEstoque: ${mv.antes} → ${mv.depois}.${interp.motivo ? '\nMotivo: ' + interp.motivo : ''}\n(${u.nome})`;
         }
       }

@@ -328,5 +328,38 @@
         "checado": false
       }
     ]
+  },
+  {
+    "id": "controle-sem-efeito-proibido",
+    "data": "2026-06-24",
+    "decisao": "Proibir controle sem efeito: todo controle do editor/admin deve produzir efeito visivel e testavel na tela",
+    "motivo": "Surgiram controles decorativos que enganam o gestor: o Respiro/densidade mexia em --gap sem nenhum elemento consumir o token, e os knobs grade/busca/destaques eram oferecidos no editor mas a loja ignorava (layout sempre lista, sem busca, sem faixa de destaques). Configurar e nao ver efeito quebra a confianca no editor.",
+    "impacto": "Nenhum controle (slider, toggle, seletor, picker) entra ou permanece no editor/admin sem que mudar o valor altere a tela de forma observavel. Vale para o redesign da loja e para qualquer painel de configuracao.",
+    "modulos_afetados": ["admin-gestor", "loja-pedidos", "command-center"],
+    "responsavel": "Thiago",
+    "status": "aceita",
+    "guardrail": true,
+    "referencia": "decision-018",
+    "aplica_quando": "Toda entrega que adiciona ou altera controle de configuracao no editor/admin.",
+    "checklist": [
+      {
+        "id": "ctrl-a-efeito-real",
+        "pergunta": "Cada controle novo/alterado produz efeito visivel na tela quando o valor muda?",
+        "criterio": "O token/flag do controle e consumido por pelo menos um elemento renderizado; nao existe controle decorativo (ex.: densidade que mexe em --gap sem ninguem usar --gap).",
+        "checado": false
+      },
+      {
+        "id": "ctrl-b-knob-vivo",
+        "pergunta": "Nenhum knob exposto no editor e ignorado pela tela servida (loja)?",
+        "criterio": "grade/busca/destaques e qualquer outro toggle do editor tem implementacao correspondente na loja; nao ha knob morto.",
+        "checado": false
+      },
+      {
+        "id": "ctrl-c-evidencia",
+        "pergunta": "Ha evidencia (screenshot antes/depois ou teste) de que mudar o valor muda a tela?",
+        "criterio": "Para cada controle, screenshot antes/depois no ambiente real ou teste automatizado anexado na entrega; revisao de screenshot do gestor.",
+        "checado": false
+      }
+    ]
   }
 ]

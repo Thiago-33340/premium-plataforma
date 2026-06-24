@@ -515,7 +515,7 @@ async function carregarPerms(){ if(ehGestor()){ aplicaNavPerms(); return; }
   try{ const d=await (await fetch(API+'/api/est/permissoes?usuario_id='+encodeURIComponent(user.id))).json(); user.perms=d.perms||[]; }catch(e){ user.perms=[]; }
   aplicaNavPerms(); }
 const NAV_PERM={ produtos:'acessar_produtos', contagem:'acessar_contagem', fornecedores:'acessar_fornecedores' };
-function maisVisivel(){ return ehGestor() || temPerm('acessar_lancamentos')||temPerm('acessar_lista_compras_inteligente')||temPerm('acessar_visitas')||temPerm('acessar_mapa_comparativo_fornecedores')||temPerm('acessar_producao_interna')||temPerm('acessar_configuracoes')||temPerm('editar_permissoes'); }
+function maisVisivel(){ return ehGestor() || temPerm('acessar_lancamentos')||temPerm('registrar_perda_consumo')||temPerm('acessar_lista_compras_inteligente')||temPerm('acessar_visitas')||temPerm('acessar_mapa_comparativo_fornecedores')||temPerm('acessar_producao_interna')||temPerm('acessar_configuracoes')||temPerm('editar_permissoes'); }
 function aplicaNavPerms(){ document.querySelectorAll('#nav button').forEach(b=>{ const v=b.dataset.v; let show=true; if(NAV_PERM[v]) show=temPerm(NAV_PERM[v]); if(v==='mais') show=maisVisivel(); b.style.display=show?'':'none'; }); }
 
 function nav(v){ const need=NAV_PERM[v]; if(need&&!temPerm(need)) v='inicio'; if(v==='mais'&&!maisVisivel()) v='inicio';
@@ -738,7 +738,7 @@ function loadMais(){ const b=[];
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaAutoTela()"><span>🗓️ Lista automática por período</span><span>Ver ›</span></button>`);
   if(temPerm('acessar_lancamentos')||temPerm('registrar_compra')) b.push(`<button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>`);
-  if(temPerm('acessar_lancamentos')) b.push(`<button class="setor-btn" onclick="movTela()"><span>📉 Perda / consumo</span><span>Lançar ›</span></button>`);
+  if(temPerm('acessar_lancamentos')||temPerm('registrar_perda_consumo')) b.push(`<button class="setor-btn" onclick="movTela()"><span>📉 Perda / consumo</span><span>Lançar ›</span></button>`);
   if(temPerm('acessar_visitas')||temPerm('registrar_visita')) b.push(`<button class="setor-btn" onclick="visitaTela()"><span>🚶 Visita a fornecedor</span><span>Registrar ›</span></button>`);
   if(temPerm('acessar_mapa_comparativo_fornecedores')) b.push(`<button class="setor-btn" onclick="mapaTela()"><span>🧭 Mapa comparativo de fornecedores</span><span>Comparar ›</span></button>`);
   if(temPerm('acessar_producao_interna')) b.push(`<button class="setor-btn" onclick="producaoTela()"><span>🏭 Produção interna</span><span>Lançar ›</span></button>`);
@@ -1163,7 +1163,7 @@ async function lancarProducao(){ const q=(($('prodQtd')&&$('prodQtd').value)||''
     if(d.avisos&&d.avisos.length) setTimeout(()=>toast('Atenção: '+d.avisos[0]),1700); producaoTela(); }catch(e){} }
 
 /* ===== PERMISSÕES DA EQUIPE ===== */
-const PERM_LABEL={ acessar_estoque_premium_rp:'Acessar o estoque', acessar_produtos:'Ver produtos', acessar_categorias:'Ver categorias', acessar_fornecedores:'Ver fornecedores', acessar_visitas:'Acessar visitas', acessar_mapa_comparativo_fornecedores:'Ver mapa de fornecedores', acessar_lista_compras_inteligente:'Lista de compras inteligente', acessar_contagem:'Acessar contagem', acessar_auditoria:'Acessar auditoria', acessar_producao_interna:'Acessar produção interna', acessar_lancamentos:'Acessar lançamentos', acessar_configuracoes:'Acessar configurações', ver_valores:'Ver valores/preços', ver_maior_valor_pago:'Ver maior valor já pago', editar_produtos:'Editar produtos', editar_categorias:'Editar categorias', registrar_compra:'Registrar compra', registrar_visita:'Registrar visita', fazer_contagem:'Lançar contagem', auditar_contagem:'Auditar contagem', aprovar_contagem:'Aprovar contagem', reprovar_contagem:'Reprovar contagem', exportar_dados:'Exportar dados', criar_usuarios:'Criar usuários', editar_permissoes:'Editar permissões' };
+const PERM_LABEL={ acessar_estoque_premium_rp:'Acessar o estoque', acessar_produtos:'Ver produtos', acessar_categorias:'Ver categorias', acessar_fornecedores:'Ver fornecedores', acessar_visitas:'Acessar visitas', acessar_mapa_comparativo_fornecedores:'Ver mapa de fornecedores', acessar_lista_compras_inteligente:'Lista de compras inteligente', acessar_contagem:'Acessar contagem', acessar_auditoria:'Acessar auditoria', acessar_producao_interna:'Acessar produção interna', acessar_lancamentos:'Acessar lançamentos', acessar_configuracoes:'Acessar configurações', ver_valores:'Ver valores/preços', ver_maior_valor_pago:'Ver maior valor já pago', editar_produtos:'Editar produtos', editar_categorias:'Editar categorias', registrar_compra:'Registrar compra', registrar_perda_consumo:'Registrar perda/consumo', registrar_visita:'Registrar visita', fazer_contagem:'Lançar contagem', auditar_contagem:'Auditar contagem', aprovar_contagem:'Aprovar contagem', reprovar_contagem:'Reprovar contagem', exportar_dados:'Exportar dados', criar_usuarios:'Criar usuários', editar_permissoes:'Editar permissões' };
 let _permCat=[], _permUsers=[], _permEditing=null;
 async function permTela(){ const w=$('maisWrap'); w.innerHTML=`<div class="vhead"><h2 class="tit">Permissões da equipe</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div><p class="mut sm" style="margin:0 0 8px">Gestores e gerentes têm acesso total. Configure abaixo o que cada colaborador pode fazer.</p><div id="permUsers"><div class="empty">Carregando…</div></div>`;
   await ensureSetores().catch(()=>{});
@@ -1261,12 +1261,27 @@ async function movTela(){ await ensureAllProds(); _mov={ tipo:'PERDA', produto_i
    <div class="cnt-row"><label class="flabel" style="flex:1;margin:0">Unidade<select id="movUn" class="field">${movUnidades().map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join('')}</select></label><label class="flabel" style="flex:1;margin:0">Medida<input id="movQtd" class="field" inputmode="decimal" placeholder="ex: 250"></label></div>
    <label class="flabel">Motivo / observação<input id="movMot" class="field" placeholder="ex: caiu no chão, pedido teste, consumo interno"></label>
    <button class="btn primary sm" style="margin-top:8px" onclick="lancarMov()">Lançar</button>
-   <div id="movResp" style="margin-top:12px"></div>`; }
+   <div id="movResp" style="margin-top:12px"></div>
+   <div id="movDash" style="margin-top:12px"><div class="empty">Carregando resumo...</div></div>`;
+  movLoadDash();
+}
+async function movLoadDash(){ const el=$('movDash'); if(!el)return;
+  try{ const d=await estFetch('/api/est/perdas-consumo/dashboard?dias=7'); const k=Object.fromEntries((d.kpis||[]).map(x=>[x.tipo,x]));
+    const perdas=k.PERDA||{}, cons=k.CONSUMO||{}; const prods=(d.por_produto||[]).slice(0,6), rec=(d.recentes||[]).slice(0,8);
+    let h=`<div class="sec">Resumo dos últimos ${esc(d.dias||7)} dias</div><div class="grid2">
+      <div class="kpi"><small>Perdas</small><b>${fmt(perdas.quantidade||0)}</b><span>${perdas.lancamentos||0} lanç.</span></div>
+      <div class="kpi"><small>Consumo</small><b>${fmt(cons.quantidade||0)}</b><span>${cons.lancamentos||0} lanç.</span></div>
+    </div>`;
+    h+=`<div class="cnt-item" style="margin-top:8px"><b>Itens mais movimentados</b>${prods.length?prods.map(p=>`<div class="cnt-row" style="justify-content:space-between;gap:8px"><span>${esc(p.produto_nome||'—')} <small class="mut">${esc(p.tipo||'')}</small></span><span>${fmt(p.quantidade||0)}</span></div>`).join(''):'<div class="mut sm" style="margin-top:6px">Sem perdas/consumos no período.</div>'}</div>`;
+    h+=`<div class="cnt-item" style="margin-top:8px"><b>Recentes</b>${rec.length?rec.map(m=>`<div class="cnt-row" style="justify-content:space-between;gap:8px;align-items:flex-start"><span><b>${esc(m.tipo||'')}</b> · ${esc(m.produto_nome||'—')}<br><small class="mut">${esc(m.usuario_nome||'')} ${m.motivo?'· '+esc(m.motivo):''}</small></span><span>${fmt(m.qtd_movimentada||0)}</span></div>`).join(''):'<div class="mut sm" style="margin-top:6px">Nada recente.</div>'}</div>`;
+    el.innerHTML=h;
+  }catch(e){ el.innerHTML='<div class="empty">Não consegui carregar o resumo agora.</div>'; }
+}
 function movSetTipo(t){ _mov.tipo=t; document.querySelectorAll('#movTipos .chip').forEach((c,i)=>c.classList.toggle('on',['PERDA','CONSUMO','ENTRADA'][i]===t)); }
 function movProdutoMudou(){ _mov.produto_id=matchProduto(($('movProd')&&$('movProd').value)||''); _mov.match_status=_mov.produto_id?'manual':'pendente'; _mov.match_score=null; _mov.sugestoes=[]; movRenderMatch(); }
 function movUsarSug(){ const s=(_mov.sugestoes||[])[0]; if(!s)return; _mov.produto_id=s.id; _mov.match_score=s.score; _mov.match_status='confirmado'; if($('movProd'))$('movProd').value=s.nome; movRenderMatch(); }
 async function movResolverMatch(force){ const nome=($('movProd')&&$('movProd').value||'').trim(), un=($('movUn')&&$('movUn').value)||''; if(!nome){ toast('Informe o produto'); return; }
-  try{ const d=await estFetch('/api/est/match-produtos','POST',{textos:[{idx:0,texto:nome,unidade:un}]}); const r=(d.resultados||[])[0]||{}; _mov.sugestoes=r.sugestoes||[]; const best=r.melhor;
+  try{ const d=await estFetch('/api/est/match-produtos','POST',{escopo:'movimento',textos:[{idx:0,texto:nome,unidade:un}]}); const r=(d.resultados||[])[0]||{}; _mov.sugestoes=r.sugestoes||[]; const best=r.melhor;
     if(best&&best.status==='auto'&&(force||!_mov.produto_id)){ _mov.produto_id=best.id; _mov.match_score=best.score; _mov.match_status='auto'; if($('movProd'))$('movProd').value=best.nome; }
     else if(best&&!_mov.produto_id){ _mov.match_score=best.score; _mov.match_status=best.status||'sugestao'; }
     movRenderMatch();
@@ -1281,9 +1296,10 @@ async function lancarMov(){ const nome=($('movProd')&&$('movProd').value||'').tr
   if(!_mov.produto_id) await movResolverMatch(true);
   if(!_mov.produto_id){ toast('Confirme o produto cadastrado antes de lançar.'); return; }
   const obs=[un?('unidade informada: '+un):'',_mov.foto&&_mov.foto.leitura_balanca?('balanca: '+_mov.foto.leitura_balanca):''].filter(Boolean).join(' | ');
-  try{ const d=await estFetch('/api/est/movimento','POST',{tipo:_mov.tipo,produto_id:_mov.produto_id,quantidade:q,motivo:mot,observacao:obs});
-    $('movResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">${esc(d.produto)}</div><div class="mut sm">Estoque: ${fmt(d.antes)} → ${fmt(d.depois)} ${esc(d.unidade||'')}</div></div>`;
-    toast('Lançado'); ['movProd','movQtd','movMot'].forEach(id=>{ if($(id))$(id).value=''; }); _mov.produto_id=''; _mov.sugestoes=[]; _mov.match_status='manual'; movRenderMatch(); }catch(e){}
+  try{ const d=await estFetch('/api/est/movimento','POST',{tipo:_mov.tipo,produto_id:_mov.produto_id,quantidade:q,unidade:un,motivo:mot,observacao:obs});
+    const conv=(d.quantidade_lancada!=null&&Math.abs(Number(d.quantidade_lancada)-Number(q))>0.0001)?`<div class="mut sm">Convertido para baixa: ${fmt(d.quantidade_lancada)} ${esc(d.unidade||'')}</div>`:'';
+    $('movResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">${esc(d.produto)}</div><div class="mut sm">Estoque: ${fmt(d.antes)} → ${fmt(d.depois)} ${esc(d.unidade||'')}</div>${conv}</div>`;
+    toast('Lançado'); ['movProd','movQtd','movMot'].forEach(id=>{ if($(id))$(id).value=''; }); _mov.produto_id=''; _mov.sugestoes=[]; _mov.match_status='manual'; movRenderMatch(); movLoadDash(); }catch(e){}
 }
 
 function khardelaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Khardela · estoque</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>

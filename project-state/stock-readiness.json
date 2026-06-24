@@ -279,7 +279,7 @@
     ],
     "nomenclatura": "Interface e rota oficial passam a usar Khardela/automacao Khardela; /api/est/jessica fica apenas como compatibilidade para fluxos antigos do n8n.",
     "validacao_local": ["node --check server-pg.js", "parse script public/estoque.html", "parse project-state/routes.json/modules.json"],
-    "validacao_producao": {
+    "validacao_primeira_fatia_producao": {
       "commit": "e823e7c",
       "smoke_read_only": "22/22 OK",
       "html_markers": ["HAS_KHARDELA=True", "HAS_RECEITAS_TELA=True"],
@@ -287,29 +287,37 @@
     }
   },
   "loss_consumption_khardela": {
-    "updated_at": "2026-06-24T15:15:00.000-03:00",
-    "status": "primeira_fatia_validada_em_producao_smoke_22_22",
-    "escopo": "Tela Perda/Consumo com resolvedor de produto existente, unidade travada em opcoes cadastradas e foto opcional da balanca para preencher produto/medida antes da revisao.",
+    "updated_at": "2026-06-24T16:45:00.000-03:00",
+    "status": "segunda_fatia_local_pendente_validacao_deploy",
+    "escopo": "Tela Perda/Consumo com resolvedor de produto existente, unidade travada em opcoes cadastradas, foto opcional da balanca, dashboard operacional e confirmacao WhatsApp pela automacao Khardela antes de baixar estoque.",
     "rotas": {
       "foto_read_only": "POST /api/est/movimento/foto",
-      "lancamento": "POST /api/est/movimento"
+      "lancamento": "POST /api/est/movimento",
+      "dashboard": "GET /api/est/perdas-consumo/dashboard",
+      "whatsapp_confirmacao": "POST /api/est/whatsapp/inbound"
     },
     "regras": [
       "Foto nao baixa estoque automaticamente.",
       "Gestor/colaborador autorizado revisa produto, unidade e medida antes de clicar Lancar.",
       "Produto e resolvido por /api/est/match-produtos para evitar contains fraco.",
-      "Acesso continua controlado por acessar_lancamentos ou gestor."
+      "Escopo de movimento/perda/consumo permite match contra itens nao compraveis.",
+      "Acesso agora aceita permissao granular registrar_perda_consumo alem de acessar_lancamentos ou gestor.",
+      "Quantidade informada e convertida para a unidade operacional do produto quando houver peso_g/unidade compativel.",
+      "WhatsApp/Khardela cria pendencia e so baixa estoque apos resposta SIM; CANCELAR descarta sem alterar saldo."
     ],
     "pendente": [
-      "Fluxo WhatsApp com imagem + estado de confirmacao antes de lancar.",
-      "Dashboard dedicado de perdas por periodo/motivo/usuario.",
-      "Permissao granular por colaborador para perdas/consumo separada de acessar_lancamentos."
+      "Validar em producao smoke 23/23 apos deploy.",
+      "Testar manualmente um fluxo WhatsApp de texto com SIM/CANCELAR em janela controlada."
     ],
     "validacao_producao": {
       "commit": "e823e7c",
       "smoke_read_only": "22/22 OK",
       "rota_foto": "POST /api/est/movimento/foto ativa; leitura por imagem retorna erro controlado quando imagem nao e enviada.",
-      "observacao": "Primeira fatia valida: sugestao/revisao no site. Baixa por WhatsApp ainda nao esta liberada sem confirmacao adicional."
+      "observacao": "Primeira fatia valida: sugestao/revisao no site."
+    },
+    "validacao_segunda_fatia": {
+      "status": "pendente",
+      "esperado": "node --check server-pg.js, parse script public/estoque.html, check project-state, smoke read-only 23/23 em producao apos deploy"
     }
   },
   "recipes_tab_khardela": {

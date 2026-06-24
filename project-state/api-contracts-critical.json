@@ -83,9 +83,9 @@
     "method": "POST",
     "path": "/api/est/match-produtos",
     "screen": "public/estoque.html / entrada de compra, perdas/consumo, automacao Khardela",
-    "permission": "gestor ou registrar_compra/acessar_lancamentos/acessar_produtos",
+    "permission": "gestor ou registrar_compra/acessar_lancamentos/registrar_perda_consumo/acessar_produtos",
     "payload_required": ["usuario_id", "textos[] ou texto"],
-    "payload_optional": ["textos[].idx", "textos[].marca", "textos[].unidade"],
+    "payload_optional": ["escopo=compra|movimento|perda|consumo|estoque", "textos[].idx", "textos[].marca", "textos[].unidade"],
     "reads": ["est_produto", "est_categoria", "est_produto.legado.match_aliases"],
     "writes": [],
     "success": "200 { resultados: [{ idx, texto, melhor, sugestoes[], status }] }",
@@ -93,7 +93,8 @@
     "side_effects": [
       "nao cria produto automaticamente",
       "status auto exige score alto e diferenca minima para o segundo colocado",
-      "status sugestao exige confirmacao/manual do gestor antes de lancar compra"
+      "status sugestao exige confirmacao/manual do gestor antes de lancar compra ou movimento",
+      "escopo de movimento/perda/consumo nao restringe o match a itens compraveis"
     ]
   },
   {
@@ -102,7 +103,7 @@
     "method": "POST",
     "path": "/api/est/movimento/foto",
     "screen": "public/estoque.html / Perda/consumo",
-    "permission": "gestor ou acessar_lancamentos",
+    "permission": "gestor ou acessar_lancamentos ou registrar_perda_consumo",
     "payload_required": ["usuario_id", "image"],
     "payload_optional": ["tipo"],
     "reads": ["imagem enviada pelo gestor", "est_produto", "est_categoria"],
@@ -113,6 +114,62 @@
       "nao baixa estoque automaticamente",
       "preenche a tela para revisao do gestor",
       "usa /api/est/match-produtos para sugerir produto existente"
+    ]
+  },
+  {
+    "id": "est-movimento-manual",
+    "module": "estoque-v2/perdas-consumo",
+    "method": "POST",
+    "path": "/api/est/movimento",
+    "screen": "public/estoque.html / Perda/consumo",
+    "permission": "gestor ou acessar_lancamentos ou registrar_perda_consumo",
+    "payload_required": ["usuario_id", "tipo=PERDA|CONSUMO|ENTRADA", "produto_id", "quantidade"],
+    "payload_optional": ["unidade", "unidade_informada", "motivo", "observacao"],
+    "reads": ["est_produto"],
+    "writes": ["est_movimento", "est_produto.estoque_atual"],
+    "success": "200 { ok, produto, antes, depois, unidade, quantidade_lancada, unidade_informada }",
+    "known_errors": ["403 Sem permissao para lancar movimento.", "400 tipo invalido", "400 produto/quantidade invalido", "404 produto nao encontrado"],
+    "side_effects": [
+      "converte quantidade informada para a unidade operacional do produto quando houver peso_g/unidade compativel",
+      "perda e consumo baixam estoque; entrada soma estoque",
+      "registra historico antes/depois em est_movimento"
+    ]
+  },
+  {
+    "id": "est-perdas-consumo-dashboard",
+    "module": "estoque-v2/perdas-consumo",
+    "method": "GET",
+    "path": "/api/est/perdas-consumo/dashboard",
+    "screen": "public/estoque.html / Perda/consumo",
+    "permission": "gestor ou acessar_lancamentos ou registrar_perda_consumo",
+    "payload_required": ["usuario_id"],
+    "payload_optional": ["dias=1..90"],
+    "reads": ["est_movimento"],
+    "writes": [],
+    "success": "200 { dias, escopo, kpis[], por_produto[], por_usuario[], recentes[] }",
+    "known_errors": ["403 Sem permissao para ver perdas/consumo."],
+    "side_effects": [
+      "read-only",
+      "colaborador com apenas registrar_perda_consumo ve somente seus lancamentos"
+    ]
+  },
+  {
+    "id": "est-whatsapp-khardela-confirmacao",
+    "module": "estoque-v2/perdas-consumo",
+    "method": "POST",
+    "path": "/api/est/whatsapp/inbound",
+    "screen": "automacao Khardela / WhatsApp",
+    "permission": "telefone cadastrado + gestor/acessar_lancamentos/registrar_perda_consumo",
+    "payload_required": ["telefone/from/phone", "texto/text/message"],
+    "payload_optional": ["token se WA_INBOUND_TOKEN estiver configurado"],
+    "reads": ["rbac_contacts", "est_whatsapp_msg", "est_produto", "est_movimento"],
+    "writes": ["est_whatsapp_msg", "est_movimento", "est_produto.estoque_atual somente apos SIM"],
+    "success": "200 { resposta, usuario, aguardando_confirmacao|pendente_confirmado|pendente_cancelado }",
+    "known_errors": ["401 token invalido", "400 informe telefone e texto"],
+    "side_effects": [
+      "mensagem de perda/consumo/entrada cria pendencia OUT aguardando SIM/CANCELAR",
+      "SIM confirma e so entao lanca estoque",
+      "CANCELAR descarta sem escrita em estoque"
     ]
   },
   {
