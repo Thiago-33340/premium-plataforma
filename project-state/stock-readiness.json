@@ -280,6 +280,26 @@
     "nomenclatura": "Interface e rota oficial passam a usar Khardela/automacao Khardela; /api/est/jessica fica apenas como compatibilidade para fluxos antigos do n8n.",
     "validacao_local": ["node --check server-pg.js", "parse script public/estoque.html", "parse project-state/routes.json/modules.json"]
   },
+  "loss_consumption_khardela": {
+    "updated_at": "2026-06-24T14:45:00.000-03:00",
+    "status": "primeira_fatia_implementada_local_pendente_deploy",
+    "escopo": "Tela Perda/Consumo com resolvedor de produto existente, unidade travada em opcoes cadastradas e foto opcional da balanca para preencher produto/medida antes da revisao.",
+    "rotas": {
+      "foto_read_only": "POST /api/est/movimento/foto",
+      "lancamento": "POST /api/est/movimento"
+    },
+    "regras": [
+      "Foto nao baixa estoque automaticamente.",
+      "Gestor/colaborador autorizado revisa produto, unidade e medida antes de clicar Lancar.",
+      "Produto e resolvido por /api/est/match-produtos para evitar contains fraco.",
+      "Acesso continua controlado por acessar_lancamentos ou gestor."
+    ],
+    "pendente": [
+      "Fluxo WhatsApp com imagem + estado de confirmacao antes de lancar.",
+      "Dashboard dedicado de perdas por periodo/motivo/usuario.",
+      "Permissao granular por colaborador para perdas/consumo separada de acessar_lancamentos."
+    ]
+  },
   "border_mapper_dry_run": {
     "updated_at": "2026-06-24T03:55:00.000-03:00",
     "status": "ajuste_seguro_parcial_expandido_em_producao_smoke_21_21",

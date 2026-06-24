@@ -3458,6 +3458,40 @@ async function api(req, res, url) {
     return json(res, 200, out);
   }
 
+  // ---- Interpretar foto de perda/consumo (balanca) sem escrever estoque ----
+  if (sub === 'est' && seg[2] === 'movimento' && seg[3] === 'foto' && req.method === 'POST') {
+    const b = await readBody(req);
+    const e = await estPermsEfetivas(b.usuario_id);
+    if (!e.user || !(e.gestor || e.perms.includes('acessar_lancamentos'))) return json(res, 403, { erro: 'Sem permissao para interpretar movimento.' });
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) return json(res, 400, { erro: 'Leitura por imagem nao configurada (defina OPENAI_API_KEY no Easypanel).' });
+    if (!b.image) return json(res, 400, { erro: 'envie a imagem' });
+    const dataUrl = String(b.image).startsWith('data:') ? b.image : ('data:image/jpeg;base64,' + b.image);
+    try {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0,
+          max_tokens: 700,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: 'Voce analisa uma foto operacional de restaurante: um item deve estar sobre uma balanca. Extraia somente o que estiver visivel/seguro. Responda APENAS JSON {"produto": string|null, "quantidade": number|null, "unidade": "g"|"KG"|"UNIDADE"|"LITRO"|"ML"|null, "leitura_balanca": string|null, "observacao": string|null, "confianca": number}. Se nao conseguir ler peso/produto com seguranca, use null e explique em observacao. Nao invente.' },
+            { role: 'user', content: [{ type: 'text', text: 'Identifique o item e a medida mostrada na balanca para o gestor revisar antes de baixar estoque.' }, { type: 'image_url', image_url: { url: dataUrl } }] }
+          ]
+        })
+      });
+      const j = await r.json();
+      if (!r.ok) return json(res, 502, { erro: 'Leitura da foto falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
+      let p = {}; try { p = JSON.parse(j.choices[0].message.content); } catch (_) { p = {}; }
+      const match = await estMatchProdutosEntrada([{ idx: 0, texto: p.produto || '', unidade: p.unidade || '' }], 0.45);
+      return json(res, 200, { produto: p.produto || null, quantidade: p.quantidade ?? null, unidade: p.unidade || null, leitura_balanca: p.leitura_balanca || null, observacao: p.observacao || null, confianca: p.confianca ?? null, match: match[0] || null });
+    } catch (e) {
+      return json(res, 502, { erro: 'Erro na leitura da foto: ' + (e.message || e) });
+    }
+  }
+
   // ---- Lançar perda / consumo / entrada (in-app) ----
   if (sub === 'est' && seg[2] === 'movimento' && req.method === 'POST') {
     const b = await readBody(req);

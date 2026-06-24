@@ -482,13 +482,13 @@
     "id": "task-f2-037",
     "titulo": "Implementar abas Receitas e Perdas/Consumo com Khardela",
     "modulo": "estoque-v2",
-    "status": "planejado",
+    "status": "primeira_fatia_local_pendente_deploy",
     "prioridade": "alta",
     "categoria": "produto",
     "responsavel_humano": "Thiago + Tassiano",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-036"],
-    "proximo_passo": "Usar o resolvedor /api/est/match-produtos como base; criar UI de receitas com rendimento proporcional, filtros ativo/inativo, exclusao logica recuperavel e fluxo Perdas/Consumo com foto/balanca + confirmacao pela automacao Khardela."
+    "proximo_passo": "Deployar a primeira fatia de Perdas/Consumo com foto/balanca e match seguro. Depois implementar Receitas como aba dedicada sobre est_ficha_producao/est_ficha_porcao, filtros ativo/inativo, exclusao logica recuperavel e confirmacao WhatsApp da automacao Khardela antes de lancar baixa."
   }
 ]

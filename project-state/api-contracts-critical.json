@@ -97,6 +97,25 @@
     ]
   },
   {
+    "id": "est-movimento-foto",
+    "module": "estoque-v2/perdas-consumo",
+    "method": "POST",
+    "path": "/api/est/movimento/foto",
+    "screen": "public/estoque.html / Perda/consumo",
+    "permission": "gestor ou acessar_lancamentos",
+    "payload_required": ["usuario_id", "image"],
+    "payload_optional": ["tipo"],
+    "reads": ["imagem enviada pelo gestor", "est_produto", "est_categoria"],
+    "writes": [],
+    "success": "200 { produto, quantidade, unidade, leitura_balanca, observacao, confianca, match }",
+    "known_errors": ["400 leitura por imagem nao configurada", "403 Sem permissao", "502 leitura da foto falhou"],
+    "side_effects": [
+      "nao baixa estoque automaticamente",
+      "preenche a tela para revisao do gestor",
+      "usa /api/est/match-produtos para sugerir produto existente"
+    ]
+  },
+  {
     "id": "est-produto-ficha-simple",
     "module": "estoque-v2/producao-fichas",
     "method": "PUT",

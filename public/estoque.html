@@ -1143,6 +1143,51 @@ async function lancarMov(){ const nome=($('movProd')&&$('movProd').value||'').tr
     toast('Lançado'); if($('movProd'))$('movProd').value=''; if($('movQtd'))$('movQtd').value=''; if($('movMot'))$('movMot').value=''; }catch(e){} }
 
 /* ===== JÉSSICA (consulta ao banco do estoque) ===== */
+/* ===== PERDA / CONSUMO INTELIGENTE (override com foto e match seguro) ===== */
+function movUnidades(){ const s=new Set(['G','KG','UNIDADE','LITRO','ML']); (_allProds||[]).forEach(p=>{ if(p.unidade)s.add(String(p.unidade).toUpperCase()); }); return [...s].sort(); }
+function movRenderMatch(){ const el=$('movMatch'); if(!el)return; const sug=(_mov.sugestoes||[])[0], prod=compraProdutoNome(_mov.produto_id); let h='';
+  if(_mov.match_status==='auto'&&prod) h=`<div class="xs" style="color:#22c55e">Khardela vinculou: <b>${esc(prod)}</b> (${compraPct(_mov.match_score)})</div>`;
+  else if(sug&&!_mov.produto_id) h=`<div class="xs" style="color:#f59e0b">Sugestao: <b>${esc(sug.nome)}</b> (${compraPct(sug.score)}) <button class="btn ghost sm" style="padding:4px 8px;margin-left:6px" onclick="movUsarSug()">Usar</button></div>`;
+  else if(($('movProd')&&$('movProd').value||'').trim()&&!_mov.produto_id) h=`<div class="xs" style="color:#ef4444">Sem vinculo seguro. Escolha um produto cadastrado antes de lançar.</div>`;
+  el.innerHTML=h;
+}
+async function movTela(){ await ensureAllProds(); _mov={ tipo:'PERDA', produto_id:'', sugestoes:[], match_score:null, match_status:'manual', foto:null };
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Perda / consumo</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <p class="mut sm" style="margin:0 0 8px">Baixa com revisão: digite ou tire foto do item na balança. A Khardela sugere o produto cadastrado, mas você confirma antes de lançar.</p>
+   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" id="movTipos">
+     ${['PERDA','CONSUMO','ENTRADA'].map(t=>`<button class="chip ${t==='PERDA'?'on':''}" onclick="movSetTipo('${t}')">${t==='PERDA'?'Perda':t==='CONSUMO'?'Consumo':'Entrada'}</button>`).join('')}</div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn ghost sm" onclick="movAbrirFoto()">📷 Foto da balança</button><button class="btn ghost sm" onclick="movResolverMatch(true)">Resolver produto</button></div>
+   <label class="flabel">Produto<input id="movProd" class="field" list="movDL" placeholder="Digite o produto..." onchange="movProdutoMudou()"></label>
+   <datalist id="movDL">${_allProds.map(p=>`<option value="${esc(p.nome)}">`).join('')}</datalist>
+   <div id="movMatch" style="margin:-2px 0 8px"></div>
+   <div class="cnt-row"><label class="flabel" style="flex:1;margin:0">Unidade<select id="movUn" class="field">${movUnidades().map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join('')}</select></label><label class="flabel" style="flex:1;margin:0">Medida<input id="movQtd" class="field" inputmode="decimal" placeholder="ex: 250"></label></div>
+   <label class="flabel">Motivo / observação<input id="movMot" class="field" placeholder="ex: caiu no chão, pedido teste, consumo interno"></label>
+   <button class="btn primary sm" style="margin-top:8px" onclick="lancarMov()">Lançar</button>
+   <div id="movResp" style="margin-top:12px"></div>`; }
+function movSetTipo(t){ _mov.tipo=t; document.querySelectorAll('#movTipos .chip').forEach((c,i)=>c.classList.toggle('on',['PERDA','CONSUMO','ENTRADA'][i]===t)); }
+function movProdutoMudou(){ _mov.produto_id=matchProduto(($('movProd')&&$('movProd').value)||''); _mov.match_status=_mov.produto_id?'manual':'pendente'; _mov.match_score=null; _mov.sugestoes=[]; movRenderMatch(); }
+function movUsarSug(){ const s=(_mov.sugestoes||[])[0]; if(!s)return; _mov.produto_id=s.id; _mov.match_score=s.score; _mov.match_status='confirmado'; if($('movProd'))$('movProd').value=s.nome; movRenderMatch(); }
+async function movResolverMatch(force){ const nome=($('movProd')&&$('movProd').value||'').trim(), un=($('movUn')&&$('movUn').value)||''; if(!nome){ toast('Informe o produto'); return; }
+  try{ const d=await estFetch('/api/est/match-produtos','POST',{textos:[{idx:0,texto:nome,unidade:un}]}); const r=(d.resultados||[])[0]||{}; _mov.sugestoes=r.sugestoes||[]; const best=r.melhor;
+    if(best&&best.status==='auto'&&(force||!_mov.produto_id)){ _mov.produto_id=best.id; _mov.match_score=best.score; _mov.match_status='auto'; if($('movProd'))$('movProd').value=best.nome; }
+    else if(best&&!_mov.produto_id){ _mov.match_score=best.score; _mov.match_status=best.status||'sugestao'; }
+    movRenderMatch();
+  }catch(e){}
+}
+function movAbrirFoto(){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.onchange=()=>{ if(inp.files&&inp.files[0]) movFoto(inp.files[0]); }; inp.click(); }
+async function movFoto(file){ toast('Lendo foto da balança...'); let dataUrl; try{ dataUrl=await downscaleImg(file); }catch(e){ toast('Erro ao abrir a imagem'); return; }
+  try{ const d=await estFetch('/api/est/movimento/foto','POST',{image:dataUrl,tipo:_mov.tipo}); _mov.foto=d; if(d.produto&&$('movProd'))$('movProd').value=d.produto; if(d.quantidade!=null&&$('movQtd'))$('movQtd').value=String(d.quantidade).replace('.',','); if(d.unidade&&$('movUn'))$('movUn').value=String(d.unidade).toUpperCase(); if(d.observacao&&$('movMot')&&!$('movMot').value)$('movMot').value=d.observacao; const r=d.match||{},best=r.melhor; _mov.sugestoes=r.sugestoes||[]; if(best&&best.status==='auto'){ _mov.produto_id=best.id; _mov.match_score=best.score; _mov.match_status='auto'; if($('movProd'))$('movProd').value=best.nome; } else { _mov.produto_id=''; _mov.match_score=best&&best.score; _mov.match_status=best?best.status:'sem_match_seguro'; } movRenderMatch(); toast('Foto interpretada. Revise antes de lançar.'); }catch(e){}
+}
+async function lancarMov(){ const nome=($('movProd')&&$('movProd').value||'').trim(); const q=($('movQtd')&&$('movQtd').value||'').replace(',','.'); const un=($('movUn')&&$('movUn').value)||''; const mot=($('movMot')&&$('movMot').value)||'';
+  if(!nome){ toast('Informe o produto'); return; } if(!(parseFloat(q)>0)){ toast('Informe a medida'); return; }
+  if(!_mov.produto_id) await movResolverMatch(true);
+  if(!_mov.produto_id){ toast('Confirme o produto cadastrado antes de lançar.'); return; }
+  const obs=[un?('unidade informada: '+un):'',_mov.foto&&_mov.foto.leitura_balanca?('balanca: '+_mov.foto.leitura_balanca):''].filter(Boolean).join(' | ');
+  try{ const d=await estFetch('/api/est/movimento','POST',{tipo:_mov.tipo,produto_id:_mov.produto_id,quantidade:q,motivo:mot,observacao:obs});
+    $('movResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">${esc(d.produto)}</div><div class="mut sm">Estoque: ${fmt(d.antes)} → ${fmt(d.depois)} ${esc(d.unidade||'')}</div></div>`;
+    toast('Lançado'); ['movProd','movQtd','movMot'].forEach(id=>{ if($(id))$(id).value=''; }); _mov.produto_id=''; _mov.sugestoes=[]; _mov.match_status='manual'; movRenderMatch(); }catch(e){}
+}
+
 function khardelaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Khardela · estoque</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
   <p class="mut sm" style="margin:0 0 8px">Pergunte sobre estoque, compras, contagens, visitas, fornecedores e produção. Ela responde com base no banco e respeita suas permissões.</p>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${['O que foi feito hoje no estoque?','Quais produtos estão abaixo do mínimo?','Quais contagens estão aguardando auditoria?','Quais compras foram lançadas hoje?'].map(q=>`<button class="chip" onclick="jessAsk('${q.replace(/'/g,"\\'")}')">${esc(q)}</button>`).join('')}</div>
