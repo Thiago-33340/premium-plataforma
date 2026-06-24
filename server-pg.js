@@ -1173,7 +1173,12 @@ function estScoreTextoProduto(queryText, candidateText) {
     const fz = estSim(q, c);
     if (fz >= 0.72 && fz * 0.88 > score) { score = fz * 0.88; motivo = 'similaridade'; }
   }
-  score = Math.max(0, score - estConflictPenalty(qTokens, cTokens));
+  let penalty = estConflictPenalty(qTokens, cTokens);
+  if ((cTokens.includes('aberto') || cTokens.includes('aberta')) && !(qTokens.includes('aberto') || qTokens.includes('aberta'))) penalty += 0.28;
+  for (const t of ['borda', 'montagem', 'finalizacao']) {
+    if (cTokens.includes(t) && !qTokens.includes(t)) penalty += 0.06;
+  }
+  score = Math.max(0, score - penalty);
   return { score, motivo };
 }
 function estScoreProdutoEntrada(texto, p) {
