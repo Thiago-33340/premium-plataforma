@@ -4054,12 +4054,12 @@ async function api(req, res, url) {
     // catálogo completo p/ admin (mostra TODOS os itens, qualquer status)
     if (seg[2] === 'catalogo' && req.method === 'GET') {
       const cats = await db.q('SELECT id, codigo, nome, ordem FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem, nome', [TENANT]);
-      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, status, codigo_externo, ordem FROM produtos WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
+      const prods = await db.q('SELECT id, categoria_id, nome, descricao, tipo_montagem, preco_base, regra_preco, gratuito, status, codigo_externo, ordem FROM produtos WHERE tenant_id=$1 ORDER BY ordem, nome', [TENANT]);
       const grupos = await db.q('SELECT id, produto_id, nome, ordem, min_escolhas, max_escolhas, permite_repeticao, regra_preco, condicao FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
       const opcoes = await db.q('SELECT id, grupo_id, nome, descricao, preco, status, codigo_externo, ordem FROM opcoes WHERE tenant_id=$1 ORDER BY ordem', [TENANT]);
-      const opByG = {}; for (const o of opcoes.rows) (opByG[o.grupo_id] = opByG[o.grupo_id] || []).push({ id: o.id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, codigo: o.codigo_externo || '', ordem: o.ordem });
-      const gByP = {}; for (const g of grupos.rows) (gByP[g.produto_id] = gByP[g.produto_id] || []).push({ id: g.id, nome: g.nome, min: g.min_escolhas, max: g.max_escolhas, repete: g.permite_repeticao, regra: g.regra_preco, condicao: g.condicao || {}, opcoes: opByG[g.id] || [] });
-      const pByC = {}; for (const p of prods.rows) (pByC[p.categoria_id] = pByC[p.categoria_id] || []).push({ id: p.id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, status: p.status, codigo: p.codigo_externo || '', ordem: p.ordem, grupos: gByP[p.id] || [] });
+      const opByG = {}; for (const o of opcoes.rows) (opByG[o.grupo_id] = opByG[o.grupo_id] || []).push({ id: o.id, grupo_id: o.grupo_id, nome: o.nome, descricao: o.descricao || '', preco: Number(o.preco), status: o.status, codigo: o.codigo_externo || '', ordem: o.ordem });
+      const gByP = {}; for (const g of grupos.rows) (gByP[g.produto_id] = gByP[g.produto_id] || []).push({ id: g.id, produto_id: g.produto_id, nome: g.nome, ordem: g.ordem, min: g.min_escolhas, max: g.max_escolhas, repete: g.permite_repeticao, regra: g.regra_preco, condicao: g.condicao || {}, opcoes: opByG[g.id] || [] });
+      const pByC = {}; for (const p of prods.rows) (pByC[p.categoria_id] = pByC[p.categoria_id] || []).push({ id: p.id, categoria_id: p.categoria_id, nome: p.nome, descricao: p.descricao || '', tipo: p.tipo_montagem, preco_base: Number(p.preco_base), regra: p.regra_preco, gratuito: p.gratuito, status: p.status, codigo: p.codigo_externo || '', ordem: p.ordem, grupos: gByP[p.id] || [] });
       const categorias = cats.rows.map(c => ({ id: c.id, codigo: c.codigo, nome: c.nome, ordem: c.ordem, produtos: pByC[c.id] || [] }));
       return json(res, 200, { categorias });
     }
@@ -4085,21 +4085,23 @@ async function api(req, res, url) {
     if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
       const nome = String(body.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
       const tipo = (body.tipo_montagem === 'MONTAVEL') ? 'MONTAVEL' : 'SIMPLES';
+      const status = ['ATIVO', 'EM_FALTA', 'OCULTO'].includes(body.status) ? body.status : 'ATIVO';
       const r = await db.q(`INSERT INTO produtos (id,tenant_id,categoria_id,nome,descricao,tipo_montagem,preco_base,regra_preco,gratuito,status,ordem,codigo_externo)
-        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,'ATIVO',$9,$10) RETURNING id`,
+        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
         [TENANT, body.categoria_id ? Number(body.categoria_id) : null, nome, body.descricao || '', tipo, money(body.preco_base || 0),
-         body.regra_preco || (tipo === 'SIMPLES' ? 'FIXO' : 'SOMA'), !!body.gratuito, Number(body.ordem) || 999,
+         body.regra_preco || (tipo === 'SIMPLES' ? 'FIXO' : 'SOMA'), !!body.gratuito, status, Number(body.ordem) || 999,
          body.codigo != null ? String(body.codigo).trim() || null : null]);
       return json(res, 201, { ok: true, id: r.rows[0].id });
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'PATCH') {
       await db.q(`UPDATE produtos SET nome=COALESCE($2,nome), descricao=COALESCE($3,descricao), preco_base=COALESCE($4,preco_base),
         tipo_montagem=COALESCE($5,tipo_montagem), status=COALESCE($6,status), ordem=COALESCE($7,ordem), categoria_id=COALESCE($8,categoria_id),
-        regra_preco=COALESCE($9,regra_preco), codigo_externo=COALESCE($10,codigo_externo), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$11`,
+        regra_preco=COALESCE($9,regra_preco), codigo_externo=COALESCE($10,codigo_externo), gratuito=COALESCE($11,gratuito), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$12`,
         [seg[3], body.nome ?? null, body.descricao ?? null, body.preco_base != null ? money(body.preco_base) : null,
          body.tipo_montagem ?? null, body.status ?? null, body.ordem != null ? Number(body.ordem) : null,
          body.categoria_id != null ? Number(body.categoria_id) : null, body.regra_preco ?? null,
-         body.codigo != null ? String(body.codigo).trim() || null : null, TENANT]);
+         body.codigo != null ? String(body.codigo).trim() || null : null,
+         typeof body.gratuito === 'boolean' ? body.gratuito : null, TENANT]);
       return json(res, 200, { ok: true });
     }
     if (seg[2] === 'produto' && seg[3] && req.method === 'DELETE') {

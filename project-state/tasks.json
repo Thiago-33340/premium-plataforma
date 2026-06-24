@@ -345,7 +345,7 @@
     "ferramenta_atuante": "Claude + Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-025"],
-    "proximo_passo": "Mapper v1 revisado e ajuste seguro parcial expandido em produção: 3 códigos pai de Pizza Grande + 13 fichas/códigos de opções existentes corrigidos; chocolate Finalização em g, bolinha 4un=1 pacote e ficha do Brigadeiro de Ninho aplicados; smoke 21/21 OK. Próximo: decidir conversão de Morango caixa/Uva, criar opções ausentes de Borda Pãozinho/Vulcão e modelar Pizza Pequena com grupos condicionais por Estilo de borda, sem criar item 'Vulcões montados'."
+    "proximo_passo": "Mapper v1 revisado e ajuste seguro parcial expandido em produção: 3 códigos pai de Pizza Grande + 13 fichas/códigos de opções existentes corrigidos; chocolate Finalização em g, bolinha 4un=1 pacote e ficha do Brigadeiro de Ninho aplicados; smoke 21/21 OK. Ajuste local pendente de deploy: gestor passa a editar no admin item/opção/variação com categoria, status, regra de preço, ordem, descrição, código PDV/Saipos, condição JSON, ficha técnica direta e exclusão de ficha. Próximo: decidir conversão de Morango caixa/Uva, criar opções ausentes de Borda Pãozinho/Vulcão e modelar Pizza Pequena com grupos condicionais por Estilo de borda, sem criar item 'Vulcões montados'."
   },
   {
     "id": "task-f2-027",

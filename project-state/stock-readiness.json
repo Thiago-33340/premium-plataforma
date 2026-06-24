@@ -169,6 +169,28 @@
     "status": "validado_em_producao_smoke_21_21_teste_mutavel_status_revertido_ok",
     "decision_gate": "decision-018 / gate-white-label-4-perguntas",
     "escopo": "Primeira fatia — aba admin Estoque do cardápio, sem duplicar operação do estoque.html.",
+    "gestor_editing_local_pendente_deploy": {
+      "updated_at": "2026-06-24T00:00:00.000-03:00",
+      "status": "implementado_local_validado_sintaxe",
+      "campos_liberados": [
+        "produto.categoria_id",
+        "produto.status",
+        "produto.regra_preco",
+        "produto.ordem",
+        "produto.gratuito",
+        "produto.codigo_externo",
+        "produto.descricao",
+        "opcao.status",
+        "opcao.ordem",
+        "opcao.codigo_externo",
+        "opcao.descricao",
+        "opcao_grupos.regra_preco",
+        "opcao_grupos.ordem",
+        "opcao_grupos.condicao"
+      ],
+      "fichas": "Admin e estoque operacional passam a ter edição/exclusão explícita da ficha de baixa por venda via /api/est/ficha-cardapio.",
+      "seguranca_operacional": "Excluir item/opção na UI vira ocultar status=OCULTO para preservar cadastro, histórico e fichas."
+    },
     "fontes_unicas": {
       "vendavel": ["produtos", "opcoes", "opcao_grupos"],
       "ponte": ["ficha_itens"],

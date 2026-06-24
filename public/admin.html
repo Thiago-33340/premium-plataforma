@@ -12,13 +12,15 @@
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif; background:var(--bg); color:var(--txt); font-size:14px; }
-  button{ font-family:inherit; cursor:pointer; } input,select{ font-family:inherit; }
+  button{ font-family:inherit; cursor:pointer; } input,select,textarea{ font-family:inherit; }
   .mut{ color:var(--mut); } .sm{ font-size:12px; } .xs{ font-size:11px; }
   .btn{ background:var(--laranja); color:#0b0b0c; border:none; border-radius:10px; padding:11px 16px; font-weight:700; font-size:14px; }
   .btn:disabled{ opacity:.45; cursor:default; } .btn.full{ width:100%; }
   .btn.ghost{ background:transparent; color:var(--txt); border:1px solid var(--linha2); }
   .btn.sm{ padding:7px 11px; font-size:12px; border-radius:8px; } .btn.red{ background:var(--verm); color:#fff; }
   .field{ width:100%; background:var(--card); border:1px solid var(--linha2); color:#fff; border-radius:10px; padding:12px 13px; font-size:15px; outline:none; }
+  select.field{ appearance:none; -webkit-appearance:none; padding-right:38px; background-image:linear-gradient(45deg,transparent 50%,var(--laranja) 50%),linear-gradient(135deg,var(--laranja) 50%,transparent 50%); background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%; background-size:6px 6px,6px 6px; background-repeat:no-repeat; }
+  select.field option{ background:#121214; color:#fff; }
   .field:focus{ border-color:var(--laranja); }
 
   /* ===== LOGIN ===== */
@@ -305,9 +307,28 @@
         #s_cardapio .tag{font-size:10px;padding:1px 6px;border-radius:6px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
         #s_cardapio .tag.mont{background:#15233a;color:#6db0ff}
         #s_cardapio .tag.simp{background:#1c2417;color:#9bd67a}
+        #s_cardapio .tag.hide{background:#2a1414;color:#ff9a9a}
+        #s_cardapio .tag.warn{background:#2a2410;color:#f6d36d}
+        #s_cardapio .tag.rule{background:#20162d;color:#c9a5ff}
+        #s_cardapio .meta-line{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+        #s_cardapio .meta-line small{display:inline-flex;align-items:center;gap:3px;color:#9c9ca5;background:#17171b;border:1px solid #28282f;border-radius:999px;padding:2px 7px;font-size:10.5px}
+        #s_cardapio .onm small{display:block;color:#8a8a93;font-size:11px;margin-top:2px}
         #s_cardapio .addvar,#s_cardapio .additem{margin-top:8px}
         #s_cardapio .pz{width:84px;text-align:right}
+        .recipe-admin{max-width:980px!important}
+        .recipe-admin .recipe-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+        .recipe-admin .recipe-top p{margin:3px 0 0;color:var(--mut)}
+        .recipe-admin .recipe-table-wrap{overflow:auto;border:1px solid #24242a;border-radius:12px;background:#101012}
+        .recipe-admin table{width:100%;border-collapse:collapse;min-width:760px}
+        .recipe-admin th{font-size:10px;text-transform:uppercase;letter-spacing:.55px;color:var(--mut2);text-align:left;padding:9px 10px;border-bottom:1px solid #24242a}
+        .recipe-admin td{padding:8px 10px;border-bottom:1px solid #202026;vertical-align:middle}
+        .recipe-admin tr:last-child td{border-bottom:0}
+        .recipe-admin .field{margin:0;padding:9px 10px;font-size:12px}
+        .recipe-admin .recipe-foot{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+        .recipe-admin .recipe-foot .status{margin-right:auto;color:var(--mut);font-size:12px}
+        .recipe-admin .empty-note{padding:18px;text-align:center;color:var(--amar);font-size:13px}
         .modal .fgrid{display:flex;flex-direction:column;gap:10px}
+        .modal .box.formbox{max-width:620px;max-height:92vh;overflow:auto}
         .modal .flabel{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#cfcfd6}
         .modal .fcheck{display:flex;align-items:center;gap:8px;font-size:14px;color:#cfcfd6;cursor:pointer}
         .modal .mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
@@ -752,6 +773,15 @@ let _cat={categoria:{},prod:{},grupo:{},opc:{}};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 function num(v){ const n=Number(v); if(!Number.isFinite(n))return '—'; return Number.isInteger(n)?String(n):String(Number(n.toFixed(3))).replace('.',','); }
 function segBtns(tp,id,status){return ['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('');}
+const STATUS_OPTS=[{v:'ATIVO',t:'Ativo / vendavel'},{v:'EM_FALTA',t:'Em falta / aparece sem venda'},{v:'OCULTO',t:'Oculto / nao aparece'}];
+const REGRA_OPTS=[{v:'FIXO',t:'Fixo'},{v:'SOMA',t:'Soma adicionais'},{v:'MAIOR',t:'Maior valor escolhido'}];
+function optsHtml(opts,val){return opts.map(o=>`<option value="${esc(o.v)}" ${String(val||'')===String(o.v)?'selected':''}>${esc(o.t)}</option>`).join('');}
+function categoriaOpts(val){return Object.values(_cat.categoria||{}).sort((a,b)=>(Number(a.ordem)||0)-(Number(b.ordem)||0)||String(a.nome).localeCompare(String(b.nome))).map(c=>({v:c.id,t:c.nome}));}
+function condicaoTexto(c){ if(!c||!Object.keys(c).length)return ''; try{return JSON.stringify(c);}catch(e){return '';} }
+function condicaoParse(txt){ const s=String(txt||'').trim(); if(!s)return {}; try{ const v=JSON.parse(s); if(!v||Array.isArray(v)||typeof v!=='object')throw new Error(); return v; }catch(e){ throw new Error('Condicao precisa ser JSON valido. Ex.: {"mostrar_se":{"grupo":"Estilo de borda","igual_a":"Borda Vulcao"}}'); } }
+function regraLabel(v){ return (REGRA_OPTS.find(x=>x.v===v)||{}).t||v||'--'; }
+function statusTag(status){ return status==='OCULTO'?'<span class="tag hide">oculto</span>':status==='EM_FALTA'?'<span class="tag warn">em falta</span>':''; }
+function opcaoContexto(o){ const g=_cat.grupo&&_cat.grupo[o.grupo_id]; const p=g&&_cat.prod&&_cat.prod[g.produto_id]; return [p&&p.nome,g&&g.nome].filter(Boolean).join(' - ')||'Opcao do cardapio'; }
 
 async function loadCardapio(){
   const box=$('cardapioBox'); box.innerHTML='<div class="mut sm">Carregando cardápio…</div>';
@@ -764,7 +794,7 @@ async function loadCardapio(){
     let h=`<summary class="catsum"><span class="csL"><span class="pill cat">CATEGORIA</span> <b>${esc(c.nome)}</b> <span class="cnt">${c.produtos.length} ${c.produtos.length===1?'item':'itens'}</span></span>
       <span class="acts"><button class="ic" title="Renomear categoria" data-act="ecat" data-id="${c.id}">✎</button><button class="ic" title="Excluir categoria" data-act="xcat" data-id="${c.id}" data-nome="${esc(c.nome)}">🗑</button></span></summary><div class="in">`;
     c.produtos.forEach(p=>{
-      _cat.prod[p.id]=p; const montavel=p.tipo==='MONTAVEL';
+      if(!p.categoria_id)p.categoria_id=c.id; _cat.prod[p.id]=p; const montavel=p.tipo==='MONTAVEL';
       h+=`<div class="itemrow"><div class="ihead">
           <div class="inm">${esc(p.nome)} ${montavel?'<span class="tag mont">montável</span>':'<span class="tag simp">simples</span>'}${p.codigo?`<small>PDV ${esc(p.codigo)}</small>`:''}${p.descricao?`<small>${esc(p.descricao)}</small>`:''}</div>
           <input class="field pz" data-pz data-tp="produto" data-id="${p.id}" value="${Number(p.preco_base).toFixed(2)}" title="${montavel?'use 0 se o preço vem das variações':'preço do item'}">
@@ -821,6 +851,74 @@ async function editarOpcao(id,o){ const v=await pedirForm('Editar opção',[{key
 async function excluirOpcao(id,nome){ if(!await pedirConfirm('Excluir opção','Remover “'+nome+'”?'))return; await adminFetch('/api/admin/opcao/'+id,'DELETE'); toast('Opção removida'); loadCardapio(); }
 
 /* modais dinâmicos (form + confirmação) */
+/* overrides de edicao completa do cardapio */
+function onAct(act,ds){
+  if(act==='ecat'){const c=_cat.categoria[ds.id];editarCategoria(ds.id,c.nome,c.ordem);}
+  else if(act==='xcat')excluirCategoria(ds.id,ds.nome);
+  else if(act==='nitem')novoItem(ds.id);
+  else if(act==='eitem')editarItem(ds.id,_cat.prod[ds.id]);
+  else if(act==='xitem')excluirItem(ds.id,ds.nome);
+  else if(act==='nvar')novaVariacao(ds.id);
+  else if(act==='evar')editarVariacao(ds.id,_cat.grupo[ds.id]);
+  else if(act==='xvar')excluirVariacao(ds.id,ds.nome);
+  else if(act==='nopc')novaOpcao(ds.id);
+  else if(act==='eopc')editarOpcao(ds.id,_cat.opc[ds.id]);
+  else if(act==='xopc')excluirOpcao(ds.id,ds.nome);
+  else if(act==='fprod'){const p=_cat.prod[ds.id]||{};abrirFichaCardapioAdmin('produto',ds.id,p.nome||'Item do cardapio','Item do cardapio');}
+  else if(act==='fopc'){const o=_cat.opc[ds.id]||{};abrirFichaCardapioAdmin('opcao',ds.id,o.nome||'Opcao do cardapio',opcaoContexto(o));}
+}
+async function novoItem(catId){
+  const v=await pedirForm('Novo item',[{key:'nome',label:'Nome do item'},{key:'descricao',label:'Descricao',type:'textarea'},{key:'categoria_id',label:'Categoria',type:'select',value:catId,opts:categoriaOpts(catId)},{key:'codigo',label:'Codigo PDV/Saipos'},{key:'tipo_montagem',label:'Tipo de item',type:'select',value:'SIMPLES',opts:[{v:'SIMPLES',t:'Simples: vende direto'},{v:'MONTAVEL',t:'Montavel: usa variacoes/opcoes'}]},{key:'status',label:'Status inicial',type:'select',value:'ATIVO',opts:STATUS_OPTS},{key:'regra_preco',label:'Regra de preco',type:'select',value:'FIXO',opts:REGRA_OPTS},{key:'preco_base',label:'Preco base R$',type:'number',value:0},{key:'ordem',label:'Ordem',type:'number',value:999},{key:'gratuito',label:'Item gratuito',type:'check',value:false}]);
+  if(!v||!v.nome.trim())return;
+  await adminFetch('/api/admin/produto','POST',{categoria_id:+v.categoria_id||+catId,nome:v.nome.trim(),descricao:v.descricao,codigo:(v.codigo||'').trim(),tipo_montagem:v.tipo_montagem,status:v.status,regra_preco:v.regra_preco,preco_base:reais(v.preco_base),ordem:+v.ordem||999,gratuito:!!v.gratuito});
+  toast('Item criado'); loadCardapio();
+}
+async function editarItem(id,p){
+  p=p||{};
+  const v=await pedirForm('Editar item',[{key:'nome',label:'Nome',value:p.nome},{key:'descricao',label:'Descricao',type:'textarea',value:p.descricao},{key:'categoria_id',label:'Categoria',type:'select',value:p.categoria_id,opts:categoriaOpts(p.categoria_id)},{key:'codigo',label:'Codigo PDV/Saipos',value:p.codigo||''},{key:'tipo_montagem',label:'Tipo de item',type:'select',value:p.tipo||'SIMPLES',opts:[{v:'SIMPLES',t:'Simples: vende direto'},{v:'MONTAVEL',t:'Montavel: usa variacoes/opcoes'}]},{key:'status',label:'Status',type:'select',value:p.status||'ATIVO',opts:STATUS_OPTS},{key:'regra_preco',label:'Regra de preco',type:'select',value:p.regra||'FIXO',opts:REGRA_OPTS},{key:'preco_base',label:'Preco base R$',type:'number',value:p.preco_base||0},{key:'ordem',label:'Ordem',type:'number',value:p.ordem||999},{key:'gratuito',label:'Item gratuito',type:'check',value:!!p.gratuito}]);
+  if(!v)return;
+  await adminFetch('/api/admin/produto/'+id,'PATCH',{nome:v.nome.trim(),descricao:v.descricao,categoria_id:+v.categoria_id||null,codigo:(v.codigo||'').trim(),tipo_montagem:v.tipo_montagem,status:v.status,regra_preco:v.regra_preco,preco_base:reais(v.preco_base),ordem:+v.ordem||999,gratuito:!!v.gratuito});
+  toast('Item salvo'); loadCardapio();
+}
+async function excluirItem(id,nome){
+  if(!await pedirConfirm('Ocultar item','Ocultar "'+nome+'"? O item sai da loja, mas o cadastro e as fichas continuam preservados.','Ocultar'))return;
+  await adminFetch('/api/admin/produto/'+id,'PATCH',{status:'OCULTO'});
+  toast('Item ocultado'); loadCardapio();
+}
+async function novaVariacao(prodId){
+  const v=await pedirForm('Nova variacao',[{key:'nome',label:'Nome da variacao'},{key:'min',label:'Minimo de escolhas',type:'number',value:1},{key:'max',label:'Maximo de escolhas',type:'number',value:1},{key:'repete',label:'Pode repetir a mesma opcao',type:'check',value:false},{key:'regra_preco',label:'Regra de preco da variacao',type:'select',value:'SOMA',opts:REGRA_OPTS},{key:'ordem',label:'Ordem',type:'number',value:1},{key:'condicao',label:'Condicao JSON opcional: mostrar_se.grupo + igual_a/diferente_de',type:'textarea',value:''}]);
+  if(!v||!v.nome.trim())return;
+  let condicao; try{condicao=condicaoParse(v.condicao);}catch(e){toast(e.message);return;}
+  await adminFetch('/api/admin/grupo','POST',{produto_id:prodId,nome:v.nome.trim(),min:+v.min||0,max:+v.max||1,repete:!!v.repete,regra_preco:v.regra_preco,ordem:+v.ordem||1,condicao});
+  toast('Variacao criada'); loadCardapio();
+}
+async function editarVariacao(id,g){
+  g=g||{};
+  const v=await pedirForm('Editar variacao',[{key:'nome',label:'Nome',value:g.nome},{key:'min',label:'Minimo',type:'number',value:g.min},{key:'max',label:'Maximo',type:'number',value:g.max},{key:'repete',label:'Pode repetir',type:'check',value:!!g.repete},{key:'regra_preco',label:'Regra de preco',type:'select',value:g.regra||'SOMA',opts:REGRA_OPTS},{key:'ordem',label:'Ordem',type:'number',value:g.ordem||1},{key:'condicao',label:'Condicao JSON opcional: mostrar_se.grupo + igual_a/diferente_de',type:'textarea',value:condicaoTexto(g.condicao)}]);
+  if(!v)return;
+  let condicao; try{condicao=condicaoParse(v.condicao);}catch(e){toast(e.message);return;}
+  await adminFetch('/api/admin/grupo/'+id,'PATCH',{nome:v.nome.trim(),min:+v.min,max:+v.max,repete:!!v.repete,regra_preco:v.regra_preco,ordem:+v.ordem||1,condicao});
+  toast('Variacao salva'); loadCardapio();
+}
+async function novaOpcao(grupoId){
+  const v=await pedirForm('Nova opcao',[{key:'nome',label:'Nome da opcao'},{key:'descricao',label:'Descricao',type:'textarea'},{key:'codigo',label:'Codigo PDV/Saipos'},{key:'preco',label:'Preco adicional R$',type:'number',value:0},{key:'status',label:'Status',type:'select',value:'ATIVO',opts:STATUS_OPTS},{key:'ordem',label:'Ordem',type:'number',value:999}]);
+  if(!v||!v.nome.trim())return;
+  await adminFetch('/api/admin/opcao','POST',{grupo_id:grupoId,nome:v.nome.trim(),descricao:v.descricao,codigo:(v.codigo||'').trim(),preco:reais(v.preco),status:v.status,ordem:+v.ordem||999});
+  toast('Opcao criada'); loadCardapio();
+}
+async function editarOpcao(id,o){
+  o=o||{};
+  const v=await pedirForm('Editar opcao',[{key:'nome',label:'Nome',value:o.nome},{key:'descricao',label:'Descricao',type:'textarea',value:o.descricao||''},{key:'codigo',label:'Codigo PDV/Saipos',value:o.codigo||''},{key:'preco',label:'Preco adicional R$',type:'number',value:o.preco||0},{key:'status',label:'Status',type:'select',value:o.status||'ATIVO',opts:STATUS_OPTS},{key:'ordem',label:'Ordem',type:'number',value:o.ordem||999}]);
+  if(!v)return;
+  await adminFetch('/api/admin/opcao/'+id,'PATCH',{nome:v.nome.trim(),descricao:v.descricao,codigo:(v.codigo||'').trim(),preco:reais(v.preco),status:v.status,ordem:+v.ordem||999});
+  toast('Opcao salva'); loadCardapio();
+}
+async function excluirOpcao(id,nome){
+  if(!await pedirConfirm('Ocultar opcao','Ocultar "'+nome+'"? A opcao sai da loja, mas fica preservada para reativar depois.','Ocultar'))return;
+  await adminFetch('/api/admin/opcao/'+id,'PATCH',{status:'OCULTO'});
+  toast('Opcao ocultada'); loadCardapio();
+}
+
 function pedirForm(titulo,campos,okLabel='Salvar'){ return new Promise(resolve=>{
   const ov=document.createElement('div'); ov.className='modal on';
   const fields=campos.map(c=>{
@@ -829,7 +927,7 @@ function pedirForm(titulo,campos,okLabel='Salvar'){ return new Promise(resolve=>
     if(c.type==='textarea')return `<label class="flabel">${c.label}<textarea data-k="${c.key}" class="field" rows="2">${esc(c.value)}</textarea></label>`;
     return `<label class="flabel">${c.label}<input data-k="${c.key}" class="field" type="${c.type||'text'}" value="${c.value!=null?esc(c.value):''}"></label>`;
   }).join('');
-  ov.innerHTML=`<div class="box"><h3 style="margin:0 0 12px">${titulo}</h3><div class="fgrid">${fields}</div><div class="mfoot"></div></div>`;
+  ov.innerHTML=`<div class="box formbox"><h3 style="margin:0 0 12px">${titulo}</h3><div class="fgrid">${fields}</div><div class="mfoot"></div></div>`;
   const foot=ov.querySelector('.mfoot');
   const cancel=document.createElement('button'); cancel.className='btn ghost'; cancel.textContent='Cancelar'; cancel.onclick=()=>{document.body.removeChild(ov);resolve(null);};
   const ok=document.createElement('button'); ok.className='btn primary'; ok.textContent=okLabel; ok.onclick=()=>{ const out={}; ov.querySelectorAll('[data-k]').forEach(el=>{ out[el.dataset.k]= el.type==='checkbox'?el.checked:el.value; }); document.body.removeChild(ov); resolve(out); };
@@ -846,6 +944,49 @@ function pedirConfirm(titulo,msg,okLabel){ return new Promise(resolve=>{
 }); }
 async function salvarPreco(tp,id,preco,inp){ await fetch(API+'/api/admin/preco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,tipo:tp,id,preco:reais(preco)})}); inp.style.borderColor='var(--verde)'; toast('Preço salvo'); }
 async function setStatus(tp,id,status,el){ el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); await fetch(API+'/api/disponibilidade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tp,id,status,por:user.nome})}); toast('Disponibilidade atualizada'); }
+
+async function loadCardapio(){
+  const box=$('cardapioBox'); box.innerHTML='<div class="mut sm">Carregando cardapio...</div>';
+  let data; try{ const r=await fetch(API+'/api/admin/catalogo?admin_id='+encodeURIComponent(user.id)); data=await r.json(); if(!r.ok)throw new Error(data.erro||'Erro ao carregar'); }catch(e){ box.innerHTML='<div class="empty">Erro ao carregar cardapio.</div>'; return; }
+  const cats=data.categorias||[]; _cat={categoria:{},prod:{},grupo:{},opc:{}}; box.innerHTML='';
+  if(!cats.length){ box.innerHTML='<div class="empty">Sem categorias ainda. Clique em + Nova categoria para comecar.</div>'; return; }
+  cats.forEach(c=>{
+    _cat.categoria[c.id]=c; const prods=c.produtos||[];
+    const det=document.createElement('details'); det.className='catwrap'; det.open=cats.length<=3;
+    let h=`<summary class="catsum"><span class="csL"><span class="pill cat">CATEGORIA</span> <b>${esc(c.nome)}</b> <span class="cnt">${prods.length} ${prods.length===1?'item':'itens'}</span></span>
+      <span class="acts"><button class="ic" title="Renomear categoria" data-act="ecat" data-id="${c.id}">E</button><button class="ic" title="Desativar categoria" data-act="xcat" data-id="${c.id}" data-nome="${esc(c.nome)}">X</button></span></summary><div class="in">`;
+    prods.forEach(p=>{
+      if(!p.categoria_id)p.categoria_id=c.id; _cat.prod[p.id]=p; const montavel=p.tipo==='MONTAVEL';
+      h+=`<div class="itemrow"><div class="ihead">
+        <div class="inm">${esc(p.nome)} ${montavel?'<span class="tag mont">montavel</span>':'<span class="tag simp">simples</span>'}${statusTag(p.status)}${p.regra?`<span class="tag rule">${esc(regraLabel(p.regra))}</span>`:''}
+          <span class="meta-line">${p.codigo?`<small>PDV ${esc(p.codigo)}</small>`:''}<small>ordem ${esc(p.ordem||999)}</small>${p.gratuito?'<small>gratuito</small>':''}${p.descricao?`<small>${esc(p.descricao)}</small>`:''}</span></div>
+        <input class="field pz" data-pz data-tp="produto" data-id="${p.id}" value="${Number(p.preco_base||0).toFixed(2)}" title="${montavel?'use 0 se o preco vem das variacoes':'preco do item'}">
+        <div class="seg">${segBtns('produto',p.id,p.status)}</div>
+        <span class="acts"><button class="ic" title="Ficha tecnica do item" data-act="fprod" data-id="${p.id}">F</button><button class="ic" title="Editar item" data-act="eitem" data-id="${p.id}">E</button><button class="ic" title="Ocultar item" data-act="xitem" data-id="${p.id}" data-nome="${esc(p.nome)}">X</button></span>
+      </div>`;
+      (p.grupos||[]).forEach(g=>{
+        g=Object.assign({produto_id:p.id},g); _cat.grupo[g.id]=g;
+        const cond=g.condicao&&Object.keys(g.condicao).length?' · condicional':'';
+        h+=`<div class="varrow"><div class="vhead"><span class="vnm">↳ ${esc(g.nome)} <small>escolhe ${g.min}-${g.max}${g.repete?' · repete':''} · ${g.opcoes.length} opcoes · ${esc(regraLabel(g.regra))} · ordem ${esc(g.ordem||1)}${cond}</small></span>
+          <span class="acts"><button class="ic" title="Nova opcao" data-act="nopc" data-id="${g.id}">+</button><button class="ic" title="Editar variacao" data-act="evar" data-id="${g.id}">E</button><button class="ic" title="Excluir variacao" data-act="xvar" data-id="${g.id}" data-nome="${esc(g.nome)}">X</button></span></div>`;
+        (g.opcoes||[]).forEach(o=>{
+          o=Object.assign({grupo_id:g.id,produto_id:p.id},o); _cat.opc[o.id]=o;
+          h+=`<div class="opcrow"><span class="onm">${esc(o.nome)} ${statusTag(o.status)}<small>${o.codigo?`PDV ${esc(o.codigo)} · `:''}ordem ${esc(o.ordem||999)}${o.descricao?' · '+esc(o.descricao):''}</small></span>
+            <input class="field pz" data-pz data-tp="opcao" data-id="${o.id}" value="${Number(o.preco||0).toFixed(2)}">
+            <div class="seg">${segBtns('opcao',o.id,o.status)}</div>
+            <span class="acts"><button class="ic" title="Ficha tecnica da opcao" data-act="fopc" data-id="${o.id}">F</button><button class="ic" title="Editar opcao" data-act="eopc" data-id="${o.id}">E</button><button class="ic" title="Ocultar opcao" data-act="xopc" data-id="${o.id}" data-nome="${esc(o.nome)}">X</button></span></div>`;
+        });
+        h+=`</div>`;
+      });
+      h+=`<div class="addvar"><button class="btn sm ghost" data-act="nvar" data-id="${p.id}">+ Variacao</button></div></div>`;
+    });
+    h+=`<div class="additem"><button class="btn sm primary" data-act="nitem" data-id="${c.id}">+ Item nesta categoria</button></div>`;
+    det.innerHTML=h+'</div>'; box.appendChild(det);
+  });
+  box.querySelectorAll('[data-pz]').forEach(i=> i.addEventListener('keydown',e=>{ if(e.key==='Enter')salvarPreco(i.dataset.tp,i.dataset.id,i.value,i); }));
+  box.querySelectorAll('.seg button').forEach(b=> b.onclick=()=>setStatus(b.dataset.tp,b.dataset.id,b.dataset.s,b));
+  box.querySelectorAll('[data-act]').forEach(b=> b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); onAct(b.dataset.act,b.dataset); });
+}
 
 /* ===== ESTOQUE ===== */
 let _estCardapio=[], _estCardapioView=[], _estCardapioMeta={};
@@ -922,6 +1063,77 @@ async function salvarCardapioInv(tipo,id,patch,el){
 }
 function salvarQtdVendavel(btn,tipo,id){ const input=btn&&btn.parentElement&&btn.parentElement.querySelector('input'); salvarCardapioInv(tipo,id,{quantidade_vendavel:input?input.value:''},btn); }
 function salvarDdMapper(btn,tipo,id){ const input=btn&&btn.parentElement&&btn.parentElement.querySelector('input'); salvarCardapioInv(tipo,id,{dd_external_id:input?input.value:''},btn); }
+
+/* editor direto da ficha de baixa por venda, usado no Estoque do cardapio */
+let _acf={tipo:'',id:'',nome:'',contexto:'',insumos:[],itens:[]};
+async function abrirFichaCardapioAdmin(tipo,id,nome,contexto){
+  try{
+    const [ir,fr]=await Promise.all([
+      fetch(API+'/api/est/produtos'),
+      fetch(API+`/api/est/ficha-cardapio?usuario_id=${encodeURIComponent(user.id)}&tipo=${encodeURIComponent(tipo)}&id=${encodeURIComponent(id)}`)
+    ]);
+    const ins=await ir.json(), ficha=await fr.json(); if(!fr.ok)throw new Error(ficha.erro||'Erro ao abrir ficha');
+    _acf={tipo,id,nome,contexto:contexto||'',insumos:(ins.produtos||[]).filter(x=>x.ativo!==false),itens:(ficha.itens||[]).map(x=>({est_produto_id:x.est_produto_id,quantidade:x.quantidade,unidade:x.unidade||'',observacao:x.observacao||''}))};
+    renderFichaCardapioAdmin();
+  }catch(e){toast(e.message||'Erro ao abrir ficha');}
+}
+function acfOpts(sel){return '<option value="">-- escolha o insumo --</option>'+(_acf.insumos||[]).map(x=>`<option value="${x.id}" ${String(sel||'')===String(x.id)?'selected':''}>${esc(x.nome)}${x.unidade?' ['+esc(x.unidade)+']':''}</option>`).join('');}
+function acfSync(){document.querySelectorAll('#acfRows tr').forEach(tr=>{const x=_acf.itens[+tr.dataset.i];if(!x)return;x.est_produto_id=tr.querySelector('[data-k="insumo"]').value;x.quantidade=tr.querySelector('[data-k="qtd"]').value;x.unidade=tr.querySelector('[data-k="un"]').value;x.observacao=tr.querySelector('[data-k="obs"]').value;});}
+function acfRenderRows(){
+  const body=$('acfRows'); if(!body)return;
+  body.innerHTML=(_acf.itens||[]).map((x,i)=>`<tr data-i="${i}"><td><select class="field" data-k="insumo">${acfOpts(x.est_produto_id)}</select></td><td><input class="field" data-k="qtd" inputmode="decimal" value="${x.quantidade!=null?esc(x.quantidade):''}"></td><td><input class="field" data-k="un" value="${esc(x.unidade||'')}" placeholder="g, kg, un"></td><td><input class="field" data-k="obs" value="${esc(x.observacao||'')}"></td><td><button class="ic" onclick="acfRemove(${i})">x</button></td></tr>`).join('');
+  const empty=$('acfEmpty'); if(empty)empty.style.display=_acf.itens.length?'none':'block';
+}
+function renderFichaCardapioAdmin(){
+  document.querySelectorAll('#acfModal').forEach(x=>x.remove());
+  const m=document.createElement('div'); m.className='modal on'; m.id='acfModal';
+  m.innerHTML=`<div class="box recipe-admin"><div class="recipe-top"><div><h3>Ficha tecnica - ${esc(_acf.nome)}</h3><p>${esc(_acf.contexto||'Item do cardapio')} · baixa por unidade vendida</p></div><button class="ic" onclick="document.getElementById('acfModal').remove()">x</button></div>
+    <div class="recipe-table-wrap"><table><thead><tr><th>Insumo operacional</th><th>Quantidade</th><th>Unidade</th><th>Observacao</th><th></th></tr></thead><tbody id="acfRows"></tbody></table><div class="empty-note" id="acfEmpty">Sem ficha: este item ainda nao baixa estoque quando vende.</div></div>
+    <button class="btn ghost sm" style="margin-top:10px" onclick="acfAdd()">+ Adicionar insumo</button>
+    <div class="recipe-foot"><span class="status" id="acfStatus">A ficha substitui a ficha anterior ao salvar.</span><button class="btn danger sm" onclick="acfDelete()">Excluir ficha</button><button class="btn ghost sm" onclick="document.getElementById('acfModal').remove()">Cancelar</button><button class="btn primary sm" id="acfSave" onclick="acfSave()">Salvar ficha</button></div></div>`;
+  document.body.appendChild(m); acfRenderRows();
+}
+function acfAdd(){acfSync();_acf.itens.push({est_produto_id:'',quantidade:'',unidade:'',observacao:''});acfRenderRows();}
+function acfRemove(i){acfSync();_acf.itens.splice(i,1);acfRenderRows();}
+async function acfSave(){
+  acfSync(); const btn=$('acfSave'); if(btn)btn.disabled=true; if($('acfStatus'))$('acfStatus').textContent='Validando e salvando...';
+  try{
+    const r=await fetch(API+'/api/est/ficha-cardapio',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,tipo:_acf.tipo,id:_acf.id,itens:_acf.itens})});
+    const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.erro||'Erro ao salvar ficha');
+    toast('Ficha salva'); document.getElementById('acfModal').remove(); if(typeof loadEstoque==='function')loadEstoque();
+  }catch(e){ if($('acfStatus'))$('acfStatus').textContent=e.message||'Erro ao salvar'; if(btn)btn.disabled=false; }
+}
+async function acfDelete(){
+  if(!await pedirConfirm('Excluir ficha','Remover todos os insumos desta ficha? O item continua existindo, mas nao baixa estoque ate receber uma nova ficha.','Excluir ficha'))return;
+  _acf.itens=[]; await acfSave();
+}
+function estCardHtml(x){
+  const ficha=(x.ficha||[]).slice(0,8).map(l=>`<div class="inv-line"><div><b>${esc(l.insumo_nome||'--')}</b><small>${l.est_produto_id?`#${l.est_produto_id}`:'sem vinculo'} ${l.ativo===false?'· inativo':''}</small></div><div>${num(l.quantidade)} ${esc(l.unidade||'')}</div><small>${l.estoque_atual!=null?`saldo operacional ${num(l.estoque_atual)} ${esc(l.unidade_estoque||'')}`:'sem saldo operacional'}${l.setores?' · '+esc(l.setores):''}</small></div>`).join('');
+  const safeId=esc(x.id), tipo=esc(x.tipo), dd=(x.dd_mapper&&x.dd_mapper.external_id)||'', nomeJs=String(x.nome||'Item').replace(/\\/g,'\\\\').replace(/'/g,"\\'"), ctxJs=String(x.contexto||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return `<article class="inv-card" data-tipo="${tipo}" data-id="${safeId}">
+    <div class="inv-head">
+      <div class="inv-title"><b>${esc(x.nome)}</b><small>${esc(x.contexto||'--')} ${x.codigo_externo?`· codigo ${esc(x.codigo_externo)}`:''}</small></div>
+      <div class="inv-actions">
+        <button class="btn sm ghost" onclick="abrirFichaCardapioAdmin('${tipo}','${safeId}','${esc(nomeJs)}','${esc(ctxJs)}')">${x.ficha_count?'Editar ficha':'Criar ficha'}</button>
+        <span class="inv-status ${estStatusClass(x.status)}">${esc(estStatusLabel(x.status))}</span>
+        ${['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button class="btn sm ${x.status===s?'':'ghost'}" onclick="salvarCardapioInv('${tipo}','${safeId}',{status:'${s}'},this)">${s==='ATIVO'?'Ativar':s==='EM_FALTA'?'Falta':'Ocultar'}</button>`).join('')}
+      </div>
+    </div>
+    <div class="inv-body">
+      <div class="inv-control">
+        <label class="inv-switch"><input type="checkbox" ${x.controle_enabled?'checked':''} onchange="salvarCardapioInv('${tipo}','${safeId}',{controle_enabled:this.checked},this)"> Controle vendavel ligado</label>
+        <div class="inv-qty"><input class="field" inputmode="decimal" value="${x.quantidade_vendavel!=null?num(x.quantidade_vendavel):''}" placeholder="Qtd vendavel"><button class="btn sm ghost" onclick="salvarQtdVendavel(this,'${tipo}','${safeId}')">Salvar qtd</button></div>
+        <div class="inv-map"><input class="field" value="${esc(dd)}" placeholder="DD external_id (preparado, sem sync)"><button class="btn sm ghost" onclick="salvarDdMapper(this,'${tipo}','${safeId}')">Mapper</button></div>
+        <small class="mut">Quantidade vendavel nao altera o saldo operacional do estoque.</small>
+      </div>
+      <div class="inv-bridge">
+        <h4>Ponte ficha_itens -> est_produto (${x.ficha_count||0})</h4>
+        ${ficha || '<div class="inv-empty">Sem ficha: este item ainda nao baixa insumo operacional.</div>'}
+        ${(x.ficha||[]).length>8?`<small class="mut">+ ${(x.ficha||[]).length-8} linha(s) na ficha.</small>`:''}
+      </div>
+    </div>
+  </article>`;
+}
 async function aplicarStatusCardapioFiltrado(){
   const st=($('estMassStatus')&&$('estMassStatus').value)||''; if(!st)return toast('Escolha um status para aplicar.');
   const itens=(_estCardapioView||[]).map(x=>({tipo:x.tipo,id:x.id}));
