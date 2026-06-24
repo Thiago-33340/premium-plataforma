@@ -113,10 +113,12 @@ if (toolsBaseUrl) {
 if (userId) {
   await check('permissoes usuário', `/api/est/permissoes?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.perms), '/api/est/permissoes?usuario_id=<usuario>');
   await check('meus itens usuário', `/api/est/meus-itens?usuario_id=${encodeURIComponent(userId)}`, (j) => j && Array.isArray(j.itens), '/api/est/meus-itens?usuario_id=<usuario>');
+  await check('receitas estoque', `/api/est/receitas?usuario_id=${encodeURIComponent(userId)}&status=todas`, (j) => j && Array.isArray(j.receitas) && j.kpis && typeof j.kpis.total === 'number', '/api/est/receitas?usuario_id=<usuario>&status=todas');
   await check('admin estoque do cardapio', `/api/admin/estoque-cardapio?admin_id=${encodeURIComponent(userId)}&limit=5`, (j) => j && Array.isArray(j.itens) && j.kpis && j.mapper?.delivery_direto?.schema_preparado === true, '/api/admin/estoque-cardapio?admin_id=<gestor>&limit=5');
 } else {
   skip('permissoes usuário', '/api/est/permissoes?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
   skip('meus itens usuário', '/api/est/meus-itens?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
+  skip('receitas estoque', '/api/est/receitas?usuario_id=...', 'sem TITAN_SMOKE_USER_ID');
   skip('admin estoque do cardapio', '/api/admin/estoque-cardapio?admin_id=...', 'sem TITAN_SMOKE_USER_ID');
 }
 

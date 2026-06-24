@@ -734,6 +734,7 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 function loadMais(){ const b=[];
   b.push(`<button class="setor-btn" onclick="khardelaTela()"><span>💬 Perguntar à Khardela</span><span>Consultar ›</span></button>`);
   if(ehGestor()||temPerm('editar_produtos')) b.push(`<button class="setor-btn" onclick="fichasCardapioTela()" style="border-color:var(--lar)"><span>🧩 Fichas técnicas do cardápio</span><span>Configurar ›</span></button>`);
+  if(ehGestor()||temPerm('editar_produtos')||temPerm('acessar_producao_interna')) b.push(`<button class="setor-btn" onclick="receitasTela()" style="border-color:var(--lar)"><span>📖 Receitas</span><span>Criar e editar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaAutoTela()"><span>🗓️ Lista automática por período</span><span>Ver ›</span></button>`);
   if(temPerm('acessar_lancamentos')||temPerm('registrar_compra')) b.push(`<button class="setor-btn" onclick="comprasTela()"><span>🧾 Compras (foto da nota)</span><span>Lançar ›</span></button>`);
@@ -783,7 +784,7 @@ async function salvarCfg(){ const itens=_cfgItens.filter(x=>x.no_setor).map(x=>(
 
 /* ===== COMPRAS (foto-nota) ===== */
 let _allProds=[], _conf=null;
-async function ensureAllProds(){ if(!_allProds.length){ try{ _allProds=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[]; }catch(e){} } }
+async function ensureAllProds(force){ if(force)_allProds=[]; if(!_allProds.length){ try{ _allProds=(await (await fetch(API+'/api/est/produtos')).json()).produtos||[]; }catch(e){} } }
 function matchProduto(txt){ if(!txt) return ''; const t=String(txt).toLowerCase(); let best=''; for(const p of _allProds){ const n=p.nome.toLowerCase(); if(n===t) return p.id; if(n.includes(t)||t.includes(n)){ best=best||p.id; } } return best; }
 function matchFornecedor(nome){ if(!nome) return ''; const t=String(nome).toLowerCase(); for(const f of _forns){ const n=f.nome.toLowerCase(); if(n.includes(t)||t.includes(n)) return f.id; } return ''; }
 async function comprasTela(){ const w=$('maisWrap');
@@ -1011,6 +1012,103 @@ function renderRota(d){ const money=v=>v!=null?'R$ '+Number(v).toFixed(2):'—';
   if(d.nao_encontrados&&d.nao_encontrados.length) h+=`<div class="sec">Sem histórico de fornecedor</div>`+d.nao_encontrados.map(it=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(it.produto)}</b><small>${it.quantidade!=null?fmt(it.quantidade):'?'} ${esc(it.unidade||'')} · defina onde comprar</small></div></div>`).join('');
   h+=`<div class="cnt-foot"><div class="prog">Estimativa: <b>${money(d.estimativa_total)}</b></div><button class="btn primary sm" onclick="loadMais()">Concluir</button></div>`;
   $('maisWrap').innerHTML=h; }
+
+/* ===== RECEITAS (configuração das fichas de produção) ===== */
+let _rec={status:'ativas',q:'',items:[],kpis:null}, _recBt=null;
+function recNorm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+async function receitasTela(status){
+  if(status)_rec.status=status;
+  const w=$('maisWrap');
+  w.innerHTML=`<div class="vhead"><h2 class="tit">Receitas</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+    <p class="mut sm" style="margin:0 0 10px">Crie e edite receitas que geram itens de estoque. A produção usa essas fichas para dar baixa nos insumos e entrada no item produzido.</p>
+    <div id="receitasList"><div class="empty">Carregando receitas...</div></div>`;
+  try{
+    const qs=new URLSearchParams({usuario_id:user.id,status:_rec.status,q:_rec.q||''});
+    const r=await fetch(API+'/api/est/receitas?'+qs.toString()),d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.erro||'Erro ao carregar receitas');
+    _rec.items=d.receitas||[]; _rec.kpis=d.kpis||{};
+  }catch(e){ _rec.items=[]; _rec.kpis={}; toast(e.message||'Erro ao carregar receitas'); }
+  recRender();
+}
+function recStatusChip(st,label,count){ return `<button class="chip ${_rec.status===st?'on':''}" onclick="recSetStatus('${st}')">${label}${count!=null?' · '+count:''}</button>`; }
+function recRender(){
+  const k=_rec.kpis||{}, items=_rec.items||[];
+  const filtros=`<div class="panel" style="margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px">
+      <div class="cnt-item" style="margin:0"><div class="mut xs">Ativas</div><b>${k.ativas||0}</b></div>
+      <div class="cnt-item" style="margin:0"><div class="mut xs">Incompletas</div><b>${k.incompletas||0}</b></div>
+      <div class="cnt-item" style="margin:0"><div class="mut xs">Inativas</div><b>${k.inativas||0}</b></div>
+      <div class="cnt-item" style="margin:0"><div class="mut xs">Total</div><b>${k.total||0}</b></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${recStatusChip('ativas','Ativas',(k.ativas||0)+(k.incompletas||0))}
+      ${recStatusChip('inativas','Inativas',k.inativas)}
+      ${recStatusChip('todas','Todas',k.total)}
+      <button class="btn primary sm" style="margin-left:auto" onclick="recNovaReceita()">+ Nova receita</button>
+    </div>
+    <input id="recBusca" class="field" placeholder="Buscar receita, setor, categoria..." value="${esc(_rec.q||'')}" oninput="recBuscaDebounce()">
+  </div>`;
+  const list=items.length?items.map(recCard).join(''):'<div class="empty">Nenhuma receita neste filtro. Use “Nova receita” para transformar um produto cadastrado em item produzido.</div>';
+  $('receitasList').innerHTML=filtros+`<div class="plist">${list}</div>`;
+}
+function recCard(r){
+  const situacao=r.situacao==='ativa'?'Ativa':r.situacao==='incompleta'?'Incompleta':'Inativa';
+  const cor=r.situacao==='ativa'?'ok':r.situacao==='incompleta'?'low':'off';
+  const tipo=r.tipo==='INGREDIENTE_BENEFICIADO'?'Ingrediente beneficiado':'Produto produzido';
+  const info=[r.departamento,r.categoria,r.subcategoria].filter(Boolean).join(' › ')||'Sem classificação';
+  const desc=(r.descricao&&r.descricao!==r.nome)?`<div class="help" style="margin-top:8px">${esc(r.descricao)}</div>`:'';
+  const prep=r.instrucoes?`<div class="help" style="margin-top:8px"><b>Preparo:</b> ${esc(String(r.instrucoes).slice(0,180))}${String(r.instrucoes).length>180?'...':''}</div>`:'';
+  const acoes=[];
+  if(r.situacao==='inativa') acoes.push(`<button class="btn primary sm" onclick="recRestaurar(${r.produto_id})">Restaurar</button>`);
+  else {
+    acoes.push(`<button class="btn ghost sm" onclick="abrirFichaProd(${r.produto_id})">${r.incompleta?'Completar ficha':'Editar ficha'}</button>`);
+    if(r.ativa) acoes.push(`<button class="btn primary sm" onclick="recProduzir(${r.produto_id})">Lançar produção</button>`);
+    acoes.push(`<button class="btn danger sm" onclick="recInativar(${r.produto_id})">Excluir da tela</button>`);
+  }
+  return `<div class="cnt-item" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div style="min-width:0"><div class="eyebrow">${esc(tipo)}</div><h3 style="margin:2px 0 4px">${esc(r.nome)}</h3><div class="mut sm">${esc(info)} · setor ${esc(r.setores||'Sem setor')}</div></div>
+      <span class="tag ${cor}">${situacao}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px">
+      <div class="panel" style="margin:0;padding:10px"><div class="mut xs">Porções</div><b>${r.porcoes||0}</b></div>
+      <div class="panel" style="margin:0;padding:10px"><div class="mut xs">Ingredientes</div><b>${r.ingredientes||0}</b></div>
+      <div class="panel" style="margin:0;padding:10px"><div class="mut xs">Rende em</div><b>${esc(r.unidade_consumo||r.unidade||'')}</b></div>
+      <div class="panel" style="margin:0;padding:10px"><div class="mut xs">Estoque atual</div><b>${fmt(r.estoque_atual)} ${esc(r.unidade||'')}</b></div>
+    </div>
+    ${desc}${prep}
+    ${r.incompleta?'<div class="help" style="margin-top:8px;color:#f59e0b">Receita marcada como produzida, mas a ficha ainda está sem estrutura completa. Complete antes de lançar produção.</div>':''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px">${acoes.join('')}</div>
+  </div>`;
+}
+function recBuscaDebounce(){ clearTimeout(_recBt); _rec.q=($('recBusca')&&$('recBusca').value)||''; _recBt=setTimeout(()=>receitasTela(_rec.status),300); }
+function recSetStatus(st){ _rec.status=st; receitasTela(st); }
+async function recNovaReceita(){
+  await ensureAllProds(true);
+  const prods=(_allProds||[]).filter(p=>p.ativo!==false).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  const ov=document.createElement('div'); ov.className='modal on est-modal'; ov.id='recNovoModal';
+  ov.innerHTML=`<div class="box" style="max-width:620px"><h3 style="margin:0 0 6px">Nova receita</h3>
+    <p class="mut sm" style="margin:0 0 12px">Escolha um produto já cadastrado. A receita vai transformar esse produto em item produzido internamente, sem criar duplicidade.</p>
+    <label class="flabel">Produto<input id="recNovoProduto" class="field" list="recProdutosOpts" placeholder="Digite o nome do item produzido"></label>
+    <datalist id="recProdutosOpts">${prods.map(p=>`<option value="${esc(p.nome)} #${p.id}"></option>`).join('')}</datalist>
+    <div class="help">Se o produto ainda não existe, crie primeiro em Produtos para manter estoque, compras e contagens na mesma fonte.</div>
+    <div class="mfoot"><button class="btn ghost" onclick="document.getElementById('recNovoModal').remove()">Cancelar</button><button class="btn ghost" onclick="document.getElementById('recNovoModal').remove();novoProduto()">Criar produto</button><button class="btn primary" onclick="recAbrirNova()">Continuar</button></div></div>`;
+  document.body.appendChild(ov); setTimeout(()=>{const i=$('recNovoProduto'); if(i)i.focus();},60);
+}
+function recAbrirNova(){
+  const raw=($('recNovoProduto')&&$('recNovoProduto').value||'').trim();
+  const m=raw.match(/#(\d+)\s*$/);
+  let p=m?(_allProds||[]).find(x=>String(x.id)===String(m[1])):null;
+  if(!p){ const n=recNorm(raw); p=(_allProds||[]).find(x=>recNorm(x.nome)===n); }
+  if(!p){ toast('Escolha um produto cadastrado da lista'); return; }
+  const modal=$('recNovoModal'); if(modal)modal.remove();
+  abrirFichaProd(p.id);
+}
+async function recInativar(pid){ if(!await pedirConfirm('Excluir receita da tela','A ficha será inativada e sairá da tela de receitas ativas. Produto e histórico permanecem preservados no banco.','Excluir da tela'))return;
+  try{ await estFetch('/api/est/producao/ficha/'+pid,'DELETE',{}); toast('Receita inativada; histórico preservado'); await receitasTela(_rec.status); }catch(e){} }
+async function recRestaurar(pid){ if(!await pedirConfirm('Restaurar receita','A ficha volta para receitas ativas e poderá ser usada na produção interna.','Restaurar'))return;
+  try{ await estFetch('/api/est/producao/ficha/'+pid+'/restaurar','POST',{}); toast('Receita restaurada'); await receitasTela('ativas'); }catch(e){} }
+async function recProduzir(pid){ await producaoTela(); const p=(_prod.produzidos||[]).find(x=>Number(x.id)===Number(pid)); if(!p){ toast('Complete a ficha antes de lançar produção'); return; } await abreProducao(pid); }
 
 /* ===== PRODUÇÃO INTERNA ===== */
 let _prod={ produzidos:[], insumos:[], sel:null, ficha:[] };
@@ -1426,8 +1524,8 @@ function fpAdd(pi){ fpSync(); _fp.porcoes[pi].itens.push({insumo_produto_id:'',q
 function fpRemove(pi,ii){ fpSync(); _fp.porcoes[pi].itens.splice(ii,1); renderFichaProd(true); }
 function fpAddPorcao(){ fpSync(); _fp.porcoes.push({id:null,nome:'Nova porção',rendimento:1,unidade:_fp.unidade,itens:[]}); renderFichaProd(true); }
 async function fpRemovePorcao(pi){ if(_fp.porcoes.length===1)return toast('A ficha precisa ter pelo menos uma porção'); if(!await pedirConfirm('Excluir porção','Remover esta porção e todos os ingredientes dela?'))return; fpSync(); _fp.porcoes.splice(pi,1); renderFichaProd(true); }
-async function salvarFichaProd(btn){ fpSync(); if(btn)btn.disabled=true; $('fpStatus').textContent='Validando ficha e custos…'; try{ const r=await fetch(API+'/api/est/producao/ficha',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,produto_id:_fp.pid,descricao:_fp.descricao,unidade_consumo:_fp.unidade_consumo,tipo:_fp.tipo,instrucoes:_fp.instrucoes,porcoes:_fp.porcoes})}),d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.erro||'Erro ao salvar ficha'); toast('Ficha salva com sucesso'); $('fpModal').remove(); await loadProdutos(); if($('productEditor'))await abrirEditorProduto(_fp.pid); }catch(e){ $('fpStatus').textContent=e.message||'Erro ao salvar ficha'; if(btn)btn.disabled=false; } }
-async function excluirFichaProd(){ if(!await pedirConfirm('Excluir ficha técnica','A ficha e suas porções serão desativadas. O produto e todo o histórico de movimentações serão preservados.','Excluir ficha'))return; try{ await estFetch('/api/est/producao/ficha/'+_fp.pid,'DELETE',{}); toast('Ficha excluída; histórico preservado'); const m=$('fpModal'); if(m)m.remove(); await loadProdutos(); if($('productEditor'))await abrirEditorProduto(_fp.pid); }catch(e){ toast(e.message||'Erro ao excluir ficha'); } }
+async function salvarFichaProd(btn){ fpSync(); if(btn)btn.disabled=true; $('fpStatus').textContent='Validando ficha e custos…'; try{ const r=await fetch(API+'/api/est/producao/ficha',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario_id:user.id,produto_id:_fp.pid,descricao:_fp.descricao,unidade_consumo:_fp.unidade_consumo,tipo:_fp.tipo,instrucoes:_fp.instrucoes,porcoes:_fp.porcoes})}),d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(d.erro||'Erro ao salvar ficha'); toast('Ficha salva com sucesso'); $('fpModal').remove(); if($('receitasList'))await receitasTela(_rec.status); else if($('busca')&&$('plist'))await loadProdutos(); if($('productEditor'))await abrirEditorProduto(_fp.pid); }catch(e){ $('fpStatus').textContent=e.message||'Erro ao salvar ficha'; if(btn)btn.disabled=false; } }
+async function excluirFichaProd(){ if(!await pedirConfirm('Excluir ficha técnica','A ficha e suas porções serão desativadas. O produto e todo o histórico de movimentações serão preservados.','Excluir ficha'))return; try{ await estFetch('/api/est/producao/ficha/'+_fp.pid,'DELETE',{}); toast('Ficha excluída; histórico preservado'); const m=$('fpModal'); if(m)m.remove(); if($('receitasList'))await receitasTela(_rec.status); else if($('busca')&&$('plist'))await loadProdutos(); if($('productEditor'))await abrirEditorProduto(_fp.pid); }catch(e){ toast(e.message||'Erro ao excluir ficha'); } }
 
 function catRow(c){ return `<div class="row" style="gap:8px;margin-bottom:6px;align-items:flex-end">
   <label class="label" style="flex:1;margin:0">Nome<input class="field" id="cat-${c.id}" value="${esc(c.nome)}"></label>

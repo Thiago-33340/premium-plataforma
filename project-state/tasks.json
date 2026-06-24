@@ -469,26 +469,26 @@
     "id": "task-f2-036",
     "titulo": "Concluir entrada de compra inteligente anti-duplicidade",
     "modulo": "estoque-v2",
-    "status": "implementado_local_pendente_deploy",
+    "status": "concluido_em_producao",
     "prioridade": "critica",
     "categoria": "operacao",
     "responsavel_humano": "Thiago",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-035"],
-    "proximo_passo": "Deployar server-pg.js, estoque-v2.sql, public/estoque.html e project-state; depois validar no navegador uma compra com nome divergente de nota para confirmar sugestao/auto-match, bloqueio de item sem vinculo e gravacao do alias."
+    "proximo_passo": "Monitorar compras reais com nomenclatura divergente e ampliar aliases confirmados pelo gestor sem criar produto duplicado automaticamente."
   },
   {
     "id": "task-f2-037",
     "titulo": "Implementar abas Receitas e Perdas/Consumo com Khardela",
     "modulo": "estoque-v2",
-    "status": "primeira_fatia_local_pendente_deploy",
+    "status": "receitas_local_pendente_validacao_deploy",
     "prioridade": "alta",
     "categoria": "produto",
     "responsavel_humano": "Thiago + Tassiano",
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-036"],
-    "proximo_passo": "Deployar a primeira fatia de Perdas/Consumo com foto/balanca e match seguro. Depois implementar Receitas como aba dedicada sobre est_ficha_producao/est_ficha_porcao, filtros ativo/inativo, exclusao logica recuperavel e confirmacao WhatsApp da automacao Khardela antes de lancar baixa."
+    "proximo_passo": "Validar e deployar aba Receitas com listagem/filtros ativo-inativo, criacao/edicao, exclusao logica e restauracao. Depois evoluir Perdas/Consumo com dashboard e confirmacao WhatsApp pela automacao Khardela antes de lancar baixa."
   }
 ]

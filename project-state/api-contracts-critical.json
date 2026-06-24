@@ -116,6 +116,42 @@
     ]
   },
   {
+    "id": "est-receitas-list",
+    "module": "estoque-v2/producao-fichas",
+    "method": "GET",
+    "path": "/api/est/receitas",
+    "screen": "public/estoque.html / Mais / Receitas",
+    "permission": "gestor ou acessar_producao_interna ou editar_produtos",
+    "payload_required": ["usuario_id"],
+    "payload_optional": ["status=ativas|inativas|todas", "q"],
+    "reads": ["est_produto", "est_categoria", "est_produto_setor", "est_setor", "est_ficha_producao", "est_ficha_porcao", "est_ficha_porcao_item"],
+    "writes": [],
+    "success": "200 { receitas[], kpis, status }",
+    "known_errors": ["403 Faça login.", "403 Sem permissão para acessar receitas."],
+    "side_effects": [
+      "não cria tabela nova",
+      "lista receitas ativas, incompletas e inativas sobre a mesma fonte da produção interna",
+      "serve como tela de configuração; lançamento operacional continua em POST /api/est/producao/run"
+    ]
+  },
+  {
+    "id": "producao-ficha-restore",
+    "module": "producao-fichas",
+    "method": "POST",
+    "path": "/api/est/producao/ficha/:id/restaurar",
+    "screen": "public/estoque.html / Mais / Receitas",
+    "permission": "editar_produtos",
+    "payload_required": ["usuario_id"],
+    "writes": ["est_ficha_producao", "est_ficha_porcao", "est_producao_receita", "est_produto"],
+    "success": "200 { ok: true, ficha_id, espelho }",
+    "known_errors": ["403 Sem permissão para restaurar fichas.", "404 Ficha não encontrada para este produto."],
+    "side_effects": [
+      "restaura ficha técnica excluída logicamente",
+      "reativa porções da ficha e recompõe o espelho legado est_producao_receita",
+      "não reativa produto inativo; apenas marca pode_produzir=true"
+    ]
+  },
+  {
     "id": "est-produto-ficha-simple",
     "module": "estoque-v2/producao-fichas",
     "method": "PUT",

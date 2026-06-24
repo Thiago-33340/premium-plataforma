@@ -300,6 +300,30 @@
       "Permissao granular por colaborador para perdas/consumo separada de acessar_lancamentos."
     ]
   },
+  "recipes_tab_khardela": {
+    "updated_at": "2026-06-24T15:35:00.000-03:00",
+    "status": "implementado_local_pendente_validacao_deploy",
+    "escopo": "Aba Receitas dentro do estoque operacional, usando as tabelas existentes de produto e ficha de producao.",
+    "rotas": {
+      "listagem": "GET /api/est/receitas",
+      "editar": "PUT /api/est/producao/ficha",
+      "excluir_logico": "DELETE /api/est/producao/ficha/:id",
+      "restaurar": "POST /api/est/producao/ficha/:id/restaurar",
+      "lancar_producao": "POST /api/est/producao/run"
+    },
+    "regras": [
+      "Nenhuma tabela nova foi criada para receitas.",
+      "A tela separa configuracao de receitas da tela de lancamento de Producao interna.",
+      "Filtros mostram ativas, incompletas e inativas.",
+      "Excluir receita na UI e exclusao logica; historico e dados ficam recuperaveis.",
+      "Restaurar recompõe o espelho legado est_producao_receita para integrações antigas."
+    ],
+    "pendente": [
+      "Validar localmente sintaxe/API e depois deployar.",
+      "Rodar smoke read-only com /api/est/receitas em producao.",
+      "Criar dashboard analitico de perdas/consumo e fluxo WhatsApp com confirmacao Khardela."
+    ]
+  },
   "border_mapper_dry_run": {
     "updated_at": "2026-06-24T03:55:00.000-03:00",
     "status": "ajuste_seguro_parcial_expandido_em_producao_smoke_21_21",

@@ -762,6 +762,27 @@ function estCustoReceita(qtd, unidadeReceita, produto) {
   const custo = Number(produto.medio_valor != null ? produto.medio_valor : produto.ultimo_valor);
   return Number.isFinite(custo) ? unidades * custo : null;
 }
+async function estSyncReceitaCompat(client, produtoId, fichaId) {
+  await client.query('UPDATE est_producao_receita SET ativo=FALSE WHERE tenant_id=$1 AND produto_id=$2', [TENANT, produtoId]);
+  const po = await client.query(`SELECT id,rendimento
+    FROM est_ficha_porcao
+    WHERE tenant_id=$1 AND ficha_id=$2 AND ativo
+    ORDER BY ordem,id
+    LIMIT 1`, [TENANT, fichaId]);
+  if (!po.rows[0]) return { espelho: 0 };
+  const itens = await client.query(`SELECT insumo_produto_id,quantidade,unidade,observacao
+    FROM est_ficha_porcao_item
+    WHERE tenant_id=$1 AND porcao_id=$2
+    ORDER BY ordem,id`, [TENANT, po.rows[0].id]);
+  let espelho = 0;
+  for (const it of itens.rows) {
+    const ex = await client.query('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3', [TENANT, produtoId, it.insumo_produto_id]);
+    if (ex.rows[0]) await client.query('UPDATE est_producao_receita SET quantidade_por_unidade=$2,unidade=$3,rendimento=$4,observacao=$5,ativo=TRUE WHERE id=$1', [ex.rows[0].id, it.quantidade, it.unidade, Number(po.rows[0].rendimento), it.observacao]);
+    else await client.query('INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)', [TENANT, produtoId, it.insumo_produto_id, it.quantidade, it.unidade, Number(po.rows[0].rendimento), it.observacao]);
+    espelho++;
+  }
+  return { espelho };
+}
 
 /* ===== Estoque config-first + inventário vendável do cardápio =====
    Regras decision-018:
@@ -3198,6 +3219,70 @@ async function api(req, res, url) {
     return json(res, 200, out);
   }
 
+  // ---- Receitas do estoque (visão do gestor sobre fichas de produção) ----
+  if (sub === 'est' && seg[2] === 'receitas' && req.method === 'GET') {
+    const uid = url.searchParams.get('usuario_id') || url.searchParams.get('admin_id');
+    const e = await estPermsEfetivas(uid);
+    if (!e.user) return json(res, 403, { erro: 'Faça login.' });
+    if (!(e.gestor || e.perms.includes('acessar_producao_interna') || e.perms.includes('editar_produtos'))) {
+      return json(res, 403, { erro: 'Sem permissão para acessar receitas.' });
+    }
+    const status = String(url.searchParams.get('status') || 'ativas').toLowerCase();
+    const busca = estNorm(url.searchParams.get('q') || url.searchParams.get('busca') || '');
+    const rows = await db.q(`SELECT p.id AS produto_id,p.nome,p.unidade,p.ativo AS produto_ativo,
+        COALESCE(p.pode_produzir,FALSE) AS pode_produzir,p.estoque_atual,p.departamento,p.subcategoria,
+        c.nome AS categoria,f.id AS ficha_id,COALESCE(f.ativo,FALSE) AS ficha_ativa,
+        f.descricao,f.unidade_consumo,f.tipo,f.instrucoes,f.atualizado_em,
+        COALESCE(sx.setores,'') AS setores,
+        COALESCE(px.porcoes,0)::int AS porcoes,
+        COALESCE(px.ingredientes,0)::int AS ingredientes
+      FROM est_produto p
+      LEFT JOIN est_categoria c ON c.id=p.categoria_id AND c.tenant_id=p.tenant_id
+      LEFT JOIN est_ficha_producao f ON f.tenant_id=p.tenant_id AND f.produto_id=p.id
+      LEFT JOIN LATERAL (
+        SELECT string_agg(s.nome, ', ' ORDER BY s.ordem,s.nome) AS setores
+        FROM est_produto_setor ps
+        JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+        WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+      ) sx ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COUNT(DISTINCT po.id) FILTER (WHERE po.ativo)::int AS porcoes,
+          COUNT(pi.id) FILTER (WHERE po.ativo)::int AS ingredientes
+        FROM est_ficha_porcao po
+        LEFT JOIN est_ficha_porcao_item pi ON pi.tenant_id=po.tenant_id AND pi.porcao_id=po.id
+        WHERE po.tenant_id=p.tenant_id AND po.ficha_id=f.id
+      ) px ON TRUE
+      WHERE p.tenant_id=$1 AND (COALESCE(p.pode_produzir,FALSE) OR f.id IS NOT NULL)
+      ORDER BY COALESCE(sx.setores,''),p.nome`, [TENANT]);
+    const todas = rows.rows.map(r => {
+      const temFicha = !!r.ficha_id;
+      const ativa = !!(r.produto_ativo && r.pode_produzir && temFicha && r.ficha_ativa);
+      const incompleta = !!(r.produto_ativo && r.pode_produzir && !ativa);
+      const situacao = ativa ? 'ativa' : incompleta ? 'incompleta' : 'inativa';
+      return {
+        ...r,
+        ativa,
+        incompleta,
+        situacao,
+        setores: r.setores || 'Sem setor',
+        unidade_consumo: r.unidade_consumo || r.unidade || '',
+        descricao: r.descricao || r.nome,
+        tipo: r.tipo || 'PRODUZIDO'
+      };
+    });
+    let receitas = todas;
+    if (busca) receitas = receitas.filter(r => estNorm([r.nome, r.descricao, r.categoria, r.departamento, r.subcategoria, r.setores].filter(Boolean).join(' ')).includes(busca));
+    if (status === 'inativas') receitas = receitas.filter(r => r.situacao === 'inativa');
+    else if (status !== 'todas') receitas = receitas.filter(r => r.situacao !== 'inativa');
+    const kpis = {
+      total: todas.length,
+      ativas: todas.filter(r => r.situacao === 'ativa').length,
+      incompletas: todas.filter(r => r.situacao === 'incompleta').length,
+      inativas: todas.filter(r => r.situacao === 'inativa').length
+    };
+    return json(res, 200, { receitas, kpis, status });
+  }
+
   // ---- Produção Interna (ficha técnica + baixa de insumos) ----
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'produzidos' && req.method === 'GET') {
     const prods = await db.q(`SELECT p.id,p.nome,p.unidade,p.estoque_atual,p.estoque_ideal,
@@ -3275,6 +3360,17 @@ async function api(req, res, url) {
         else await client.query('INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)',[TENANT,pid,it.insumo_produto_id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);}
       if(Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
       await client.query('COMMIT');return json(res,200,{ok:true,ficha_id:fichaId,porcoes:mantidas.length});
+    }catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
+  }
+  if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'ficha' && seg[4] && seg[5] === 'restaurar' && req.method === 'POST') {
+    const b=await readBody(req);if(!(await estPode(b.usuario_id,'editar_produtos')))return json(res,403,{erro:'Sem permissão para restaurar fichas.'});
+    const pid=parseInt(seg[4],10),client=await db.pool.connect();try{await client.query('BEGIN');
+      const f=await client.query('UPDATE est_ficha_producao SET ativo=TRUE,atualizado_em=NOW() WHERE tenant_id=$1 AND produto_id=$2 RETURNING id',[TENANT,pid]);
+      if(!f.rows[0]){await client.query('ROLLBACK');return json(res,404,{erro:'Ficha não encontrada para este produto.'});}
+      await client.query('UPDATE est_ficha_porcao SET ativo=TRUE,atualizado_em=NOW() WHERE tenant_id=$1 AND ficha_id=$2',[TENANT,f.rows[0].id]);
+      await client.query('UPDATE est_produto SET pode_produzir=TRUE,atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2',[TENANT,pid]);
+      const sync=await estSyncReceitaCompat(client,pid,f.rows[0].id);
+      await client.query('COMMIT');return json(res,200,{ok:true,ficha_id:f.rows[0].id,espelho:sync.espelho});
     }catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
   }
   if (sub === 'est' && seg[2] === 'producao' && seg[3] === 'ficha' && seg[4] && req.method === 'DELETE') {
