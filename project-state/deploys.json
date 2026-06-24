@@ -153,5 +153,28 @@
       "KPIs pós-reversão: 334 vendáveis ativos, 0 em falta, 0 ocultos."
     ],
     "observacoes": "Entrega da primeira fatia do Estoque do cardápio no admin: dados compartilhados com produtos/opcoes/ficha_itens/est_produto, sem tabela nova, config-first e mapper Delivery Direto preparado sem sync. Nenhum token/webhook foi registrado."
+  },
+  {
+    "id": "deploy-2026-06-24-estoque-receitas-perdas-khardela",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "e823e7c",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 1f8ea31 -> e823e7c.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 22/22, incluindo GET /api/est/receitas.",
+      "HTML de /estoque confirmou marcadores HAS_RECEITAS_TELA, HAS_RESTAURAR_FICHA e HAS_KHARDELA.",
+      "KPIs de receitas em producao: total 69, ativas 34, incompletas 21, inativas 14."
+    ],
+    "observacoes": "Entrega da aba Receitas no estoque operacional, restauracao de ficha excluida logicamente, rota read-only /api/est/receitas no smoke, e primeira fatia de Perdas/Consumo/Khardela mantida ativa. Nenhum token/webhook/segredo foi registrado."
   }
 ]

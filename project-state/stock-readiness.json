@@ -262,8 +262,8 @@
     }
   },
   "purchase_matching_khardela": {
-    "updated_at": "2026-06-24T14:25:00.000-03:00",
-    "status": "implementado_local_pendente_deploy_e_teste_producao",
+    "updated_at": "2026-06-24T15:15:00.000-03:00",
+    "status": "validado_em_producao_smoke_22_22",
     "escopo": "Entrada de compra com resolvedor anti-duplicidade para vincular nomes de nota/manual a produtos de estoque existentes.",
     "rotas": {
       "match": "POST /api/est/match-produtos",
@@ -278,11 +278,17 @@
       "Quando o gestor confirma um vinculo, o texto original pode virar alias em est_produto.legado.match_aliases."
     ],
     "nomenclatura": "Interface e rota oficial passam a usar Khardela/automacao Khardela; /api/est/jessica fica apenas como compatibilidade para fluxos antigos do n8n.",
-    "validacao_local": ["node --check server-pg.js", "parse script public/estoque.html", "parse project-state/routes.json/modules.json"]
+    "validacao_local": ["node --check server-pg.js", "parse script public/estoque.html", "parse project-state/routes.json/modules.json"],
+    "validacao_producao": {
+      "commit": "e823e7c",
+      "smoke_read_only": "22/22 OK",
+      "html_markers": ["HAS_KHARDELA=True", "HAS_RECEITAS_TELA=True"],
+      "observacao": "Entrada de compra inteligente e rota /api/est/match-produtos permanecem ativas em producao; compras reais ainda devem ser monitoradas para ampliar aliases."
+    }
   },
   "loss_consumption_khardela": {
-    "updated_at": "2026-06-24T14:45:00.000-03:00",
-    "status": "primeira_fatia_implementada_local_pendente_deploy",
+    "updated_at": "2026-06-24T15:15:00.000-03:00",
+    "status": "primeira_fatia_validada_em_producao_smoke_22_22",
     "escopo": "Tela Perda/Consumo com resolvedor de produto existente, unidade travada em opcoes cadastradas e foto opcional da balanca para preencher produto/medida antes da revisao.",
     "rotas": {
       "foto_read_only": "POST /api/est/movimento/foto",
@@ -298,11 +304,17 @@
       "Fluxo WhatsApp com imagem + estado de confirmacao antes de lancar.",
       "Dashboard dedicado de perdas por periodo/motivo/usuario.",
       "Permissao granular por colaborador para perdas/consumo separada de acessar_lancamentos."
-    ]
+    ],
+    "validacao_producao": {
+      "commit": "e823e7c",
+      "smoke_read_only": "22/22 OK",
+      "rota_foto": "POST /api/est/movimento/foto ativa; leitura por imagem retorna erro controlado quando imagem nao e enviada.",
+      "observacao": "Primeira fatia valida: sugestao/revisao no site. Baixa por WhatsApp ainda nao esta liberada sem confirmacao adicional."
+    }
   },
   "recipes_tab_khardela": {
-    "updated_at": "2026-06-24T15:35:00.000-03:00",
-    "status": "implementado_local_pendente_validacao_deploy",
+    "updated_at": "2026-06-24T15:15:00.000-03:00",
+    "status": "validado_em_producao_smoke_22_22",
     "escopo": "Aba Receitas dentro do estoque operacional, usando as tabelas existentes de produto e ficha de producao.",
     "rotas": {
       "listagem": "GET /api/est/receitas",
@@ -319,10 +331,20 @@
       "Restaurar recompõe o espelho legado est_producao_receita para integrações antigas."
     ],
     "pendente": [
-      "Validar localmente sintaxe/API e depois deployar.",
-      "Rodar smoke read-only com /api/est/receitas em producao.",
       "Criar dashboard analitico de perdas/consumo e fluxo WhatsApp com confirmacao Khardela."
-    ]
+    ],
+    "validacao_producao": {
+      "commit": "e823e7c",
+      "smoke_read_only": "22/22 OK incluindo /api/est/receitas",
+      "html_markers": ["HAS_RECEITAS_TELA=True", "HAS_RESTAURAR_FICHA=True", "HAS_KHARDELA=True"],
+      "kpis_receitas": {
+        "total": 69,
+        "ativas": 34,
+        "incompletas": 21,
+        "inativas": 14
+      },
+      "observacao": "A aba Receitas usa fonte unica de est_produto + est_ficha_producao/porcoes/itens e nao cria terceiro modelo."
+    }
   },
   "border_mapper_dry_run": {
     "updated_at": "2026-06-24T03:55:00.000-03:00",
