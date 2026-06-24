@@ -732,7 +732,7 @@ function fecharModais(){ document.querySelectorAll('.est-modal').forEach(m=>m.re
 
 /* ===== MAIS / CONFIGURAR SETORES ===== */
 function loadMais(){ const b=[];
-  b.push(`<button class="setor-btn" onclick="jessicaTela()"><span>💬 Perguntar à Jéssica</span><span>Consultar ›</span></button>`);
+  b.push(`<button class="setor-btn" onclick="khardelaTela()"><span>💬 Perguntar à Khardela</span><span>Consultar ›</span></button>`);
   if(ehGestor()||temPerm('editar_produtos')) b.push(`<button class="setor-btn" onclick="fichasCardapioTela()" style="border-color:var(--lar)"><span>🧩 Fichas técnicas do cardápio</span><span>Configurar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaTela()" style="border-color:var(--lar)"><span>🛒 Lista de compras inteligente</span><span>Montar ›</span></button>`);
   if(temPerm('acessar_lista_compras_inteligente')) b.push(`<button class="setor-btn" onclick="listaAutoTela()"><span>🗓️ Lista automática por período</span><span>Ver ›</span></button>`);
@@ -824,6 +824,99 @@ function confProg(){ const tot=_conf.linhas.reduce((s,l)=>{ const q=parseFloat(S
 async function confirmarCompra(){ const linhas=_conf.linhas.filter(l=>l.produto_id).map(l=>({produto_id:Number(l.produto_id),marca:l.marca,quantidade:String(l.quantidade).replace(',','.'),unidade:l.unidade,valor_unitario:String(l.valor_unitario).replace(',','.'),valor_total:String(l.valor_total).replace(',','.')}));
   if(!linhas.length){ toast('Escolha o produto de cada item'); return; }
   try{ await estFetch('/api/est/compra','POST',{fornecedor_id:_conf.fornecedor_id||null,data_compra:_conf.data||null,itens:linhas}); toast('Compra lançada — estoque atualizado'); comprasTela(); }catch(e){} }
+
+/* ===== COMPRAS INTELIGENTES (override anti-duplicidade) ===== */
+function compraProdutoNome(id){ const p=_allProds.find(x=>String(x.id)===String(id)); return p?p.nome:''; }
+function compraPct(v){ const n=Number(v||0); return Math.round(n*100)+'%'; }
+function compraLinha(it){
+  it=it||{}; const txt=it.produto||it.nome||it.texto||'';
+  return {_txt:txt,produto_id:matchProduto(txt),marca:it.marca||'',quantidade:it.quantidade!=null?it.quantidade:'',unidade:it.unidade||'',valor_unitario:it.valor_unitario!=null?it.valor_unitario:'',valor_total:it.valor_total!=null?it.valor_total:'',match_score:null,match_status:txt?'pendente':'manual',match_sugestoes:[]};
+}
+function matchProduto(txt){
+  if(!txt)return '';
+  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  const t=norm(txt); if(!t)return '';
+  for(const p of _allProds){ if(norm(p.nome)===t) return p.id; }
+  return '';
+}
+async function compraResolverMatches(force){
+  if(!_conf)return;
+  const textos=_conf.linhas.map((l,i)=>({idx:i,texto:l._txt||'',marca:l.marca||'',unidade:l.unidade||''})).filter(x=>x.texto||x.marca);
+  if(!textos.length){ toast('Sem nomes para resolver.'); return; }
+  try{
+    const d=await estFetch('/api/est/match-produtos','POST',{textos});
+    (d.resultados||[]).forEach(r=>{
+      const l=_conf.linhas[Number(r.idx)]; if(!l)return;
+      l.match_sugestoes=r.sugestoes||[];
+      const best=r.melhor;
+      if(best&&best.status==='auto'&&(force||!l.produto_id)){
+        l.produto_id=best.id; l.match_score=best.score; l.match_status='auto';
+      }else if(best&&!l.produto_id){
+        l.match_score=best.score; l.match_status=best.status||'sugestao';
+      }else if(!best&&!l.produto_id){
+        l.match_score=null; l.match_status='sem_match_seguro';
+      }
+    });
+    renderConf();
+  }catch(e){}
+}
+async function comprasTela(){ const w=$('maisWrap');
+  w.innerHTML=`<div class="vhead"><h2 class="tit">Compras</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+   <p class="mut sm" style="margin:0 0 10px">Lance compras sem duplicar produto: a Khardela cruza o nome da nota com itens ja cadastrados e mostra a confianca antes de confirmar.</p>
+   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn primary" onclick="abrirCamera()">📷 Foto da nota</button><button class="btn ghost" onclick="novaCompraManual()">✏️ Manual</button></div>
+   <div class="sec">Ultimas compras</div><div class="plist" id="compList"><div class="empty">Carregando...</div></div>`;
+  let cs=[]; try{ cs=((await (await fetch(API+'/api/est/compras')).json()).compras)||[]; }catch(e){}
+  $('compList').innerHTML=cs.length? cs.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.fornecedor||'—')}</b><small>${esc(c.usuario_nome||'')} · ${c.itens||0} itens${c.data_compra?' · '+esc(c.data_compra):''}${c.status?' · '+esc(c.status):''}</small></div><div class="qt"><span class="big">R$ ${Number(c.total||0).toFixed(2)}</span></div></div>`).join('') : '<div class="empty">Nenhuma compra ainda.</div>'; }
+async function onFotoNota(file){ toast('Lendo a nota... aguarde'); let dataUrl; try{ dataUrl=await downscaleImg(file); }catch(e){ toast('Erro ao abrir a imagem'); return; }
+  let d; try{ d=await estFetch('/api/est/compra/foto','POST',{image:dataUrl}); }catch(e){ return; }
+  await ensureAllProds(); await ensureForns();
+  if(!(d.itens&&d.itens.length)) toast('Nota lida, mas confira/adicone os itens');
+  conferenciaCompra(d.itens||[], d.fornecedor||'', d.data||'', 'FOTO_NOTA'); }
+async function novaCompraManual(){ await ensureAllProds(); await ensureForns(); conferenciaCompra([],'','','MANUAL'); }
+function conferenciaCompra(itens, fornNome, data, origem){
+  _conf={ fornecedor_id: matchFornecedor(fornNome)||'', data:data||'', origem:origem||'MANUAL', linhas:(itens.length?itens:[{}]).map(compraLinha) };
+  renderConf();
+  if(_conf.linhas.some(l=>l._txt)) setTimeout(()=>compraResolverMatches(false),80);
+}
+function renderConf(){ const rows=_conf.linhas.map((l,i)=>confRowHTML(l,i)).join('');
+  $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Conferir compra</h2><button class="btn ghost sm" onclick="comprasTela()">Voltar</button></div>
+   <label class="flabel">Fornecedor<select class="field" onchange="_conf.fornecedor_id=this.value">${[{id:'',nome:'—'}].concat(_forns).map(f=>`<option value="${f.id}" ${String(_conf.fornecedor_id)===String(f.id)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></label>
+   <label class="flabel">Data<input type="date" class="field" value="${esc(_conf.data)}" onchange="_conf.data=this.value"></label>
+   <div class="sec">Itens</div><div style="padding-bottom:104px">${rows}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="confAddRow()">+ Adicionar item</button><button class="btn ghost sm" onclick="compraResolverMatches(true)">Resolver nomes</button></div></div>
+   <div class="cnt-foot"><div class="prog" id="confProg"></div><button class="btn primary sm" onclick="confirmarCompra()">Confirmar</button></div>`;
+  confProg(); }
+function confRowHTML(l,i){ const opts=[{id:'',nome:'— escolher produto existente —'}].concat(_allProds);
+  const sug=(l.match_sugestoes||[])[0]; const prod=compraProdutoNome(l.produto_id);
+  let chip='';
+  if(l.match_status==='auto'&&prod) chip=`<div class="xs" style="margin:6px 0;color:#22c55e">Khardela vinculou: <b>${esc(prod)}</b> (${compraPct(l.match_score)})</div>`;
+  else if(sug&&!l.produto_id) chip=`<div class="xs" style="margin:6px 0;color:#f59e0b">Sugestao: <b>${esc(sug.nome)}</b> (${compraPct(sug.score)}) <button class="btn ghost sm" style="padding:4px 8px;margin-left:6px" onclick="confUsarSug(${i})">Usar</button></div>`;
+  else if(l._txt&&!l.produto_id) chip=`<div class="xs" style="margin:6px 0;color:#ef4444">Sem vinculo seguro. Escolha o produto cadastrado para nao duplicar.</div>`;
+  return `<div class="cnt-item" style="margin-bottom:8px">
+    <input class="field" placeholder="nome do item na nota/manual" value="${esc(l._txt||'')}" onchange="confSet(${i},'_txt',this.value)">
+    ${chip}
+    <select class="field" onchange="confSet(${i},'produto_id',this.value)">${opts.map(p=>`<option value="${p.id}" ${String(l.produto_id)===String(p.id)?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>
+    <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="qtd" value="${esc(l.quantidade)}" onchange="confSet(${i},'quantidade',this.value)"><input class="field" style="flex:1" placeholder="unid" value="${esc(l.unidade)}" onchange="confSet(${i},'unidade',this.value)"></div>
+    <div class="cnt-row"><input class="field" style="flex:1" inputmode="decimal" placeholder="R$ unit" value="${esc(l.valor_unitario)}" onchange="confSet(${i},'valor_unitario',this.value)"><input class="field" style="flex:1" inputmode="decimal" placeholder="R$ total" value="${esc(l.valor_total)}" onchange="confSet(${i},'valor_total',this.value)"></div>
+    <div class="cnt-row"><input class="field" style="flex:1" placeholder="marca" value="${esc(l.marca)}" onchange="confSet(${i},'marca',this.value)"><button class="ig" onclick="confDel(${i})">remover</button></div></div>`; }
+function confUsarSug(i){ const l=_conf.linhas[i], s=l&&(l.match_sugestoes||[])[0]; if(!s)return; l.produto_id=s.id; l.match_score=s.score; l.match_status='confirmado'; renderConf(); }
+function confSet(i,k,v){ const l=_conf.linhas[i]; if(!l)return; l[k]=v;
+  if(k==='produto_id'){ l.match_status=v?'manual':'pendente'; l.match_score=null; }
+  if(k==='_txt'){ l.match_status='pendente'; l.match_score=null; l.match_sugestoes=[]; if(!v)l.produto_id=''; }
+  if(k!=='produto_id'&&k!=='unidade'&&k!=='marca'&&k!=='_txt') confProg();
+}
+function confAddRow(){ _conf.linhas.push(compraLinha({})); renderConf(); }
+function confDel(i){ _conf.linhas.splice(i,1); renderConf(); }
+function confProg(){ const tot=_conf.linhas.reduce((s,l)=>{ const q=parseFloat(String(l.quantidade).replace(',','.'))||0; let vt=parseFloat(String(l.valor_total).replace(',','.')); if(isNaN(vt)){ const vu=parseFloat(String(l.valor_unitario).replace(',','.'))||0; vt=vu*q; } return s+(vt||0); },0);
+  const pend=_conf&&_conf.linhas?_conf.linhas.filter(l=>(l._txt||l.quantidade||l.valor_total)&&!l.produto_id).length:0;
+  const el=$('confProg'); if(el) el.innerHTML='Total: <b>R$ '+tot.toFixed(2)+'</b>'+(pend?' · <span style="color:#ef4444">'+pend+' sem vinculo</span>':''); }
+async function confirmarCompra(){
+  const preenchidas=_conf.linhas.filter(l=>l.produto_id||l._txt||l.quantidade||l.valor_total);
+  if(preenchidas.some(l=>!l.produto_id)){ toast('Ainda existe item sem produto cadastrado vinculado.'); return; }
+  if(preenchidas.some(l=>!(parseFloat(String(l.quantidade).replace(',','.'))>0))){ toast('Informe quantidade maior que zero em todos os itens.'); return; }
+  const linhas=preenchidas.map(l=>({produto_id:Number(l.produto_id),marca:l.marca,quantidade:String(l.quantidade).replace(',','.'),unidade:l.unidade,valor_unitario:String(l.valor_unitario).replace(',','.'),valor_total:String(l.valor_total).replace(',','.'),texto_original:l._txt||'',match_score:l.match_score,match_status:l.match_status||'manual'}));
+  if(!linhas.length){ toast('Adicione ao menos um item.'); return; }
+  try{ await estFetch('/api/est/compra','POST',{fornecedor_id:_conf.fornecedor_id||null,data_compra:_conf.data||null,origem:_conf.origem||'MANUAL',itens:linhas}); toast('Compra lancada — estoque atualizado'); comprasTela(); }catch(e){}
+}
 
 /* ===== VISITA A FORNECEDOR ===== */
 let _visita=null;
@@ -1032,7 +1125,7 @@ async function loadLaPrev(){ const el=$('laPrev'); if(el) el.innerHTML='<div cla
 let _mov={ tipo:'PERDA' };
 async function movTela(){ await ensureAllProds(); _mov={ tipo:'PERDA' };
   $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Perda / consumo</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
-   <p class="mut sm" style="margin:0 0 8px">Lança a baixa (ou entrada) com histórico antes/depois. Também funciona pelo WhatsApp com a Jéssica.</p>
+   <p class="mut sm" style="margin:0 0 8px">Lança a baixa (ou entrada) com histórico antes/depois. Também funciona pelo WhatsApp com a automação Khardela.</p>
    <div style="display:flex;gap:6px;margin-bottom:10px" id="movTipos">
      ${['PERDA','CONSUMO','ENTRADA'].map(t=>`<button class="chip ${t==='PERDA'?'on':''}" onclick="movSetTipo('${t}')">${t==='PERDA'?'Perda':t==='CONSUMO'?'Consumo':'Entrada'}</button>`).join('')}</div>
    <label class="flabel">Produto<input id="movProd" class="field" list="movDL" placeholder="Digite o produto…"></label>
@@ -1050,7 +1143,7 @@ async function lancarMov(){ const nome=($('movProd')&&$('movProd').value||'').tr
     toast('Lançado'); if($('movProd'))$('movProd').value=''; if($('movQtd'))$('movQtd').value=''; if($('movMot'))$('movMot').value=''; }catch(e){} }
 
 /* ===== JÉSSICA (consulta ao banco do estoque) ===== */
-function jessicaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Jéssica · estoque</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
+function khardelaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="tit">Khardela · estoque</h2><button class="btn ghost sm" onclick="loadMais()">Voltar</button></div>
   <p class="mut sm" style="margin:0 0 8px">Pergunte sobre estoque, compras, contagens, visitas, fornecedores e produção. Ela responde com base no banco e respeita suas permissões.</p>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${['O que foi feito hoje no estoque?','Quais produtos estão abaixo do mínimo?','Quais contagens estão aguardando auditoria?','Quais compras foram lançadas hoje?'].map(q=>`<button class="chip" onclick="jessAsk('${q.replace(/'/g,"\\'")}')">${esc(q)}</button>`).join('')}</div>
   <textarea id="jessQ" class="field" rows="2" placeholder="Escreva sua pergunta…"></textarea>
@@ -1058,7 +1151,7 @@ function jessicaTela(){ $('maisWrap').innerHTML=`<div class="vhead"><h2 class="t
   <div id="jessResp" style="margin-top:12px"></div>`; }
 async function jessAsk(q){ const pergunta=q||(($('jessQ')&&$('jessQ').value)||''); if(!pergunta.trim()){ toast('Escreva a pergunta'); return; }
   $('jessResp').innerHTML='<div class="empty">Consultando o banco…</div>';
-  try{ const d=await estFetch('/api/est/jessica','POST',{pergunta}); $('jessResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">Jéssica</div><div style="white-space:pre-wrap;margin-top:4px">${esc(d.resposta||d.aviso||'Sem resposta.')}</div></div>`; }
+  try{ const d=await estFetch('/api/est/khardela','POST',{pergunta}); $('jessResp').innerHTML=`<div class="cnt-item"><div class="pn" style="color:var(--lar)">Khardela</div><div style="white-space:pre-wrap;margin-top:4px">${esc(d.resposta||d.aviso||'Sem resposta.')}</div></div>`; }
   catch(e){ $('jessResp').innerHTML='<div class="empty">Erro ao consultar.</div>'; } }
 
 /* ===== FICHAS DO CARDÁPIO → INSUMOS DO ESTOQUE ===== */

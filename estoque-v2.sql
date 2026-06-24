@@ -200,6 +200,9 @@ CREATE TABLE IF NOT EXISTS est_compra_item (
   produto_id INT REFERENCES est_produto(id), marca TEXT,
   quantidade NUMERIC(14,3), unidade TEXT, valor_unitario NUMERIC(14,4), valor_total NUMERIC(14,4)
 );
+ALTER TABLE est_compra_item ADD COLUMN IF NOT EXISTS texto_original TEXT;
+ALTER TABLE est_compra_item ADD COLUMN IF NOT EXISTS match_score NUMERIC(5,4);
+ALTER TABLE est_compra_item ADD COLUMN IF NOT EXISTS match_status TEXT;
 CREATE TABLE IF NOT EXISTS est_producao_receita (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

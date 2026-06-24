@@ -261,6 +261,25 @@
       "d_guardrail_smoke": "OK produção — decision-018 registrada, rotas no smoke, snapshot pré-deploy feito, smoke 21/21 e teste mutável controlado revertido."
     }
   },
+  "purchase_matching_khardela": {
+    "updated_at": "2026-06-24T14:25:00.000-03:00",
+    "status": "implementado_local_pendente_deploy_e_teste_producao",
+    "escopo": "Entrada de compra com resolvedor anti-duplicidade para vincular nomes de nota/manual a produtos de estoque existentes.",
+    "rotas": {
+      "match": "POST /api/est/match-produtos",
+      "compra": "POST /api/est/compra"
+    },
+    "regras": [
+      "A automacao nunca cria produto automaticamente a partir da nota.",
+      "Score alto e diferenca minima para o segundo colocado permitem pre-selecao automatica.",
+      "Score medio vira sugestao visual e exige confirmacao/manual do gestor.",
+      "Linha sem produto vinculado bloqueia a confirmacao da compra para evitar perda silenciosa de item.",
+      "Texto original, score e status do match ficam gravados em est_compra_item.",
+      "Quando o gestor confirma um vinculo, o texto original pode virar alias em est_produto.legado.match_aliases."
+    ],
+    "nomenclatura": "Interface e rota oficial passam a usar Khardela/automacao Khardela; /api/est/jessica fica apenas como compatibilidade para fluxos antigos do n8n.",
+    "validacao_local": ["node --check server-pg.js", "parse script public/estoque.html", "parse project-state/routes.json/modules.json"]
+  },
   "border_mapper_dry_run": {
     "updated_at": "2026-06-24T03:55:00.000-03:00",
     "status": "ajuste_seguro_parcial_expandido_em_producao_smoke_21_21",

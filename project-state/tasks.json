@@ -388,8 +388,8 @@
   },
   {
     "id": "task-f2-030",
-    "titulo": "Auditar e endurecer n8n/Jessica para produção econômica",
-    "modulo": "n8n-jessica",
+    "titulo": "Auditar e endurecer n8n/Khardela para produção econômica",
+    "modulo": "n8n-khardela",
     "status": "em_andamento",
     "prioridade": "alta",
     "categoria": "automacao-ia",
@@ -401,8 +401,8 @@
   },
   {
     "id": "task-f2-031",
-    "titulo": "Corrigir horários pré-turno e início de turno da Jessica",
-    "modulo": "n8n-jessica",
+    "titulo": "Corrigir horários pré-turno e início de turno da Khardela",
+    "modulo": "n8n-khardela",
     "status": "concluido",
     "prioridade": "alta",
     "categoria": "operacao",
@@ -414,8 +414,8 @@
   },
   {
     "id": "task-f2-032",
-    "titulo": "Criar gateway de pedidos Jessica Saipos/Nossa Loja",
-    "modulo": "n8n-jessica",
+    "titulo": "Criar gateway de pedidos Khardela Saipos/Nossa Loja",
+    "modulo": "n8n-khardela",
     "status": "em_andamento",
     "prioridade": "alta",
     "categoria": "pedidos",
@@ -423,12 +423,12 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-030"],
-    "proximo_passo": "Gateway n8n criado/publicado como lZEl4AUUCE2xUElC, destino padrão SAIPOS. Antes de publicar a Jessica apontando para ele, comparar versão ativa vs rascunho do AI Agent para evitar ativar mudanças antigas não validadas."
+    "proximo_passo": "Gateway n8n criado/publicado como lZEl4AUUCE2xUElC, destino padrão SAIPOS. Antes de publicar a Khardela apontando para ele, comparar versão ativa vs rascunho do AI Agent para evitar ativar mudanças antigas não validadas."
   },
   {
     "id": "task-f2-033",
     "titulo": "Planejar integração iFood como novo fluxo",
-    "modulo": "n8n-jessica",
+    "modulo": "n8n-khardela",
     "status": "planejado",
     "prioridade": "media",
     "categoria": "integracao",
@@ -436,12 +436,12 @@
     "ferramenta_atuante": "Codex",
     "bloqueada": false,
     "dependencias": ["task-f2-032"],
-    "proximo_passo": "Usar docs/IFOOD-PLANEJAMENTO-INTEGRACAO-2026-06-23.md após corrigir credenciais, Saipos e gateway da Jessica."
+    "proximo_passo": "Usar docs/IFOOD-PLANEJAMENTO-INTEGRACAO-2026-06-23.md após corrigir credenciais, Saipos e gateway da Khardela."
   },
   {
     "id": "task-f2-034",
     "titulo": "Preparar consolidação da gestão operacional v5",
-    "modulo": "n8n-jessica",
+    "modulo": "n8n-khardela",
     "status": "aguardando_decisao",
     "prioridade": "alta",
     "categoria": "operacao",
@@ -464,5 +464,31 @@
     "bloqueada": false,
     "dependencias": ["task-f2-029"],
     "proximo_passo": "Deployar server-pg.js e public/estoque.html; depois validar no navegador com login thiago: iniciar Contagem geral, adicionar item, informar quantidade, editar, excluir/inativar e exportar CSV."
+  },
+  {
+    "id": "task-f2-036",
+    "titulo": "Concluir entrada de compra inteligente anti-duplicidade",
+    "modulo": "estoque-v2",
+    "status": "implementado_local_pendente_deploy",
+    "prioridade": "critica",
+    "categoria": "operacao",
+    "responsavel_humano": "Thiago",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-035"],
+    "proximo_passo": "Deployar server-pg.js, estoque-v2.sql, public/estoque.html e project-state; depois validar no navegador uma compra com nome divergente de nota para confirmar sugestao/auto-match, bloqueio de item sem vinculo e gravacao do alias."
+  },
+  {
+    "id": "task-f2-037",
+    "titulo": "Implementar abas Receitas e Perdas/Consumo com Khardela",
+    "modulo": "estoque-v2",
+    "status": "planejado",
+    "prioridade": "alta",
+    "categoria": "produto",
+    "responsavel_humano": "Thiago + Tassiano",
+    "ferramenta_atuante": "Codex",
+    "bloqueada": false,
+    "dependencias": ["task-f2-036"],
+    "proximo_passo": "Usar o resolvedor /api/est/match-produtos como base; criar UI de receitas com rendimento proporcional, filtros ativo/inativo, exclusao logica recuperavel e fluxo Perdas/Consumo com foto/balanca + confirmacao pela automacao Khardela."
   }
 ]

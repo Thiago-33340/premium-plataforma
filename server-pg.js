@@ -1089,27 +1089,125 @@ function impressaoSanitize(input, base) {
   return i;
 }
 
-/* ===== Helpers compartilhados (matching, movimento, Jéssica) ===== */
+/* ===== Helpers compartilhados (matching, movimento, Khardela) ===== */
 function estNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function estLev(a, b) { if (a === b) return 0; const m = a.length, n = b.length; if (!m) return n; if (!n) return m; let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1); for (let i = 1; i <= m; i++) { cur[0] = i; for (let j = 1; j <= n; j++) { const cost = a[i - 1] === b[j - 1] ? 0 : 1; cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost); } [prev, cur] = [cur, prev]; } return prev[n]; }
 function estSim(a, b) { if (!a || !b) return 0; return 1 - estLev(a, b) / Math.max(a.length, b.length); }
-async function estAchaProduto(texto, minScore) {
-  minScore = minScore == null ? 0.5 : minScore;
-  const prods = (await db.q(`SELECT id, nome, unidade, estoque_atual FROM est_produto WHERE tenant_id=$1 AND ativo`, [TENANT])).rows;
-  const nin = estNorm(texto); if (!nin) return null; const inToks = nin.split(' ').filter(Boolean);
-  let best = null, bestS = 0;
-  for (const p of prods) {
-    const n = estNorm(p.nome); const toks = n.split(' ').filter(Boolean); let s = 0;
-    if (n === nin) s = 1; else if (n.includes(nin) || nin.includes(n)) s = 0.9;
-    else {
-      const inter = inToks.filter(t => t.length > 2 && toks.includes(t)).length; const denom = Math.max(toks.length, inToks.length) || 1; s = inter / denom;
-      let fz = 0, fzLen = 0; { const sv = estSim(nin, n); if (sv > fz) { fz = sv; fzLen = Math.min(nin.length, n.length); } }
-      for (const t of inToks) { if (t.length < 4) continue; for (const ct of toks) { if (ct.length < 4) continue; const sv = estSim(t, ct); if (sv > fz) { fz = sv; fzLen = Math.min(t.length, ct.length); } } }
-      const gate = fzLen >= 6 ? 0.72 : 0.86; if (fz >= gate && fz * 0.95 > s) s = fz * 0.95;
+const EST_MATCH_STOPWORDS = new Set('de da do das dos para pra com sem e o a os as em no na nos nas ao aos item produto un und unidade unidades kg kgs kilo kilos quilo quilos g gr grama gramas l lt litro litros ml pct pc'.split(' '));
+const EST_MATCH_SYNONYMS = {
+  mussarela: 'mucarela', muzarela: 'mucarela', mozarela: 'mucarela', mozzarella: 'mucarela', mucarela: 'mucarela',
+  calabreza: 'calabresa', catupiri: 'catupiry', caturipy: 'catupiry', requeijao: 'requeijao',
+  cocacola: 'coca cola', choc: 'chocolate', chocolatebranco: 'chocolate branco',
+  ninho: 'leite po', nutela: 'nutella', oleo: 'oleo', acucar: 'acucar'
+};
+const EST_MATCH_CONFLICT_GROUPS = [
+  ['branco', 'leite'],
+  ['zero', 'normal'],
+  ['grande', 'pequena'],
+  ['preta', 'verde']
+];
+function estNormBusca(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/(\d)(kg|kgs|g|gr|ml|l|lt|un|und|pct|pc)\b/g, '$1 $2')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function estTokensBusca(s) {
+  const raw = estNormBusca(s).split(' ').filter(Boolean);
+  const out = [];
+  for (let t of raw) {
+    t = EST_MATCH_SYNONYMS[t] || t;
+    for (const part of String(t).split(' ')) {
+      const p = part.trim();
+      if (p && !EST_MATCH_STOPWORDS.has(p)) out.push(p);
     }
-    if (s > bestS) { bestS = s; best = p; }
   }
-  return bestS >= minScore ? best : null;
+  return Array.from(new Set(out));
+}
+function estTextoBusca(s) { return estTokensBusca(s).join(' '); }
+function estAsObj(x) { return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; }
+function estAliasList(legado) {
+  const l = estAsObj(legado);
+  return [].concat(l.match_aliases || [], l.aliases || [], l.nomes_nf || [])
+    .map(v => String(v || '').trim()).filter(Boolean).slice(0, 40);
+}
+function estProdutoTextos(p) {
+  const texts = [
+    { texto: p.nome, peso: 1, campo: 'nome' },
+    { texto: p.nome_nf, peso: 0.96, campo: 'nome_nf' },
+    { texto: p.marca_preferida, peso: 0.45, campo: 'marca_preferida' },
+    { texto: p.ultima_marca, peso: 0.40, campo: 'ultima_marca' },
+    { texto: p.categoria, peso: 0.32, campo: 'categoria' },
+    { texto: p.subcategoria, peso: 0.34, campo: 'subcategoria' }
+  ];
+  for (const a of estAliasList(p.legado)) texts.push({ texto: a, peso: 0.98, campo: 'alias' });
+  return texts.filter(x => String(x.texto || '').trim());
+}
+function estConflictPenalty(qTokens, cTokens) {
+  let penalty = 0;
+  for (const g of EST_MATCH_CONFLICT_GROUPS) {
+    const q = g.filter(t => qTokens.includes(t));
+    const c = g.filter(t => cTokens.includes(t));
+    if (q.length && c.length && !q.some(t => c.includes(t))) penalty += 0.18;
+  }
+  return penalty;
+}
+function estScoreTextoProduto(queryText, candidateText) {
+  const q = estTextoBusca(queryText), c = estTextoBusca(candidateText);
+  const qTokens = q.split(' ').filter(Boolean), cTokens = c.split(' ').filter(Boolean);
+  if (!q || !c || !qTokens.length || !cTokens.length) return { score: 0, motivo: 'sem tokens' };
+  let score = 0, motivo = 'tokens';
+  if (q === c) { score = 1; motivo = 'igual'; }
+  else if (q.length >= 4 && c.includes(q)) { score = 0.92; motivo = 'nome contem texto'; }
+  else if (c.length >= 4 && q.includes(c)) { score = 0.90; motivo = 'texto contem nome'; }
+  const inter = qTokens.filter(t => cTokens.includes(t));
+  const union = Array.from(new Set(qTokens.concat(cTokens))).length || 1;
+  const jacc = inter.length / union;
+  const coberturaQuery = inter.length / (qTokens.length || 1);
+  const coberturaCand = inter.length / (cTokens.length || 1);
+  const tokenScore = Math.max(jacc, (coberturaQuery * 0.78) + (coberturaCand * 0.18));
+  if (tokenScore > score) { score = tokenScore; motivo = 'palavras-chave'; }
+  if (Math.min(q.length, c.length) >= 6) {
+    const fz = estSim(q, c);
+    if (fz >= 0.72 && fz * 0.88 > score) { score = fz * 0.88; motivo = 'similaridade'; }
+  }
+  score = Math.max(0, score - estConflictPenalty(qTokens, cTokens));
+  return { score, motivo };
+}
+function estScoreProdutoEntrada(texto, p) {
+  const query = [texto && texto.texto, texto && texto.marca, texto && texto.unidade].filter(Boolean).join(' ');
+  let best = { score: 0, motivo: 'sem correspondencia', campo: null };
+  for (const tx of estProdutoTextos(p)) {
+    const sc = estScoreTextoProduto(query, tx.texto);
+    const weighted = Math.max(0, Math.min(1, sc.score * tx.peso));
+    if (weighted > best.score) best = { score: weighted, motivo: sc.motivo, campo: tx.campo };
+  }
+  return best;
+}
+async function estMatchProdutosEntrada(textos, minScore) {
+  minScore = minScore == null ? 0.45 : minScore;
+  const rows = (await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, p.nome_nf, p.marca_preferida, p.ultima_marca, p.subcategoria, p.legado, c.nome AS categoria
+    FROM est_produto p
+    LEFT JOIN est_categoria c ON c.id=p.categoria_id AND c.tenant_id=p.tenant_id
+    WHERE p.tenant_id=$1 AND p.ativo AND COALESCE(p.pode_comprar, TRUE)
+    ORDER BY p.nome`, [TENANT])).rows;
+  return (Array.isArray(textos) ? textos : []).map((t, idxDefault) => {
+    const entrada = typeof t === 'string' ? { texto: t, idx: idxDefault } : Object.assign({ idx: idxDefault }, t || {});
+    const scored = rows.map(p => {
+      const sc = estScoreProdutoEntrada(entrada, p);
+      return { id: p.id, nome: p.nome, unidade: p.unidade, categoria: p.categoria, score: Number(sc.score.toFixed(4)), motivo: sc.motivo, campo: sc.campo };
+    }).filter(x => x.score >= minScore).sort((a, b) => b.score - a.score || String(a.nome).localeCompare(String(b.nome))).slice(0, 5);
+    const best = scored[0] || null;
+    const gap = best && scored[1] ? best.score - scored[1].score : (best ? best.score : 0);
+    const status = best && best.score >= 0.86 && gap >= 0.035 ? 'auto' : (best && best.score >= 0.65 ? 'sugestao' : 'sem_match_seguro');
+    return { idx: entrada.idx, texto: entrada.texto || '', melhor: best ? Object.assign({}, best, { status }) : null, sugestoes: scored, status };
+  });
+}
+async function estAchaProduto(texto, minScore) {
+  const r = await estMatchProdutosEntrada([{ texto }], minScore == null ? 0.5 : minScore);
+  return r[0] && r[0].melhor ? r[0].melhor : null;
 }
 async function estLancaMov(tipo, user, produto, qtd, motivo, origem, observacao) {
   const antes = Number(produto.estoque_atual); const depois = (tipo === 'ENTRADA') ? antes + qtd : antes - qtd;
@@ -1117,7 +1215,7 @@ async function estLancaMov(tipo, user, produto, qtd, motivo, origem, observacao)
   await db.q(`INSERT INTO est_movimento (tenant_id, produto_id, produto_nome, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, motivo, observacao) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [TENANT, produto.id, produto.nome, tipo, antes, qtd, depois, origem || 'MANUAL', user.id, user.nome, motivo || null, observacao || null]);
   return { antes, depois };
 }
-async function estJessica(uid, pergunta) {
+async function estKhardela(uid, pergunta) {
   const e = await estPermsEfetivas(uid);
   if (!e.user) return { erro: 'usuário inválido' };
   const verValores = e.gestor || e.perms.includes('ver_valores');
@@ -1148,7 +1246,7 @@ async function estJessica(uid, pergunta) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return { resposta: null, dados: snap, aviso: 'IA não configurada; retornando dados brutos.' };
   try {
-    const sys = `Você é a Jéssica, assistente operacional do estoque da Premium Pizzas (loja de Rio Preto). Responda em português do Brasil, curto e direto, à pergunta usando SOMENTE os dados do JSON (snapshot do banco oficial). Nunca invente: se não houver registro no snapshot, diga que não há registro. Hoje é ${new Date().toISOString().slice(0, 10)}. ${verValores ? '' : 'O usuário NÃO tem permissão de ver valores/preços — não revele valores monetários.'}`;
+    const sys = `Você é a automação Khardela, assistente operacional de estoque do tenant atual. Responda em português do Brasil, curto e direto, à pergunta usando SOMENTE os dados do JSON (snapshot do banco oficial). Nunca invente: se não houver registro no snapshot, diga que não há registro. Hoje é ${new Date().toISOString().slice(0, 10)}. ${verValores ? '' : 'O usuário NÃO tem permissão de ver valores/preços — não revele valores monetários.'}`;
     const r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 500, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'PERGUNTA: ' + pergunta + '\n\nSNAPSHOT:\n' + JSON.stringify(snap) }] }) });
     const j = await r.json();
     if (!r.ok) return { resposta: null, dados: snap, aviso: 'IA falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) };
@@ -1322,7 +1420,7 @@ function orderToFront(o) {
   };
 }
 
-// Notifica supervisores (Thiago/Tassiano) no WhatsApp da Jessica ao fechar contagem. Best-effort.
+// Notifica supervisores (Thiago/Tassiano) no WhatsApp da Khardela ao fechar contagem. Best-effort.
 async function notificarContagem(resumo) {
   try {
     const cfgr = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
@@ -1963,7 +2061,7 @@ async function api(req, res, url) {
 
   if (sub === 'cardapio' && req.method === 'GET') return json(res, 200, await montarCardapio());
 
-  // retrato do sistema p/ a Jessica responder gestores sobre a operacao/infra.
+  // retrato do sistema p/ a Khardela responder gestores sobre a operacao/infra.
   if (sub === 'sistema' && req.method === 'GET') {
     const area = (url.searchParams.get('area') || 'resumo').toLowerCase();
     const out = { tenant: TENANT, gerado_em: new Date().toISOString() };
@@ -2793,6 +2891,21 @@ async function api(req, res, url) {
   }
 
   // ===== COMPRAS (foto-nota OCR + confirmação) =====
+  if (sub === 'est' && seg[2] === 'match-produtos' && req.method === 'POST') {
+    const b = await readBody(req);
+    const e = await estPermsEfetivas(b.usuario_id);
+    const pode = e.user && (e.gestor || e.perms.includes('registrar_compra') || e.perms.includes('acessar_lancamentos') || e.perms.includes('acessar_produtos'));
+    if (!pode) return json(res, 403, { erro: 'Sem permissao para consultar vinculos de produtos.' });
+    const textos = Array.isArray(b.textos) ? b.textos : [{ texto: b.texto || b.produto || '', idx: 0, marca: b.marca || '', unidade: b.unidade || '' }];
+    const limpos = textos.slice(0, 80).map((x, i) => typeof x === 'string' ? { texto: x, idx: i } : {
+      idx: x.idx != null ? x.idx : i,
+      texto: String(x.texto || x.produto || x.nome || '').slice(0, 240),
+      marca: String(x.marca || '').slice(0, 80),
+      unidade: String(x.unidade || '').slice(0, 30)
+    }).filter(x => x.texto || x.marca);
+    return json(res, 200, { resultados: await estMatchProdutosEntrada(limpos, 0.45) });
+  }
+
   if (sub === 'est' && seg[2] === 'compra' && seg[3] === 'foto' && req.method === 'POST') {
     const b = await readBody(req);
     if (!(await estPode(b.usuario_id, 'registrar_compra'))) return json(res, 403, { erro: 'Sem permissão para registrar compra.' });
@@ -2841,12 +2954,27 @@ async function api(req, res, url) {
         if (vu == null && vt != null && qtd) vu = vt / qtd;
         if (vt == null && vu != null) vt = vu * qtd;
         total += vt || 0;
-        const cur = await client.query('SELECT id, estoque_atual FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo FOR UPDATE', [it.produto_id, TENANT]);
+        const cur = await client.query('SELECT id, nome, estoque_atual, legado FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo FOR UPDATE', [it.produto_id, TENANT]);
         if (!cur.rows[0]) throw new Error('Produto da compra não encontrado ou inativo.');
-        await client.query('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-          [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt]);
+        const textoOriginal = String(it.texto_original || it.nome_original || it.produto_original || '').trim().slice(0, 240) || null;
+        let matchScore = it.match_score != null && it.match_score !== '' ? Number(String(it.match_score).replace(',', '.')) : null;
+        if (matchScore != null && !(matchScore >= 0 && matchScore <= 1)) matchScore = null;
+        const matchStatus = String(it.match_status || '').trim().slice(0, 30) || null;
+        await client.query('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total, texto_original, match_score, match_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+          [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt, textoOriginal, matchScore, matchStatus]);
         const antes = Number(cur.rows[0].estoque_atual), depois = antes + qtd;
         await client.query('UPDATE est_produto SET estoque_atual=$2, ultima_marca=COALESCE($3,ultima_marca), ultimo_fornecedor_id=COALESCE($4,ultimo_fornecedor_id), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$5', [it.produto_id, depois, it.marca || null, b.fornecedor_id || null, TENANT]);
+        if (textoOriginal && ['auto', 'confirmado', 'manual'].includes(matchStatus || '')) {
+          const legado = estAsObj(cur.rows[0].legado);
+          const aliasNorm = estTextoBusca(textoOriginal), nomeNorm = estTextoBusca(cur.rows[0].nome);
+          if (aliasNorm && aliasNorm !== nomeNorm) {
+            const aliases = estAliasList(legado);
+            if (!aliases.some(a => estTextoBusca(a) === aliasNorm)) {
+              legado.match_aliases = aliases.concat([textoOriginal]).slice(-40);
+              await client.query('UPDATE est_produto SET legado=$2, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$3', [it.produto_id, JSON.stringify(legado), TENANT]);
+            }
+          }
+        }
         await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref, motivo)
           VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtd, depois, e.user.id, e.user.nome, cid]);
         if (vu != null && vu > 0) {
@@ -3315,12 +3443,12 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, perms: sel });
   }
 
-  // ---- Jéssica: consulta direta ao banco do estoque (respeita permissões) ----
-  if (sub === 'est' && seg[2] === 'jessica' && req.method === 'POST') {
+  // ---- Khardela: consulta direta ao banco do estoque (respeita permissões) ----
+  if (sub === 'est' && (seg[2] === 'jessica' || seg[2] === 'khardela') && req.method === 'POST') {
     const b = await readBody(req);
     const pergunta = String(b.pergunta || '').trim();
     if (!pergunta) return json(res, 400, { erro: 'envie a pergunta' });
-    const out = await estJessica(b.usuario_id, pergunta);
+    const out = await estKhardela(b.usuario_id, pergunta);
     if (out.erro) return json(res, 403, out);
     return json(res, 200, out);
   }
@@ -3340,7 +3468,7 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, produto: p.nome, antes: mv.antes, depois: mv.depois, unidade: p.unidade });
   }
 
-  // ---- WhatsApp: webhook de entrada (Jéssica recebe e lança) ----
+  // ---- WhatsApp: webhook de entrada (Khardela recebe e lança) ----
   if (sub === 'est' && seg[2] === 'whatsapp' && seg[3] === 'inbound' && req.method === 'POST') {
     const b = await readBody(req);
     const expected = process.env.WA_INBOUND_TOKEN; // só exige token se explicitamente configurado no Easypanel
@@ -3380,9 +3508,9 @@ async function api(req, res, url) {
         }
       }
     } else if (interp.acao === 'ajuda') {
-      resposta = 'Sou a Jéssica do estoque. Você pode:\n• Lançar perda: "perda muçarela 2 peças motivo queimou"\n• Lançar consumo: "consumo catupiry 3 unidades montagem"\n• Perguntar: "quais produtos estão abaixo do mínimo?"';
+      resposta = 'Sou a automação Khardela do estoque. Você pode:\n• Lançar perda: "perda muçarela 2 peças motivo queimou"\n• Lançar consumo: "consumo catupiry 3 unidades montagem"\n• Perguntar: "quais produtos estão abaixo do mínimo?"';
     } else {
-      const jr = await estJessica(u.id, texto);
+      const jr = await estKhardela(u.id, texto);
       resposta = jr.resposta || jr.aviso || 'Não consegui consultar agora.';
     }
     await db.q(`INSERT INTO est_whatsapp_msg (tenant_id, telefone, direcao, texto) VALUES ($1,$2,'OUT',$3)`, [TENANT, telefone, resposta]).catch(() => {});
@@ -3601,7 +3729,7 @@ async function api(req, res, url) {
     const r = await db.q('SELECT id, colaborador_nome, setor_nome, turno, total_itens, itens_abaixo_minimo, itens_zerados, finalizada_em FROM estoque_contagens WHERE tenant_id=$1 ORDER BY finalizada_em DESC LIMIT 50', [TENANT]);
     return json(res, 200, { contagens: r.rows });
   }
-  // movimentacao de estoque: ENTRADA (Jessica/nota), SAIDA (pedido), AJUSTE. Infra pronta p/ integrar.
+  // movimentacao de estoque: ENTRADA (Khardela/nota), SAIDA (pedido), AJUSTE. Infra pronta p/ integrar.
   if (sub === 'estoque' && seg[2] === 'movimento' && req.method === 'POST') {
     const b = await readBody(req);
     const tipo = String(b.tipo || 'ENTRADA').toUpperCase();

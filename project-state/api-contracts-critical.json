@@ -70,12 +70,31 @@
     "screen": "public/estoque.html",
     "permission": "registrar_compra",
     "payload_required": ["usuario_id", "itens[]", "itens[].produto_id", "itens[].quantidade"],
-    "payload_optional": ["fornecedor_id", "data_compra", "origem", "itens[].marca", "itens[].unidade", "itens[].valor_unitario", "itens[].valor_total"],
-    "writes": ["est_compra", "est_compra_item", "est_produto", "est_movimento"],
+    "payload_optional": ["fornecedor_id", "data_compra", "origem", "itens[].marca", "itens[].unidade", "itens[].valor_unitario", "itens[].valor_total", "itens[].texto_original", "itens[].match_score", "itens[].match_status"],
+    "writes": ["est_compra", "est_compra_item", "est_produto", "est_movimento", "est_produto.legado.match_aliases"],
     "success": "201 { ok: true, id, total }",
     "known_errors": ["403 Sem permissão para registrar compra.", "400 Selecione ao menos um produto.", "400 quantidade maior que zero", "400 Produto da compra não encontrado ou inativo."],
     "transactional": true,
     "note": "Resolve usuario_id por UUID/login/apelido e grava entrada de estoque, movimento e custos em uma transação."
+  },
+  {
+    "id": "est-produto-match",
+    "module": "estoque-v2/compras",
+    "method": "POST",
+    "path": "/api/est/match-produtos",
+    "screen": "public/estoque.html / entrada de compra, perdas/consumo, automacao Khardela",
+    "permission": "gestor ou registrar_compra/acessar_lancamentos/acessar_produtos",
+    "payload_required": ["usuario_id", "textos[] ou texto"],
+    "payload_optional": ["textos[].idx", "textos[].marca", "textos[].unidade"],
+    "reads": ["est_produto", "est_categoria", "est_produto.legado.match_aliases"],
+    "writes": [],
+    "success": "200 { resultados: [{ idx, texto, melhor, sugestoes[], status }] }",
+    "known_errors": ["403 Sem permissao para consultar vinculos de produtos."],
+    "side_effects": [
+      "nao cria produto automaticamente",
+      "status auto exige score alto e diferenca minima para o segundo colocado",
+      "status sugestao exige confirmacao/manual do gestor antes de lancar compra"
+    ]
   },
   {
     "id": "est-produto-ficha-simple",
