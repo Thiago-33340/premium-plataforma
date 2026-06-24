@@ -199,5 +199,28 @@
       "POST /api/est/match-produtos com escopo=movimento OK e read-only."
     ],
     "observacoes": "Segunda fatia de Perdas/Consumo/Khardela: dashboard operacional, permissao granular registrar_perda_consumo, match de movimento sem limitar a itens compraveis, conversao de quantidade para unidade operacional e WhatsApp com pendencia SIM/CANCELAR antes de baixar estoque. Nenhum token/webhook/segredo foi registrado."
+  },
+  {
+    "id": "deploy-2026-06-24-estoque-mobile-setores-fix",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "e66ad46",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 1e5476a -> e66ad46.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 23/23.",
+      "HTML de /estoque confirmou rodape do editor sem flutuar sobre o teclado e chamada dedicada /api/est/produto/:id/setores.",
+      "Teste controlado em Frango temperado reenviou os mesmos setores: antes=2, resposta=2, depois=2, subcategoria=Montagem."
+    ],
+    "observacoes": "Correcoes: no mobile, rodape de acoes do editor vira parte normal do formulario quando o teclado abre; setor do produto passa por rota transacional dedicada, atualizando est_produto_setor e subcategoria juntos; ficha tecnica nao altera setores sem flag explicita. Nenhum token/webhook/segredo foi registrado."
   }
 ]
