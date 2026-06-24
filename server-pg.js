@@ -2225,8 +2225,21 @@ async function api(req, res, url) {
   }
 
   if (sub === 'est' && seg[2] === 'categorias' && req.method === 'GET') {
-    const r = await db.q('SELECT id, nome, departamento, ordem, ativo FROM est_categoria WHERE tenant_id=$1 ORDER BY departamento NULLS LAST, ordem, nome', [TENANT]);
-    return json(res, 200, { categorias: r.rows });
+    const status = String(url.searchParams.get('status') || 'ativas').toLowerCase();
+    const uso = String(url.searchParams.get('uso') || 'ativos').toLowerCase();
+    const statusMode = ['todos', 'all'].includes(status) ? 'todos' : (['inativas', 'inativos', 'false', '0'].includes(status) ? 'inativas' : 'ativas');
+    const usoMode = ['todos', 'all'].includes(uso) ? 'todos' : 'ativos';
+    const r = await db.q(`SELECT c.id, c.nome, c.departamento, c.ordem, c.ativo,
+        COUNT(p.id)::int AS produtos_total,
+        COUNT(p.id) FILTER (WHERE p.ativo)::int AS produtos_ativos
+      FROM est_categoria c
+      LEFT JOIN est_produto p ON p.tenant_id=c.tenant_id AND p.categoria_id=c.id
+      WHERE c.tenant_id=$1
+        AND ($2='todos' OR ($2='ativas' AND c.ativo) OR ($2='inativas' AND NOT c.ativo))
+      GROUP BY c.id, c.nome, c.departamento, c.ordem, c.ativo
+      HAVING ($3='todos' OR COUNT(p.id) FILTER (WHERE p.ativo) > 0)
+      ORDER BY c.departamento NULLS LAST, c.ordem, c.nome`, [TENANT, statusMode, usoMode]);
+    return json(res, 200, { categorias: r.rows, status: statusMode, uso: usoMode });
   }
   if (sub === 'est' && seg[2] === 'fornecedores' && req.method === 'GET') {
     const r = await db.q('SELECT id, nome, tipo, endereco, whatsapp, observacoes, ativo FROM est_fornecedor WHERE tenant_id=$1 ORDER BY nome', [TENANT]);
@@ -2409,7 +2422,7 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'setores' && req.method === 'POST') {
     const b = await readBody(req);
     if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão.' });
-    const pid = parseInt(seg[3], 10); const setores = Array.isArray(b.setores) ? [...new Set(b.setores.map(x => parseInt(x, 10)).filter(Boolean))] : [];
+    const pid = parseInt(seg[3], 10); const setores = Array.isArray(b.setores) ? [...new Set(b.setores.map(x => parseInt(x, 10)).filter(Boolean))].slice(0, 1) : [];
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
@@ -2558,7 +2571,7 @@ async function api(req, res, url) {
            String(b.tipo_item || '').trim() || null, String(b.nome_nf || '').trim() || null, b.local_fisico_id || null,
            String(b.departamento || '').trim() || null]);
         const pid = r.rows[0].id;
-        const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean) : [];
+        const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean).slice(0, 1) : [];
         for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT,pid,sid]);
         return json(res, 201, { ok: true, id: pid });
       } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe um produto com esse nome.' : (e.code || e.message) }); }
@@ -2580,7 +2593,7 @@ async function api(req, res, url) {
         if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
         if (Array.isArray(b.setores)) {
           await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,seg[3]]);
-          for (const sid of b.setores.map(Number).filter(Boolean)) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,seg[3],sid]);
+          for (const sid of b.setores.map(Number).filter(Boolean).slice(0, 1)) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,seg[3],sid]);
         }
         return json(res, 200, { ok: true });
       } catch(e) { return json(res,400,{erro:e.code==='23505'?'Já existe um produto com esse nome.':(e.code||e.message)}); }
@@ -3016,8 +3029,10 @@ async function api(req, res, url) {
     const b = await readBody(req); const g = await estGestor(b.usuario_id);
     if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
     await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND setor_id=$2', [TENANT, seg[3]]);
-    for (const it of (Array.isArray(b.itens) ? b.itens : []))
+    for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
+      await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2 AND setor_id<>$3', [TENANT, it.produto_id, seg[3]]);
       await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,$4) ON CONFLICT (tenant_id, produto_id, setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio', [TENANT, it.produto_id, seg[3], !!it.obrigatorio]);
+    }
     return json(res, 200, { ok: true, total: (b.itens || []).length });
   }
   if (sub === 'est' && seg[2] === 'setor' && !seg[3] && req.method === 'POST') {
@@ -3478,7 +3493,7 @@ async function api(req, res, url) {
       for(const it of itensPrimeira.rows){const ex=await client.query('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3',[TENANT,pid,it.insumo_produto_id]);
         if(ex.rows[0])await client.query('UPDATE est_producao_receita SET quantidade_por_unidade=$2,unidade=$3,rendimento=$4,observacao=$5,ativo=TRUE WHERE id=$1',[ex.rows[0].id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);
         else await client.query('INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)',[TENANT,pid,it.insumo_produto_id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);}
-      if(b.atualizar_setores === true && Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
+      if(b.atualizar_setores === true && Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean).slice(0,1))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
       await client.query('COMMIT');return json(res,200,{ok:true,ficha_id:fichaId,porcoes:mantidas.length});
     }catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
   }

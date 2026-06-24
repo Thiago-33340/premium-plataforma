@@ -581,7 +581,7 @@ async function loadProdutos(){
   const todos=d.produtos||[]; const ps=_setorSel?todos.filter(p=>Array.isArray(p.setores)&&p.setores.some(s=>String(s.id)===String(_setorSel)||s.nome===_setorSel)):todos; _prodMap={}; ps.forEach(p=>_prodMap[p.id]=p);
   const ativos=ps.filter(p=>p.ativo).length, baixos=ps.filter(p=>p.ativo&&p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal)).length;
   const setorAtual=_setorSel&&(_setores.find(s=>String(s.id)===String(_setorSel))||null);
-  const statusTxt=_prodStatus==='inativos'?'excluídos':(_prodStatus==='todos'?'todos':'ativos');
+  const statusTxt=_prodStatus==='inativos'?'inativos':(_prodStatus==='todos'?'todos':'ativos');
   $('prodSummary').textContent=`${ps.length} produto${ps.length===1?'':'s'} ${statusTxt} encontrado${ps.length===1?'':'s'} · ${ativos} ativos · ${baixos} abaixo do ideal${setorAtual?' · setor '+setorAtual.nome:''}`;
   $('plist').innerHTML = ps.length? ps.map(p=>{
     const at=Number(p.estoque_atual||0), id=p.estoque_ideal!=null?Number(p.estoque_ideal):null;
@@ -593,7 +593,7 @@ async function loadProdutos(){
 }
 function renderChips(){ renderProdStatusChips(); const all=[{nome:''}].concat(_cats);
   $('chipsCat').innerHTML = all.map(c=>`<button class="chip ${(_catSel===c.nome)?'on':''}" onclick="selCat('${(c.nome||'').replace(/'/g,"\\'")}')">${c.nome||'Todas'}</button>`).join(''); renderSetorChips(); }
-function renderProdStatusChips(){ const el=$('chipsProdStatus'); if(!el)return; const opts=[['ativos','Ativos'],['inativos','Excluídos'],['todos','Todos']]; el.innerHTML=opts.map(o=>`<button class="chip ${_prodStatus===o[0]?'on':''}" onclick="selProdStatus('${o[0]}')">${o[1]}</button>`).join(''); }
+function renderProdStatusChips(){ const el=$('chipsProdStatus'); if(!el)return; const opts=[['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']]; el.innerHTML=opts.map(o=>`<button class="chip ${_prodStatus===o[0]?'on':''}" onclick="selProdStatus('${o[0]}')">${o[1]}</button>`).join(''); }
 function selProdStatus(v){ _prodStatus=v||'ativos'; renderProdStatusChips(); loadProdutos(); }
 function selCat(c){ _catSel=c; renderChips(); loadProdutos(); }
 function renderSetorChips(){ const el=$('chipsSetor'); if(!el)return; const all=[{id:'',nome:'Todos os setores'}].concat(_setores||[]); el.innerHTML=all.map(s=>`<button class="chip ${String(_setorSel)===String(s.id)?'on':''}" onclick="selSetor('${String(s.id||'').replace(/'/g,"\\'")}')">${esc(s.nome)}</button>`).join(''); }
@@ -1465,7 +1465,11 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
 }
 function peTab(tab){ document.querySelectorAll('.editor-tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===tab)); document.querySelectorAll('.editor-pane').forEach(x=>x.classList.toggle('on',x.dataset.pane===tab)); }
 function peClose(){ const m=$('productEditor'); if(m)m.remove(); }
-function peToggleSetor(btn){ btn.classList.toggle('on'); _pe.selecionados=[...document.querySelectorAll('.sector-chip.on')].map(x=>Number(x.dataset.sid)); peUpdateSetorResumo(); }
+function peToggleSetor(btn){
+  document.querySelectorAll('.sector-chip').forEach(x=>x.classList.toggle('on',x===btn));
+  _pe.selecionados=[Number(btn.dataset.sid)].filter(Boolean);
+  peUpdateSetorResumo();
+}
 function peSyncRecipe(){ document.querySelectorAll('#peRecipeRows tr').forEach(tr=>{ const r=_pe.ficha[Number(tr.dataset.i)]; if(!r)return; r.insumo_produto_id=tr.querySelector('[data-k="insumo"]').value; r.quantidade=tr.querySelector('[data-k="qtd"]').value; r.unidade=unidadeValor(tr.querySelector('[data-k="unidade"]').value); r.observacao=tr.querySelector('[data-k="obs"]').value; }); }
 function peRenderRecipe(){ const body=$('peRecipeRows'); if(!body)return; const productOpts=sel=>'<option value="">— escolha —</option>'+_pe.produtos.filter(x=>x.ativo!==false).map(x=>`<option value="${x.id}" ${String(sel||'')===String(x.id)?'selected':''}>${esc(x.nome)}</option>`).join('');
   body.innerHTML=_pe.ficha.map((r,i)=>`<tr data-i="${i}"><td><select class="field" data-k="insumo">${productOpts(r.insumo_produto_id)}</select></td><td><input class="field" data-k="qtd" inputmode="decimal" value="${r.quantidade!=null?esc(r.quantidade):''}" placeholder="0"></td><td><select class="field" data-k="unidade">${unidadeSelectOptions(r.unidade,'— unid —')}</select></td><td><input class="field" data-k="obs" value="${esc(r.observacao||'')}" placeholder="opcional"></td><td><button class="icon-btn" onclick="peRemoveRecipe(${i})" title="Remover">×</button></td></tr>`).join('');
@@ -1581,8 +1585,8 @@ function catRow(c){ return `<div class="row" style="gap:8px;margin-bottom:6px;al
   <label class="label" style="width:170px;margin:0">Departamento<input class="field" id="catdep-${c.id}" value="${esc(c.departamento||'')}" placeholder="—"></label>
   <button class="btn ghost sm" onclick="salvarCategoria(${c.id})">Salvar</button>
   <button class="icon-btn" onclick="excluirCategoria(${c.id})" title="Excluir">×</button></div>`; }
-async function gerenciarCategorias(){ _cats=[]; await ensureCats(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
-  const groups={}; _cats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
+async function gerenciarCategorias(){ let cats=[]; try{ cats=(await (await fetch(API+'/api/est/categorias?status=todos&uso=todos')).json()).categorias||[]; }catch(e){ cats=_cats||[]; } const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
+  const groups={}; cats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
   const body=Object.keys(groups).map(d=>`<div class="sec">${esc(d)}</div>`+groups[d].map(catRow).join('')).join('')||'<div class="empty">Sem categorias.</div>';
   m.innerHTML=`<div class="box" style="max-width:760px"><div class="editor-head"><div><h3>Categorias</h3><p>Biblioteca sugerida de restaurante — pré-ativada, editável e excluível. Organizada por departamento.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div id="catRows">${body}</div><div class="sec">Nova categoria</div><div class="form-grid"><label class="label">Nome<input class="field" id="catNovaNome" placeholder="Ex.: Hortifruti"></label><label class="label">Departamento<input class="field" id="catNovaDep" placeholder="Ex.: Alimentos"></label></div><button class="btn primary sm" style="margin-top:10px" onclick="novaCategoria()">+ Adicionar categoria</button></div></div>`; document.body.appendChild(m); }
 async function salvarCategoria(id){ const nome=$('cat-'+id).value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria/'+id,'PATCH',{nome,departamento:$('catdep-'+id).value.trim()}); _cats=[]; await ensureCats(); renderChips(); toast('Categoria atualizada'); }catch(e){} }
