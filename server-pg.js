@@ -2861,15 +2861,21 @@ async function api(req, res, url) {
       if (cont.rows[0].status !== 'EM_ANDAMENTO') { await client.query('ROLLBACK'); return json(res, 409, { erro: 'Esta contagem já foi encerrada.' }); }
       const setorGeraisId = await estEnsureGeraisSetor(client);
       let prod = await client.query('SELECT id, nome, unidade, ativo FROM est_produto WHERE tenant_id=$1 AND lower(nome)=lower($2) ORDER BY ativo DESC, id LIMIT 1', [TENANT, nome]);
+      let produtoCriadoNaContagem = false;
       if (prod.rows[0]) {
         await client.query('UPDATE est_produto SET nome=$2, unidade=$3, pode_contar=TRUE, ativo=TRUE, atualizado_em=NOW() WHERE id=$1 AND tenant_id=$4', [prod.rows[0].id, nome, unidade, TENANT]);
       } else {
         prod = await client.query(`INSERT INTO est_produto (tenant_id, nome, unidade, pode_contar, pode_comprar, pode_produzir, ativo, observacoes)
           VALUES ($1,$2,$3,TRUE,TRUE,FALSE,TRUE,$4) RETURNING id, nome, unidade`,
           [TENANT, nome, unidade, 'Criado durante contagem geral pelo Thiago']);
+        produtoCriadoNaContagem = true;
       }
       const produtoId = prod.rows[0].id;
-      await client.query('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, produtoId, setorGeraisId]);
+      const setorAtual = await client.query('SELECT COUNT(*)::int AS n FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, produtoId]);
+      if (produtoCriadoNaContagem || Number(setorAtual.rows[0]?.n || 0) === 0) {
+        await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2 AND setor_id<>$3', [TENANT, produtoId, setorGeraisId]);
+        await client.query('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio', [TENANT, produtoId, setorGeraisId]);
+      }
       let item = await client.query('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE tenant_id=$1 AND contagem_id=$2 AND produto_id=$3 LIMIT 1', [TENANT, cid, produtoId]);
       if (!item.rows[0]) {
         item = await client.query(`INSERT INTO est_contagem_item (tenant_id, contagem_id, produto_id, produto_nome, unidade, obrigatorio, status, geral)

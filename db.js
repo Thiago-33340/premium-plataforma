@@ -297,8 +297,11 @@ async function seedInsumosFrescosPremiumV1(client) {
         console.error('[db] FALHA insumos frescos: produto sem id após upsert - ' + nome);
         continue;
       }
-      if (setorId) await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
-        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING`, [TENANT, pid, setorId]);
+      if (setorId) {
+        await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2 AND setor_id<>$3', [TENANT, pid, setorId]);
+        await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
+        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio`, [TENANT, pid, setorId]);
+      }
       n++;
     }
     await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_insumos_frescos_v1\":true}'::jsonb WHERE id=$1", [TENANT]);
@@ -357,8 +360,11 @@ async function seedProdutosComplementaresFichasPremiumV1(client) {
         RETURNING id`, [TENANT, item.nome, catId[item.categoria] || null, item.unidade, item.base, item.peso]);
       const pid = r.rows[0] && r.rows[0].id;
       const sid = setorId[item.setor];
-      if (pid && sid) await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
-        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING`, [TENANT, pid, sid]);
+      if (pid && sid) {
+        await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2 AND setor_id<>$3', [TENANT, pid, sid]);
+        await client.query(`INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio)
+        VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio`, [TENANT, pid, sid]);
+      }
       n++;
     }
     await client.query("UPDATE tenants SET config=COALESCE(config,'{}'::jsonb)||'{\"estoque_complementos_fichas_v3\":true}'::jsonb WHERE id=$1", [TENANT]);
@@ -519,7 +525,8 @@ async function sincronizarCatalogoEstoqueV4(client) {
         const p=await client.query('SELECT id,unidade FROM est_produto WHERE tenant_id=$1::varchar AND lower(nome)=lower($2) AND ativo ORDER BY id LIMIT 1',[TENANT,nome]);
         if(!p.rows[0]) continue;
         await client.query('UPDATE est_produto SET pode_produzir=TRUE,pode_comprar=FALSE,categoria_id=$3,atualizado_em=NOW() WHERE tenant_id=$1::varchar AND id=$2',[TENANT,p.rows[0].id,catProduzido]);
-        await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1::varchar,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING',[TENANT,p.rows[0].id,sid]);
+        await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1::varchar AND produto_id=$2 AND setor_id<>$3',[TENANT,p.rows[0].id,sid]);
+        await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1::varchar,$2,$3,FALSE) ON CONFLICT (tenant_id,produto_id,setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio',[TENANT,p.rows[0].id,sid]);
         const f=await client.query(`INSERT INTO est_ficha_producao (tenant_id,produto_id,descricao,unidade_consumo,tipo,ativo)
           VALUES ($1::varchar,$2,$3,$4,'PRODUZIDO',TRUE) ON CONFLICT (tenant_id,produto_id) DO UPDATE SET ativo=TRUE,unidade_consumo=EXCLUDED.unidade_consumo RETURNING id`,[TENANT,p.rows[0].id,nome,p.rows[0].unidade]);
         await client.query(`INSERT INTO est_ficha_porcao (tenant_id,ficha_id,nome,rendimento,unidade,ordem,ativo)

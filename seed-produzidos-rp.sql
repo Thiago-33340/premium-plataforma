@@ -491,3 +491,45 @@ DELETE FROM est_produto_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND 
 INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) SELECT 'khardela:premiumpizzas:sjrp',(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Requeijão Catupiry'),(SELECT id FROM est_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Montagem'),FALSE WHERE (SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Requeijão Catupiry') IS NOT NULL AND (SELECT id FROM est_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Montagem') IS NOT NULL ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING;
 DELETE FROM est_produto_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND produto_id=(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Requeijão Cheddar') AND setor_id <> (SELECT id FROM est_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Montagem');
 INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) SELECT 'khardela:premiumpizzas:sjrp',(SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Requeijão Cheddar'),(SELECT id FROM est_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Montagem'),FALSE WHERE (SELECT id FROM est_produto WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Requeijão Cheddar') IS NOT NULL AND (SELECT id FROM est_setor WHERE tenant_id='khardela:premiumpizzas:sjrp' AND nome='Montagem') IS NOT NULL ON CONFLICT (tenant_id,produto_id,setor_id) DO NOTHING;
+
+-- ===== Ajuste 11: setor unico canonico dos produzidos/fracionados =====
+-- O seed de produzidos roda no boot. Se ele apenas adiciona vinculos, ele ressuscita
+-- setores antigos depois do gestor corrigir no painel. Esta trava transforma o seed
+-- em fonte de reparo: remove setores divergentes e deixa somente o setor canonico.
+WITH mapa(nome, setor) AS (
+  VALUES
+    ('Bisnaga P de Nutella','Finalização'),
+    ('Bisnaga G de Nutella','Finalização'),
+    ('Bolinha de muçarela','Borda'),
+    ('Bolinha de presunto e muçarela','Borda'),
+    ('Bolinha de muçarela com orégano','Borda'),
+    ('Rolinho de muçarela','Borda'),
+    ('Rolinho de presunto e muçarela','Borda'),
+    ('Ouro Branco inteiro solto','Finalização'),
+    ('Ouro Branco metade','Finalização'),
+    ('Sonho de Valsa inteiro solto','Finalização'),
+    ('Sonho de Valsa metade','Finalização'),
+    ('Ferrero Rocher inteiro solto','Finalização'),
+    ('Ferrero Rocher metade','Finalização'),
+    ('Raffaello inteiro solto','Finalização'),
+    ('Raffaello metade','Finalização'),
+    ('Prestígio inteiro solto','Finalização'),
+    ('Prestígio metade','Finalização')
+),
+alvo AS (
+  SELECT p.tenant_id, p.id AS produto_id, s.id AS setor_id, m.nome, m.setor
+    FROM mapa m
+    JOIN est_produto p ON p.tenant_id='khardela:premiumpizzas:sjrp' AND p.nome=m.nome
+    JOIN est_setor s ON s.tenant_id=p.tenant_id AND s.nome=m.setor
+),
+limpeza AS (
+  DELETE FROM est_produto_setor ps
+   USING alvo a
+   WHERE ps.tenant_id=a.tenant_id
+     AND ps.produto_id=a.produto_id
+     AND ps.setor_id<>a.setor_id
+   RETURNING ps.produto_id
+)
+INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio)
+SELECT tenant_id, produto_id, setor_id, FALSE FROM alvo
+ON CONFLICT (tenant_id, produto_id, setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio;
