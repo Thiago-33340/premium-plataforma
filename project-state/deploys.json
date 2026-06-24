@@ -269,5 +269,29 @@
       "GET /api/est/produtos?status=inativos retornou 43 itens e 0 ativos."
     ],
     "observacoes": "Produto agora tem exclusao explicita para gestor: o botao Excluir produto remove o item das listas e rotinas operacionais por exclusao logica (ativo=false), preservando historico no banco. A listagem de produtos passou a filtrar ativos por padrao e ganhou chips Ativos/Excluidos/Todos para auditoria e recuperacao. Nenhum produto real foi excluido durante os testes; validacao foi read-only."
+  },
+  {
+    "id": "deploy-2026-06-24-estoque-setor-unico-categorias-ativas",
+    "data": "2026-06-24",
+    "servico": "mayaproject/github",
+    "ambiente": "producao",
+    "status": "concluido",
+    "origem": "GitHub main -> EasyPanel",
+    "branch": "main",
+    "merge_commit": "92f041e",
+    "dominios": [
+      "https://premium.titanatende.com.br",
+      "https://tools.titanatende.com.br"
+    ],
+    "validacoes": [
+      "Snapshot read-only de tenants.config realizado antes do push; fallback HTTP read-only usado porque DATABASE_URL nao estava no PowerShell local.",
+      "Push para GitHub main OK: 6b1ba60 -> 92f041e.",
+      "Deploy acionado manualmente no EasyPanel apos webhook ausente no ambiente local.",
+      "Smoke read-only producao/tools OK: 23/23.",
+      "GET /api/est/categorias padrao retornou 9 categorias, 0 vazias/inativas e 0 categorias antigas como Hortifruti/Laticinios/Confeitaria.",
+      "GET /api/est/produtos?status=todos retornou 237 produtos, 194 ativos e 0 produtos ativos com multiplos setores.",
+      "Teste idempotente em Ferrero Rocher metade via POST /api/est/produto/:id/setores manteve um unico setor Finalizacao e subcategoria Finalizacao."
+    ],
+    "observacoes": "Causa raiz corrigida: alem da UI, o seed de produzidos executado no boot/deploy estava reintroduzindo vinculos antigos de setor. O seed-produzidos-rp.sql agora canoniza setor unico para os produzidos/fracionados criticos; db.js tambem remove setores divergentes antes de inserir setor de seed. O editor do produto carrega e salva apenas um setor escopado ao modal, e o gerenciador de categorias mostra por padrao somente categorias ativas com produtos ativos. Historico de categorias/produtos inativos permanece no banco, mas fora da operacao."
   }
 ]
