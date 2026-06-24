@@ -255,8 +255,12 @@ body.keyboard-open .product-modal{ align-items:flex-start; padding-top:6px; }
 body.keyboard-open .product-modal .box{ max-height:calc(var(--vvh) - 8px); border-radius:16px; }
 body.keyboard-open .editor-head{ padding:12px 16px 8px; }
 body.keyboard-open .editor-head p{ display:none; }
-body.keyboard-open .editor-body{ max-height:calc(var(--vvh) - 150px); padding-bottom:118px; }
-body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area-inset-bottom)); }
+body.keyboard-open .editor-body{ max-height:calc(var(--vvh) - 124px); padding-bottom:22px; scroll-padding-bottom:34px; }
+body.keyboard-open .editor-foot{
+  position:static; bottom:auto; margin:18px 0 0; padding:12px 0 max(12px,env(safe-area-inset-bottom));
+  background:#111113; border-top:1px solid var(--line); flex-wrap:wrap;
+}
+body.keyboard-open .editor-foot .status{ flex-basis:100%; }
 
 @media(min-width:1050px){
   #app{ padding-left:224px; }
@@ -276,6 +280,8 @@ body.keyboard-open .editor-foot{ bottom:0; padding-bottom:max(14px,env(safe-area
   .product-modal{ padding:0; align-items:flex-end; }
   .product-modal .box{ max-height:calc(var(--vvh) - 8px); border-radius:18px 18px 0 0; }
   .editor-head{ padding:18px 16px 14px; }.editor-tabs{ padding:9px 10px; }.editor-body{ padding:18px 16px 22px; max-height:calc(var(--vvh) - 178px); }
+  body.keyboard-open .editor-body{ max-height:calc(var(--vvh) - 118px); }
+  body.keyboard-open .editor-foot .btn{ flex:1 1 auto; min-width:116px; }
   .cs-menu{ position:fixed; left:14px; right:14px; top:auto; bottom:calc(14px + env(safe-area-inset-bottom)); max-height:min(360px,calc(var(--vvh) - 120px)); }
   .form-grid,.switch-grid{ grid-template-columns:1fr; }.form-grid .span2{ grid-column:auto; }
   .recipe-cta{ grid-template-columns:1fr; }.recipe-summary{ grid-template-columns:1fr; }
@@ -1495,7 +1501,9 @@ async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus
   if(b.pode_contar&&!b.setores.length){ peTab('operacao'); status.textContent='Escolha pelo menos um setor de contagem ou desmarque “Entra nas contagens”.'; return; }
   if((b.estoque_minimo!=null&&!Number.isFinite(b.estoque_minimo))||(b.estoque_ideal!=null&&!Number.isFinite(b.estoque_ideal))){ peTab('estoque'); status.textContent='Revise os valores de estoque.'; return; }
   btn.disabled=true; status.textContent='Validando e salvando…';
-  try{ let id=_pe.id; const abrirFichaDepois=!_pe.id&&b.pode_produzir; if(!id){ const d=await estFetch('/api/est/produto','POST',b); id=d.id; _pe.id=id; } else await estFetch('/api/est/produto/'+id,'PATCH',b);
+  try{ let id=_pe.id, d=null; const abrirFichaDepois=!_pe.id&&b.pode_produzir; if(!id){ d=await estFetch('/api/est/produto','POST',b); id=d.id; _pe.id=id; } else d=await estFetch('/api/est/produto/'+id,'PATCH',b);
+    d=await estFetch('/api/est/produto/'+id+'/setores','POST',{setores:b.setores});
+    if(d&&Array.isArray(d.setores)){ const a=[...b.setores].map(Number).sort((x,y)=>x-y).join(','), salvo=[...d.setores].map(Number).sort((x,y)=>x-y).join(','); if(a!==salvo)throw new Error('O produto salvou, mas os setores retornaram diferentes. Reabra o item e confira antes de continuar.'); }
     toast(_pe.produto&&_pe.produto.nome?'Produto atualizado':'Produto criado'); peClose(); await loadProdutos(); if(abrirFichaDepois)setTimeout(()=>abrirFichaProd(id),120);
   }catch(e){ status.textContent=e.message||'Não foi possível salvar. Revise os campos.'; btn.disabled=false; }
 }

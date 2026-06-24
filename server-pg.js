@@ -2382,10 +2382,24 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'setores' && req.method === 'POST') {
     const b = await readBody(req);
     if (!(await estPode(b.usuario_id, 'editar_produtos'))) return json(res, 403, { erro: 'Sem permissão.' });
-    const pid = parseInt(seg[3], 10); const setores = Array.isArray(b.setores) ? b.setores.map(x => parseInt(x, 10)).filter(Boolean) : [];
-    await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]);
-    for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, pid, sid]);
-    return json(res, 200, { ok: true, setores });
+    const pid = parseInt(seg[3], 10); const setores = Array.isArray(b.setores) ? [...new Set(b.setores.map(x => parseInt(x, 10)).filter(Boolean))] : [];
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const prod = await client.query('SELECT id FROM est_produto WHERE tenant_id=$1 AND id=$2', [TENANT, pid]);
+      if (!prod.rows[0]) { await client.query('ROLLBACK'); return json(res, 404, { erro: 'Produto nao encontrado.' }); }
+      const setorRows = setores.length ? (await client.query('SELECT id, nome FROM est_setor WHERE tenant_id=$1 AND ativo AND id=ANY($2::int[]) ORDER BY ordem, nome', [TENANT, setores])).rows : [];
+      if (setorRows.length !== setores.length) throw new Error('Um dos setores selecionados nao existe ou esta inativo.');
+      await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2', [TENANT, pid]);
+      for (const sid of setores) await client.query('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT (tenant_id, produto_id, setor_id) DO NOTHING', [TENANT, pid, sid]);
+      const subcategoria = setorRows.map(s => s.nome).join(' / ') || null;
+      await client.query('UPDATE est_produto SET subcategoria=$3, atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2', [TENANT, pid, subcategoria]);
+      await client.query('COMMIT');
+      return json(res, 200, { ok: true, setores, subcategoria });
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      return json(res, 400, { erro: e.code || e.message });
+    } finally { client.release(); }
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && seg[4] === 'peso' && req.method === 'POST') {
     const b = await readBody(req);
@@ -3436,7 +3450,7 @@ async function api(req, res, url) {
       for(const it of itensPrimeira.rows){const ex=await client.query('SELECT id FROM est_producao_receita WHERE tenant_id=$1 AND produto_id=$2 AND insumo_produto_id=$3',[TENANT,pid,it.insumo_produto_id]);
         if(ex.rows[0])await client.query('UPDATE est_producao_receita SET quantidade_por_unidade=$2,unidade=$3,rendimento=$4,observacao=$5,ativo=TRUE WHERE id=$1',[ex.rows[0].id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);
         else await client.query('INSERT INTO est_producao_receita (tenant_id,produto_id,insumo_produto_id,quantidade_por_unidade,unidade,rendimento,observacao,ativo) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)',[TENANT,pid,it.insumo_produto_id,it.quantidade,it.unidade,Number(primeira.rendimento),it.observacao]);}
-      if(Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
+      if(b.atualizar_setores === true && Array.isArray(b.setores)){await client.query('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,pid]);for(const sid of b.setores.map(Number).filter(Boolean))await client.query('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING',[TENANT,pid,sid]);}
       await client.query('COMMIT');return json(res,200,{ok:true,ficha_id:fichaId,porcoes:mantidas.length});
     }catch(e){try{await client.query('ROLLBACK')}catch(_){}return json(res,400,{erro:e.code||e.message});}finally{client.release();}
   }
