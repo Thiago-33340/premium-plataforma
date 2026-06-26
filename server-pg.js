@@ -1015,6 +1015,13 @@ function nOrNull(v) {
 function metaObj(m) {
   return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
 }
+let estCategoriaHierarchyReady = false;
+async function ensureEstCategoriaHierarchySchema() {
+  if (estCategoriaHierarchyReady) return;
+  await db.q('ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS parent_id INT');
+  await db.q('CREATE INDEX IF NOT EXISTS idx_est_categoria_parent ON est_categoria(tenant_id, parent_id, ordem, nome)');
+  estCategoriaHierarchyReady = true;
+}
 function invFromMeta(meta) {
   const m = metaObj(meta);
   const inv = metaObj(m.inventory || m.estoque_cardapio);
@@ -2406,6 +2413,7 @@ async function api(req, res, url) {
   }
 
   if (sub === 'est' && seg[2] === 'categorias' && req.method === 'GET') {
+    try { await ensureEstCategoriaHierarchySchema(); } catch (e) { return json(res, 500, { erro: 'Falha ao preparar hierarquia de categorias.', detalhe: e.code || e.message }); }
     const status = String(url.searchParams.get('status') || 'ativas').toLowerCase();
     const uso = String(url.searchParams.get('uso') || 'ativos').toLowerCase();
     const statusMode = ['todos', 'all'].includes(status) ? 'todos' : (['inativas', 'inativos', 'false', '0'].includes(status) ? 'inativas' : 'ativas');
@@ -2452,6 +2460,7 @@ async function api(req, res, url) {
     return json(res, 200, { conversoes: r.rows });
   }
   if (sub === 'est' && seg[2] === 'produtos' && req.method === 'GET') {
+    try { await ensureEstCategoriaHierarchySchema(); } catch (e) { return json(res, 500, { erro: 'Falha ao preparar hierarquia de categorias.', detalhe: e.code || e.message }); }
     const busca = (url.searchParams.get('busca') || '').toLowerCase();
     const cat = url.searchParams.get('categoria') || '';
     const forn = url.searchParams.get('fornecedor') || '';
@@ -2507,6 +2516,7 @@ async function api(req, res, url) {
     return json(res, 200, { produtos: r.rows, status: ativosMode });
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
+    try { await ensureEstCategoriaHierarchySchema(); } catch (e) { return json(res, 500, { erro: 'Falha ao preparar hierarquia de categorias.', detalhe: e.code || e.message }); }
     const pid = parseInt(seg[3], 10);
     if (!pid) return json(res, 400, { erro: 'produto inválido' });
     const pr = await db.q(`SELECT p.*,
@@ -2780,6 +2790,9 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const permNeeded = seg[2] === 'categoria' ? 'editar_categorias' : 'editar_produtos';
     if (!(await estPode(b.usuario_id, permNeeded))) return json(res, 403, { erro: 'Sem permissão para editar.' });
+    if (seg[2] === 'categoria') {
+      try { await ensureEstCategoriaHierarchySchema(); } catch (e) { return json(res, 500, { erro: 'Falha ao preparar hierarquia de categorias.', detalhe: e.code || e.message }); }
+    }
 
     // PRODUTO
     if (seg[2] === 'produto' && !seg[3] && req.method === 'POST') {
