@@ -992,11 +992,8 @@ async function estoqueTenantConfig() {
     db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]),
     db.q(`SELECT DISTINCT tipo_item AS v FROM est_produto
       WHERE tenant_id=$1 AND tipo_item IS NOT NULL AND btrim(tipo_item)<>'' ORDER BY tipo_item`, [TENANT]).catch(() => ({ rows: [] })),
-    db.q(`SELECT DISTINCT v FROM (
-        SELECT departamento AS v FROM est_produto WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
-        UNION
-        SELECT departamento AS v FROM est_categoria WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>''
-      ) x ORDER BY v`, [TENANT]).catch(() => ({ rows: [] })),
+    db.q(`SELECT DISTINCT departamento AS v FROM est_categoria
+      WHERE tenant_id=$1 AND departamento IS NOT NULL AND btrim(departamento)<>'' ORDER BY departamento`, [TENANT]).catch(() => ({ rows: [] })),
     db.q(`SELECT DISTINCT unidade AS v FROM est_produto
       WHERE tenant_id=$1 AND unidade IS NOT NULL AND btrim(unidade)<>'' ORDER BY unidade`, [TENANT]).catch(() => ({ rows: [] }))
   ]);
@@ -2414,13 +2411,15 @@ async function api(req, res, url) {
     const statusMode = ['todos', 'all'].includes(status) ? 'todos' : (['inativas', 'inativos', 'false', '0'].includes(status) ? 'inativas' : 'ativas');
     const usoMode = ['todos', 'all'].includes(uso) ? 'todos' : 'ativos';
     const r = await db.q(`SELECT c.id, c.nome, c.departamento, c.ordem, c.ativo,
+        COALESCE(c.controla_cmv,FALSE) AS controla_cmv,
+        COALESCE(c.controla_cv,FALSE) AS controla_cv,
         COUNT(p.id)::int AS produtos_total,
         COUNT(p.id) FILTER (WHERE p.ativo)::int AS produtos_ativos
       FROM est_categoria c
       LEFT JOIN est_produto p ON p.tenant_id=c.tenant_id AND p.categoria_id=c.id
       WHERE c.tenant_id=$1
         AND ($2='todos' OR ($2='ativas' AND c.ativo) OR ($2='inativas' AND NOT c.ativo))
-      GROUP BY c.id, c.nome, c.departamento, c.ordem, c.ativo
+      GROUP BY c.id, c.nome, c.departamento, c.ordem, c.ativo, c.controla_cmv, c.controla_cv
       HAVING ($3='todos' OR COUNT(p.id) FILTER (WHERE p.ativo) > 0)
       ORDER BY c.departamento NULLS LAST, c.ordem, c.nome`, [TENANT, statusMode, usoMode]);
     return json(res, 200, { categorias: r.rows, status: statusMode, uso: usoMode });
@@ -2454,7 +2453,13 @@ async function api(req, res, url) {
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
         p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
-        p.departamento, p.subcategoria,
+        COALESCE(c.departamento,p.departamento) AS departamento, p.subcategoria,
+        COALESCE(p.controla_cmv,FALSE) AS controla_cmv,
+        COALESCE(p.controla_cv,FALSE) AS controla_cv,
+        COALESCE(c.controla_cmv,FALSE) AS categoria_controla_cmv,
+        COALESCE(c.controla_cv,FALSE) AS categoria_controla_cv,
+        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE)) AS cmv_efetivo,
+        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE)) AS cv_efetivo,
         p.marca_preferida, p.ultima_marca, p.categoria_id, p.fornecedor_preferido_id, p.ultimo_fornecedor_id,
         p.conversao_origem, p.conversao_confianca, p.conversao_precisa_revisao, p.tipo_item, p.nome_nf,
         p.local_fisico_id, l.nome AS local_fisico,
@@ -2492,7 +2497,14 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
     const pid = parseInt(seg[3], 10);
     if (!pid) return json(res, 400, { erro: 'produto inválido' });
-    const pr = await db.q(`SELECT p.*, c.nome AS categoria, f.nome AS fornecedor, uf.nome AS ultimo_fornecedor,
+    const pr = await db.q(`SELECT p.*,
+        COALESCE(c.departamento,p.departamento) AS departamento,
+        c.nome AS categoria,
+        COALESCE(c.controla_cmv,FALSE) AS categoria_controla_cmv,
+        COALESCE(c.controla_cv,FALSE) AS categoria_controla_cv,
+        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE)) AS cmv_efetivo,
+        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE)) AS cv_efetivo,
+        f.nome AS fornecedor, uf.nome AS ultimo_fornecedor,
         l.nome AS local_fisico, mv.nome AS melhor_fornecedor, mv.menor_valor AS melhor_valor
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
@@ -2760,8 +2772,8 @@ async function api(req, res, url) {
       try {
         const r = await db.q(`INSERT INTO est_produto (tenant_id, nome, categoria_id, unidade, estoque_minimo, estoque_ideal,
           fornecedor_preferido_id, pode_contar, pode_comprar, pode_produzir, observacoes, ativo, subcategoria, marca_preferida, peso_g, unidade_base,
-          conversao_origem, conversao_confianca, conversao_precisa_revisao, tipo_item, nome_nf, local_fisico_id, departamento)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id`,
+          conversao_origem, conversao_confianca, conversao_precisa_revisao, tipo_item, nome_nf, local_fisico_id, controla_cmv, controla_cv)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
           [TENANT, nome, b.categoria_id || null, String(b.unidade || '').trim() || null,
            b.estoque_minimo !== '' && b.estoque_minimo != null ? Number(b.estoque_minimo) : null, b.estoque_ideal !== '' && b.estoque_ideal != null ? Number(b.estoque_ideal) : null,
            b.fornecedor_preferido_id || null, b.pode_contar !== false, b.pode_comprar !== false, !!b.pode_produzir, b.observacoes || null,
@@ -2769,7 +2781,7 @@ async function api(req, res, url) {
            String(b.unidade_base || '').trim() || null,
            String(b.conversao_origem || '').trim() || null, String(b.conversao_confianca || '').trim() || null, !!b.conversao_precisa_revisao,
            String(b.tipo_item || '').trim() || null, String(b.nome_nf || '').trim() || null, b.local_fisico_id || null,
-           String(b.departamento || '').trim() || null]);
+           !!b.controla_cmv, !!b.controla_cv]);
         const pid = r.rows[0].id;
         const setores = Array.isArray(b.setores) ? b.setores.map(Number).filter(Boolean).slice(0, 1) : [];
         for (const sid of setores) await db.q('INSERT INTO est_produto_setor (tenant_id,produto_id,setor_id,obrigatorio) VALUES ($1,$2,$3,FALSE) ON CONFLICT DO NOTHING', [TENANT,pid,sid]);
@@ -2782,14 +2794,15 @@ async function api(req, res, url) {
         const r = await db.q(`UPDATE est_produto SET nome=$2,categoria_id=$3,unidade=$4,estoque_minimo=$5,estoque_ideal=$6,
           fornecedor_preferido_id=$7,pode_contar=$8,pode_comprar=$9,pode_produzir=$10,observacoes=$11,
           subcategoria=$12,marca_preferida=$13,peso_g=$14,ativo=$15,unidade_base=$17,
-          conversao_origem=$18,conversao_confianca=$19,conversao_precisa_revisao=$20,tipo_item=$21,local_fisico_id=$22,departamento=$23,atualizado_em=NOW()
+          conversao_origem=$18,conversao_confianca=$19,conversao_precisa_revisao=$20,tipo_item=$21,local_fisico_id=$22,
+          controla_cmv=$23,controla_cv=$24,atualizado_em=NOW()
           WHERE id=$1 AND tenant_id=$16 RETURNING id`, [seg[3],nome,b.categoria_id||null,String(b.unidade||'').trim()||null,
           b.estoque_minimo!==''&&b.estoque_minimo!=null?Number(b.estoque_minimo):null,b.estoque_ideal!==''&&b.estoque_ideal!=null?Number(b.estoque_ideal):null,
           b.fornecedor_preferido_id||null,b.pode_contar!==false,b.pode_comprar!==false,!!b.pode_produzir,b.observacoes||null,
           String(b.subcategoria||'').trim()||null,String(b.marca_preferida||'').trim()||null,b.peso_g!==''&&b.peso_g!=null?Number(b.peso_g):null,b.ativo!==false,TENANT,
           String(b.unidade_base||'').trim()||null,
           String(b.conversao_origem||'').trim()||null,String(b.conversao_confianca||'').trim()||null,!!b.conversao_precisa_revisao,
-          String(b.tipo_item||'').trim()||null,b.local_fisico_id||null,String(b.departamento||'').trim()||null]);
+          String(b.tipo_item||'').trim()||null,b.local_fisico_id||null,!!b.controla_cmv,!!b.controla_cv]);
         if (!r.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
         if (Array.isArray(b.setores)) {
           await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2',[TENANT,seg[3]]);
@@ -2828,12 +2841,16 @@ async function api(req, res, url) {
     // CATEGORIA
     if (seg[2] === 'categoria' && !seg[3] && req.method === 'POST') {
       const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
-      try { const r = await db.q('INSERT INTO est_categoria (tenant_id, nome, departamento, ordem) VALUES ($1,$2,$3,$4) RETURNING id', [TENANT, nome, String(b.departamento || '').trim() || null, Number(b.ordem) || 50]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
+      try { const r = await db.q(`INSERT INTO est_categoria (tenant_id, nome, departamento, ordem, controla_cmv, controla_cv)
+        VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [TENANT, nome, String(b.departamento || '').trim() || null, Number(b.ordem) || 50, !!b.controla_cmv, !!b.controla_cv]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
       catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Categoria já existe.' : (e.code || e.message) }); }
     }
     if (seg[2] === 'categoria' && seg[3] && req.method === 'PATCH') {
-      await db.q('UPDATE est_categoria SET nome=COALESCE($2,nome), departamento=COALESCE($3,departamento), ordem=COALESCE($4,ordem), ativo=COALESCE($5,ativo) WHERE id=$1 AND tenant_id=$6',
-        [seg[3], b.nome ? String(b.nome).trim() : null, b.departamento != null ? String(b.departamento).trim() : null, b.ordem != null ? Number(b.ordem) : null, typeof b.ativo === 'boolean' ? b.ativo : null, TENANT]);
+      await db.q(`UPDATE est_categoria SET nome=COALESCE($2,nome), departamento=COALESCE($3,departamento), ordem=COALESCE($4,ordem),
+        ativo=COALESCE($5,ativo), controla_cmv=COALESCE($6,controla_cmv), controla_cv=COALESCE($7,controla_cv)
+        WHERE id=$1 AND tenant_id=$8`,
+        [seg[3], b.nome ? String(b.nome).trim() : null, b.departamento != null ? String(b.departamento).trim() : null, b.ordem != null ? Number(b.ordem) : null,
+         typeof b.ativo === 'boolean' ? b.ativo : null, typeof b.controla_cmv === 'boolean' ? b.controla_cmv : null, typeof b.controla_cv === 'boolean' ? b.controla_cv : null, TENANT]);
       return json(res, 200, { ok: true });
     }
     if (seg[2] === 'categoria' && seg[3] && req.method === 'DELETE') {
@@ -3602,7 +3619,7 @@ Regras obrigatórias:
     const status = String(url.searchParams.get('status') || 'ativas').toLowerCase();
     const busca = estNorm(url.searchParams.get('q') || url.searchParams.get('busca') || '');
     const rows = await db.q(`SELECT p.id AS produto_id,p.nome,p.unidade,p.ativo AS produto_ativo,
-        COALESCE(p.pode_produzir,FALSE) AS pode_produzir,p.estoque_atual,p.departamento,p.subcategoria,
+        COALESCE(p.pode_produzir,FALSE) AS pode_produzir,p.estoque_atual,COALESCE(c.departamento,p.departamento) AS departamento,p.subcategoria,
         c.nome AS categoria,f.id AS ficha_id,COALESCE(f.ativo,FALSE) AS ficha_ativa,
         f.descricao,f.unidade_consumo,f.tipo,f.instrucoes,f.atualizado_em,
         COALESCE(sx.setores,'') AS setores,

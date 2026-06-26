@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS est_categoria (
 );
 -- Hierarquia Departamento > Categoria (a subcategoria fica em est_produto.subcategoria).
 ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS departamento TEXT;
+ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cmv BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cv BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE TABLE IF NOT EXISTS est_fornecedor (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -88,6 +90,8 @@ ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS conversao_precisa_revisao BOOLE
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS tipo_item TEXT;   -- insumo|produzido internamente|semiacabado|embalagem|bebida|material de limpeza|higiene|utensílio|revenda|outro
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS nome_nf TEXT;     -- texto cru da nota, read-only depois de importado
 ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS local_fisico_id INT REFERENCES est_local_fisico(id);
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS controla_cmv BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS controla_cv BOOLEAN NOT NULL DEFAULT FALSE;
 -- Sugestões de conversão POR CATEGORIA (substitui o preset global). Mostradas só em produtos da
 -- categoria correspondente e sempre confirmáveis — nunca aplicadas automaticamente a outra categoria.
 CREATE TABLE IF NOT EXISTS est_conversao_categoria (
