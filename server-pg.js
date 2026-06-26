@@ -56,7 +56,7 @@ function hostFerramentasPermitido(req) {
   return hostNaLista(host, TITAN_TOOLS_HOSTS);
 }
 function notFound(res) {
-  res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.writeHead(404, securityHeaders(res.__req, { 'Content-Type': 'text/plain; charset=utf-8' }));
   res.end('404');
 }
 
@@ -64,10 +64,33 @@ const soPhone = s => String(s || '').replace(/\D/g, '');
 const validWA = p => { p = soPhone(p); return p.length === 12 || p.length === 13; };
 const waToken = phone => crypto.createHmac('sha256', WA_SECRET).update(soPhone(phone)).digest('hex').slice(0, 16);
 const money = n => Math.round(Number(n) * 100) / 100;
-function json(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(b); }
+function corsHeaders(req) {
+  const origin = req && req.headers && req.headers.origin;
+  if (!origin) return {};
+  try {
+    const u = new URL(origin);
+    const originHost = u.hostname.toLowerCase();
+    const host = reqHost(req);
+    const permitido = originHost === host || hostNaLista(originHost, PUBLIC_CLIENT_HOSTS) || hostNaLista(originHost, TITAN_TOOLS_HOSTS);
+    if (!permitido) return {};
+    return { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', Vary: 'Origin' };
+  } catch (_) { return {}; }
+}
+function securityHeaders(req, extra) {
+  const h = Object.assign({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+    'Content-Security-Policy': "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; form-action 'self'",
+    'Strict-Transport-Security': 'max-age=15552000; includeSubDomains'
+  }, corsHeaders(req), extra || {});
+  return h;
+}
+function json(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, securityHeaders(res.__req, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' })); res.end(b); }
 function jsonComHeaders(res, code, obj, headers) {
   const b = JSON.stringify(obj);
-  res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }, headers || {}));
+  res.writeHead(code, securityHeaders(res.__req, Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, headers || {})));
   res.end(b);
 }
 const APP_VERSION_CACHE = {};
@@ -86,7 +109,22 @@ function csvCell(v) {
   const s = String(v == null ? '' : v);
   return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
-function readBody(req) { return new Promise(r => { let b = ''; req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); }); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch { r({}); } }); }); }
+function bodyComSessao(req, obj) {
+  if (!req || !req.staffUser || !obj || Array.isArray(obj) || typeof obj !== 'object') return obj;
+  const u = req.staffUser;
+  if (!perfilGestor(u)) obj.usuario_id = u.id;
+  else if (!obj.usuario_id && !obj.admin_id) obj.usuario_id = u.id;
+  return obj;
+}
+function readBody(req) {
+  return new Promise(r => {
+    let b = '';
+    req.on('data', c => { b += c; if (b.length > 2e6) req.destroy(); });
+    req.on('end', () => {
+      try { r(bodyComSessao(req, b ? JSON.parse(b) : {})); } catch { r({}); }
+    });
+  });
+}
 
 const TITAN_TOOL_PERMS = ['acesso_total', 'command_center', 'mapper', 'ver_project_state', 'editar_project_state', 'acionar_deploy', 'gerenciar_usuarios'];
 const TITAN_TOOL_SESSION_COOKIE = 'tt_session';
@@ -165,6 +203,86 @@ async function requerTitanSession(req, res, perm) {
   if (!u) { json(res, 401, { erro: 'Faça login no Titan Tools.' }); return null; }
   if (perm && !titanTemPerm(u, perm)) { json(res, 403, { erro: 'Sem permissão para esta ferramenta.' }); return null; }
   return u;
+}
+
+const STAFF_SESSION_COOKIE = 'kh_staff';
+const STAFF_SESSION_SECRET = process.env.STAFF_SESSION_SECRET || process.env.SESSION_SECRET || WA_SECRET;
+const STAFF_LOGIN_ATTEMPTS = new Map();
+function b64url(v) { return Buffer.from(v).toString('base64url'); }
+function b64urlJson(obj) { return b64url(JSON.stringify(obj)); }
+function hmacStaff(data) { return crypto.createHmac('sha256', STAFF_SESSION_SECRET).update(String(data)).digest('base64url'); }
+function safeEq(a, b) {
+  const aa = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+}
+function staffSessionToken(user, remember) {
+  const horas = remember ? 24 * 30 : 12;
+  const payload = {
+    uid: String(user.id),
+    login: String(user.apelido_login || ''),
+    exp: Date.now() + horas * 60 * 60 * 1000,
+    n: crypto.randomBytes(10).toString('base64url')
+  };
+  const body = b64urlJson(payload);
+  return body + '.' + hmacStaff(body);
+}
+function staffSessionCookie(req, token, remember) {
+  const maxAge = remember ? 30 * 24 * 60 * 60 : 12 * 60 * 60;
+  const parts = [`${STAFF_SESSION_COOKIE}=${encodeURIComponent(token)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAge}`];
+  if (cookieSeguro(req)) parts.push('Secure');
+  return parts.join('; ');
+}
+function clearStaffSessionCookie(req) {
+  const parts = [`${STAFF_SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
+  if (cookieSeguro(req)) parts.push('Secure');
+  return parts.join('; ');
+}
+function staffPayload(req) {
+  const raw = parseCookies(req)[STAFF_SESSION_COOKIE];
+  if (!raw || !raw.includes('.')) return null;
+  const [body, sig] = raw.split('.');
+  if (!body || !sig || !safeEq(sig, hmacStaff(body))) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!payload || !payload.uid || Number(payload.exp) < Date.now()) return null;
+    return payload;
+  } catch (_) { return null; }
+}
+async function staffSessionUser(req) {
+  const p = staffPayload(req);
+  if (!p) return null;
+  try { return await rbacUserByRef(p.uid); } catch (_) { return null; }
+}
+function staffRefMatch(u, ref) {
+  const v = String(ref || '').trim().toLowerCase();
+  if (!v) return true;
+  return v === String(u.id || '').toLowerCase() ||
+    v === String(u.apelido_login || '').toLowerCase() ||
+    v === String(u.nome || '').split(' ')[0].toLowerCase();
+}
+async function requerStaffSession(req, res, opts) {
+  const u = await staffSessionUser(req);
+  if (!u) { json(res, 401, { erro: 'Sessão expirada. Entre novamente.' }); return null; }
+  if (opts && opts.gestor && !perfilGestor(u)) { json(res, 403, { erro: 'acesso restrito ao gestor' }); return null; }
+  if (opts && opts.ref && !staffRefMatch(u, opts.ref)) { json(res, 403, { erro: 'Sessão não confere com o usuário informado.' }); return null; }
+  return u;
+}
+function staffLoginRateOk(req, login) {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const key = `${ip}|${String(login || '').toLowerCase()}`;
+  const now = Date.now();
+  const janela = 15 * 60 * 1000;
+  const arr = (STAFF_LOGIN_ATTEMPTS.get(key) || []).filter(t => now - t < janela);
+  arr.push(now);
+  STAFF_LOGIN_ATTEMPTS.set(key, arr);
+  return arr.length <= 25;
+}
+function webhookSecretOk(req) {
+  const required = process.env.TITAN_WEBHOOK_SECRET || process.env.WA_WEBHOOK_SECRET || '';
+  if (!required) return true;
+  const got = String(req.headers['x-titan-webhook-secret'] || req.headers['x-webhook-secret'] || '');
+  return got && safeEq(got, required);
 }
 
 const PROJECT_STATE_FILES = [
@@ -1267,6 +1385,42 @@ async function estAchaProduto(texto, minScore) {
   const r = await estMatchProdutosEntrada([{ texto }], minScore == null ? 0.5 : minScore, { onlyCompraveis: false });
   return r[0] && r[0].melhor ? r[0].melhor : null;
 }
+function estNumOCR(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const raw = String(v).trim();
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  const n = Number(normalized);
+  if (Number.isFinite(n)) return n;
+  const n2 = Number(raw.replace(',', '.'));
+  return Number.isFinite(n2) ? n2 : null;
+}
+function estPrimeiroOCR(...vals) {
+  for (const v of vals) if (v != null && v !== '') return v;
+  return null;
+}
+function estNormalizaItemCompraOCR(it) {
+  it = estAsObj(it);
+  const qtd = estPrimeiroOCR(it.quantidade_estoque, it.qtd_estoque, it.quantidade_operacional, it.quantidade);
+  const vt = estPrimeiroOCR(it.valor_total_com_impostos, it.custo_total_com_impostos, it.custo_total, it.valor_total);
+  let vu = estPrimeiroOCR(it.valor_unitario_com_impostos, it.custo_unitario_com_impostos, it.custo_unitario, it.valor_unitario);
+  const qn = estNumOCR(qtd), vtn = estNumOCR(vt);
+  if ((vu == null || vu === '') && qn > 0 && vtn != null) vu = Number((vtn / qn).toFixed(4));
+  return {
+    produto: String(it.produto || it.nome || it.descricao || '').trim().slice(0, 240),
+    marca: String(it.marca || '').trim().slice(0, 80) || null,
+    quantidade: qtd,
+    unidade: String(estPrimeiroOCR(it.unidade_estoque, it.unidade_operacional, it.unidade) || '').trim().slice(0, 30) || null,
+    valor_unitario: vu,
+    valor_total: vt,
+    valor_unitario_com_impostos: estPrimeiroOCR(it.valor_unitario_com_impostos, it.custo_unitario_com_impostos, it.custo_unitario, vu),
+    valor_total_com_impostos: vt,
+    quantidade_nf: estPrimeiroOCR(it.quantidade_nf, it.qtd_nf),
+    unidade_nf: estPrimeiroOCR(it.unidade_nf, it.un_nf),
+    embalagem_qtd: estPrimeiroOCR(it.embalagem_qtd, it.quantidade_por_embalagem),
+    observacao: String(it.observacao || it.alerta || '').trim().slice(0, 220) || null
+  };
+}
 function estQtdMovimento(qtd, unidadeInformada, produto) {
   const n = Number(String(qtd == null ? '' : qtd).replace(',', '.'));
   if (!(n > 0)) return null;
@@ -1615,7 +1769,13 @@ async function baixaEstoqueSeLigado(itens, ref) {
 async function api(req, res, url) {
   const seg = url.pathname.split('/').filter(Boolean);
   const sub = seg[1];
-  if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }); return res.end(); }
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, securityHeaders(req, {
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Titan-Webhook-Secret, X-Webhook-Secret'
+    }));
+    return res.end();
+  }
 
   if (sub === 'health') return json(res, 200, { ok: true, ts: new Date().toISOString() });
   if (sub === 'app-version' && req.method === 'GET') {
@@ -2157,6 +2317,30 @@ async function api(req, res, url) {
 
   if (sub === 'cardapio' && req.method === 'GET') return json(res, 200, await montarCardapio());
 
+  if (sub === 'pedidos' && req.method !== 'POST') {
+    const u = await requerStaffSession(req, res);
+    if (!u) return;
+    req.staffUser = u;
+  }
+
+  if (sub === 'sistema') {
+    const u = await requerStaffSession(req, res, { gestor: true });
+    if (!u) return;
+    req.staffUser = u;
+  }
+
+  if (sub === 'est' && !(seg[2] === 'whatsapp' && seg[3] === 'inbound')) {
+    const u = await requerStaffSession(req, res);
+    if (!u) return;
+    const qUid = url.searchParams.get('usuario_id');
+    if (qUid && !perfilGestor(u) && !staffRefMatch(u, qUid)) return json(res, 403, { erro: 'Sessão não confere com o usuário informado.' });
+    req.staffUser = u;
+  }
+
+  if (sub === 'est' && seg[2] === 'whatsapp' && seg[3] === 'inbound' && !webhookSecretOk(req)) {
+    return json(res, 401, { erro: 'webhook nao autorizado' });
+  }
+
   // retrato do sistema p/ a Khardela responder gestores sobre a operacao/infra.
   if (sub === 'sistema' && req.method === 'GET') {
     const area = (url.searchParams.get('area') || 'resumo').toLowerCase();
@@ -2283,22 +2467,24 @@ async function api(req, res, url) {
       LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
       LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
       LEFT JOIN LATERAL (
-        SELECT json_agg(json_build_object('id', s.id, 'nome', s.nome) ORDER BY s.ordem, s.nome) AS setores,
-               string_agg(s.nome, ', ' ORDER BY s.ordem, s.nome) AS setor_nomes
+        SELECT json_agg(json_build_object('id', z.id, 'nome', z.nome) ORDER BY z.ordem, z.nome) AS setores,
+               string_agg(z.nome, ', ' ORDER BY z.ordem, z.nome) AS setor_nomes,
+               max(z.id) AS setor_id,
+               max(z.nome) AS setor_nome
+        FROM (
+          SELECT s.id, s.nome, s.ordem
           FROM est_produto_setor ps
           JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
          WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+         ORDER BY (s.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, s.ordem, s.nome
+         LIMIT 1
+        ) z
       ) sx ON TRUE
       WHERE p.tenant_id=$1
         AND ($2='' OR lower(p.nome) LIKE '%'||$2||'%')
         AND ($3='' OR c.nome=$3)
         AND ($4='' OR f.nome=$4)
-        AND ($5='' OR EXISTS (
-          SELECT 1
-            FROM est_produto_setor ps2
-            JOIN est_setor s2 ON s2.id=ps2.setor_id AND s2.tenant_id=ps2.tenant_id
-           WHERE ps2.tenant_id=p.tenant_id AND ps2.produto_id=p.id AND (s2.nome=$5 OR s2.id::text=$5)
-        ))
+        AND ($5='' OR sx.setor_nome=$5 OR sx.setor_id::text=$5)
         AND ($6='todos' OR ($6='ativos' AND p.ativo) OR ($6='inativos' AND NOT p.ativo))
       ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor, ativosMode]);
     return json(res, 200, { produtos: r.rows, status: ativosMode });
@@ -2322,8 +2508,12 @@ async function api(req, res, url) {
       WHERE p.id=$1 AND p.tenant_id=$2`, [pid, TENANT]);
     if (!pr.rows[0]) return json(res, 404, { erro: 'Produto não encontrado.' });
     const setores = await db.q(`SELECT s.id, s.nome, ps.obrigatorio
-      FROM est_produto_setor ps JOIN est_setor s ON s.id=ps.setor_id
-      WHERE ps.tenant_id=$1 AND ps.produto_id=$2 ORDER BY s.ordem,s.nome`, [TENANT, pid]);
+      FROM est_produto p
+      JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
+      JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+      WHERE p.tenant_id=$1 AND p.id=$2
+      ORDER BY (s.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, s.ordem,s.nome
+      LIMIT 1`, [TENANT, pid]);
     const ficha = await db.q(`SELECT r.id, r.insumo_produto_id, i.nome AS insumo, i.unidade AS insumo_unidade,
         r.quantidade_por_unidade, r.unidade, r.rendimento, r.observacao
       FROM est_producao_receita r JOIN est_produto i ON i.id=r.insumo_produto_id
@@ -2356,17 +2546,27 @@ async function api(req, res, url) {
       const r = tudo
         ? await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
             FROM est_produto p
-            JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
-            JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+            JOIN LATERAL (
+              SELECT sx.id, sx.nome
+              FROM est_produto_setor ps JOIN est_setor sx ON sx.id=ps.setor_id AND sx.tenant_id=ps.tenant_id
+              WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+              ORDER BY (sx.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, sx.ordem, sx.nome
+              LIMIT 1
+            ) s ON TRUE
            WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
-           ORDER BY s.nome, p.nome`, [TENANT])
+            ORDER BY s.nome, p.nome`, [TENANT])
         : await db.q(`SELECT p.id, p.nome, p.unidade, p.estoque_atual, s.nome AS setor
             FROM est_produto p
-            JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.tenant_id=p.tenant_id
-            JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+            JOIN LATERAL (
+              SELECT sx.id, sx.nome
+              FROM est_produto_setor ps JOIN est_setor sx ON sx.id=ps.setor_id AND sx.tenant_id=ps.tenant_id
+              WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+              ORDER BY (sx.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, sx.ordem, sx.nome
+              LIMIT 1
+            ) s ON TRUE
            WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar
-             AND (s.id::text = ANY($2::text[]) OR s.nome = ANY($2::text[]))
-           ORDER BY s.nome, p.nome`, [TENANT, setp]);
+              AND (s.id::text = ANY($2::text[]) OR s.nome = ANY($2::text[]))
+            ORDER BY s.nome, p.nome`, [TENANT, setp]);
       return json(res, 200, { itens: r.rows, todos: tudo, setores: setp });
     } catch (e) {
       return json(res, 500, { erro: 'Falha ao carregar itens do usuário.' });
@@ -2755,9 +2955,16 @@ async function api(req, res, url) {
       const ai = await db.q('SELECT id, produto_id, produto_nome, unidade, obrigatorio, quantidade, status, observacao, geral FROM est_contagem_item WHERE contagem_id=$1 ORDER BY geral, produto_nome', [aberta.rows[0].id]);
       return json(res, 200, { contagem: aberta.rows[0], itens: ai.rows, retomada: true });
     }
-    const itens = await db.q(`SELECT ps.produto_id, ps.obrigatorio, p.nome, p.unidade
-      FROM est_produto_setor ps JOIN est_produto p ON p.id=ps.produto_id
-      WHERE ps.tenant_id=$1 AND ps.setor_id=$2 AND p.ativo AND p.pode_contar ORDER BY p.nome`, [TENANT, b.setor_id]);
+    const itens = await db.q(`SELECT p.id AS produto_id, sx.obrigatorio, p.nome, p.unidade
+      FROM est_produto p
+      JOIN LATERAL (
+        SELECT ps.setor_id, ps.obrigatorio, s.nome
+        FROM est_produto_setor ps JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+        WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+        ORDER BY (s.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, s.ordem, s.nome
+        LIMIT 1
+      ) sx ON TRUE
+      WHERE p.tenant_id=$1 AND sx.setor_id=$2 AND p.ativo AND p.pode_contar ORDER BY p.nome`, [TENANT, b.setor_id]);
     if (!itens.rows.length) return json(res, 400, { erro: 'Este setor não tem itens. Configure os itens do setor primeiro.' });
     const c = await db.q(`INSERT INTO est_contagem (tenant_id, setor_id, setor_nome, usuario_id, usuario_nome, status, status_auditoria)
       VALUES ($1,$2,$3,$4,$5,'EM_ANDAMENTO','AGUARDANDO') RETURNING id, setor_nome, usuario_nome, iniciada_em`, [TENANT, s.rows[0].id, s.rows[0].nome, uref.id, uref.nome]);
@@ -2838,9 +3045,10 @@ async function api(req, res, url) {
     const csv = '\ufeff' + linhas.map(l => l.map(csvCell).join(';')).join('\r\n');
     const safeId = String(cid).replace(/[^a-z0-9-]/gi, '');
     res.writeHead(200, {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="contagem-${safeId}.csv"`,
-      'Access-Control-Allow-Origin': '*'
+      ...securityHeaders(req, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="contagem-${safeId}.csv"`
+      })
     });
     return res.end(csv);
   }
@@ -3024,9 +3232,15 @@ async function api(req, res, url) {
   // ===== CONFIGURAÇÃO DE SETORES (itens por setor + obrigatoriedade) =====
   if (sub === 'est' && seg[2] === 'setor' && seg[3] && seg[4] === 'config' && req.method === 'GET') {
     const r = await db.q(`SELECT p.id AS produto_id, p.nome, c.nome AS categoria,
-        (ps.id IS NOT NULL) AS no_setor, COALESCE(ps.obrigatorio,false) AS obrigatorio
+        COALESCE(sx.setor_id=$2::int,FALSE) AS no_setor, COALESCE(sx.obrigatorio,false) AS obrigatorio
       FROM est_produto p
-      LEFT JOIN est_produto_setor ps ON ps.produto_id=p.id AND ps.setor_id=$2 AND ps.tenant_id=$1
+      LEFT JOIN LATERAL (
+        SELECT ps.setor_id, ps.obrigatorio, s.nome
+        FROM est_produto_setor ps JOIN est_setor s ON s.id=ps.setor_id AND s.tenant_id=ps.tenant_id
+        WHERE ps.tenant_id=p.tenant_id AND ps.produto_id=p.id
+        ORDER BY (s.nome = NULLIF(p.subcategoria,'')) DESC, ps.obrigatorio DESC, s.ordem, s.nome
+        LIMIT 1
+      ) sx ON TRUE
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
       WHERE p.tenant_id=$1 AND p.ativo AND p.pode_contar ORDER BY c.ordem, p.nome`, [TENANT, seg[3]]);
     return json(res, 200, { itens: r.rows });
@@ -3034,10 +3248,13 @@ async function api(req, res, url) {
   if (sub === 'est' && seg[2] === 'setor' && seg[3] && seg[4] === 'config' && req.method === 'POST') {
     const b = await readBody(req); const g = await estGestor(b.usuario_id);
     if (!g) return json(res, 403, { erro: 'Apenas gestor ou gerente.' });
+    const setorCfg = await db.q('SELECT nome FROM est_setor WHERE tenant_id=$1 AND id=$2', [TENANT, seg[3]]);
+    const setorNomeCfg = setorCfg.rows[0] && setorCfg.rows[0].nome;
     await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND setor_id=$2', [TENANT, seg[3]]);
     for (const it of (Array.isArray(b.itens) ? b.itens : [])) {
       await db.q('DELETE FROM est_produto_setor WHERE tenant_id=$1 AND produto_id=$2 AND setor_id<>$3', [TENANT, it.produto_id, seg[3]]);
       await db.q('INSERT INTO est_produto_setor (tenant_id, produto_id, setor_id, obrigatorio) VALUES ($1,$2,$3,$4) ON CONFLICT (tenant_id, produto_id, setor_id) DO UPDATE SET obrigatorio=EXCLUDED.obrigatorio', [TENANT, it.produto_id, seg[3], !!it.obrigatorio]);
+      if (setorNomeCfg) await db.q('UPDATE est_produto SET subcategoria=$3, atualizado_em=NOW() WHERE tenant_id=$1 AND id=$2', [TENANT, it.produto_id, setorNomeCfg]);
     }
     return json(res, 200, { ok: true, total: (b.itens || []).length });
   }
@@ -3084,17 +3301,29 @@ async function api(req, res, url) {
       const r = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', temperature: 0, max_tokens: 2000, response_format: { type: 'json_object' },
+          model: process.env.TITAN_VISION_MODEL || 'gpt-4o-mini', temperature: 0, max_tokens: 3500, response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: 'Você lê uma nota ou cupom fiscal de compra de um restaurante e extrai os itens comprados. Responda APENAS um objeto JSON {"fornecedor": string|null, "data": "YYYY-MM-DD"|null, "itens": [{"produto": string, "marca": string|null, "quantidade": number, "unidade": string|null, "valor_unitario": number|null, "valor_total": number|null}]}. Use ponto como separador decimal. Não invente itens que não estejam na nota.' },
-            { role: 'user', content: [{ type: 'text', text: 'Extraia os itens desta nota de compra.' }, { type: 'image_url', image_url: { url: dataUrl } }] }
+            { role: 'system', content: `Você lê DANFE/NF-e, nota ou cupom fiscal de compra de restaurante. Responda APENAS JSON válido:
+{"fornecedor": string|null, "data": "YYYY-MM-DD"|null, "itens": [{"produto": string, "marca": string|null, "quantidade": number|null, "unidade": string|null, "quantidade_nf": number|null, "unidade_nf": string|null, "embalagem_qtd": number|null, "valor_unitario": number|null, "valor_total": number|null, "valor_unitario_com_impostos": number|null, "valor_total_com_impostos": number|null, "observacao": string|null}]}.
+Regras obrigatórias:
+1) Fornecedor é o EMITENTE/RAZÃO SOCIAL de quem vendeu, nunca o destinatário.
+2) Data é emissão ou saída da nota.
+3) Produto é a descrição da linha fiscal, preservando marca, volume, embalagem e variação.
+4) Marca deve vir da descrição quando aparecer (ex.: Coca-Cola, Fanta, Crystal, Monster, Brahma, Heineken). Se não tiver certeza, use null.
+5) Para DANFE, use as linhas da tabela PRODUTOS/SERVIÇOS; ignore totais gerais como se fossem itens.
+6) valor_total_com_impostos deve ser o custo final da linha. Se existir coluna "CUSTO TOTAL", use ela. Senão calcule valor_total_produto + IPI + ICMS ST + FCP ST + frete/outras despesas rateadas quando estiverem na linha - desconto. Não use base de cálculo como custo.
+7) valor_total e valor_unitario devem acompanhar o custo com impostos quando esse custo existir, para alimentar custo médio real.
+8) Se a unidade fiscal for CX/PCT e a descrição indicar conteúdo (ex.: 06 FL, 6UN, 12UN, 6PACK), preencha quantidade_nf/unidade_nf com a nota, embalagem_qtd com o conteúdo e quantidade/unidade com a quantidade que entra no estoque em unidades individuais. Se não tiver certeza da conversão, mantenha quantidade/unidade da nota e escreva em observacao "revisar conversão".
+9) Use ponto como separador decimal. Não invente itens que não estejam na nota.` },
+            { role: 'user', content: [{ type: 'text', text: 'Extraia fornecedor, data, produtos, marcas, quantidades e custo final com impostos desta nota.' }, { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } }] }
           ]
         })
       });
       const j = await r.json();
       if (!r.ok) return json(res, 502, { erro: 'OCR falhou: ' + (j.error ? j.error.message : ('HTTP ' + r.status)) });
       let p = {}; try { p = JSON.parse(j.choices[0].message.content); } catch (e) { p = {}; }
-      return json(res, 200, { fornecedor: p.fornecedor || null, data: p.data || null, itens: Array.isArray(p.itens) ? p.itens : [] });
+      const itens = (Array.isArray(p.itens) ? p.itens : []).map(estNormalizaItemCompraOCR).filter(x => x.produto);
+      return json(res, 200, { fornecedor: p.fornecedor || null, data: p.data || null, itens });
     } catch (e) { return json(res, 502, { erro: 'Erro no OCR: ' + (e.message || e) }); }
   }
   if (sub === 'est' && seg[2] === 'compra' && !seg[3] && req.method === 'POST') {
@@ -3118,18 +3347,20 @@ async function api(req, res, url) {
         let vt = it.valor_total != null && it.valor_total !== '' ? Number(String(it.valor_total).replace(',', '.')) : null;
         if (vu != null && !(vu >= 0)) vu = null;
         if (vt != null && !(vt >= 0)) vt = null;
-        if (vu == null && vt != null && qtd) vu = vt / qtd;
-        if (vt == null && vu != null) vt = vu * qtd;
-        total += vt || 0;
-        const cur = await client.query('SELECT id, nome, estoque_atual, legado FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo FOR UPDATE', [it.produto_id, TENANT]);
+        const cur = await client.query('SELECT id, nome, unidade, peso_g, estoque_atual, legado FROM est_produto WHERE id=$1 AND tenant_id=$2 AND ativo FOR UPDATE', [it.produto_id, TENANT]);
         if (!cur.rows[0]) throw new Error('Produto da compra não encontrado ou inativo.');
+        const qtdLancada = estQtdMovimento(qtd, it.unidade, cur.rows[0]);
+        if (!(qtdLancada > 0)) throw new Error('Não foi possível converter a quantidade da compra para o estoque.');
+        if (vu == null && vt != null && qtdLancada) vu = vt / qtdLancada;
+        if (vt == null && vu != null) vt = vu * qtdLancada;
+        total += vt || 0;
         const textoOriginal = String(it.texto_original || it.nome_original || it.produto_original || '').trim().slice(0, 240) || null;
         let matchScore = it.match_score != null && it.match_score !== '' ? Number(String(it.match_score).replace(',', '.')) : null;
         if (matchScore != null && !(matchScore >= 0 && matchScore <= 1)) matchScore = null;
         const matchStatus = String(it.match_status || '').trim().slice(0, 30) || null;
         await client.query('INSERT INTO est_compra_item (tenant_id, compra_id, produto_id, marca, quantidade, unidade, valor_unitario, valor_total, texto_original, match_score, match_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
-          [TENANT, cid, it.produto_id, it.marca || null, qtd, it.unidade || null, vu, vt, textoOriginal, matchScore, matchStatus]);
-        const antes = Number(cur.rows[0].estoque_atual), depois = antes + qtd;
+          [TENANT, cid, it.produto_id, it.marca || null, qtdLancada, cur.rows[0].unidade || it.unidade || null, vu, vt, textoOriginal, matchScore, matchStatus]);
+        const antes = Number(cur.rows[0].estoque_atual), depois = antes + qtdLancada;
         await client.query('UPDATE est_produto SET estoque_atual=$2, ultima_marca=COALESCE($3,ultima_marca), ultimo_fornecedor_id=COALESCE($4,ultimo_fornecedor_id), atualizado_em=NOW() WHERE id=$1 AND tenant_id=$5', [it.produto_id, depois, it.marca || null, b.fornecedor_id || null, TENANT]);
         if (textoOriginal && ['auto', 'confirmado', 'manual'].includes(matchStatus || '')) {
           const legado = estAsObj(cur.rows[0].legado);
@@ -3143,7 +3374,7 @@ async function api(req, res, url) {
           }
         }
         await client.query(`INSERT INTO est_movimento (tenant_id, produto_id, tipo, qtd_antes, qtd_movimentada, qtd_depois, origem, usuario_id, usuario_nome, ref, motivo)
-          VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtd, depois, e.user.id, e.user.nome, cid]);
+          VALUES ($1,$2,'ENTRADA',$3,$4,$5,'COMPRA',$6,$7,$8,'Compra')`, [TENANT, it.produto_id, antes, qtdLancada, depois, e.user.id, e.user.nome, cid]);
         if (vu != null && vu > 0) {
           await client.query(`UPDATE est_produto SET ultimo_valor=$2, maior_valor=GREATEST(COALESCE(maior_valor,0),$2), menor_valor=LEAST(COALESCE(menor_valor,$2),$2) WHERE id=$1 AND tenant_id=$3`, [it.produto_id, vu, TENANT]);
           await client.query(`UPDATE est_produto p SET medio_valor=(SELECT AVG(ci.valor_unitario) FROM est_compra_item ci JOIN est_compra cc ON cc.id=ci.compra_id WHERE ci.produto_id=p.id AND ci.valor_unitario IS NOT NULL AND cc.tenant_id=$1) WHERE p.id=$2 AND p.tenant_id=$1`, [TENANT, it.produto_id]);
@@ -3700,7 +3931,7 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const e = await estPermsEfetivas(b.usuario_id);
     if (!estPodeMovimento(e)) return json(res, 403, { erro: 'Sem permissao para interpretar movimento.' });
-    const key = process.env.OPENAI_API_KEY;
+    const key = String(process.env.TITAN_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '').trim();
     if (!key) return json(res, 400, { erro: 'Leitura por imagem nao configurada (defina OPENAI_API_KEY no Easypanel).' });
     if (!b.image) return json(res, 400, { erro: 'envie a imagem' });
     const dataUrl = String(b.image).startsWith('data:') ? b.image : ('data:image/jpeg;base64,' + b.image);
@@ -4096,15 +4327,19 @@ async function api(req, res, url) {
   // ===================== STAFF LOGIN (mesas/gestor) por apelido + PIN =====================
   if (sub === 'staff' && seg[2] === 'session' && req.method === 'GET') {
     const ref = url.searchParams.get('usuario_id') || url.searchParams.get('id') || url.searchParams.get('login');
-    const col = await rbacUserByRef(ref);
-    if (!col) return json(res, 401, { ok: false, erro: 'Sessão expirada. Entre novamente.' });
+    const col = await requerStaffSession(req, res, { ref });
+    if (!col) return;
     return jsonComHeaders(res, 200, { ok: true, usuario: staffUsuarioPublico(col) }, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+  }
+  if (sub === 'staff' && seg[2] === 'logout' && req.method === 'POST') {
+    return jsonComHeaders(res, 200, { ok: true }, { 'Set-Cookie': clearStaffSessionCookie(req), 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
   }
   if (sub === 'staff' && seg[2] === 'login' && req.method === 'POST') {
     const b = await readBody(req);
     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     const alvo = norm(b.login);
     if (!alvo) return json(res, 400, { erro: 'informe o login' });
+    if (!staffLoginRateOk(req, alvo)) return json(res, 429, { ok: false, erro: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' });
     const r = await db.q('SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, pin_hash, pin_must_change FROM rbac_contacts WHERE tenant_id=$1 AND ativo', [TENANT]);
     const col = r.rows.find(x => norm(x.apelido_login) === alvo || norm(x.nome).split(' ')[0] === alvo);
     if (!col) return json(res, 404, { ok: false, erro: 'Usuario nao encontrado.' });
@@ -4114,7 +4349,9 @@ async function api(req, res, url) {
       const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, pin]);
       if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { ok: false, erro: 'PIN incorreto.' });
     }
-    return json(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: staffUsuarioPublico(col) });
+    const remember = !!(b.remember || b.keep || b.manter_conectado);
+    const token = staffSessionToken(col, remember);
+    return jsonComHeaders(res, 200, { ok: true, must_change: !!col.pin_must_change, usuario: staffUsuarioPublico(col) }, { 'Set-Cookie': staffSessionCookie(req, token, remember), 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
   }
   // trocar o proprio PIN (primeiro login obrigatorio): valida o atual, grava o novo.
   if (sub === 'staff' && seg[2] === 'trocar-pin' && req.method === 'POST') {
@@ -4127,7 +4364,15 @@ async function api(req, res, url) {
     if (!col) return json(res, 404, { erro: 'usuario nao encontrado' });
     if (col.pin_hash) { const v = await db.q('SELECT (pin_hash = crypt($2, pin_hash)) AS ok FROM rbac_contacts WHERE id=$1', [col.id, atual]); if (!v.rows[0] || !v.rows[0].ok) return json(res, 401, { erro: 'PIN atual incorreto.' }); }
     await db.q(`UPDATE rbac_contacts SET pin_hash=crypt($2, gen_salt('bf',8)), pin_changed_at=NOW(), pin_must_change=FALSE WHERE id=$1`, [col.id, novo]);
-    return json(res, 200, { ok: true });
+    const remember = !!(b.remember || b.keep || b.manter_conectado);
+    const token = staffSessionToken(col, remember);
+    return jsonComHeaders(res, 200, { ok: true }, { 'Set-Cookie': staffSessionCookie(req, token, remember), 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+  }
+
+  if (['mesas', 'caixa', 'entregadores'].includes(sub)) {
+    const u = await requerStaffSession(req, res);
+    if (!u) return;
+    req.staffUser = u;
   }
 
   // ===================== MESAS / COMANDAS =====================
@@ -4223,8 +4468,8 @@ async function api(req, res, url) {
   if (sub === 'admin') {
     const body = (req.method !== 'GET') ? await readBody(req) : {};
     const adminId = (req.method === 'GET') ? url.searchParams.get('admin_id') : body.admin_id;
-    const g = await rbacUserByRef(adminId);
-    if (!g || !perfilGestor(g)) return json(res, 403, { erro: 'acesso restrito ao gestor' });
+    const g = await requerStaffSession(req, res, { gestor: true, ref: adminId });
+    if (!g) return;
 
     if (seg[2] === 'usuarios' && req.method === 'GET') {
       const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, ativo, (pin_hash IS NOT NULL) AS tem_pin FROM rbac_contacts WHERE tenant_id=$1 ORDER BY ativo DESC, nome`, [TENANT]);
@@ -4643,9 +4888,19 @@ async function api(req, res, url) {
   if (sub === 'config' && req.method === 'GET') {
     const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const cfg = (r.rows[0] && r.rows[0].config) || {};
+    const u = await staffSessionUser(req);
+    if (!u || !perfilGestor(u)) {
+      return json(res, 200, {
+        loja_aberta: !!cfg.loja_aberta,
+        destino_pedido: cfg.destino_pedido || 'SAIPOS',
+        baixa_estoque_auto: !!cfg.baixa_estoque_auto
+      });
+    }
     return json(res, 200, { printer_ip: cfg.printer_ip || '', printer_porta: cfg.printer_porta || '8008', ...cfg });
   }
   if (sub === 'config' && req.method === 'POST') {
+    const u = await requerStaffSession(req, res, { gestor: true });
+    if (!u) return;
     const b = await readBody(req);
     const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
     const merged = { ...((r.rows[0] && r.rows[0].config) || {}), ...b };
@@ -4659,9 +4914,9 @@ async function api(req, res, url) {
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 function serveStatic(res, fp) {
   fs.readFile(fp, (e, buf) => {
-    if (e) { res.writeHead(404); return res.end('404'); }
+    if (e) { res.writeHead(404, securityHeaders(res.__req, { 'Content-Type': 'text/plain; charset=utf-8' })); return res.end('404'); }
     const ext = path.extname(fp);
-    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    const headers = securityHeaders(res.__req, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     if (ext === '.html') Object.assign(headers, { 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
     res.writeHead(200, headers);
     res.end(buf);
@@ -4669,6 +4924,7 @@ function serveStatic(res, fp) {
 }
 
 const server = http.createServer(async (req, res) => {
+  res.__req = req;
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     let p = url.pathname;

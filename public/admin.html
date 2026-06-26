@@ -503,7 +503,7 @@ function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.re
   if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
   if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='producao')loadProducao(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
-function sair(){ location.reload(); }
+async function sair(){ try{ await fetch(API+'/api/staff/logout',{method:'POST'}); }catch(e){} location.reload(); }
 
 /* ===== INÍCIO (dashboard) ===== */
 async function loadInicio(){
