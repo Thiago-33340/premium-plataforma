@@ -205,6 +205,22 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .qty-value{ display:block; margin-top:4px; color:var(--tx); font-size:16px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
 .qty-value .unit{ color:var(--mut); font-size:13px; font-weight:400; }
 .qty-block.right{ text-align:right; }
+.category-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+.category-card{ position:relative; padding:15px; border:1px solid rgba(255,255,255,.09); border-radius:16px; background:rgba(20,20,22,.72); transition:border-color .16s,transform .16s,background .16s; }
+.category-card:hover{ border-color:rgba(255,255,255,.16); transform:translateY(-1px); background:#18181b; }
+.category-card.sub{ margin-left:18px; border-color:rgba(255,122,24,.18); background:rgba(255,122,24,.045); }
+.category-title{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.category-title b{ font-size:15px; line-height:1.25; overflow-wrap:anywhere; }
+.category-info{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+.category-info .mini{ padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:#17171a; min-height:54px; }
+.category-info .mini small{ display:block; color:var(--mut); font-size:10px; text-transform:uppercase; letter-spacing:.45px; margin-bottom:4px; }
+.category-info .mini b{ display:block; font-size:13px; font-weight:700; color:#f2f2f4; }
+.category-actions{ display:flex; gap:8px; margin-top:13px; justify-content:flex-end; }
+.round-action{ width:36px; height:36px; border-radius:11px; border:1px solid var(--line); background:#1b1b20; color:#f2f2f4; display:grid; place-items:center; cursor:pointer; font-size:16px; }
+.round-action:hover{ border-color:rgba(255,122,24,.45); color:var(--lar); }
+.round-action.danger:hover{ border-color:rgba(239,68,68,.45); color:#ff8d8d; }
+.category-create-bar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0 16px; flex-wrap:wrap; }
+.category-create-bar .split-button{ border-radius:14px; }
 .kpi{ min-height:106px; padding:18px; background:linear-gradient(145deg,var(--surface),#111113); }
 .kpi .v{ font-size:32px; }
 
@@ -743,6 +759,7 @@ async function loadInicioColab(){
 let _bt=null, _prodStatus='ativos', _catMgrStatus='ativas';
 function buscaDebounce(){ clearTimeout(_bt); _bt=setTimeout(loadProdutos,300); }
 async function ensureCats(){ if(!_cats.length){ try{ _cats=(await (await fetch(API+'/api/est/categorias?status=ativas&uso=todos')).json()).categorias||[]; }catch(e){} } }
+function catDisplayName(c){ if(!c)return ''; return c.parent_nome?`${c.parent_nome} › ${c.nome}`:String(c.nome||''); }
 async function ensureForns(force){ if(force)_forns=[]; if(!_forns.length){ try{ _forns=(await (await fetch(API+'/api/est/fornecedores')).json()).fornecedores||[]; }catch(e){} } }
 async function ensureConversoes(force){ if(force)_conversoes=[]; if(!_conversoes.length){ try{ _conversoes=(await (await fetch(API+'/api/est/conversoes')).json()).conversoes||[]; }catch(e){} } }
 async function ensureLocais(force){ if(force)_locais=[]; if(!_locais.length){ try{ _locais=(await (await fetch(API+'/api/est/locais')).json()).locais||[]; }catch(e){} } }
@@ -762,7 +779,7 @@ async function loadProdutos(){
     if(!p.ativo){ statusClass='off'; statusLabel='inativo'; }
     else if(at===0){ statusClass='zero'; statusLabel='zerado'; }
     else if(id!=null&&at<id){ statusClass='low'; statusLabel='abaixo'; }
-    const pathParts=[p.departamento,p.categoria,p.subcategoria].filter(Boolean);
+    const pathParts=[p.departamento,p.categoria_pai,p.categoria,p.subcategoria].filter(Boolean);
     const pathHtml=pathParts.length?pathParts.map(x=>`<span>${esc(x)}</span>`).join('<span class="path-sep">›</span>'):'<span>Sem classificação</span>';
     const fornecedor=esc(p.fornecedor||'sem fornecedor');
     const setores=(p.setores||[]).map(s=>`<span class="meta-pill sector">🏷 ${esc(s.nome)}</span>`).join('');
@@ -800,9 +817,9 @@ async function loadProdutos(){
 }
 function renderChips(){
   renderProdStatusChips();
-  const all=[{nome:''}].concat(_cats||[]);
+  const all=[{nome:'',label:'Todas'}].concat((_cats||[]).map(c=>Object.assign({},c,{label:catDisplayName(c)})));
   const atual=all.find(c=>String(c.nome||'')===String(_catSel||''))||all[0];
-  $('chipsCat').innerHTML=splitFilter('prodCat','Categorias',atual.nome||'Todas',all.map(c=>({v:c.nome||'',t:c.nome||'Todas',on:String(_catSel||'')===String(c.nome||'')})),'selCat');
+  $('chipsCat').innerHTML=splitFilter('prodCat','Categorias',atual.label||atual.nome||'Todas',all.map(c=>({v:c.nome||'',t:c.label||c.nome||'Todas',on:String(_catSel||'')===String(c.nome||'')})),'selCat');
   renderSetorChips();
 }
 function renderProdStatusChips(){
@@ -1655,7 +1672,7 @@ function peUpdateSetorResumo(){ const el=$('peSetorResumo'); if(el)el.textConten
 function peCategoriaAtual(){ const id=$('peCategoria')&&$('peCategoria').value; return (_cats||[]).find(c=>String(c.id)===String(id))||null; }
 function peCategoriaDepartamentoText(cat){ return cat&&cat.departamento?cat.departamento:'Sem departamento definido'; }
 function peCategoriaCustoText(cat){
-  const bits=[]; if(cat&&cat.controla_cmv)bits.push('CMV pela categoria'); if(cat&&cat.controla_cv)bits.push('CV pela categoria');
+  const bits=[]; if(cat&&(cat.cmv_efetivo||cat.controla_cmv))bits.push('CMV pela categoria'); if(cat&&(cat.cv_efetivo||cat.controla_cv))bits.push('CV pela categoria');
   return bits.length?bits.join(' · '):'Sem regra financeira pela categoria';
 }
 function peUpdateCategoriaResumo(){ const cat=peCategoriaAtual(); const dep=$('peCategoriaDepartamento'); if(dep)dep.textContent=peCategoriaDepartamentoText(cat); const fin=$('peCategoriaFinanceiro'); if(fin)fin.textContent=peCategoriaCustoText(cat); }
@@ -1671,7 +1688,7 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
   const m=document.createElement('div'); m.className='modal on product-modal'; m.id='productEditor';
   const opts=(arr,cur,label='nome')=>'<option value="">— selecione —</option>'+arr.map(x=>`<option value="${x.id}" ${String(cur||'')===String(x.id)?'selected':''}>${esc(x[label])}</option>`).join('');
   const tipoOpts=cfgOptions((_estoqueCfg&&_estoqueCfg.tipos_item)||[],'— não definido —');
-  const catOpts=[{v:'',t:'— selecione —'}].concat(_cats.map(c=>({v:c.id,t:c.nome})));
+  const catOpts=[{v:'',t:'— selecione —'}].concat(_cats.map(c=>({v:c.id,t:catDisplayName(c)})));
   const unidadeOpts=unidadeOptions('— selecione —');
   const mostraFicha=peTemFichaOuProducao(p);
   const fichaTab=mostraFicha?`<button class="editor-tab" data-tab="ficha" onclick="peTab('ficha')">Ficha técnica <span id="peFichaCount">${_pe.ficha.length}</span></button>`:'';
@@ -1710,7 +1727,7 @@ function renderEditorProduto(){ const p=_pe.produto||{}; document.querySelectorA
         ${peCustomSelect('peCategoria','Categoria',p.categoria_id||'',catOpts,'Família operacional do item.')}
         <label class="label">Departamento da categoria<div class="readonly-pill" id="peCategoriaDepartamento">${esc(peCategoriaDepartamentoText((_cats||[]).find(c=>String(c.id)===String(p.categoria_id||''))))}</div><span class="help">O departamento é definido na categoria, não no produto.</span></label>
         <label class="label">Regra financeira herdada<div class="readonly-pill" id="peCategoriaFinanceiro">${esc(peCategoriaCustoText((_cats||[]).find(c=>String(c.id)===String(p.categoria_id||''))))}</div><span class="help">A categoria repassa CMV/CV para todos os produtos vinculados. Marcação feita no produto não altera a categoria.</span></label>
-        <label class="label">Subcategoria / setor<div class="readonly-pill" id="peSetorResumo">${esc(peSetorResumoText())}</div><span class="help">Não é mais texto livre: altere em <b>Operação › Setores de contagem</b>. A subcategoria acompanha automaticamente o setor escolhido.</span></label>
+        <label class="label">Setor de contagem<div class="readonly-pill" id="peSetorResumo">${esc(peSetorResumoText())}</div><span class="help">Não é texto livre: altere em <b>Operação › Setores de contagem</b>. Categoria e subcategoria ficam no campo Categoria.</span></label>
         ${peCustomSelect('peUnidade','Unidade de controle *',unidadeValor(p.unidade||'UNIDADE'),unidadeOpts,'Escolha uma unidade cadastrada. Não é mais texto livre.')}
         <label class="label">Marca preferida<input class="field" id="peMarca" value="${esc(p.marca_preferida||'')}" placeholder="Opcional"></label>
         <label class="label span2">Observações<textarea class="field" id="peObs" rows="3" placeholder="Conservação, embalagem, instruções de compra…">${esc(p.observacoes||'')}</textarea></label>
@@ -1870,29 +1887,51 @@ async function excluirFichaProd(){ if(!await pedirConfirm('Excluir ficha técnic
 function catStatusButtons(){
   return ['ativas','inativas','todos'].map(s=>`<button class="btn ${_catMgrStatus===s?'primary':'ghost'} sm" onclick="gerenciarCategorias('${s}')">${s==='todos'?'Todas':(s==='ativas'?'Ativas':'Inativas')}</button>`).join('');
 }
-function catRow(c){ const total=Number(c.produtos_total||0), ativos=Number(c.produtos_ativos||0); return `<div class="panel" style="margin-bottom:10px;padding:12px">
-  <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
-    <label class="label" style="flex:1;min-width:180px;margin:0">Nome<input class="field" id="cat-${c.id}" value="${esc(c.nome)}"></label>
-    <label class="label" style="width:180px;margin:0">Departamento<input class="field" id="catdep-${c.id}" value="${esc(c.departamento||'')}" placeholder="Ex.: Cozinha"></label>
-    <label class="label" style="width:86px;margin:0">Ordem<input class="field" id="catord-${c.id}" inputmode="numeric" value="${esc(c.ordem!=null?c.ordem:50)}"></label>
-  </div>
-  <div class="switch-grid" style="margin-top:10px">
-    <label class="switch-card"><input type="checkbox" id="catcmv-${c.id}" ${c.controla_cmv?'checked':''}><span><b>Categoria compõe CMV</b><small>Todos os produtos vinculados herdam CMV.</small></span></label>
-    <label class="switch-card"><input type="checkbox" id="catcv-${c.id}" ${c.controla_cv?'checked':''}><span><b>Categoria compõe CV</b><small>Todos os produtos vinculados herdam CV.</small></span></label>
-    <label class="switch-card"><input type="checkbox" id="catativo-${c.id}" ${c.ativo!==false?'checked':''}><span><b>Categoria ativa</b><small>${ativos} ativo${ativos===1?'':'s'} · ${total} total.</small></span></label>
-  </div>
-  <div class="row" style="gap:8px;margin-top:10px;justify-content:space-between;align-items:center">
-    <small class="mut">Renomear ou trocar departamento atualiza a organização de todos os produtos ligados por ID.</small>
-    <span class="row" style="gap:8px"><button class="btn ghost sm" onclick="salvarCategoria(${c.id})">Salvar</button><button class="btn danger sm" onclick="excluirCategoria(${c.id})">${total?'Inativar':'Excluir'}</button></span>
-  </div>
-</div>`; }
-async function gerenciarCategorias(status){ _catMgrStatus=status||_catMgrStatus||'ativas'; let cats=[]; try{ cats=(await (await fetch(API+`/api/est/categorias?status=${encodeURIComponent(_catMgrStatus)}&uso=todos`)).json()).categorias||[]; }catch(e){ cats=_cats||[]; } const old=$('catEditor'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
-  const groups={}; cats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
-  const body=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(d=>`<div class="sec">${esc(d)}</div>`+groups[d].map(catRow).join('')).join('')||'<div class="empty">Sem categorias neste filtro.</div>';
-  m.innerHTML=`<div class="box" style="max-width:920px"><div class="editor-head"><div><h3>Categorias do estoque</h3><p>Departamento pertence à categoria. CMV e CV configurados aqui descem para todos os produtos vinculados.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="row" style="gap:8px;margin-bottom:12px">${catStatusButtons()}</div><div id="catRows">${body}</div><div class="sec">Nova categoria</div><div class="form-grid"><label class="label">Nome<input class="field" id="catNovaNome" placeholder="Ex.: Matéria prima"></label><label class="label">Departamento<input class="field" id="catNovaDep" placeholder="Ex.: Cozinha"></label><label class="label">Ordem<input class="field" id="catNovaOrdem" inputmode="numeric" value="50"></label></div><div class="switch-grid" style="margin-top:10px"><label class="switch-card"><input type="checkbox" id="catNovaCMV"><span><b>Categoria compõe CMV</b><small>Todos os produtos desta categoria herdam CMV.</small></span></label><label class="switch-card"><input type="checkbox" id="catNovaCV"><span><b>Categoria compõe CV</b><small>Todos os produtos desta categoria herdam CV.</small></span></label></div><button class="btn primary sm" style="margin-top:10px" onclick="novaCategoria()">+ Adicionar categoria</button></div></div>`; document.body.appendChild(m); }
-async function salvarCategoria(id){ const nome=$('cat-'+id).value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria/'+id,'PATCH',{nome,departamento:$('catdep-'+id).value.trim(),ordem:Number(($('catord-'+id).value||'50').replace(',','.'))||50,controla_cmv:$('catcmv-'+id).checked,controla_cv:$('catcv-'+id).checked,ativo:$('catativo-'+id).checked}); _cats=[]; await ensureCats(); renderChips(); await gerenciarCategorias(_catMgrStatus); toast('Categoria atualizada'); }catch(e){} }
-async function novaCategoria(){ const nome=$('catNovaNome').value.trim(); if(!nome)return toast('Informe o nome'); try{ await estFetch('/api/est/categoria','POST',{nome,departamento:$('catNovaDep').value.trim(),ordem:Number(($('catNovaOrdem').value||'50').replace(',','.'))||50,controla_cmv:$('catNovaCMV').checked,controla_cv:$('catNovaCV').checked}); _cats=[]; await ensureCats(); await gerenciarCategorias(_catMgrStatus); renderChips(); toast('Categoria criada'); }catch(e){} }
-async function excluirCategoria(id){ if(!await pedirConfirm('Excluir/inativar categoria','Se houver produtos nela, a categoria será apenas inativada e o histórico ficará preservado. Se estiver vazia, será removida.'))return; try{ const r=await estFetch('/api/est/categoria/'+id,'DELETE'); _cats=[]; await ensureCats(); await gerenciarCategorias(_catMgrStatus); renderChips(); toast(r&&r.inativado?'Categoria inativada (em uso)':'Categoria excluída'); }catch(e){} }
+function catFinanceBadge(on,label){ return `<span class="meta-pill ${on?'sector':''}">${esc(label)} ${on?'ligado':'desligado'}</span>`; }
+function catCard(c,children){ const total=Number(c.produtos_total||0), ativos=Number(c.produtos_ativos||0), isSub=!!c.parent_id;
+  const statusClass=c.ativo!==false?'ok':'off', statusLabel=c.ativo!==false?'ativa':'inativa';
+  return `<article class="category-card ${isSub?'sub':''}">
+    <div class="category-title">
+      <div>
+        <b>${esc(c.nome)}</b>
+        <div class="product-path">${isSub?`<span>Subgrupo de ${esc(c.parent_nome||'—')}</span>`:`<span>${esc(c.departamento||'Sem departamento')}</span>`}</div>
+      </div>
+      <span class="status-pill ${statusClass}"><span class="status-dot"></span>${statusLabel}</span>
+    </div>
+    <div class="category-info">
+      <div class="mini"><small>${isSub?'Subgrupo de':'Departamento'}</small><b>${esc(isSub?(c.parent_nome||'—'):(c.departamento||'—'))}</b></div>
+      <div class="mini"><small>Produtos</small><b>${ativos} ativo${ativos===1?'':'s'} · ${total} total</b></div>
+      <div class="mini"><small>CMV</small><b>${c.cmv_efetivo||c.controla_cmv?'Ligado':'Desligado'}</b></div>
+      <div class="mini"><small>CV</small><b>${c.cv_efetivo||c.controla_cv?'Ligado':'Desligado'}</b></div>
+    </div>
+    <div class="product-meta">${catFinanceBadge(c.cmv_efetivo||c.controla_cmv,'CMV')}${catFinanceBadge(c.cv_efetivo||c.controla_cv,'CV')}${children?`<span class="meta-pill">${children} subgrupo${children===1?'':'s'}</span>`:''}</div>
+    <div class="category-actions">
+      ${isSub?'':`<button class="round-action" title="Adicionar subcategoria" onclick="novaSubcategoriaModal(${c.id})">＋</button>`}
+      <button class="round-action" title="Editar" onclick="editarCategoriaModal(${c.id})">✎</button>
+      <button class="round-action danger" title="Excluir" onclick="excluirCategoria(${c.id})">🗑</button>
+    </div>
+  </article>`; }
+function catParentOptions(selected){ const source=(_cats&&_cats.length)?_cats:(_catMgrCats||[]); const tops=source.filter(c=>!c.parent_id&&c.ativo!==false); return [{v:'',t:'— selecione —'}].concat(tops.map(c=>({v:c.id,t:c.nome}))).map(o=>`<button type="button" class="cs-option ${String(o.v)===String(selected||'')?'on':''}" data-v="${esc(o.v)}" data-t="${esc(o.t)}" onclick="csPick('catSubParent',this,event)">${esc(o.t)}</button>`).join(''); }
+let _catMgrCats=[];
+async function gerenciarCategorias(status){ _catMgrStatus=status||_catMgrStatus||'ativas'; let cats=[]; try{ cats=(await (await fetch(API+`/api/est/categorias?status=${encodeURIComponent(_catMgrStatus)}&uso=todos`)).json()).categorias||[]; }catch(e){ cats=_cats||[]; } _catMgrCats=cats; const old=$('catEditor'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
+  const childrenByParent={}; cats.forEach(c=>{ if(c.parent_id)(childrenByParent[c.parent_id]=childrenByParent[c.parent_id]||[]).push(c); });
+  const topCats=cats.filter(c=>!c.parent_id);
+  const groups={}; topCats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
+  const parentIds=new Set(cats.filter(c=>!c.parent_id).map(c=>String(c.id)));
+  const orphanSubs=cats.filter(c=>c.parent_id&&!parentIds.has(String(c.parent_id)));
+  const bodyMain=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(d=>`<div class="sec">${esc(d)}</div><div class="category-grid">`+groups[d].flatMap(c=>[catCard(c,(childrenByParent[c.id]||[]).length)].concat((childrenByParent[c.id]||[]).map(s=>catCard(s,0)))).join('')+'</div>').join('');
+  const bodyOrphans=orphanSubs.length?`<div class="sec">Subcategorias neste filtro</div><div class="category-grid">${orphanSubs.map(s=>catCard(s,0)).join('')}</div>`:'';
+  const body=(bodyMain+bodyOrphans)||'<div class="empty">Sem categorias neste filtro.</div>';
+  m.innerHTML=`<div class="box" style="max-width:1040px"><div class="editor-head"><div><h3>Categorias do estoque</h3><p>Departamento e CMV/CV ficam na categoria. Subcategorias apenas dividem itens parecidos dentro dela.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="category-create-bar"><div class="row" style="gap:8px">${catStatusButtons()}</div><div class="split-control" id="catCreateActionsWrap"><div class="split-button"><button type="button" class="split-main" onclick="novaCategoriaModal()">+ Nova categoria</button><button type="button" class="split-caret" onclick="splitToggle('catCreateActions',event)" aria-label="Mais opções"><span></span></button></div><div class="split-menu"><button type="button" class="split-option" onclick="novaSubcategoriaModal(null,event)">+ Nova subcategoria</button></div></div></div><div id="catRows">${body}</div><div class="help" style="margin-top:14px">A antiga opção <b>Ordem</b> foi automatizada. Para organização manual, o próximo passo correto é uma tela de arrastar e soltar, não um número solto difícil de entender.</div></div></div>`; document.body.appendChild(m); }
+function novaCategoriaModal(){ categoriaFormModal({tipo:'categoria'}); }
+function novaSubcategoriaModal(parentId,ev){ if(ev)ev.stopPropagation(); splitCloseAll(); categoriaFormModal({tipo:'subcategoria',parent_id:parentId||''}); }
+function editarCategoriaModal(id){ const c=(_catMgrCats||_cats||[]).find(x=>String(x.id)===String(id)); if(!c)return toast('Categoria não encontrada'); categoriaFormModal({tipo:c.parent_id?'subcategoria':'categoria',categoria:c,parent_id:c.parent_id||''}); }
+function categoriaFormModal(ctx){ const c=ctx.categoria||{}, isEdit=!!c.id, isSub=ctx.tipo==='subcategoria', lockedParent=!!ctx.parent_id&&!isEdit; const old=$('catFormModal'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catFormModal';
+  const parent=(_catMgrCats||_cats||[]).find(x=>String(x.id)===String(ctx.parent_id||c.parent_id||''));
+  const parentField=isSub?(lockedParent||isEdit?`<label class="label span2">Subgrupo de<div class="readonly-pill">${esc(parent&&parent.nome||'—')}</div><input type="hidden" id="catSubParent" value="${esc(ctx.parent_id||c.parent_id||'')}"><span class="help">Quando você cria a subcategoria pelo card de uma categoria, o vínculo fica travado para evitar erro.</span></label>`:`<label class="label span2">Subgrupo de<div class="custom-select" id="catSubParentWrap"><input type="hidden" id="catSubParent" value=""><button type="button" class="cs-button" onclick="csToggle('catSubParent',event)"><span id="catSubParentText">— selecione —</span></button><div class="cs-menu">${catParentOptions('')}</div></div><span class="help">Escolha a categoria-mãe. Subcategoria não tem departamento próprio.</span></label>`):'';
+  m.innerHTML=`<div class="box" style="max-width:720px"><div class="editor-head"><div><h3>${isEdit?'Editar ':'Nova '}${isSub?'subcategoria':'categoria'}</h3><p>${isSub?'Use para agrupar itens parecidos dentro de uma categoria, como Hortifruti dentro de Matéria Prima.':'Use para separar famílias principais do estoque e ligar departamento, CMV e CV.'}</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="form-grid"><label class="label span2">Nome<input class="field" id="catNomeForm" value="${esc(c.nome||'')}" placeholder="${isSub?'Ex.: Hortifruti':'Ex.: Matéria Prima'}"></label>${parentField}${isSub?'':`<label class="label">Departamento<input class="field" id="catDepForm" value="${esc(c.departamento||'')}" placeholder="Ex.: Cozinha"></label><label class="label">Status<div class="readonly-pill">${c.ativo===false?'Inativa':'Ativa'}</div></label>`}</div><div class="switch-grid" style="margin-top:12px">${isSub?'':`<label class="switch-card"><input type="checkbox" id="catCMVForm" ${c.controla_cmv?'checked':''}><span><b>Categoria compõe CMV</b><small>Todos os produtos vinculados herdam CMV.</small></span></label><label class="switch-card"><input type="checkbox" id="catCVForm" ${c.controla_cv?'checked':''}><span><b>Categoria compõe CV</b><small>Todos os produtos vinculados herdam CV.</small></span></label>`}<label class="switch-card"><input type="checkbox" id="catAtivoForm" ${c.ativo===false?'':'checked'}><span><b>${isSub?'Subcategoria':'Categoria'} ativa</b><small>Inativos somem da operação, mas preservam histórico.</small></span></label></div><div class="row" style="justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn ghost sm" onclick="this.closest('.modal').remove()">Cancelar</button><button class="btn primary" onclick="salvarCategoriaForm(${isEdit?c.id:'null'},'${isSub?'subcategoria':'categoria'}')">${isEdit?'Salvar':'Criar'}</button></div></div></div>`; document.body.appendChild(m); }
+async function salvarCategoriaForm(id,tipo){ const nome=$('catNomeForm').value.trim(); if(!nome)return toast('Informe o nome'); const isSub=tipo==='subcategoria'; const payload={nome,ativo:$('catAtivoForm').checked}; if(isSub){ const pid=$('catSubParent')&&$('catSubParent').value; if(!id&&!pid)return toast('Escolha o subgrupo de'); if(!id)payload.parent_id=pid; } else { payload.departamento=$('catDepForm').value.trim(); payload.controla_cmv=$('catCMVForm').checked; payload.controla_cv=$('catCVForm').checked; } try{ if(id)await estFetch('/api/est/categoria/'+id,'PATCH',payload); else await estFetch('/api/est/categoria','POST',payload); const fm=$('catFormModal'); if(fm)fm.remove(); _cats=[]; await ensureCats(); renderChips(); await gerenciarCategorias(_catMgrStatus); toast(id?'Categoria atualizada':'Categoria criada'); }catch(e){} }
+async function excluirCategoria(id){ const c=(_catMgrCats||_cats||[]).find(x=>String(x.id)===String(id)); const tipo=c&&c.parent_id?'subcategoria':'categoria'; if(!await pedirConfirm(`Excluir/inativar ${tipo}`,`Se houver produtos ou subcategorias vinculadas, ${tipo==='categoria'?'a categoria':'a subcategoria'} será apenas inativada e o histórico ficará preservado. Se estiver vazia, será removida.`))return; try{ const r=await estFetch('/api/est/categoria/'+id,'DELETE'); _cats=[]; await ensureCats(); await gerenciarCategorias(_catMgrStatus); renderChips(); toast(r&&r.inativado?'Registro inativado (em uso)':'Registro excluído'); }catch(e){} }
 
 /* ===== SUGESTÕES DE CONVERSÃO POR CATEGORIA (hortifruti etc.) ===== */
 function convBaseOpts(cur){ return ['g','ml','un'].map(b=>`<option value="${b}" ${cur===b?'selected':''}>${b}</option>`).join(''); }

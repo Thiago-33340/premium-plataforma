@@ -2410,18 +2410,26 @@ async function api(req, res, url) {
     const uso = String(url.searchParams.get('uso') || 'ativos').toLowerCase();
     const statusMode = ['todos', 'all'].includes(status) ? 'todos' : (['inativas', 'inativos', 'false', '0'].includes(status) ? 'inativas' : 'ativas');
     const usoMode = ['todos', 'all'].includes(uso) ? 'todos' : 'ativos';
-    const r = await db.q(`SELECT c.id, c.nome, c.departamento, c.ordem, c.ativo,
+    const r = await db.q(`SELECT c.id, c.nome, c.parent_id, pcat.nome AS parent_nome,
+        COALESCE(pcat.departamento,c.departamento) AS departamento,
+        c.departamento AS departamento_proprio,
+        c.ordem, c.ativo,
         COALESCE(c.controla_cmv,FALSE) AS controla_cmv,
         COALESCE(c.controla_cv,FALSE) AS controla_cv,
+        COALESCE(pcat.controla_cmv,FALSE) AS parent_controla_cmv,
+        COALESCE(pcat.controla_cv,FALSE) AS parent_controla_cv,
+        (COALESCE(c.controla_cmv,FALSE) OR COALESCE(pcat.controla_cmv,FALSE)) AS cmv_efetivo,
+        (COALESCE(c.controla_cv,FALSE) OR COALESCE(pcat.controla_cv,FALSE)) AS cv_efetivo,
         COUNT(p.id)::int AS produtos_total,
         COUNT(p.id) FILTER (WHERE p.ativo)::int AS produtos_ativos
       FROM est_categoria c
+      LEFT JOIN est_categoria pcat ON pcat.id=c.parent_id AND pcat.tenant_id=c.tenant_id
       LEFT JOIN est_produto p ON p.tenant_id=c.tenant_id AND p.categoria_id=c.id
       WHERE c.tenant_id=$1
         AND ($2='todos' OR ($2='ativas' AND c.ativo) OR ($2='inativas' AND NOT c.ativo))
-      GROUP BY c.id, c.nome, c.departamento, c.ordem, c.ativo, c.controla_cmv, c.controla_cv
+      GROUP BY c.id, c.nome, c.parent_id, pcat.nome, pcat.departamento, c.departamento, c.ordem, c.ativo, c.controla_cmv, c.controla_cv, pcat.controla_cmv, pcat.controla_cv
       HAVING ($3='todos' OR COUNT(p.id) FILTER (WHERE p.ativo) > 0)
-      ORDER BY c.departamento NULLS LAST, c.ordem, c.nome`, [TENANT, statusMode, usoMode]);
+      ORDER BY COALESCE(pcat.departamento,c.departamento) NULLS LAST, COALESCE(pcat.ordem,c.ordem), COALESCE(pcat.nome,c.nome), c.parent_id NULLS FIRST, c.ordem, c.nome`, [TENANT, statusMode, usoMode]);
     return json(res, 200, { categorias: r.rows, status: statusMode, uso: usoMode });
   }
   if (sub === 'est' && seg[2] === 'fornecedores' && req.method === 'GET') {
@@ -2453,13 +2461,16 @@ async function api(req, res, url) {
     const r = await db.q(`SELECT p.id, p.nome, p.unidade, p.unidade_base, p.estoque_atual, p.estoque_minimo, p.estoque_ideal, p.peso_g,
         p.pode_contar, p.pode_comprar, p.pode_produzir, p.ativo,
         p.ultimo_valor, p.maior_valor, p.menor_valor, p.medio_valor, p.observacoes,
-        COALESCE(c.departamento,p.departamento) AS departamento, p.subcategoria,
+        COALESCE(pcat.departamento,c.departamento,p.departamento) AS departamento,
+        p.subcategoria,
+        pcat.nome AS categoria_pai,
+        c.parent_id AS categoria_parent_id,
         COALESCE(p.controla_cmv,FALSE) AS controla_cmv,
         COALESCE(p.controla_cv,FALSE) AS controla_cv,
-        COALESCE(c.controla_cmv,FALSE) AS categoria_controla_cmv,
-        COALESCE(c.controla_cv,FALSE) AS categoria_controla_cv,
-        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE)) AS cmv_efetivo,
-        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE)) AS cv_efetivo,
+        (COALESCE(c.controla_cmv,FALSE) OR COALESCE(pcat.controla_cmv,FALSE)) AS categoria_controla_cmv,
+        (COALESCE(c.controla_cv,FALSE) OR COALESCE(pcat.controla_cv,FALSE)) AS categoria_controla_cv,
+        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE) OR COALESCE(pcat.controla_cmv,FALSE)) AS cmv_efetivo,
+        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE) OR COALESCE(pcat.controla_cv,FALSE)) AS cv_efetivo,
         p.marca_preferida, p.ultima_marca, p.categoria_id, p.fornecedor_preferido_id, p.ultimo_fornecedor_id,
         p.conversao_origem, p.conversao_confianca, p.conversao_precisa_revisao, p.tipo_item, p.nome_nf,
         p.local_fisico_id, l.nome AS local_fisico,
@@ -2468,6 +2479,7 @@ async function api(req, res, url) {
         COALESCE(sx.setor_nomes, '') AS setor_nomes
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      LEFT JOIN est_categoria pcat ON pcat.id=c.parent_id AND pcat.tenant_id=c.tenant_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
       LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
       LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
@@ -2487,27 +2499,30 @@ async function api(req, res, url) {
       ) sx ON TRUE
       WHERE p.tenant_id=$1
         AND ($2='' OR lower(p.nome) LIKE '%'||$2||'%')
-        AND ($3='' OR c.nome=$3)
+        AND ($3='' OR c.nome=$3 OR pcat.nome=$3)
         AND ($4='' OR f.nome=$4)
         AND ($5='' OR sx.setor_nome=$5 OR sx.setor_id::text=$5)
         AND ($6='todos' OR ($6='ativos' AND p.ativo) OR ($6='inativos' AND NOT p.ativo))
-      ORDER BY p.ativo DESC, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor, ativosMode]);
+      ORDER BY p.ativo DESC, COALESCE(pcat.ordem,c.ordem), COALESCE(pcat.nome,c.nome), c.parent_id NULLS FIRST, c.ordem, p.nome`, [TENANT, busca, cat, forn, setor, ativosMode]);
     return json(res, 200, { produtos: r.rows, status: ativosMode });
   }
   if (sub === 'est' && seg[2] === 'produto' && seg[3] && !seg[4] && req.method === 'GET') {
     const pid = parseInt(seg[3], 10);
     if (!pid) return json(res, 400, { erro: 'produto inválido' });
     const pr = await db.q(`SELECT p.*,
-        COALESCE(c.departamento,p.departamento) AS departamento,
+        COALESCE(pcat.departamento,c.departamento,p.departamento) AS departamento,
         c.nome AS categoria,
-        COALESCE(c.controla_cmv,FALSE) AS categoria_controla_cmv,
-        COALESCE(c.controla_cv,FALSE) AS categoria_controla_cv,
-        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE)) AS cmv_efetivo,
-        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE)) AS cv_efetivo,
+        pcat.nome AS categoria_pai,
+        c.parent_id AS categoria_parent_id,
+        (COALESCE(c.controla_cmv,FALSE) OR COALESCE(pcat.controla_cmv,FALSE)) AS categoria_controla_cmv,
+        (COALESCE(c.controla_cv,FALSE) OR COALESCE(pcat.controla_cv,FALSE)) AS categoria_controla_cv,
+        (COALESCE(p.controla_cmv,FALSE) OR COALESCE(c.controla_cmv,FALSE) OR COALESCE(pcat.controla_cmv,FALSE)) AS cmv_efetivo,
+        (COALESCE(p.controla_cv,FALSE) OR COALESCE(c.controla_cv,FALSE) OR COALESCE(pcat.controla_cv,FALSE)) AS cv_efetivo,
         f.nome AS fornecedor, uf.nome AS ultimo_fornecedor,
         l.nome AS local_fisico, mv.nome AS melhor_fornecedor, mv.menor_valor AS melhor_valor
       FROM est_produto p
       LEFT JOIN est_categoria c ON c.id=p.categoria_id
+      LEFT JOIN est_categoria pcat ON pcat.id=c.parent_id AND pcat.tenant_id=c.tenant_id
       LEFT JOIN est_fornecedor f ON f.id=p.fornecedor_preferido_id
       LEFT JOIN est_fornecedor uf ON uf.id=p.ultimo_fornecedor_id
       LEFT JOIN est_local_fisico l ON l.id=p.local_fisico_id
@@ -2841,21 +2856,39 @@ async function api(req, res, url) {
     // CATEGORIA
     if (seg[2] === 'categoria' && !seg[3] && req.method === 'POST') {
       const nome = String(b.nome || '').trim(); if (!nome) return json(res, 400, { erro: 'informe o nome' });
-      try { const r = await db.q(`INSERT INTO est_categoria (tenant_id, nome, departamento, ordem, controla_cmv, controla_cv)
-        VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [TENANT, nome, String(b.departamento || '').trim() || null, Number(b.ordem) || 50, !!b.controla_cmv, !!b.controla_cv]); return json(res, 201, { ok: true, id: r.rows[0].id }); }
+      try {
+        const parentId = b.parent_id ? Number(b.parent_id) : null;
+        let parent = null;
+        if (parentId) {
+          parent = (await db.q('SELECT id, departamento FROM est_categoria WHERE tenant_id=$1 AND id=$2 AND parent_id IS NULL', [TENANT, parentId])).rows[0];
+          if (!parent) return json(res, 400, { erro: 'Categoria-mãe inválida para subcategoria.' });
+        }
+        const ordemRaw = b.ordem != null && b.ordem !== '' ? Number(b.ordem) : null;
+        const ordemAuto = ordemRaw || Number((await db.q('SELECT COALESCE(MAX(ordem),0)+10 AS ordem FROM est_categoria WHERE tenant_id=$1 AND (($2::int IS NULL AND parent_id IS NULL) OR parent_id=$2)', [TENANT, parentId])).rows[0].ordem || 50);
+        const r = await db.q(`INSERT INTO est_categoria (tenant_id, nome, departamento, ordem, controla_cmv, controla_cv, parent_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [TENANT, nome, parentId ? null : (String(b.departamento || '').trim() || null), ordemAuto, parentId ? false : !!b.controla_cmv, parentId ? false : !!b.controla_cv, parentId]);
+        return json(res, 201, { ok: true, id: r.rows[0].id, parent_id: parentId });
+      }
       catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Categoria já existe.' : (e.code || e.message) }); }
     }
     if (seg[2] === 'categoria' && seg[3] && req.method === 'PATCH') {
-      await db.q(`UPDATE est_categoria SET nome=COALESCE($2,nome), departamento=COALESCE($3,departamento), ordem=COALESCE($4,ordem),
-        ativo=COALESCE($5,ativo), controla_cmv=COALESCE($6,controla_cmv), controla_cv=COALESCE($7,controla_cv)
+      const atual = (await db.q('SELECT parent_id FROM est_categoria WHERE tenant_id=$1 AND id=$2', [TENANT, seg[3]])).rows[0];
+      if (!atual) return json(res, 404, { erro: 'Categoria não encontrada.' });
+      const isSub = !!atual.parent_id;
+      await db.q(`UPDATE est_categoria SET nome=COALESCE($2,nome), departamento=CASE WHEN parent_id IS NULL THEN COALESCE($3,departamento) ELSE NULL END, ordem=COALESCE($4,ordem),
+        ativo=COALESCE($5,ativo), controla_cmv=CASE WHEN parent_id IS NULL THEN COALESCE($6,controla_cmv) ELSE FALSE END, controla_cv=CASE WHEN parent_id IS NULL THEN COALESCE($7,controla_cv) ELSE FALSE END
         WHERE id=$1 AND tenant_id=$8`,
-        [seg[3], b.nome ? String(b.nome).trim() : null, b.departamento != null ? String(b.departamento).trim() : null, b.ordem != null ? Number(b.ordem) : null,
-         typeof b.ativo === 'boolean' ? b.ativo : null, typeof b.controla_cmv === 'boolean' ? b.controla_cmv : null, typeof b.controla_cv === 'boolean' ? b.controla_cv : null, TENANT]);
-      return json(res, 200, { ok: true });
+        [seg[3], b.nome ? String(b.nome).trim() : null, !isSub && b.departamento != null ? String(b.departamento).trim() : null, b.ordem != null ? Number(b.ordem) : null,
+         typeof b.ativo === 'boolean' ? b.ativo : null, !isSub && typeof b.controla_cmv === 'boolean' ? b.controla_cmv : null, !isSub && typeof b.controla_cv === 'boolean' ? b.controla_cv : null, TENANT]);
+      return json(res, 200, { ok: true, subcategoria: isSub });
     }
     if (seg[2] === 'categoria' && seg[3] && req.method === 'DELETE') {
       const usados = await db.q('SELECT COUNT(*)::int n FROM est_produto WHERE tenant_id=$1 AND categoria_id=$2', [TENANT, seg[3]]);
-      if (usados.rows[0].n > 0) { await db.q('UPDATE est_categoria SET ativo=FALSE WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]); return json(res, 200, { ok: true, inativado: true, em_uso: usados.rows[0].n }); }
+      const filhos = await db.q('SELECT COUNT(*)::int n FROM est_categoria WHERE tenant_id=$1 AND parent_id=$2', [TENANT, seg[3]]);
+      if (usados.rows[0].n > 0 || filhos.rows[0].n > 0) {
+        await db.q('UPDATE est_categoria SET ativo=FALSE WHERE tenant_id=$2 AND (id=$1 OR parent_id=$1)', [seg[3], TENANT]);
+        return json(res, 200, { ok: true, inativado: true, em_uso: usados.rows[0].n, subcategorias: filhos.rows[0].n });
+      }
       await db.q('DELETE FROM est_categoria WHERE id=$1 AND tenant_id=$2', [seg[3], TENANT]);
       return json(res, 200, { ok: true });
     }

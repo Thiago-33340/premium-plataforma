@@ -168,8 +168,10 @@ const MIGRATIONS = [
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS departamento TEXT",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS controla_cmv BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE est_produto ADD COLUMN IF NOT EXISTS controla_cv BOOLEAN NOT NULL DEFAULT FALSE",
+  "ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS parent_id INT",
   "ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cmv BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cv BOOLEAN NOT NULL DEFAULT FALSE",
+  "CREATE INDEX IF NOT EXISTS idx_est_categoria_parent ON est_categoria(tenant_id, parent_id, ordem, nome)",
   "ALTER TABLE est_contagem_item ADD COLUMN IF NOT EXISTS geral BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS rendido NUMERIC(14,3)",
   "ALTER TABLE est_producao_run ADD COLUMN IF NOT EXISTS perda NUMERIC(14,3)"

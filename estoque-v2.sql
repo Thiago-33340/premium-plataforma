@@ -12,8 +12,10 @@ CREATE TABLE IF NOT EXISTS est_categoria (
 );
 -- Hierarquia Departamento > Categoria (a subcategoria fica em est_produto.subcategoria).
 ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS departamento TEXT;
+ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS parent_id INT;
 ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cmv BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE est_categoria ADD COLUMN IF NOT EXISTS controla_cv BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_est_categoria_parent ON est_categoria(tenant_id, parent_id, ordem, nome);
 CREATE TABLE IF NOT EXISTS est_fornecedor (
   id SERIAL PRIMARY KEY,
   tenant_id VARCHAR(80) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
