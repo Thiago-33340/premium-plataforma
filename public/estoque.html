@@ -1967,6 +1967,7 @@ async function excluirCategoria(id){ const c=(_catMgrCats||_cats||[]).find(x=>St
 function convBaseOpts(cur){ return ['g','ml','un'].map(b=>`<option value="${b}" ${cur===b?'selected':''}>${b}</option>`).join(''); }
 function convBaseOptions(){ return [{v:'g',t:'g'},{v:'ml',t:'ml'},{v:'un',t:'un'}]; }
 function convConfOptions(){ return [{v:'',t:'—'},{v:'alta',t:'Alta'},{v:'media',t:'Média'},{v:'baixa',t:'Baixa'}]; }
+function convUnitOptions(value){ const opts=unidadeOptions('— selecione —').slice(), cur=unidadeValor(value); if(cur&&!opts.some(o=>String(o.v)===cur))opts.push({v:cur,t:cur}); return opts; }
 function convConfOpts(cur){ return ['','alta','media','baixa'].map(v=>`<option value="${v}" ${String(cur||'')===v?'selected':''}>${v?({alta:'Alta',media:'Média',baixa:'Baixa'}[v]||v):'—'}</option>`).join(''); }
 function convFmtFactor(v){ if(v==null||v==='')return '—'; const n=Number(String(v).replace(',','.')); return Number.isFinite(n)?String(fmt(n)).replace('.',','):String(v); }
 function convRuleText(c){ const uc=unidadeValor(c&&c.unidade_compra)||'un. compra', ub=String((c&&c.unidade_base)||'base').trim()||'base'; return (c&&c.precisa_revisao)||c==null||c.fator==null||c.fator===''?`1 ${uc} = revisar ${ub}`:`1 ${uc} = ${convFmtFactor(c.fator)} ${ub}`; }
@@ -2008,7 +2009,7 @@ function conversaoFormModal(ctx){ const c=ctx.conversao||{}, isEdit=!!c.id, ativ
   m.innerHTML=`<div class="box" style="max-width:760px"><div class="editor-head"><div><h3>${isEdit?'Editar':'Nova'} conversão</h3><p>Configure a regra de apoio: o que entra na compra e quanto isso representa na unidade de controle.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="form-grid">
     <label class="label">Categoria<input class="field" id="convCatForm" value="${esc(c.categoria_ref||'')}" placeholder="Ex.: Hortifruti"></label>
     <label class="label">Rótulo<input class="field" id="convRotForm" value="${esc(c.rotulo||'')}" placeholder="Ex.: Rúcula hidropônica"></label>
-    <label class="label">Unidade de compra${csInline('convUCForm',unidadeValor(c.unidade_compra||'UNIDADE'),unidadeOptions('— selecione —'),'onchange="convUpdateResumo()"')}</label>
+    <label class="label">Unidade de compra${csInline('convUCForm',unidadeValor(c.unidade_compra||'UNIDADE'),convUnitOptions(c.unidade_compra||'UNIDADE'),'onchange="convUpdateResumo()"')}</label>
     <label class="label">Unidade base${csInline('convBaseForm',c.unidade_base||'g',convBaseOptions(),'onchange="convUpdateResumo()"')}</label>
     <label class="label">Fator na unidade base<input class="field" id="convFatorForm" inputmode="decimal" value="${c.fator!=null?esc(c.fator):''}" placeholder="Ex.: 200" oninput="convUpdateResumo()"></label>
     <label class="label">Confiança${csInline('convConfForm',c.confianca||'',convConfOptions())}</label>
