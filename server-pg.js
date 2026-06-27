@@ -2435,7 +2435,7 @@ async function api(req, res, url) {
       LEFT JOIN est_produto p ON p.tenant_id=c.tenant_id AND p.categoria_id=c.id
       WHERE c.tenant_id=$1
         AND ($2='todos' OR ($2='ativas' AND c.ativo) OR ($2='inativas' AND NOT c.ativo))
-      GROUP BY c.id, c.nome, c.parent_id, pcat.nome, pcat.departamento, c.departamento, c.ordem, c.ativo, c.controla_cmv, c.controla_cv, pcat.controla_cmv, pcat.controla_cv
+      GROUP BY c.id, c.nome, c.parent_id, pcat.nome, pcat.departamento, pcat.ordem, c.departamento, c.ordem, c.ativo, c.controla_cmv, c.controla_cv, pcat.controla_cmv, pcat.controla_cv
       HAVING ($3='todos' OR COUNT(p.id) FILTER (WHERE p.ativo) > 0)
       ORDER BY COALESCE(pcat.departamento,c.departamento) NULLS LAST, COALESCE(pcat.ordem,c.ordem), COALESCE(pcat.nome,c.nome), c.parent_id NULLS FIRST, c.ordem, c.nome`, [TENANT, statusMode, usoMode]);
     return json(res, 200, { categorias: r.rows, status: statusMode, uso: usoMode });
