@@ -211,6 +211,7 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .category-card.sub{ margin-left:18px; border-color:rgba(255,122,24,.18); background:rgba(255,122,24,.045); }
 .category-title{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-height:25px; }
 .category-title b{ font-size:15px; line-height:1.25; overflow-wrap:anywhere; }
+.category-sub{ margin-top:4px; color:var(--mut); font-size:12px; line-height:1.25; overflow-wrap:anywhere; }
 .category-quick{ display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
 .category-quick .meta-pill{ padding:5px 8px; border-radius:8px; }
 .category-quick .meta-pill.on{ color:#ffd1aa; background:rgba(255,122,24,.10); border-color:rgba(255,122,24,.30); }
@@ -533,7 +534,7 @@ body.keyboard-focus nav{ transform:translateY(110%); pointer-events:none; }
 <script>
 const API = location.origin;
 const $ = id => document.getElementById(id);
-let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {};
+let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {}, _convMgrStatus = 'ativas';
 let _estoqueCfg = { titulo:'Estoque', departamentos:[], tipos_item:[], unidades_medida:[] }, _estoqueCfgLoaded = false;
 let _sessionKeep = false, _versionWatchStarted = false, _appVersion = null, _updateAvailable = false, _userRefreshStarted = false;
 
@@ -1964,37 +1965,61 @@ async function excluirCategoria(id){ const c=(_catMgrCats||_cats||[]).find(x=>St
 
 /* ===== SUGESTÕES DE CONVERSÃO POR CATEGORIA (hortifruti etc.) ===== */
 function convBaseOpts(cur){ return ['g','ml','un'].map(b=>`<option value="${b}" ${cur===b?'selected':''}>${b}</option>`).join(''); }
-function convRow(c){ return `<div class="row" style="gap:8px;margin-bottom:8px;align-items:flex-end">
-  <label class="label" style="width:120px;margin:0">Categoria<input class="field" id="conv-cat-${c.id}" value="${esc(c.categoria_ref||'')}"></label>
-  <label class="label" style="flex:1;margin:0">Rótulo<input class="field" id="conv-rot-${c.id}" value="${esc(c.rotulo)}"></label>
-  <label class="label" style="width:120px;margin:0">Un. compra<select class="field" id="conv-uc-${c.id}">${unidadeSelectOptions(c.unidade_compra,'— unid —')}</select></label>
-  <label class="label" style="width:70px;margin:0">Base<select class="field" id="conv-base-${c.id}">${convBaseOpts(c.unidade_base)}</select></label>
-  <label class="label" style="width:80px;margin:0">Fator<input class="field" id="conv-fat-${c.id}" inputmode="decimal" value="${c.fator!=null?esc(c.fator):''}" placeholder="—"></label>
-  <label class="label" style="width:70px;margin:0" title="Marque quando o fator não é confiável">Revisar<input type="checkbox" id="conv-rev-${c.id}" ${c.precisa_revisao?'checked':''}></label>
-  <button class="btn ghost sm" onclick="salvarConversao(${c.id})">Salvar</button>
-  <button class="icon-btn" onclick="excluirConversao(${c.id})" title="Excluir">×</button></div>`; }
-async function gerenciarConversoes(){ await ensureConversoes(true); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='convEditor';
-  m.innerHTML=`<div class="box" style="max-width:880px"><div class="editor-head"><div><h3>Sugestões de conversão por categoria</h3><p>Aparecem só em produtos da categoria correspondente, sempre confirmáveis. O fator de cada produto continua no cadastro dele.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div>
-  <div class="editor-body"><div id="convRows">${_conversoes.map(convRow).join('')||'<div class="empty">Nenhuma sugestão cadastrada.</div>'}</div>
-  <div class="sec">Nova sugestão</div>
-  <div class="form-grid"><label class="label">Categoria<input class="field" id="convNovoCat" placeholder="Ex.: Hortifruti"></label>
-    <label class="label">Rótulo<input class="field" id="convNovoRotulo" placeholder="Ex.: Rúcula hidropônica"></label>
-    <label class="label">Unidade de compra<select class="field" id="convNovoUC">${unidadeSelectOptions('UNIDADE','— selecione —')}</select></label>
-    <label class="label">Base<select class="field" id="convNovoBase">${convBaseOpts('g')}</select></label>
-    <label class="label">Fator (na base)<input class="field" id="convNovoFator" inputmode="decimal" placeholder="Ex.: 200 (vazio se revisar)"></label>
-    <label class="switch-card" style="margin:0"><input type="checkbox" id="convNovoRev"><span><b>Precisa revisão</b><small>Fator em branco; o gestor confirma depois.</small></span></label></div>
-  <button class="btn primary sm" style="margin-top:10px" onclick="novaConversao()">+ Adicionar sugestão</button></div></div>`;
+function convConfOpts(cur){ return ['','alta','media','baixa'].map(v=>`<option value="${v}" ${String(cur||'')===v?'selected':''}>${v?({alta:'Alta',media:'Média',baixa:'Baixa'}[v]||v):'—'}</option>`).join(''); }
+function convFmtFactor(v){ if(v==null||v==='')return '—'; const n=Number(String(v).replace(',','.')); return Number.isFinite(n)?String(fmt(n)).replace('.',','):String(v); }
+function convRuleText(c){ const uc=unidadeValor(c&&c.unidade_compra)||'un. compra', ub=String((c&&c.unidade_base)||'base').trim()||'base'; return (c&&c.precisa_revisao)||c==null||c.fator==null||c.fator===''?`1 ${uc} = revisar ${ub}`:`1 ${uc} = ${convFmtFactor(c.fator)} ${ub}`; }
+function convStatusItems(){ return ['ativas','inativas','todos'].map(s=>({v:s,t:s==='todos'?'Todas':(s==='ativas'?'Ativas':'Inativas'),on:_convMgrStatus===s})); }
+function convStatusButtons(){ const items=convStatusItems(), current=(items.find(x=>x.on)||items[0]).t; return splitFilter('convMgrStatus','Status',current,items,'convStatusPick'); }
+function convStatusPick(v,ev){ if(ev)ev.stopPropagation(); splitCloseAll(); gerenciarConversoes(v||'ativas'); }
+function convCard(c){
+  const inactive=c.ativo===false, review=!!c.precisa_revisao || c.fator==null || c.fator==='';
+  const statusClass=inactive?'off':(review?'low':'ok'), statusLabel=inactive?'inativa':(review?'revisar':'ok');
+  const conf=c.confianca?`Confiança ${String(c.confianca).replace('media','média')}`:'Sem confiança';
+  return `<article class="category-card conversion-card">
+    <div class="category-title">
+      <b>${esc(c.rotulo||'Conversão sem rótulo')}</b>
+      <span class="status-pill ${statusClass}"><span class="status-dot"></span>${statusLabel}</span>
+    </div>
+    <div class="category-sub">${esc(c.categoria_ref||'Sem categoria')}</div>
+    <div class="category-quick">
+      <span class="meta-pill sector">${esc(convRuleText(c))}</span>
+      <span class="meta-pill ${c.confianca?'on':'off'}">${esc(conf)}</span>
+    </div>
+    <div class="category-actions">
+      <button class="round-action" title="Editar" onclick="editarConversaoModal(${c.id})">✎</button>
+      <button class="round-action danger" title="Excluir" onclick="excluirConversao(${c.id})">🗑</button>
+    </div>
+  </article>`;
+}
+async function gerenciarConversoes(status){ _convMgrStatus=status||_convMgrStatus||'ativas'; await ensureConversoes(true); const old=$('convEditor'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='convEditor';
+  const rows=(_conversoes||[]).filter(c=>_convMgrStatus==='todos'?true:(_convMgrStatus==='inativas'?c.ativo===false:c.ativo!==false));
+  const body=rows.length?`<div class="category-grid">${rows.map(convCard).join('')}</div>`:'<div class="empty">Nenhuma conversão neste filtro.</div>';
+  m.innerHTML=`<div class="box" style="max-width:1040px"><div class="editor-head"><div><h3>Conversões do estoque</h3><p>Sugestões por categoria para transformar unidade de compra em unidade de controle. O produto continua mantendo seu próprio fator quando necessário.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div>
+  <div class="editor-body"><div class="category-create-bar"><div class="category-filter-bar">${convStatusButtons()}</div><button class="btn primary" onclick="novaConversaoModal()">+ Nova conversão</button></div><div id="convRows">${body}</div><div class="help" style="margin-top:14px">Use conversões como modelo de apoio para compras recorrentes. Ex.: categoria Hortifruti, rótulo Rúcula hidropônica, 1 MAÇO = 200 g. Se o fator variar, marque como revisão.</div></div></div>`;
   document.body.appendChild(m); }
-async function salvarConversao(id){ const categoria_ref=$('conv-cat-'+id).value.trim(), rotulo=$('conv-rot-'+id).value.trim();
-  const fatorRaw=$('conv-fat-'+id).value.trim(), rev=$('conv-rev-'+id).checked;
+function novaConversaoModal(){ conversaoFormModal({}); }
+function editarConversaoModal(id){ const c=(_conversoes||[]).find(x=>String(x.id)===String(id)); if(!c)return toast('Conversão não encontrada'); conversaoFormModal({conversao:c}); }
+function convUpdateResumo(){ const el=$('convRuleResumo'); if(!el)return; el.textContent=convRuleText({unidade_compra:$('convUCForm')&&$('convUCForm').value,unidade_base:$('convBaseForm')&&$('convBaseForm').value,fator:$('convFatorForm')&&$('convFatorForm').value,precisa_revisao:!!($('convRevForm')&&$('convRevForm').checked)}); }
+function conversaoFormModal(ctx){ const c=ctx.conversao||{}, isEdit=!!c.id, ativo=c.ativo!==false, rev=!!c.precisa_revisao; const old=$('convFormModal'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='convFormModal';
+  const statusToggle=catSlide('convAtivoForm','Status da conversão','Ativa','Inativa',ativo,'Inativas não aparecem como sugestão operacional.','convStatusToggleText','convStatusAtual');
+  const reviewToggle=catSlide('convRevForm','Precisa revisão','Sim','Não',rev,'Use quando o fator não é confiável e o gestor precisa confirmar.','convReviewAtual');
+  m.innerHTML=`<div class="box" style="max-width:760px"><div class="editor-head"><div><h3>${isEdit?'Editar':'Nova'} conversão</h3><p>Configure a regra de apoio: o que entra na compra e quanto isso representa na unidade de controle.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="form-grid">
+    <label class="label">Categoria<input class="field" id="convCatForm" value="${esc(c.categoria_ref||'')}" placeholder="Ex.: Hortifruti"></label>
+    <label class="label">Rótulo<input class="field" id="convRotForm" value="${esc(c.rotulo||'')}" placeholder="Ex.: Rúcula hidropônica"></label>
+    <label class="label">Unidade de compra<select class="field" id="convUCForm" onchange="convUpdateResumo()">${unidadeSelectOptions(c.unidade_compra||'UNIDADE','— selecione —')}</select></label>
+    <label class="label">Unidade base<select class="field" id="convBaseForm" onchange="convUpdateResumo()">${convBaseOpts(c.unidade_base||'g')}</select></label>
+    <label class="label">Fator na unidade base<input class="field" id="convFatorForm" inputmode="decimal" value="${c.fator!=null?esc(c.fator):''}" placeholder="Ex.: 200" oninput="convUpdateResumo()"></label>
+    <label class="label">Confiança<select class="field" id="convConfForm">${convConfOpts(c.confianca||'')}</select></label>
+    <label class="label">Status atual<div class="readonly-pill" id="convStatusAtual">${ativo?'Ativa':'Inativa'}</div></label>
+    <label class="label">Resumo da regra<div class="readonly-pill" id="convRuleResumo">${esc(convRuleText(c))}</div></label>
+  </div><div class="switch-grid" style="margin-top:12px">${statusToggle}${reviewToggle}</div><div class="row" style="justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn ghost sm" onclick="this.closest('.modal').remove()">Cancelar</button><button class="btn primary" onclick="salvarConversaoForm(${isEdit?c.id:'null'})">${isEdit?'Salvar':'Criar'}</button></div></div></div>`;
+  document.body.appendChild(m); const revEl=$('convRevForm'); if(revEl)revEl.addEventListener('change',convUpdateResumo); }
+async function salvarConversaoForm(id){ const categoria_ref=$('convCatForm').value.trim(), rotulo=$('convRotForm').value.trim();
+  const fatorRaw=$('convFatorForm').value.trim(), rev=$('convRevForm').checked;
   if(!categoria_ref)return toast('Informe a categoria'); if(!rotulo)return toast('Informe o rótulo');
-  if(!rev&&!(Number(fatorRaw.replace(',','.'))>0))return toast('Fator deve ser maior que zero (ou marque revisar)');
-  try{ await estFetch('/api/est/conversao/'+id,'PATCH',{categoria_ref,rotulo,unidade_compra:unidadeValor($('conv-uc-'+id).value),unidade_base:$('conv-base-'+id).value,fator:rev?'':fatorRaw,precisa_revisao:rev}); await ensureConversoes(true); toast('Sugestão atualizada'); }catch(e){} }
-async function novaConversao(){ const categoria_ref=$('convNovoCat').value.trim(), rotulo=$('convNovoRotulo').value.trim();
-  const fatorRaw=$('convNovoFator').value.trim(), rev=$('convNovoRev').checked;
-  if(!categoria_ref)return toast('Informe a categoria'); if(!rotulo)return toast('Informe o rótulo');
-  if(!rev&&!(Number(fatorRaw.replace(',','.'))>0))return toast('Fator deve ser maior que zero (ou marque revisar)');
-  try{ await estFetch('/api/est/conversao','POST',{categoria_ref,rotulo,unidade_compra:unidadeValor($('convNovoUC').value),unidade_base:$('convNovoBase').value,fator:rev?'':fatorRaw,precisa_revisao:rev}); await ensureConversoes(true); const m=$('convEditor'); if(m)m.remove(); gerenciarConversoes(); toast('Sugestão criada'); }catch(e){} }
+  if(!rev&&!(Number(fatorRaw.replace(',','.'))>0))return toast('Fator deve ser maior que zero (ou marque revisão)');
+  const payload={categoria_ref,rotulo,unidade_compra:unidadeValor($('convUCForm').value),unidade_base:$('convBaseForm').value,fator:rev?'':fatorRaw,confianca:$('convConfForm').value,precisa_revisao:rev,ativo:$('convAtivoForm').checked};
+  try{ if(id)await estFetch('/api/est/conversao/'+id,'PATCH',payload); else await estFetch('/api/est/conversao','POST',payload); await ensureConversoes(true); const fm=$('convFormModal'); if(fm)fm.remove(); await gerenciarConversoes(_convMgrStatus); toast(id?'Conversão atualizada':'Conversão criada'); }catch(e){} }
 async function excluirConversao(id){ if(!await pedirConfirm('Excluir sugestão','Some das sugestões da categoria. Os produtos mantêm o fator já salvo.'))return; try{ await estFetch('/api/est/conversao/'+id,'DELETE'); await ensureConversoes(true); const m=$('convEditor'); if(m)m.remove(); gerenciarConversoes(); toast('Sugestão excluída'); }catch(e){} }
 
 /* ===== LOCAIS FÍSICOS (onde o item fica guardado) ===== */

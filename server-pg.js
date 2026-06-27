@@ -2910,15 +2910,16 @@ async function api(req, res, url) {
     if (seg[2] === 'conversao' && !seg[3] && req.method === 'POST') {
       const rotulo = String(b.rotulo || '').trim(); const categoria = String(b.categoria_ref || '').trim();
       const revisao = !!b.precisa_revisao;
+      const ativo = typeof b.ativo === 'boolean' ? b.ativo : true;
       const fator = b.fator != null && b.fator !== '' ? Number(String(b.fator).replace(',', '.')) : null;
       if (!categoria) return json(res, 400, { erro: 'Informe a categoria da sugestão.' });
       if (!rotulo) return json(res, 400, { erro: 'Informe o rótulo da conversão.' });
       if (!revisao && !(fator > 0)) return json(res, 400, { erro: 'Informe um fator maior que zero (ou marque "precisa revisão").' });
       try {
-        const r = await db.q(`INSERT INTO est_conversao_categoria (tenant_id, categoria_ref, rotulo, unidade_compra, unidade_base, fator, confianca, precisa_revisao)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        const r = await db.q(`INSERT INTO est_conversao_categoria (tenant_id, categoria_ref, rotulo, unidade_compra, unidade_base, fator, confianca, precisa_revisao, ativo)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
           [TENANT, categoria, rotulo, String(b.unidade_compra || '').trim().toUpperCase() || null, String(b.unidade_base || '').trim() || null,
-           fator, String(b.confianca || '').trim() || null, revisao]);
+           fator, String(b.confianca || '').trim() || null, revisao, ativo]);
         return json(res, 201, { ok: true, id: r.rows[0].id });
       } catch (e) { return json(res, 400, { erro: e.code === '23505' ? 'Já existe uma sugestão com esse rótulo nessa categoria.' : (e.code || e.message) }); }
     }
