@@ -205,13 +205,17 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .qty-value{ display:block; margin-top:4px; color:var(--tx); font-size:16px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
 .qty-value .unit{ color:var(--mut); font-size:13px; font-weight:400; }
 .qty-block.right{ text-align:right; }
-.category-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
-.category-card{ position:relative; padding:15px; border:1px solid rgba(255,255,255,.09); border-radius:16px; background:rgba(20,20,22,.72); transition:border-color .16s,transform .16s,background .16s; }
+.category-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+.category-card{ position:relative; padding:14px; border:1px solid rgba(255,255,255,.09); border-radius:16px; background:rgba(20,20,22,.72); transition:border-color .16s,transform .16s,background .16s; }
 .category-card:hover{ border-color:rgba(255,255,255,.16); transform:translateY(-1px); background:#18181b; }
 .category-card.sub{ margin-left:18px; border-color:rgba(255,122,24,.18); background:rgba(255,122,24,.045); }
-.category-title{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.category-title{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-height:25px; }
 .category-title b{ font-size:15px; line-height:1.25; overflow-wrap:anywhere; }
-.category-info{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+.category-quick{ display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+.category-quick .meta-pill{ padding:5px 8px; border-radius:8px; }
+.category-quick .meta-pill.on{ color:#ffd1aa; background:rgba(255,122,24,.10); border-color:rgba(255,122,24,.30); }
+.category-quick .meta-pill.off{ color:#a8a8b2; background:#202025; border-color:#2c2c33; }
+.category-info{ display:none; }
 .category-info .mini{ padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:#17171a; min-height:54px; }
 .category-info .mini small{ display:block; color:var(--mut); font-size:10px; text-transform:uppercase; letter-spacing:.45px; margin-bottom:4px; }
 .category-info .mini b{ display:block; font-size:13px; font-weight:700; color:#f2f2f4; }
@@ -221,6 +225,15 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .round-action.danger:hover{ border-color:rgba(239,68,68,.45); color:#ff8d8d; }
 .category-create-bar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0 16px; flex-wrap:wrap; }
 .category-create-bar .split-button{ border-radius:14px; }
+.category-filter-bar{ display:flex; align-items:center; gap:8px; min-width:0; }
+.category-filter-bar .product-filter .split-button{ background:#17171b; border-color:var(--bd); color:#f3f3f5; box-shadow:none; }
+.category-filter-bar .filter-title{ color:#85858e; }
+.category-filter-bar .filter-value{ color:#f3f3f5; }
+.category-filter-bar .split-caret{ color:var(--lar); }
+.product-modal .editor-body::-webkit-scrollbar,.split-menu::-webkit-scrollbar,.cs-menu::-webkit-scrollbar{ width:8px; height:8px; }
+.product-modal .editor-body::-webkit-scrollbar-track,.split-menu::-webkit-scrollbar-track,.cs-menu::-webkit-scrollbar-track{ background:transparent; }
+.product-modal .editor-body::-webkit-scrollbar-thumb,.split-menu::-webkit-scrollbar-thumb,.cs-menu::-webkit-scrollbar-thumb{ background:#34343b; border-radius:999px; border:2px solid #111113; }
+.product-modal .editor-body::-webkit-scrollbar-thumb:hover,.split-menu::-webkit-scrollbar-thumb:hover,.cs-menu::-webkit-scrollbar-thumb:hover{ background:#45454f; }
 .kpi{ min-height:106px; padding:18px; background:linear-gradient(145deg,var(--surface),#111113); }
 .kpi .v{ font-size:32px; }
 
@@ -1885,26 +1898,24 @@ async function salvarFichaProd(btn){ fpSync(); if(btn)btn.disabled=true; $('fpSt
 async function excluirFichaProd(){ if(!await pedirConfirm('Excluir ficha técnica','A ficha e suas porções serão desativadas. O produto e todo o histórico de movimentações serão preservados.','Excluir ficha'))return; try{ await estFetch('/api/est/producao/ficha/'+_fp.pid,'DELETE',{}); toast('Ficha excluída; histórico preservado'); const m=$('fpModal'); if(m)m.remove(); if($('receitasList'))await receitasTela(_rec.status); else if($('busca')&&$('plist'))await loadProdutos(); if($('productEditor'))await abrirEditorProduto(_fp.pid); }catch(e){ toast(e.message||'Erro ao excluir ficha'); } }
 
 function catStatusButtons(){
-  return ['ativas','inativas','todos'].map(s=>`<button class="btn ${_catMgrStatus===s?'primary':'ghost'} sm" onclick="gerenciarCategorias('${s}')">${s==='todos'?'Todas':(s==='ativas'?'Ativas':'Inativas')}</button>`).join('');
+  const items=['ativas','inativas','todos'].map(s=>({v:s,t:s==='todos'?'Todas':(s==='ativas'?'Ativas':'Inativas'),on:_catMgrStatus===s}));
+  const current=(items.find(x=>x.on)||items[0]).t;
+  return splitFilter('catMgrStatus','Status',current,items,'catStatusPick');
 }
+function catStatusPick(v,ev){ if(ev)ev.stopPropagation(); splitCloseAll(); gerenciarCategorias(v||'ativas'); }
 function catFinanceBadge(on,label){ return `<span class="meta-pill ${on?'sector':''}">${esc(label)} ${on?'ligado':'desligado'}</span>`; }
 function catCard(c,children){ const total=Number(c.produtos_total||0), ativos=Number(c.produtos_ativos||0), isSub=!!c.parent_id;
   const statusClass=c.ativo!==false?'ok':'off', statusLabel=c.ativo!==false?'ativa':'inativa';
+  const cmvOn=!!(c.cmv_efetivo||c.controla_cmv), cvOn=!!(c.cv_efetivo||c.controla_cv);
   return `<article class="category-card ${isSub?'sub':''}">
     <div class="category-title">
-      <div>
-        <b>${esc(c.nome)}</b>
-        <div class="product-path">${isSub?`<span>Subgrupo de ${esc(c.parent_nome||'—')}</span>`:`<span>${esc(c.departamento||'Sem departamento')}</span>`}</div>
-      </div>
+      <b>${esc(c.nome)}</b>
       <span class="status-pill ${statusClass}"><span class="status-dot"></span>${statusLabel}</span>
     </div>
-    <div class="category-info">
-      <div class="mini"><small>${isSub?'Subgrupo de':'Departamento'}</small><b>${esc(isSub?(c.parent_nome||'—'):(c.departamento||'—'))}</b></div>
-      <div class="mini"><small>Produtos</small><b>${ativos} ativo${ativos===1?'':'s'} · ${total} total</b></div>
-      <div class="mini"><small>CMV</small><b>${c.cmv_efetivo||c.controla_cmv?'Ligado':'Desligado'}</b></div>
-      <div class="mini"><small>CV</small><b>${c.cv_efetivo||c.controla_cv?'Ligado':'Desligado'}</b></div>
+    <div class="category-quick">
+      <span class="meta-pill ${cmvOn?'on':'off'}">CMV ${cmvOn?'ligado':'desligado'}</span>
+      <span class="meta-pill ${cvOn?'on':'off'}">CV ${cvOn?'ligado':'desligado'}</span>
     </div>
-    <div class="product-meta">${catFinanceBadge(c.cmv_efetivo||c.controla_cmv,'CMV')}${catFinanceBadge(c.cv_efetivo||c.controla_cv,'CV')}${children?`<span class="meta-pill">${children} subgrupo${children===1?'':'s'}</span>`:''}</div>
     <div class="category-actions">
       ${isSub?'':`<button class="round-action" title="Adicionar subcategoria" onclick="novaSubcategoriaModal(${c.id})">＋</button>`}
       <button class="round-action" title="Editar" onclick="editarCategoriaModal(${c.id})">✎</button>
@@ -1916,13 +1927,13 @@ let _catMgrCats=[];
 async function gerenciarCategorias(status){ _catMgrStatus=status||_catMgrStatus||'ativas'; let cats=[], erroLoad=''; try{ const rr=await fetch(API+`/api/est/categorias?status=${encodeURIComponent(_catMgrStatus)}&uso=todos`), dd=await rr.json().catch(()=>({})); if(!rr.ok)throw new Error(dd.erro||dd.detalhe||'Falha ao carregar categorias'); cats=dd.categorias||[]; }catch(e){ erroLoad=e.message||'Falha ao carregar categorias'; cats=_cats||[]; } _catMgrCats=cats; const old=$('catEditor'); if(old)old.remove(); const m=document.createElement('div'); m.className='modal on product-modal est-modal'; m.id='catEditor';
   const childrenByParent={}; cats.forEach(c=>{ if(c.parent_id)(childrenByParent[c.parent_id]=childrenByParent[c.parent_id]||[]).push(c); });
   const topCats=cats.filter(c=>!c.parent_id);
-  const groups={}; topCats.forEach(c=>{ const d=c.departamento||'Sem departamento'; (groups[d]=groups[d]||[]).push(c); });
   const parentIds=new Set(cats.filter(c=>!c.parent_id).map(c=>String(c.id)));
   const orphanSubs=cats.filter(c=>c.parent_id&&!parentIds.has(String(c.parent_id)));
-  const bodyMain=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(d=>`<div class="sec">${esc(d)}</div><div class="category-grid">`+groups[d].flatMap(c=>[catCard(c,(childrenByParent[c.id]||[]).length)].concat((childrenByParent[c.id]||[]).map(s=>catCard(s,0)))).join('')+'</div>').join('');
-  const bodyOrphans=orphanSubs.length?`<div class="sec">Subcategorias neste filtro</div><div class="category-grid">${orphanSubs.map(s=>catCard(s,0)).join('')}</div>`:'';
+  const orderedCats=topCats.sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')).flatMap(c=>[c].concat((childrenByParent[c.id]||[]).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')))).concat(orphanSubs);
+  const bodyMain=orderedCats.length?`<div class="category-grid">${orderedCats.map(c=>catCard(c,(childrenByParent[c.id]||[]).length)).join('')}</div>`:'';
+  const bodyOrphans='';
   const body=erroLoad&&!cats.length?`<div class="empty">Não foi possível carregar as categorias: ${esc(erroLoad)}. Nenhum cadastro foi apagado.</div>`:((bodyMain+bodyOrphans)||'<div class="empty">Sem categorias neste filtro.</div>');
-  m.innerHTML=`<div class="box" style="max-width:1040px"><div class="editor-head"><div><h3>Categorias do estoque</h3><p>Departamento e CMV/CV ficam na categoria. Subcategorias apenas dividem itens parecidos dentro dela.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="category-create-bar"><div class="row" style="gap:8px">${catStatusButtons()}</div><div class="split-control" id="catCreateActionsWrap"><div class="split-button"><button type="button" class="split-main" onclick="novaCategoriaModal()">+ Nova categoria</button><button type="button" class="split-caret" onclick="splitToggle('catCreateActions',event)" aria-label="Mais opções"><span></span></button></div><div class="split-menu"><button type="button" class="split-option" onclick="novaSubcategoriaModal(null,event)">+ Nova subcategoria</button></div></div></div><div id="catRows">${body}</div><div class="help" style="margin-top:14px">A antiga opção <b>Ordem</b> foi automatizada. Para organização manual, o próximo passo correto é uma tela de arrastar e soltar, não um número solto difícil de entender.</div></div></div>`; document.body.appendChild(m); }
+  m.innerHTML=`<div class="box" style="max-width:1040px"><div class="editor-head"><div><h3>Categorias do estoque</h3><p>Departamento e CMV/CV ficam na edição da categoria. A lista mostra só o que você precisa para decidir rápido.</p></div><button class="icon-btn" onclick="this.closest('.modal').remove()">×</button></div><div class="editor-body"><div class="category-create-bar"><div class="category-filter-bar">${catStatusButtons()}</div><div class="split-control" id="catCreateActionsWrap"><div class="split-button"><button type="button" class="split-main" onclick="novaCategoriaModal()">+ Nova categoria</button><button type="button" class="split-caret" onclick="splitToggle('catCreateActions',event)" aria-label="Mais opções"><span></span></button></div><div class="split-menu"><button type="button" class="split-option" onclick="novaSubcategoriaModal(null,event)">+ Nova subcategoria</button></div></div></div><div id="catRows">${body}</div><div class="help" style="margin-top:14px">A antiga opção <b>Ordem</b> foi automatizada. Para organização manual, o próximo passo correto é uma tela de arrastar e soltar, não um número solto difícil de entender.</div></div></div>`; document.body.appendChild(m); }
 function novaCategoriaModal(){ categoriaFormModal({tipo:'categoria'}); }
 function novaSubcategoriaModal(parentId,ev){ if(ev)ev.stopPropagation(); splitCloseAll(); categoriaFormModal({tipo:'subcategoria',parent_id:parentId||''}); }
 function editarCategoriaModal(id){ const c=(_catMgrCats||_cats||[]).find(x=>String(x.id)===String(id)); if(!c)return toast('Categoria não encontrada'); categoriaFormModal({tipo:c.parent_id?'subcategoria':'categoria',categoria:c,parent_id:c.parent_id||''}); }
