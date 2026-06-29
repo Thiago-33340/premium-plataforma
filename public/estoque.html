@@ -807,7 +807,7 @@ function dashboardMeta(kind){
   const map={
     ativos:{titulo:'Produtos ativos',descricao:'Itens ativos no estoque. Clique em um produto para abrir o cadastro completo.',empty:'Nenhum produto ativo encontrado.'},
     zerados:{titulo:'Produtos zerados',descricao:'Itens ativos com quantidade atual igual a zero.',empty:'Nenhum produto zerado encontrado.'},
-    abaixo_ideal:{titulo:'Produtos abaixo do ideal',descricao:'Itens ativos com estoque atual menor que o estoque ideal configurado.',empty:'Nenhum produto abaixo do ideal encontrado.'},
+    abaixo_ideal:{titulo:'Produtos abaixo do ideal',descricao:'Itens ativos com estoque atual menor que o estoque ideal configurado. Os itens com saldo aparecem primeiro; zerados ficam ao final.',empty:'Nenhum produto abaixo do ideal encontrado.'},
     sem_fornecedor:{titulo:'Produtos sem fornecedor',descricao:'Itens ativos sem fornecedor preferido vinculado.',empty:'Nenhum produto sem fornecedor encontrado.'}
   };
   return map[kind]||map.ativos;
@@ -841,7 +841,12 @@ function dashboardFiltraProdutos(){
 function dashboardProdutosFiltrados(){
   let ps=(_dashRawProducts||[]).filter(p=>p.ativo!==false);
   if(_dashProductKind==='zerados') ps=ps.filter(p=>Number(p.estoque_atual||0)===0);
-  if(_dashProductKind==='abaixo_ideal') ps=ps.filter(p=>p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal));
+  if(_dashProductKind==='abaixo_ideal') ps=ps
+    .filter(p=>p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal))
+    .sort((a,b)=>{
+      const az=Number(a.estoque_atual||0)===0, bz=Number(b.estoque_atual||0)===0;
+      return az===bz?0:(az?1:-1);
+    });
   if(_dashProductKind==='sem_fornecedor') ps=ps.filter(p=>p.fornecedor_preferido_id==null);
   const q=String(_dashProductSearch||'').trim().toLowerCase();
   if(q) ps=ps.filter(p=>[p.nome,p.categoria,p.categoria_pai,p.subcategoria,p.departamento,p.fornecedor,(p.setor_nomes||'')].some(x=>String(x||'').toLowerCase().includes(q)));
