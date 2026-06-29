@@ -46,8 +46,8 @@ h2.tit{ font-size:18px; margin:0; }
 
 .kpis{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .kpi{ background:var(--bg2); border:1px solid var(--bd); border-radius:14px; padding:14px; }
-.kpi .v{ font-size:26px; font-weight:800; line-height:1; }
-.kpi .l{ font-size:12px; color:var(--mut); margin-top:6px; }
+.kpi .v{ display:block; font-size:26px; font-weight:800; line-height:1; }
+.kpi .l{ display:block; font-size:12px; color:var(--mut); margin-top:6px; }
 .kpi.alert .v{ color:var(--amar); } .kpi.bad .v{ color:var(--verm); } .kpi.ok .v{ color:var(--verd); }
 .sec{ font-size:13px; color:var(--mut); text-transform:uppercase; letter-spacing:.4px; margin:20px 2px 8px; }
 .panel{ background:var(--bg2); border:1px solid var(--bd); border-radius:14px; overflow:hidden; }
@@ -236,7 +236,31 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .product-modal .editor-body::-webkit-scrollbar-thumb,.split-menu::-webkit-scrollbar-thumb,.cs-menu::-webkit-scrollbar-thumb{ background:#34343b; border-radius:999px; border:2px solid #111113; }
 .product-modal .editor-body::-webkit-scrollbar-thumb:hover,.split-menu::-webkit-scrollbar-thumb:hover,.cs-menu::-webkit-scrollbar-thumb:hover{ background:#45454f; }
 .kpi{ min-height:106px; padding:18px; background:linear-gradient(145deg,var(--surface),#111113); }
+.kpi.quick-kpi{ width:100%; text-align:left; color:inherit; font:inherit; appearance:none; cursor:pointer; transition:border-color .16s,transform .16s,background .16s,box-shadow .16s; }
+.kpi.quick-kpi:hover{ border-color:rgba(255,122,24,.42); transform:translateY(-1px); background:linear-gradient(145deg,#18181c,#111113); box-shadow:0 14px 32px rgba(0,0,0,.22); }
+.kpi.quick-kpi:focus-visible{ outline:2px solid var(--lar); outline-offset:3px; }
 .kpi .v{ font-size:32px; }
+
+.dash-modal{ z-index:74; padding:14px; align-items:center; }
+.dash-modal .box{ width:min(980px,calc(100vw - 24px)); max-width:980px; max-height:calc(var(--vvh) - 24px); overflow:hidden; border-radius:20px; padding:0; background:#111113; box-shadow:0 28px 90px rgba(0,0,0,.55); }
+.dash-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:18px 20px 14px; border-bottom:1px solid var(--line); }
+.dash-head h3{ margin:0; font-size:21px; letter-spacing:-.3px; }
+.dash-head p{ margin:4px 0 0; color:var(--mut); font-size:12px; line-height:1.4; }
+.dash-body{ padding:16px 18px 18px; overflow:auto; max-height:calc(var(--vvh) - 128px); }
+.dash-body::-webkit-scrollbar{ width:8px; height:8px; }
+.dash-body::-webkit-scrollbar-track{ background:transparent; }
+.dash-body::-webkit-scrollbar-thumb{ background:#34343b; border-radius:999px; border:2px solid #111113; }
+.dash-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 12px; color:var(--mut); font-size:12px; }
+.dash-toolbar .field{ max-width:360px; margin:0; padding:11px 12px; font-size:14px; }
+.dash-list.plist{ margin-top:8px; }
+@media(max-width:520px){
+  .dash-modal{ padding:0; align-items:flex-end; }
+  .dash-modal .box{ width:100%; max-height:calc(var(--vvh) - 8px); border-radius:18px 18px 0 0; }
+  .dash-head{ padding:16px 16px 12px; }
+  .dash-body{ padding:14px; max-height:calc(var(--vvh) - 114px); }
+  .dash-toolbar{ flex-direction:column; align-items:stretch; }
+  .dash-toolbar .field{ max-width:none; }
+}
 
 .product-modal{ z-index:80; padding:18px; align-items:center; }
 .product-modal .box{ padding:0; width:min(980px,100%); max-width:980px; max-height:calc(var(--vvh) - 24px); border-radius:20px; overflow:hidden; background:#111113; box-shadow:0 28px 90px rgba(0,0,0,.55); }
@@ -541,6 +565,7 @@ const $ = id => document.getElementById(id);
 let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {}, _convMgrStatus = 'ativas';
 let _estoqueCfg = { titulo:'Estoque', departamentos:[], tipos_item:[], unidades_medida:[] }, _estoqueCfgLoaded = false;
 let _sessionKeep = false, _versionWatchStarted = false, _appVersion = null, _updateAvailable = false, _userRefreshStarted = false;
+let _dashProductKind = null, _dashProductSearch = '', _dashRawProducts = [];
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('on'),2600); }
 function applyEstoqueConfig(){
@@ -762,15 +787,109 @@ function nav(v){ const need=NAV_PERM[v]; if(need&&!temPerm(need)) v='inicio'; if
 
 async function loadInicio(){ if(!ehGestor()) return loadInicioColab();
   let d; try{ d=await (await fetch(API+'/api/est/dashboard')).json(); }catch(e){ return; }
-  const k=(v,l,cls='')=>`<div class="kpi ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-  $('kpis').innerHTML = k(d.produtos_ativos,'Produtos ativos')
-    + k(d.zerados,'Zerados', d.zerados>0?'bad':'ok')
-    + k(d.abaixo_ideal,'Abaixo do ideal', d.abaixo_ideal>0?'alert':'ok')
-    + k(d.sem_fornecedor,'Sem fornecedor', d.sem_fornecedor>0?'alert':'')
-    + k(d.contagens_aguardando,'Contagens p/ auditar', d.contagens_aguardando>0?'alert':'')
-    + k(d.fornecedores,'Fornecedores');
+  const k=(v,l,cls='',acao='')=>`<button type="button" class="kpi quick-kpi ${cls}" onclick="${acao}" aria-label="Abrir ${esc(l)}"><span class="v">${v}</span><span class="l">${l}</span></button>`;
+  $('kpis').innerHTML = k(d.produtos_ativos,'Produtos ativos','',"dashboardOpen('ativos')")
+    + k(d.zerados,'Zerados', d.zerados>0?'bad':'ok',"dashboardOpen('zerados')")
+    + k(d.abaixo_ideal,'Abaixo do ideal', d.abaixo_ideal>0?'alert':'ok',"dashboardOpen('abaixo_ideal')")
+    + k(d.sem_fornecedor,'Sem fornecedor', d.sem_fornecedor>0?'alert':'',"dashboardOpen('sem_fornecedor')")
+    + k(d.contagens_aguardando,'Contagens p/ auditar', d.contagens_aguardando>0?'alert':'',"dashboardOpen('auditorias')")
+    + k(d.fornecedores,'Fornecedores','',"dashboardOpen('fornecedores')");
   const uc=d.ultimas_contagens||[]; $('ultContagens').innerHTML = uc.length? uc.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.setor_nome||'—')}</b><small>${esc(c.usuario_nome||'')} · ${esc(c.status_auditoria||'')}</small></div></div>`).join('') : '<div class="empty">Nenhuma contagem ainda.</div>';
   const cp=d.ultimas_compras||[]; $('ultCompras').innerHTML = cp.length? cp.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.fornecedor||'—')}</b><small>${esc(c.usuario_nome||'')}</small></div><div class="qt"><span class="big">R$ ${Number(c.total||0).toFixed(2)}</span></div></div>`).join('') : '<div class="empty">Nenhuma compra ainda.</div>';
+}
+
+function dashboardOpen(kind){
+  if(kind==='auditorias') return abrirAuditorias();
+  if(kind==='fornecedores') return abrirFornecedoresModal();
+  abrirProdutosDashboard(kind);
+}
+function dashboardMeta(kind){
+  const map={
+    ativos:{titulo:'Produtos ativos',descricao:'Itens ativos no estoque. Clique em um produto para abrir o cadastro completo.',empty:'Nenhum produto ativo encontrado.'},
+    zerados:{titulo:'Produtos zerados',descricao:'Itens ativos com quantidade atual igual a zero.',empty:'Nenhum produto zerado encontrado.'},
+    abaixo_ideal:{titulo:'Produtos abaixo do ideal',descricao:'Itens ativos com estoque atual menor que o estoque ideal configurado.',empty:'Nenhum produto abaixo do ideal encontrado.'},
+    sem_fornecedor:{titulo:'Produtos sem fornecedor',descricao:'Itens ativos sem fornecedor preferido vinculado.',empty:'Nenhum produto sem fornecedor encontrado.'}
+  };
+  return map[kind]||map.ativos;
+}
+async function abrirProdutosDashboard(kind){
+  _dashProductKind=kind||'ativos'; _dashProductSearch='';
+  document.querySelectorAll('#dashProdutosModal').forEach(x=>x.remove());
+  const meta=dashboardMeta(_dashProductKind);
+  const m=document.createElement('div'); m.className='modal on est-modal dash-modal'; m.id='dashProdutosModal';
+  m.innerHTML=`<div class="box"><div class="dash-head"><div><h3>${esc(meta.titulo)}</h3><p>${esc(meta.descricao)}</p></div><button class="icon-btn" onclick="this.closest('.est-modal').remove()" aria-label="Fechar">×</button></div><div class="dash-body"><div class="dash-toolbar"><span id="dashProdutosResumo">Carregando…</span><input id="dashProdutosBusca" class="field" placeholder="Buscar nesta lista…" oninput="dashboardFiltraProdutos()"></div><div class="plist dash-list" id="dashProdutoList"><div class="empty">Carregando produtos…</div></div></div></div>`;
+  document.body.appendChild(m);
+  await dashboardRefreshProductModal();
+}
+async function dashboardRefreshProductModal(){
+  if(!$('dashProdutoList')||!_dashProductKind)return;
+  try{
+    const r=await fetch(API+'/api/est/produtos?status=ativos',{cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.erro||'Falha ao carregar produtos');
+    _dashRawProducts=d.produtos||[];
+    dashboardRenderProdutos();
+  }catch(e){
+    $('dashProdutoList').innerHTML='<div class="empty">Não foi possível carregar a lista.</div>';
+    if($('dashProdutosResumo'))$('dashProdutosResumo').textContent=e.message||'Erro ao carregar.';
+  }
+}
+function dashboardFiltraProdutos(){
+  _dashProductSearch=($('dashProdutosBusca')&&$('dashProdutosBusca').value||'').trim().toLowerCase();
+  dashboardRenderProdutos();
+}
+function dashboardProdutosFiltrados(){
+  let ps=(_dashRawProducts||[]).filter(p=>p.ativo!==false);
+  if(_dashProductKind==='zerados') ps=ps.filter(p=>Number(p.estoque_atual||0)===0);
+  if(_dashProductKind==='abaixo_ideal') ps=ps.filter(p=>p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal));
+  if(_dashProductKind==='sem_fornecedor') ps=ps.filter(p=>p.fornecedor_preferido_id==null);
+  const q=String(_dashProductSearch||'').trim().toLowerCase();
+  if(q) ps=ps.filter(p=>[p.nome,p.categoria,p.categoria_pai,p.subcategoria,p.departamento,p.fornecedor,(p.setor_nomes||'')].some(x=>String(x||'').toLowerCase().includes(q)));
+  return ps;
+}
+function dashboardRenderProdutos(){
+  const ps=dashboardProdutosFiltrados(), meta=dashboardMeta(_dashProductKind);
+  if($('dashProdutosResumo'))$('dashProdutosResumo').textContent=`${ps.length} item${ps.length===1?'':'s'} encontrado${ps.length===1?'':'s'}`;
+  $('dashProdutoList').innerHTML=ps.length?ps.map(dashboardProdutoCardHTML).join(''):`<div class="empty">${esc(meta.empty)}</div>`;
+}
+function dashboardProdutoCardHTML(p){
+  const at=Number(p.estoque_atual||0), id=p.estoque_ideal!=null?Number(p.estoque_ideal):null;
+  let statusClass='ok', statusLabel='ok';
+  if(!p.ativo){ statusClass='off'; statusLabel='inativo'; }
+  else if(at===0){ statusClass='zero'; statusLabel='zerado'; }
+  else if(id!=null&&at<id){ statusClass='low'; statusLabel='abaixo'; }
+  const pathParts=[p.departamento,p.categoria_pai,p.categoria,p.subcategoria].filter(Boolean);
+  const pathHtml=pathParts.length?pathParts.map(x=>`<span>${esc(x)}</span>`).join('<span class="path-sep">›</span>'):'<span>Sem classificação</span>';
+  const fornecedor=esc(p.fornecedor||'sem fornecedor');
+  const setores=(p.setores||[]).map(s=>`<span class="meta-pill sector">🏷 ${esc(s.nome)}</span>`).join('');
+  const badges=[
+    p.cmv_efetivo?`<span class="meta-pill">CMV${p.controla_cmv?'':' · cat.'}</span>`:'',
+    p.cv_efetivo?`<span class="meta-pill">CV${p.controla_cv?'':' · cat.'}</span>`:'',
+    p.pode_produzir?'<span class="meta-pill">📋 ficha técnica</span>':'',
+    p.pode_comprar?'<span class="meta-pill">🛒 comprável</span>':'',
+    p.pode_contar?'<span class="meta-pill"># contável</span>':''
+  ].join('');
+  return `<article class="prow product-row" onclick="editarProduto(${p.id})">
+    <div class="product-card-top">
+      <div class="product-icon">${p.pode_produzir?'⚙':'#'}</div>
+      <div class="product-card-main">
+        <div class="product-title-row"><b>${esc(p.nome)}</b><span class="status-pill ${statusClass}"><span class="status-dot"></span>${statusLabel}</span></div>
+        <div class="product-path">${pathHtml}<span class="path-sep">·</span><span>${fornecedor}</span></div>
+        <div class="product-meta">${setores}${badges}</div>
+      </div>
+    </div>
+    <div class="product-card-foot">
+      <div class="qty-block"><span class="qty-label">Quantidade atual</span><span class="qty-value">${fmt(at)} <span class="unit">${esc(p.unidade||'')}</span></span></div>
+      <div class="qty-block right"><span class="qty-label">Ideal</span><span class="qty-value">${id!=null?fmt(id):'—'}</span></div>
+    </div>
+  </article>`;
+}
+async function abrirFornecedoresModal(){
+  document.querySelectorAll('#dashFornecedoresModal').forEach(x=>x.remove());
+  const m=document.createElement('div'); m.className='modal on est-modal dash-modal'; m.id='dashFornecedoresModal';
+  m.innerHTML=`<div class="box"><div class="dash-head"><div><h3>Fornecedores</h3><p>Lista rápida sem sair da Visão do dia. Clique em um fornecedor para editar.</p></div><button class="icon-btn" onclick="this.closest('.est-modal').remove()" aria-label="Fechar">×</button></div><div class="dash-body"><div class="dash-toolbar"><span id="dashFornecedoresResumo">Carregando…</span><button class="btn primary sm" onclick="novoFornecedor()">+ Novo fornecedor</button></div><div class="plist dash-list" id="dashFornecedorList"><div class="empty">Carregando fornecedores…</div></div></div></div>`;
+  document.body.appendChild(m);
+  await loadFornecedores();
 }
 async function loadInicioColab(){
   const sec=$('v-inicio');
@@ -865,9 +984,18 @@ function renderSetorChips(){
 }
 function selSetor(id,ev){ if(ev)ev.stopPropagation(); splitCloseAll(); _setorSel=id||''; renderSetorChips(); loadProdutos(); }
 
+function fornecedorRowsHTML(){
+  return _forns.length? _forns.map(f=>`<div class="prow" onclick="editarFornecedor(${f.id})"><div class="nm"><b>${esc(f.nome)}</b><small>${esc(f.whatsapp||f.tipo||'—')}</small></div><div class="qt">${f.ativo?'':'<span class="tag off">inativo</span>'}</div></div>`).join('') : '<div class="empty">Sem fornecedores.</div>';
+}
+function refreshFornecedoresViews(){
+  const html=fornecedorRowsHTML();
+  if($('flist'))$('flist').innerHTML=html;
+  if($('dashFornecedorList'))$('dashFornecedorList').innerHTML=html;
+  if($('dashFornecedoresResumo'))$('dashFornecedoresResumo').textContent=`${_forns.length} fornecedor${_forns.length===1?'':'es'} cadastrado${_forns.length===1?'':'s'}`;
+}
 async function loadFornecedores(){ let d; try{ d=await (await fetch(API+'/api/est/fornecedores')).json(); }catch(e){ return; }
   _forns=d.fornecedores||[]; _fornMap={}; _forns.forEach(f=>_fornMap[f.id]=f);
-  $('flist').innerHTML = _forns.length? _forns.map(f=>`<div class="prow" onclick="editarFornecedor(${f.id})"><div class="nm"><b>${esc(f.nome)}</b><small>${esc(f.whatsapp||f.tipo||'—')}</small></div><div class="qt">${f.ativo?'':'<span class="tag off">inativo</span>'}</div></div>`).join('') : '<div class="empty">Sem fornecedores.</div>';
+  refreshFornecedoresViews();
 }
 
 /* ===== CRUD ===== */
@@ -906,6 +1034,7 @@ function campoForn(f){ return [
 /* ===== modais dinâmicos ===== */
 function pedirForm(titulo,campos,okLabel='Criar',comExcluir=false){ return new Promise(resolve=>{
   const ov=document.createElement('div'); ov.className='modal on';
+  ov.style.zIndex='120';
   const fields=campos.map((c,i)=>{
     if(c.type==='unit'){
       const cid='pf_'+String(c.key||'unidade').replace(/[^a-zA-Z0-9_-]/g,'_')+'_'+i;
@@ -1862,12 +1991,12 @@ async function peSave(){ peSyncRecipe(); const b=pePayload(), status=$('peStatus
   try{ let id=_pe.id, d=null; const eraProduzido=!!((_pe.produto&&_pe.produto.pode_produzir)||(_pe.ficha&&_pe.ficha.length)); const abrirFichaDepois=!!b.pode_produzir&&!eraProduzido; if(!id){ d=await estFetch('/api/est/produto','POST',b); id=d.id; _pe.id=id; } else d=await estFetch('/api/est/produto/'+id,'PATCH',b);
     d=await estFetch('/api/est/produto/'+id+'/setores','POST',{setores:b.setores});
     if(d&&Array.isArray(d.setores)){ const a=[...b.setores].map(Number).sort((x,y)=>x-y).join(','), salvo=[...d.setores].map(Number).sort((x,y)=>x-y).join(','); if(a!==salvo)throw new Error('O produto salvou, mas os setores retornaram diferentes. Reabra o item e confira antes de continuar.'); }
-    toast(_pe.produto&&_pe.produto.nome?'Produto atualizado':'Produto criado'); peClose(); await loadProdutos(); if(abrirFichaDepois)setTimeout(()=>abrirFichaProd(id),120);
+    toast(_pe.produto&&_pe.produto.nome?'Produto atualizado':'Produto criado'); peClose(); await loadProdutos(); if($('dashProdutoList'))await dashboardRefreshProductModal(); if(abrirFichaDepois)setTimeout(()=>abrirFichaProd(id),120);
   }catch(e){ status.textContent=e.message||'Não foi possível salvar. Revise os campos.'; btn.disabled=false; }
 }
 async function peDelete(){ if(!_pe.id)return; const nome=(_pe.produto&&_pe.produto.nome)||'este produto';
   if(!await pedirConfirm('Excluir produto da tela','“'+nome+'” sairá das listas, contagens, compras e rotinas operacionais. O histórico continuará preservado no banco para recuperação se necessário.','Excluir produto'))return;
-  try{ await estFetch('/api/est/produto/'+_pe.id,'DELETE',{motivo:'exclusao_gestor'}); toast('Produto excluído da tela'); peClose(); await loadProdutos(); }catch(e){} }
+  try{ await estFetch('/api/est/produto/'+_pe.id,'DELETE',{motivo:'exclusao_gestor'}); toast('Produto excluído da tela'); peClose(); await loadProdutos(); if($('dashProdutoList'))await dashboardRefreshProductModal(); }catch(e){} }
 async function abrirMovProduto(id){ const p=_prodMap[id]||_pe.produto; peClose(); nav('mais'); await movTela(); if($('movProd'))$('movProd').value=p.nome||''; }
 
 /* ===== EDITOR AVANÇADO DE FICHA DE PRODUÇÃO ===== */
