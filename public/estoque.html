@@ -246,20 +246,38 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .dash-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:18px 20px 14px; border-bottom:1px solid var(--line); }
 .dash-head h3{ margin:0; font-size:21px; letter-spacing:-.3px; }
 .dash-head p{ margin:4px 0 0; color:var(--mut); font-size:12px; line-height:1.4; }
+.dash-tabs{ display:flex; gap:3px; padding:10px 18px 0; border-bottom:1px solid var(--line); overflow-x:auto; }
+.dash-tab{ position:relative; border:1px solid rgba(255,255,255,.09); border-bottom:0; background:#18181c; color:#b7b7c0; border-radius:13px 13px 0 0; padding:10px 15px 11px; font-size:13px; font-weight:750; white-space:nowrap; cursor:pointer; }
+.dash-tab:hover{ color:#fff; background:#202025; }
+.dash-tab.on{ color:#fff; background:#111113; border-color:rgba(255,255,255,.15); box-shadow:inset 0 3px 0 var(--lar); }
+.dash-tab.on:after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:1px; background:#111113; }
 .dash-body{ padding:16px 18px 18px; overflow:auto; max-height:calc(var(--vvh) - 128px); }
 .dash-body::-webkit-scrollbar{ width:8px; height:8px; }
 .dash-body::-webkit-scrollbar-track{ background:transparent; }
 .dash-body::-webkit-scrollbar-thumb{ background:#34343b; border-radius:999px; border:2px solid #111113; }
 .dash-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 12px; color:var(--mut); font-size:12px; }
 .dash-toolbar .field{ max-width:360px; margin:0; padding:11px 12px; font-size:14px; }
+.dash-filter-row{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0 0 14px; }
+.dash-filter{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.dash-filter label{ color:#85858e; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.55px; }
+.dash-select{ appearance:none; width:100%; min-height:42px; border:1px solid var(--bd); border-radius:13px; background:#17171b; color:#f3f3f5; padding:0 36px 0 12px; font:700 13px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; outline:none; background-image:linear-gradient(45deg,transparent 50%,var(--lar) 50%),linear-gradient(135deg,var(--lar) 50%,transparent 50%); background-position:calc(100% - 18px) 18px,calc(100% - 13px) 18px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+.dash-select:focus{ border-color:rgba(255,122,24,.55); box-shadow:0 0 0 3px rgba(255,122,24,.11); }
+.dash-priority-toggle{ display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; min-height:42px; border:1px solid var(--bd); border-radius:13px; background:#17171b; }
+.dash-priority-toggle button{ border:0; border-radius:10px; background:transparent; color:#a9a9b2; font:800 12px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; }
+.dash-priority-toggle button.on{ background:rgba(255,122,24,.16); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,122,24,.24); }
+.meta-pill.priority{ color:#ffe0bd; background:rgba(255,122,24,.12); border-color:rgba(255,122,24,.34); }
+.meta-pill.priority.low-priority{ color:#a8a8b2; background:#202025; border-color:#2c2c33; }
 .dash-list.plist{ margin-top:8px; }
 @media(max-width:520px){
   .dash-modal{ padding:0; align-items:flex-end; }
   .dash-modal .box{ width:100%; max-height:calc(var(--vvh) - 8px); border-radius:18px 18px 0 0; }
   .dash-head{ padding:16px 16px 12px; }
+  .dash-tabs{ padding:8px 14px 0; }
+  .dash-tab{ padding:9px 12px 10px; font-size:12px; }
   .dash-body{ padding:14px; max-height:calc(var(--vvh) - 114px); }
   .dash-toolbar{ flex-direction:column; align-items:stretch; }
   .dash-toolbar .field{ max-width:none; }
+  .dash-filter-row{ grid-template-columns:1fr; gap:9px; }
 }
 
 .product-modal{ z-index:80; padding:18px; align-items:center; }
@@ -565,7 +583,7 @@ const $ = id => document.getElementById(id);
 let user = null, _pinCtx = null, _cats = [], _forns = [], _conversoes = [], _locais = [], _catSel = '', _setorSel = '', _prodMap = {}, _fornMap = {}, _convMgrStatus = 'ativas';
 let _estoqueCfg = { titulo:'Estoque', departamentos:[], tipos_item:[], unidades_medida:[] }, _estoqueCfgLoaded = false;
 let _sessionKeep = false, _versionWatchStarted = false, _appVersion = null, _updateAvailable = false, _userRefreshStarted = false;
-let _dashProductKind = null, _dashProductSearch = '', _dashRawProducts = [];
+let _dashProductKind = null, _dashProductSearch = '', _dashRawProducts = [], _dashProductType = 'comprados', _dashOrder = 'crescente', _dashSetor = '', _dashPriority = 'ativa';
 
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('on'),2600); }
 function applyEstoqueConfig(){
@@ -798,6 +816,71 @@ async function loadInicio(){ if(!ehGestor()) return loadInicioColab();
   const cp=d.ultimas_compras||[]; $('ultCompras').innerHTML = cp.length? cp.map(c=>`<div class="prow" style="cursor:default"><div class="nm"><b>${esc(c.fornecedor||'—')}</b><small>${esc(c.usuario_nome||'')}</small></div><div class="qt"><span class="big">R$ ${Number(c.total||0).toFixed(2)}</span></div></div>`).join('') : '<div class="empty">Nenhuma compra ainda.</div>';
 }
 
+const DASH_ADV_KINDS=new Set(['ativos','zerados','abaixo_ideal']);
+const DASH_PRIORITY_GROUPS=[
+  {rank:1,label:'Muçarela / Calabresa',terms:['mucarela','mussarela','calabresa']},
+  {rank:2,label:'Frango',terms:['frango coxa','frango peito','frango temperado','frango cozido','frango']},
+  {rank:3,label:'Bacon / Presunto',terms:['bacon','presunto']},
+  {rank:4,label:'Base de massa',terms:['farinha','fermento','oleo de girassol','sal']},
+  {rank:5,label:'Caixa de pizza',terms:['caixa','caixas fundo','caixas tampa','caixas tampas','tampa g','tampa p','fundo g','fundo p']},
+  {rank:6,label:'Mignon / Camarão',terms:['mignon','camarao','camarão']},
+  {rank:7,label:'Cremes e recheios',terms:['catupiry','cheddar','chocolate ao leite','chocolate branco','nutella','doce de leite']},
+  {rank:8,label:'Hortifruti base',terms:['tomate italiano','tomate salada','tomate cereja','molho produzido','molho','cebola roxa','milho','palmito']},
+  {rank:9,label:'Frescos e ervas',terms:['morango','uva','manjericao','manjericão','rucula','rúcula','alho poro','alho poró','oregano','orégano']},
+  {rank:10,label:'Bombons e chocolates',terms:['ferrero rocher','raffaello','ouro branco','sonho de valsa','prestigio','prestígio','diamante negro']},
+  {rank:11,label:'Secos doces',terms:['avela','avelã','coco ralado','coco chips','coco floco','gota chips','gotas de chips','chips ao leite','chips branco','ninho','leite em po','leite em pó']}
+];
+function dashboardAdvancedEnabled(){ return DASH_ADV_KINDS.has(_dashProductKind); }
+function dashNorm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function dashboardProductText(p){ return dashNorm([p.nome,p.categoria,p.categoria_pai,p.subcategoria,p.departamento,p.tipo_item,p.fornecedor,(p.setor_nomes||'')].filter(Boolean).join(' ')); }
+function dashboardIsProduzido(p){
+  const txt=dashboardProductText(p);
+  return !!p.pode_produzir || txt.includes('insumos produzidos') || txt.includes('produzido internamente') || txt.includes('ficha tecnica');
+}
+function dashboardPriorityInfo(p){
+  const txt=dashboardProductText(p), produzido=dashboardIsProduzido(p);
+  if(produzido && txt.includes('massa')) return {rank:1,label:'Massa',matched:'massa'};
+  let best=null;
+  for(const g of DASH_PRIORITY_GROUPS){
+    const hit=(g.terms||[]).find(t=>txt.includes(dashNorm(t)));
+    if(hit && (!best || g.rank<best.rank)) best={rank:g.rank,label:g.label,matched:hit};
+  }
+  return best || {rank:99,label:'Prioridade menor',matched:''};
+}
+function dashboardProductSetores(p){
+  const arr=Array.isArray(p.setores)?p.setores.map(s=>s&&s.nome).filter(Boolean):[];
+  if(arr.length)return arr;
+  return String(p.setor_nomes||p.subcategoria||'').split(/[;,/|]+/).map(x=>x.trim()).filter(Boolean);
+}
+function dashboardBaseProdutos(){
+  let ps=(_dashRawProducts||[]).filter(p=>p.ativo!==false);
+  if(_dashProductKind==='zerados') ps=ps.filter(p=>Number(p.estoque_atual||0)===0);
+  if(_dashProductKind==='abaixo_ideal') ps=ps.filter(p=>p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal));
+  if(_dashProductKind==='sem_fornecedor') ps=ps.filter(p=>p.fornecedor_preferido_id==null);
+  return ps;
+}
+function dashboardSetoresDisponiveis(){
+  const set=new Set();
+  dashboardBaseProdutos()
+    .filter(p=>!dashboardAdvancedEnabled() || (_dashProductType==='produzidos'?dashboardIsProduzido(p):!dashboardIsProduzido(p)))
+    .forEach(p=>dashboardProductSetores(p).forEach(s=>set.add(s)));
+  return [...set].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+function dashboardSetType(t){ _dashProductType=t||'comprados'; _dashSetor=''; dashboardRenderProdutos(); }
+function dashboardSetOrder(v){ _dashOrder=v||'crescente'; dashboardRenderProdutos(); }
+function dashboardSetSetor(v){ _dashSetor=v||''; dashboardRenderProdutos(); }
+function dashboardSetPriority(v){ _dashPriority=v||'ativa'; dashboardRenderProdutos(); }
+function dashboardAdvancedControlsHTML(){
+  if(!dashboardAdvancedEnabled())return '';
+  const setores=dashboardSetoresDisponiveis();
+  const setorOptions=['<option value="">Todos os setores</option>'].concat(setores.map(s=>`<option value="${esc(s)}" ${_dashSetor===s?'selected':''}>${esc(s)}</option>`)).join('');
+  return `<div class="dash-filter-row">
+    <div class="dash-filter"><label>Ordem</label><select class="dash-select" onchange="dashboardSetOrder(this.value)"><option value="crescente" ${_dashOrder==='crescente'?'selected':''}>Crescente</option><option value="decrescente" ${_dashOrder==='decrescente'?'selected':''}>Decrescente</option></select></div>
+    <div class="dash-filter"><label>Setor</label><select class="dash-select" onchange="dashboardSetSetor(this.value)">${setorOptions}</select></div>
+    <div class="dash-filter"><label>Prioridade</label><div class="dash-priority-toggle"><button type="button" class="${_dashPriority==='ativa'?'on':''}" onclick="dashboardSetPriority('ativa')">Ativa</button><button type="button" class="${_dashPriority==='inativa'?'on':''}" onclick="dashboardSetPriority('inativa')">Inativa</button></div></div>
+  </div>`;
+}
+
 function dashboardOpen(kind){
   if(kind==='auditorias') return abrirAuditorias();
   if(kind==='fornecedores') return abrirFornecedoresModal();
@@ -813,11 +896,12 @@ function dashboardMeta(kind){
   return map[kind]||map.ativos;
 }
 async function abrirProdutosDashboard(kind){
-  _dashProductKind=kind||'ativos'; _dashProductSearch='';
+  _dashProductKind=kind||'ativos'; _dashProductSearch=''; _dashProductType='comprados'; _dashOrder='crescente'; _dashSetor=''; _dashPriority='ativa';
   document.querySelectorAll('#dashProdutosModal').forEach(x=>x.remove());
   const meta=dashboardMeta(_dashProductKind);
   const m=document.createElement('div'); m.className='modal on est-modal dash-modal'; m.id='dashProdutosModal';
-  m.innerHTML=`<div class="box"><div class="dash-head"><div><h3>${esc(meta.titulo)}</h3><p>${esc(meta.descricao)}</p></div><button class="icon-btn" onclick="this.closest('.est-modal').remove()" aria-label="Fechar">×</button></div><div class="dash-body"><div class="dash-toolbar"><span id="dashProdutosResumo">Carregando…</span><input id="dashProdutosBusca" class="field" placeholder="Buscar nesta lista…" oninput="dashboardFiltraProdutos()"></div><div class="plist dash-list" id="dashProdutoList"><div class="empty">Carregando produtos…</div></div></div></div>`;
+  const tabs=dashboardAdvancedEnabled()?`<div class="dash-tabs"><button type="button" id="dashTabComprados" class="dash-tab on" onclick="dashboardSetType('comprados')">Itens comprados</button><button type="button" id="dashTabProduzidos" class="dash-tab" onclick="dashboardSetType('produzidos')">Itens produzidos</button></div>`:'';
+  m.innerHTML=`<div class="box"><div class="dash-head"><div><h3>${esc(meta.titulo)}</h3><p>${esc(meta.descricao)}</p></div><button class="icon-btn" onclick="this.closest('.est-modal').remove()" aria-label="Fechar">×</button></div>${tabs}<div class="dash-body"><div class="dash-toolbar"><span id="dashProdutosResumo">Carregando…</span><input id="dashProdutosBusca" class="field" placeholder="Buscar nesta lista…" oninput="dashboardFiltraProdutos()"></div><div id="dashProdutosFiltros"></div><div class="plist dash-list" id="dashProdutoList"><div class="empty">Carregando produtos…</div></div></div></div>`;
   document.body.appendChild(m);
   await dashboardRefreshProductModal();
 }
@@ -839,22 +923,37 @@ function dashboardFiltraProdutos(){
   dashboardRenderProdutos();
 }
 function dashboardProdutosFiltrados(){
-  let ps=(_dashRawProducts||[]).filter(p=>p.ativo!==false);
-  if(_dashProductKind==='zerados') ps=ps.filter(p=>Number(p.estoque_atual||0)===0);
-  if(_dashProductKind==='abaixo_ideal') ps=ps
-    .filter(p=>p.estoque_ideal!=null&&Number(p.estoque_atual)<Number(p.estoque_ideal))
-    .sort((a,b)=>{
-      const az=Number(a.estoque_atual||0)===0, bz=Number(b.estoque_atual||0)===0;
-      return az===bz?0:(az?1:-1);
-    });
-  if(_dashProductKind==='sem_fornecedor') ps=ps.filter(p=>p.fornecedor_preferido_id==null);
+  let ps=dashboardBaseProdutos();
+  if(dashboardAdvancedEnabled()){
+    ps=ps.filter(p=>_dashProductType==='produzidos'?dashboardIsProduzido(p):!dashboardIsProduzido(p));
+    if(_dashSetor) ps=ps.filter(p=>dashboardProductSetores(p).includes(_dashSetor));
+  }
   const q=String(_dashProductSearch||'').trim().toLowerCase();
   if(q) ps=ps.filter(p=>[p.nome,p.categoria,p.categoria_pai,p.subcategoria,p.departamento,p.fornecedor,(p.setor_nomes||'')].some(x=>String(x||'').toLowerCase().includes(q)));
+  ps=ps.slice().sort((a,b)=>{
+    if(_dashProductKind==='abaixo_ideal'){
+      const az=Number(a.estoque_atual||0)===0, bz=Number(b.estoque_atual||0)===0;
+      if(az!==bz) return az?1:-1;
+    }
+    if(dashboardAdvancedEnabled()&&_dashPriority==='ativa'){
+      const pa=dashboardPriorityInfo(a).rank, pb=dashboardPriorityInfo(b).rank;
+      if(pa!==pb) return _dashOrder==='decrescente'?pb-pa:pa-pb;
+    }
+    const na=String(a.nome||''), nb=String(b.nome||'');
+    return _dashOrder==='decrescente'?nb.localeCompare(na,'pt-BR'):na.localeCompare(nb,'pt-BR');
+  });
   return ps;
 }
 function dashboardRenderProdutos(){
   const ps=dashboardProdutosFiltrados(), meta=dashboardMeta(_dashProductKind);
-  if($('dashProdutosResumo'))$('dashProdutosResumo').textContent=`${ps.length} item${ps.length===1?'':'s'} encontrado${ps.length===1?'':'s'}`;
+  if($('dashTabComprados'))$('dashTabComprados').classList.toggle('on',_dashProductType==='comprados');
+  if($('dashTabProduzidos'))$('dashTabProduzidos').classList.toggle('on',_dashProductType==='produzidos');
+  if($('dashProdutosFiltros'))$('dashProdutosFiltros').innerHTML=dashboardAdvancedControlsHTML();
+  if($('dashProdutosResumo')){
+    const base=`${ps.length} item${ps.length===1?'':'s'} encontrado${ps.length===1?'':'s'}`;
+    const extra=dashboardAdvancedEnabled()?` · ${_dashProductType==='produzidos'?'produzidos':'comprados'} · prioridade ${_dashPriority}`:'';
+    $('dashProdutosResumo').textContent=base+extra;
+  }
   $('dashProdutoList').innerHTML=ps.length?ps.map(dashboardProdutoCardHTML).join(''):`<div class="empty">${esc(meta.empty)}</div>`;
 }
 function dashboardProdutoCardHTML(p){
@@ -867,7 +966,10 @@ function dashboardProdutoCardHTML(p){
   const pathHtml=pathParts.length?pathParts.map(x=>`<span>${esc(x)}</span>`).join('<span class="path-sep">›</span>'):'<span>Sem classificação</span>';
   const fornecedor=esc(p.fornecedor||'sem fornecedor');
   const setores=(p.setores||[]).map(s=>`<span class="meta-pill sector">🏷 ${esc(s.nome)}</span>`).join('');
+  const pr=dashboardPriorityInfo(p);
+  const priorityBadge=dashboardAdvancedEnabled()?`<span class="meta-pill priority ${pr.rank>=99?'low-priority':''}">Prioridade ${pr.rank>=99?'menor':pr.rank} · ${esc(pr.label)}</span>`:'';
   const badges=[
+    priorityBadge,
     p.cmv_efetivo?`<span class="meta-pill">CMV${p.controla_cmv?'':' · cat.'}</span>`:'',
     p.cv_efetivo?`<span class="meta-pill">CV${p.controla_cv?'':' · cat.'}</span>`:'',
     p.pode_produzir?'<span class="meta-pill">📋 ficha técnica</span>':'',
