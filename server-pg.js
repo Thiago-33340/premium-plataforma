@@ -5004,6 +5004,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/admin' || p === '/admin/') return serveStatic(res, path.join(ROOT, 'public/admin.html'));
     if (p === '/caixa' || p === '/caixa/') return serveStatic(res, path.join(ROOT, 'public/caixa.html'));
     if (p === '/gestor' || p === '/gestor/') return serveStatic(res, path.join(ROOT, 'public/gestor/index.html'));
+    if (p === '/prototipo' || p === '/prototipo/') return serveStatic(res, path.join(ROOT, 'public/prototipo/index.html'));
     if (p === '/mapper' || p === '/mapper/' || p === '/mapper.html' || p === '/command-center' || p === '/command-center/' || p === '/login' || p === '/login/') {
       if (!hostFerramentasPermitido(req)) return notFound(res);
       return serveStatic(res, path.join(ROOT, 'public/mapper.html'));
