@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Premium Pizzas — Peça já</title>
+<style>
+  :root{
+    --laranja:#ff6000; --laranja2:#ff8534; --escuro:#161310; --escuro2:#211c17;
+    --cartao:#fffaf5; --texto:#2a241e; --suave:#8a7f73; --verde:#1faa59; --vermelho:#e23b3b;
+    --linha:#efe4d8; --sombra:0 10px 30px rgba(120,60,0,.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+  html,body{margin:0; background:#0e0c0a; color:var(--texto);}
+  body{display:flex; justify-content:center;}
+  /* App container — formato celular */
+  #app-shell{width:100%; max-width:460px; min-height:100vh; background:#fbf6f0; position:relative; box-shadow:0 0 60px rgba(0,0,0,.5); display:flex; flex-direction:column;}
+  /* Cabeçalho */
+  header{background:linear-gradient(160deg,var(--escuro),var(--escuro2)); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:50;}
+  header img{height:34px;}
+  header .tag{background:var(--laranja); color:#fff; font-weight:800; font-size:11px; padding:3px 9px; border-radius:20px; letter-spacing:.5px;}
+  header .cart{margin-left:auto; position:relative; background:rgba(255,255,255,.12); border:none; color:#fff; width:42px; height:42px; border-radius:12px; font-size:19px; cursor:pointer;}
+  header .cart .badge{position:absolute; top:-6px; right:-6px; background:var(--laranja); color:#fff; font-size:11px; font-weight:800; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 4px;}
+  /* Barra de passos */
+  .passos{display:flex; gap:6px; padding:10px 16px 0; background:#fbf6f0;}
+  .passos .p{flex:1; height:5px; border-radius:5px; background:var(--linha);}
+  .passos .p.on{background:var(--laranja);}
+  /* Conteúdo */
+  main{flex:1; padding:16px 16px 120px; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  h1{font-size:23px; margin:6px 0 2px; line-height:1.15;}
+  h2{font-size:19px; margin:4px 0 14px;}
+  .sub{color:var(--suave); font-size:14px; margin:0 0 18px;}
+  .voltar{background:none; border:none; color:var(--suave); font-size:14px; cursor:pointer; padding:4px 0; margin-bottom:4px; font-weight:600;}
+  /* Cards de tamanho */
+  .tam-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .tam{background:var(--cartao); border:2px solid var(--linha); border-radius:20px; padding:16px 12px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--sombra);}
+  .tam:active{transform:scale(.96);}
+  .tam .nome{font-weight:800; font-size:18px; margin-top:8px;}
+  .tam .det{color:var(--suave); font-size:12.5px; margin-top:3px; line-height:1.3;}
+  .tam .preco{color:var(--laranja); font-weight:800; margin-top:8px; font-size:15px;}
+  /* Pizza grande clicável */
+  .pizza-wrap{position:relative; width:280px; height:280px; margin:6px auto 4px;}
+  .pizza-wrap svg{display:block; width:100%; height:100%; filter:drop-shadow(0 14px 22px rgba(120,60,0,.28));}
+  .meia{position:absolute; top:0; height:100%; width:50%; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;}
+  .meia.esq{left:0;} .meia.dir{right:0;} .meia.unico{left:0; width:100%;}
+  .meia .lbl{background:rgba(22,19,16,.82); color:#fff; font-size:12px; font-weight:700; padding:6px 10px; border-radius:20px; max-width:88%; line-height:1.2;}
+  .meia .add{background:var(--laranja); color:#fff; font-size:12px; font-weight:800; padding:6px 12px; border-radius:20px; box-shadow:0 4px 10px rgba(255,96,0,.4);}
+  .dica{text-align:center; color:var(--suave); font-size:13px; margin:2px 0 14px;}
+  /* Botões grandes */
+  .btn{display:block; width:100%; border:none; border-radius:16px; padding:16px; font-size:16px; font-weight:800; cursor:pointer; transition:.15s; margin-top:10px;}
+  .btn:active{transform:scale(.98);}
+  .btn-laranja{background:var(--laranja); color:#fff; box-shadow:0 8px 20px rgba(255,96,0,.35);}
+  .btn-laranja:disabled{background:#e7d9cb; color:#b3a596; box-shadow:none; cursor:not-allowed;}
+  .btn-escuro{background:var(--escuro); color:#fff;}
+  .btn-claro{background:var(--cartao); color:var(--texto); border:2px solid var(--linha);}
+  /* Lista de opções (borda, pagamento) */
+  .opc{background:var(--cartao); border:2px solid var(--linha); border-radius:16px; padding:15px 16px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:.12s;}
+  .opc.sel{border-color:var(--laranja); background:#fff6ee;}
+  .opc .ico{font-size:24px; width:30px; text-align:center;}
+  .opc .txt{flex:1;}
+  .opc .t-nome{font-weight:800; font-size:15.5px;}
+  .opc .t-det{color:var(--suave); font-size:12.5px; margin-top:1px;}
+  .opc .t-preco{color:var(--laranja); font-weight:800; font-size:14px;}
+  .opc .check{width:24px; height:24px; border-radius:50%; border:2px solid var(--linha); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;}
+  .opc.sel .check{background:var(--laranja); border-color:var(--laranja);}
+  /* Textarea / inputs */
+  textarea,input{width:100%; border:2px solid var(--linha); border-radius:14px; padding:14px; font-size:15px; background:#fff; color:var(--texto); resize:none;}
+  textarea:focus,input:focus{outline:none; border-color:var(--laranja);}
+  label.campo{display:block; font-weight:700; font-size:13.5px; margin:14px 0 6px; color:#564d42;}
+  label.campo .opt{color:var(--suave); font-weight:500;}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .chip{background:#fff; border:2px solid var(--linha); border-radius:20px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer;}
+  .chip:active{background:var(--laranja); color:#fff; border-color:var(--laranja);}
+  /* Modal picker de sabores */
+  .sheet-bg{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:90; display:none;}
+  .sheet-bg.show{display:block;}
+  .sheet{position:absolute; bottom:0; left:0; right:0; max-width:460px; margin:0 auto; background:#fbf6f0; border-radius:22px 22px 0 0; max-height:86vh; display:flex; flex-direction:column; animation:up .25s ease;}
+  @keyframes up{from{transform:translateY(100%);} to{transform:none;}}
+  .sheet .sh-top{padding:14px 16px 8px; position:sticky; top:0; background:#fbf6f0; border-radius:22px 22px 0 0;}
+  .sheet .sh-top h3{margin:0 0 10px; font-size:18px;}
+  .tabs{display:flex; gap:8px; margin-bottom:8px;}
+  .tabs button{flex:1; border:none; background:var(--linha); color:#7a6f63; font-weight:800; padding:10px; border-radius:12px; cursor:pointer;}
+  .tabs button.on{background:var(--escuro); color:#fff;}
+  .sheet .lista{overflow-y:auto; padding:4px 16px 24px;}
+  .item-sabor{background:var(--cartao); border:1px solid var(--linha); border-radius:14px; padding:13px 14px; margin-bottom:9px; cursor:pointer; display:flex; align-items:center; gap:10px;}
+  .item-sabor:active{border-color:var(--laranja);}
+  .item-sabor .info{flex:1;}
+  .item-sabor .s-nome{font-weight:800; font-size:15px;}
+  .item-sabor .s-ing{color:var(--suave); font-size:12px; margin-top:2px; line-height:1.3;}
+  .item-sabor .s-preco{color:var(--laranja); font-weight:800; font-size:13.5px; white-space:nowrap;}
+  .fechar-sheet{background:none; border:none; font-size:24px; color:var(--suave); position:absolute; top:10px; right:12px; cursor:pointer;}
+  /* Carrinho */
+  .cart-item{background:var(--cartao); border:1px solid var(--linha); border-radius:16px; padding:14px; margin-bottom:11px; display:flex; gap:12px;}
+  .cart-item .mini{flex-shrink:0;}
+  .cart-item .ci-info{flex:1;}
+  .cart-item .ci-nome{font-weight:800; font-size:15px;}
+  .cart-item .ci-det{color:var(--suave); font-size:12.5px; margin-top:3px; line-height:1.35;}
+  .cart-item .ci-obs{color:var(--vermelho); font-size:12px; font-weight:700; margin-top:3px;}
+  .cart-item .ci-bot{display:flex; align-items:center; justify-content:space-between; margin-top:8px;}
+  .cart-item .ci-preco{font-weight:800; color:var(--laranja);}
+  .lixo{background:none; border:none; color:var(--suave); font-size:18px; cursor:pointer;}
+  .qtd-ctrl{display:flex; align-items:center; gap:10px;}
+  .qtd-ctrl button{width:30px; height:30px; border-radius:50%; border:2px solid var(--linha); background:#fff; font-size:17px; font-weight:800; cursor:pointer; color:var(--laranja);}
+  .resumo{background:var(--escuro); color:#fff; border-radius:18px; padding:16px; margin-top:6px;}
+  .resumo .lin{display:flex; justify-content:space-between; padding:5px 0; font-size:14px; color:#d9cfc4;}
+  .resumo .total{display:flex; justify-content:space-between; font-size:20px; font-weight:800; border-top:1px solid rgba(255,255,255,.15); margin-top:6px; padding-top:10px;}
+  /* Barra fixa inferior */
+  .barra-baixo{position:fixed; bottom:0; left:0; right:0; max-width:460px; margin:0 auto; background:#fff; border-top:1px solid var(--linha); padding:12px 16px 16px; z-index:40; box-shadow:0 -6px 20px rgba(0,0,0,.06);}
+  .barra-baixo .resumo-mini{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .barra-baixo .resumo-mini .v{font-weight:800; font-size:18px;}
+  .barra-baixo .resumo-mini .c{color:var(--suave); font-size:13px;}
+  /* Aviso */
+  .aviso{background:#fff3e6; border:1px solid #ffd9b3; color:#9a5a12; border-radius:12px; padding:11px 13px; font-size:12.5px; margin:10px 0; line-height:1.4;}
+  .sucesso-ico{width:84px; height:84px; border-radius:50%; background:var(--verde); color:#fff; font-size:46px; display:flex; align-items:center; justify-content:center; margin:20px auto 14px; box-shadow:0 10px 30px rgba(31,170,89,.4);}
+  .center{text-align:center;}
+  .badge-meio{display:inline-block; background:#fff6ee; color:var(--laranja); border:1px solid #ffd9b3; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px; margin-left:6px;}
+  .social{display:flex; gap:10px; margin-bottom:6px;}
+  .social button{flex:1; border:2px solid var(--linha); background:#fff; border-radius:14px; padding:13px; font-weight:700; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;}
+  .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--escuro); color:#fff; padding:12px 20px; border-radius:30px; font-weight:700; font-size:14px; z-index:200; opacity:0; transition:.3s; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,.3); white-space:nowrap;}
+  .toast.show{opacity:1; bottom:110px;}
+  /* Preview/visual da borda */
+  .borda-preview{display:flex; align-items:center; gap:14px; background:var(--cartao); border:2px solid var(--linha); border-radius:18px; padding:14px; margin-bottom:14px;}
+  .borda-preview .bp-nome{font-weight:800; font-size:17px;}
+  .borda-preview .bp-det{color:var(--suave); font-size:13px; margin-top:3px;}
+  .bv{border-radius:14px; overflow:hidden; flex-shrink:0;}
+  .borda-thumb{flex-shrink:0;}
+  .opc .seta{font-size:24px; color:var(--laranja); font-weight:800; line-height:1;}
+  .ou{display:flex; align-items:center; gap:10px; color:var(--suave); font-size:13px; font-weight:700; margin:18px 0 4px; text-align:center;}
+  .ou::before,.ou::after{content:""; flex:1; height:1px; background:var(--linha);}
+  /* Mini carrinho + bebidas rápidas */
+  .mini-cart{background:var(--cartao); border:1px solid var(--linha); border-radius:14px; padding:12px 14px; margin:10px 0;}
+  .mini-cart .mini-tit{font-weight:800; font-size:13px; margin-bottom:6px;}
+  .mini-l{display:flex; justify-content:space-between; font-size:13.5px; color:#564d42; padding:3px 0; gap:8px;}
+  .mini-l.tot{font-weight:800; color:var(--texto); border-top:1px solid var(--linha); margin-top:5px; padding-top:7px; font-size:15px;}
+  .bebida-grid{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:8px;}
+  .bebida-quick{display:flex; flex-direction:column; align-items:center; gap:3px; border:2px solid var(--linha); background:#fff; border-radius:14px; padding:12px 8px; cursor:pointer; font-size:24px;}
+  .bebida-quick:active{transform:scale(.97); border-color:var(--laranja);}
+  .bebida-quick span{font-size:12px; font-weight:700; color:var(--texto);}
+  .bebida-quick b{font-size:12.5px; color:var(--laranja);}
+</style>
+</head>
+<body>
+<div id="app-shell">
+  <header>
+    <img src="logo.png" alt="Premium Pizzas">
+    <span class="tag">PEÇA JÁ</span>
+    <button class="cart" onclick="irPara('carrinho')">🛒<span class="badge" id="cart-badge" style="display:none">0</span></button>
+  </header>
+  <div class="passos" id="passos"></div>
+  <main id="main"></main>
+</div>
+
+<!-- Sheet de sabores -->
+<div class="sheet-bg" id="sheet-bg" onclick="if(event.target===this)fecharSheet()">
+  <div class="sheet">
+    <div class="sh-top">
+      <button class="fechar-sheet" onclick="fecharSheet()">×</button>
+      <h3 id="sheet-titulo">Escolha o sabor</h3>
+      <div class="tabs" id="sheet-tabs">
+        <button class="on" onclick="setTabSabor('salgada')">🍕 Salgadas</button>
+        <button onclick="setTabSabor('doce')">🍫 Doces</button>
+      </div>
+    </div>
+    <div class="lista" id="sheet-lista"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="cloud.js"></script>
+<script>
+/* =========================================================================
+   PREMIUM PIZZAS — SITE DE PEDIDOS (protótipo)
+   Reaproveita os dados reais do KDS (sabores, bordas, desenho da pizza).
+   VALORES: são de EXEMPLO. Trocar pela tabela real depois (objeto PRECOS).
+   ========================================================================= */
+
+/* ---------- CARDÁPIO REAL (PDF oficial Rio Preto) — preço P (Pequena) / G (Grande) ---------- */
+const SALGADOS = {
+ "Calabresa":{P:49.90,G:94.90,ings:["Calabresa","Mussarela","Cebola roxa"]},
+ "Calabacon":{P:49.90,G:94.90,ings:["Calabresa","Bacon","Mussarela","Cebola roxa"]},
+ "Frango c/ Bacon":{P:49.90,G:89.90,ings:["Frango","Mussarela","Bacon","Milho","Azeitona preta"]},
+ "Frango c/ Catupiry":{P:49.90,G:94.90,ings:["Frango","Mussarela","Catupiry","Milho","Azeitona preta"]},
+ "Margherita":{P:49.90,G:94.90,ings:["Mussarela","Tomate","Manjericão"]},
+ "Bacon c/ Batata":{P:49.90,G:94.90,ings:["Mussarela","Bacon","Batata palha"]},
+ "Brasileira":{P:49.90,G:94.90,ings:["Calabresa","Presunto","Mussarela","Cebola roxa"]},
+ "Mussarela":{P:49.90,G:94.90,ings:["Mussarela","Tomate"]},
+ "Rúcula Premium":{P:49.90,G:94.90,ings:["Mussarela","Rúcula","Palmito","Milho","Tomate cereja"]},
+ "Quatro Queijos":{P:49.90,G:94.90,ings:["Mussarela","Parmesão","Provolone","Catupiry"]},
+ "Mussarela c/ Bacon":{P:49.90,G:94.90,ings:["Mussarela","Tomate","Milho","Bacon"]},
+ "Portuguesa":{P:49.90,G:94.90,ings:["Mussarela","Calabresa","Presunto","Ovo","Cebola roxa"]},
+ "Palmito Cremoso":{P:49.90,G:94.90,ings:["Mussarela","Palmito","Milho","Catupiry"]},
+ "Sexta Santa":{P:49.90,G:94.90,ings:["Mussarela","Tomate em cubos","Milho","Palmito","Catupiry"]},
+ "Vegetariana":{P:49.90,G:94.90,ings:["Mussarela","Milho","Ovo","Catupiry"]},
+ "Cinco Queijos":{P:59.90,G:119.90,ings:["Mussarela","Parmesão","Provolone","Catupiry","Cheddar"]},
+ "Pepperoni":{P:59.90,G:119.90,ings:["Pepperoni","Mussarela","Tomate cereja"]},
+ "Frango Cremoso":{P:59.90,G:119.90,ings:["Frango","Mussarela","Milho","Tomate","Bacon em cubos"]},
+ "Premium":{P:59.90,G:119.90,ings:["Frango","Mussarela","Calabresa","Bacon","Milho","Cebola roxa","Azeitona"]},
+ "Mr. Pig":{P:64.90,G:119.90,ings:["Mussarela","Calabresa","Catupiry","Milho","Tomate","Bacon em cubos"]},
+ "Do Cheff":{P:64.90,G:119.90,ings:["Mussarela","Calabresa","Bacon","Milho","Palmito"]},
+ "Lombo":{P:64.90,G:129.90,ings:["Mussarela","Lombo canadense","Milho","Catupiry","Alho poró","Bacon"]},
+ "Suprema":{P:64.90,G:129.90,ings:["Mussarela","Presunto","Calabresa","Bacon","Milho","Catupiry"]},
+ "Mignon":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Tomate cereja","Parmesão"]},
+ "Mignon Cremosa":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Tomate cereja","Catupiry"]},
+ "Mignon c/ Fritas":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Batata frita"]},
+ "Camarão Rosa":{P:84.90,G:179.90,ings:["Camarão rosa","Mussarela","Catupiry","Pimentão vermelho","Pimentão amarelo","Tomate cereja","Alho poró"]}
+};
+const DOCES = {
+ "Sonho de Valsa":{P:49.90,G:89.90,ings:["Chocolate ao leite","Sonho de Valsa"]},
+ "Ouro Branco":{P:49.90,G:89.90,ings:["Chocolate branco","Ouro Branco"]},
+ "Diamante Negro":{P:49.90,G:89.90,ings:["Chocolate ao leite","Diamante Negro"]},
+ "Prestígio":{P:49.90,G:89.90,ings:["Chocolate ao leite","Coco","Prestígio"]},
+ "Sensação":{P:49.90,G:89.90,ings:["Chocolate ao leite","Morangos"]},
+ "Branco Supremo":{P:49.90,G:89.90,ings:["Chocolate branco","Morangos"]},
+ "Nutella c/ Morangos":{P:59.90,G:119.90,ings:["Nutella","Morangos"]},
+ "Ninho c/ Nutella":{P:59.90,G:119.90,ings:["Nutella","Brigadeiro de Ninho","Uva verde","Morangos","Ninho polvilhado"]},
+ "Ferrero Premium":{P:69.90,G:129.90,ings:["Nutella","Ferrero Rocher","Grãos de avelã"]},
+ "Rafaello":{P:69.90,G:129.90,ings:["Chocolate branco","Coco","Morangos","Rafaello"]}
+};
+function dadosSabor(nome){ return SALGADOS[nome]||DOCES[nome]||{ings:[]}; }
+function ingTxt(nome){ return dadosSabor(nome).ings.join(", "); }
+function ehDoce(nome){ return !!DOCES[nome]; }
+
+/* ---------- BORDAS ---------- */
+const BORDA_OPCOES = [
+  {id:"sem",   tipo:"Tradicional", padraoSab:"Sem recheio", nome:"Sem borda recheada", ico:"⚪", det:"Massa normal, sem recheio na borda"},
+  {id:"vulcao",tipo:"Vulcão",      nome:"Borda Vulcão",          ico:"🌋", det:"Casquinhas recheadas em volta"},
+  {id:"pao",   tipo:"Pãozinho",    nome:"Borda Pãozinho",        ico:"🥖", det:"Rolinhos de pãozinho recheado"},
+  {id:"caracol",tipo:"Caracol",    nome:"Borda Caracol",         ico:"🐌", det:"Anel em espiral recheado"},
+  {id:"trad",  tipo:"Tradicional", nome:"Tradicional com recheio", ico:"🍕", det:"Recheio escondido por dentro da borda"}
+];
+/* BORDAS — preço por sabor (PDF oficial). Meio a meio só dentro da MESMA categoria. */
+const BORDA_SABORES = {
+  "Vulcão":{"Catupiry":24.90,"Cheddar":24.90,"Mussarela":24.90,"Presunto e Mussarela":24.90,"Mussarela c/ Orégano":24.90,"Chocolate ao Leite c/ Morango":24.90,"Chocolate Branco c/ Morango":24.90,"Doce de Leite c/ Coco":24.90,"Ouro Branco":29.90,"Sonho de Valsa":29.90,"Nutella":39.90,"Nutella c/ Morango":39.90,"Ninho c/ Morango":39.90,"Ninho c/ Uva":39.90,"Ferrero Premium":49.90,"Rafaello":49.90},
+  "Pãozinho":{"Presunto e Mussarela":29.90,"Presunto c/ Catupiry":29.90,"Presunto c/ Cheddar":29.90,"Frango c/ Catupiry":29.90,"Frango c/ Cheddar":29.90,"Frango c/ Mussarela":29.90,"Calabresa c/ Mussarela":29.90,"Calabresa c/ Catupiry":29.90,"Calabresa c/ Cheddar":29.90},
+  "Caracol":{"Cheddar":24.90,"Catupiry":24.90},
+  "Tradicional":{"Cheddar":24.90,"Catupiry":24.90,"Chocolate ao Leite":24.90,"Chocolate Branco":24.90,"Presunto e Mussarela":24.90,"Mussarela":24.90}
+};
+
+/* ---------- BEBIDAS (valores de exemplo) ---------- */
+const BEBIDAS = [
+  {nome:"Coca-Cola lata", ico:"🥤", preco:6.90},
+  {nome:"Coca-Cola Zero lata", ico:"🥤", preco:6.90},
+  {nome:"Guaraná lata", ico:"🥤", preco:6.90},
+  {nome:"Guaraná Zero lata", ico:"🥤", preco:6.90},
+  {nome:"Sprite Zero lata", ico:"🥤", preco:6.90},
+  {nome:"Coca-Cola 1L", ico:"🥤", preco:12.90},
+  {nome:"Coca-Cola 1,5L", ico:"🥤", preco:15.90},
+  {nome:"Coca-Cola 2L", ico:"🥤", preco:17.90},
+  {nome:"Água sem gás", ico:"💧", preco:5.90},
+  {nome:"Água com gás", ico:"💧", preco:5.90},
+  {nome:"Suco natural Laranja (copo)", ico:"🧃", preco:9.90},
+  {nome:"Suco natural Uva (copo)", ico:"🧃", preco:9.90},
+  {nome:"Heineken Long Neck", ico:"🍺", preco:9.90}
+];
+
+/* ---------- PREÇOS (cardápio oficial) ---------- */
+const PRECO_ADICIONAL = 9.90;      // adicional por ingrediente (PDF)
+const TAXA_ENTREGA = 7.0;          // taxa de entrega — exemplo (ajustar; raios na fase nuvem)
+
+/* ---------- ESTADO ---------- */
+let carrinho = [];                 // {tipo:'pizza'|'bebida', ...}
+let pz = null;                     // pizza em montagem
+let ladoEditando = null;           // 'esq' | 'dir' | 'unico'
+let tabSabor = 'salgada';
+let cliente = JSON.parse(localStorage.getItem('cli_premium')||'{}');
+let entrega = {};
+let pagamento = {};
+let modoConta = 'cadastro';        // 'cadastro' | 'login'
+const STORE_WHATSAPP = "";         // <- coloque aqui o número da pizzaria (ex: 5517999999999)
+
+/* ---------- HELPERS ---------- */
+function brl(v){ return "R$ "+v.toFixed(2).replace(".",","); }
+function $(id){ return document.getElementById(id); }
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function salvarCarrinho(){ localStorage.setItem('carrinho_premium', JSON.stringify(carrinho)); atualizaBadge(); }
+function atualizaBadge(){ const n=carrinho.reduce((s,i)=>s+(i.qtd||1),0); const b=$("cart-badge"); if(n>0){b.style.display="flex"; b.textContent=n;} else b.style.display="none"; }
+try{ carrinho = JSON.parse(localStorage.getItem('carrinho_premium')||'[]'); }catch(e){ carrinho=[]; }
+
+/* ---------- PREÇOS ---------- */
+function precoSabor(nome, tam){ const d=dadosSabor(nome); return d[tam==='Pequena'?'P':'G']||0; }
+function precoMin(tam){ const k=tam==='Pequena'?'P':'G'; return Math.min(...Object.values(SALGADOS).concat(Object.values(DOCES)).map(o=>o[k])); }
+function bordaSaborDoce(s){ return /nutella|chocolate|ninho|doce|morango|uva|coco|ferrero|rafael|sonho|ouro/.test(normaliza(s||"")); }
+function tipoBorda(p){ const b=BORDA_OPCOES.find(x=>x.id===p.bordaId); return b?b.tipo:"Tradicional"; }
+function precoBordaSabor(tipo, sab){ if(!sab||sab==="Sem recheio") return 0; return (BORDA_SABORES[tipo]&&BORDA_SABORES[tipo][sab])||0; }
+function precoBordaPizza(p){
+  if(!p.bordaId||p.bordaId==='sem') return 0;
+  const t=tipoBorda(p);
+  const a=precoBordaSabor(t,p.bordaSabEsq), b=precoBordaSabor(t,p.bordaSabDir||p.bordaSabEsq);
+  return Math.max(a,b);         // borda meio a meio = cobra o sabor mais caro
+}
+function precoPizza(p){
+  let base;
+  if(p.tamanho==="Pequena"){
+    base = p.sabores[0]?precoSabor(p.sabores[0],"Pequena"):0;
+  } else {
+    const a=p.sabores[0]?precoSabor(p.sabores[0],"Grande"):0;
+    const b=p.sabores[1]?precoSabor(p.sabores[1],"Grande"):a;
+    base=(a+b)/2;               // meio a meio = preço médio
+  }
+  base += precoBordaPizza(p);
+  return base;
+}
+function bordaVisual(b,px){
+  const fake={tamanho:'Grande',sabores:['Mussarela','Mussarela'],bordaId:b.id,bordaSabEsq:'Catupiry',bordaSabDir:'Catupiry'};
+  return `<span class="bv" style="width:${px}px;height:${px}px;display:inline-block;position:relative">
+    ${pizzaSVG(fake,px)}
+    <img src="fotos-bordas/${encodeURIComponent(b.tipo)}.jpg" alt="" style="position:absolute;inset:0;width:${px}px;height:${px}px;object-fit:cover;border-radius:14px" onerror="this.remove()">
+  </span>`;
+}
+function totalCarrinho(){ return carrinho.reduce((s,i)=> s + (i.tipo==='pizza'?precoPizza(i):i.preco) * (i.qtd||1), 0); }
+
+/* =========================================================================
+   DESENHO DA PIZZA (SVG) — reaproveitado do painel da cozinha
+   ========================================================================= */
+let _svgId=0;
+function normaliza(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
+function corSabor(s){ s=normaliza(s||"");
+  if(/nutella|ferrero/.test(s)) return "#4a2c1a";
+  if(/chocolate ao leite|sonho|diamante|prestigio/.test(s)) return "#6b4226";
+  if(/chocolate branco|ouro|rafael|coco/.test(s)) return "#efe3c8";
+  if(/ninho|doce de leite/.test(s)) return "#e7cf9a";
+  if(/cheddar/.test(s)) return "#e8a13a";
+  if(/catupiry/.test(s)) return "#f3ead0";
+  if(/mussarela/.test(s)) return "#f1e09a";
+  if(/presunto/.test(s)) return "#e6a6a0";
+  if(/frango/.test(s)) return "#d9b86a";
+  if(/calabresa/.test(s)) return "#b5482e";
+  if(/morango|uva/.test(s)) return "#cf3b48";
+  return "#d8b43a";
+}
+function corBase(top){ if(!top) return "#f3e6cf"; return /chocolate|nutella|ninho|brigadeiro|doce|morango/.test(normaliza(top))?"#cda472":"#f0d385"; }
+function rimSVG(tipo,sbE,sbD){
+  const cE=corSabor(sbE), cD=corSabor(sbD);
+  if(tipo==="Vulcão"){ let s=""; const n=8,r=42,off=Math.PI/n;
+    for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI+off, x=50+r*Math.cos(a), y=50+r*Math.sin(a), left=x<50, col=left?cE:cD;
+      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.6" fill="#ecca97" stroke="#a9742f" stroke-width="1.3"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.7" fill="${col}"/>`; }
+    return s; }
+  if(tipo==="Pãozinho"){ let s=""; const n=24,r=42,off=Math.PI/n;
+    for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI+off, x=50+r*Math.cos(a), y=50+r*Math.sin(a), deg=(a*180/Math.PI)+90;
+      s+=`<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${deg.toFixed(0)})"><rect x="-2.7" y="-5" width="5.4" height="10" rx="2.7" fill="#e6bd7e" stroke="#a9742f" stroke-width=".9"/></g>`; }
+    return s; }
+  return `<circle cx="50" cy="50" r="42" fill="none" stroke="#e9bf80" stroke-width="11"/>`;
+}
+function pizzaSVG(p,px,meio){
+  const id="pz"+(++_svgId);
+  const topE=p.sabores[0]||"", topD=(p.tamanho==="Pequena")?topE:(p.sabores[1]||topE);
+  const bTipo=p.bordaId?BORDA_OPCOES.find(b=>b.id===p.bordaId).tipo:"Tradicional";
+  const linha = (p.tamanho!=="Pequena") ? `<line x1="50" y1="8" x2="50" y2="92" stroke="rgba(60,30,10,.35)" stroke-width="1.4"/>` : "";
+  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}">
+    <defs><clipPath id="${id}"><circle cx="50" cy="50" r="38"/></clipPath></defs>
+    <circle cx="50" cy="50" r="48" fill="#c98a44"/>
+    <g clip-path="url(#${id})">
+      <rect x="0" y="0" width="50" height="100" fill="${corBase(topE)}"/>
+      <rect x="50" y="0" width="50" height="100" fill="${corBase(topD)}"/>
+    </g>
+    ${rimSVG(bTipo, p.bordaSabEsq, p.bordaSabDir)}
+    ${linha}
+  </svg>`;
+}
+
+/* =========================================================================
+   NAVEGAÇÃO
+   ========================================================================= */
+const PASSOS_FLUXO = { tamanho:1, sabores:2, borda:3, bordaRecheio:4 };
+function setPassos(n){
+  const tot=4; let h="";
+  for(let i=1;i<=tot;i++) h+=`<div class="p ${i<=n?'on':''}"></div>`;
+  $("passos").innerHTML = n? h : "";
+}
+function irPara(tela, arg){
+  window.scrollTo(0,0);
+  setPassos(PASSOS_FLUXO[tela]||0);
+  TELAS[tela](arg);
+  atualizaBadge();
+}
+
+/* =========================================================================
+   TELAS
+   ========================================================================= */
+const TELAS = {};
+
+/* ---- 1. TAMANHO ---- */
+TELAS.tamanho = function(){
+  pz = { tamanho:null, sabores:[], bordaId:null, bordaSabEsq:null, bordaSabDir:null, obs:"" };
+  const exibe = nome => `<div class="pizza-wrap" style="width:130px;height:130px;margin:0 auto;">${pizzaSVG({tamanho:nome,sabores:["Calabresa", nome==='Grande'?"Frango com Catupiry":"Calabresa"],bordaId:'vulcao',bordaSabEsq:'Catupiry',bordaSabDir:'Catupiry'},130)}</div>`;
+  $("main").innerHTML = `
+    <h1>Monte sua pizza 🍕</h1>
+    <p class="sub">Comece escolhendo o tamanho. É só tocar.</p>
+    <div class="tam-grid">
+      <div class="tam" onclick="escolherTamanho('Grande')">
+        ${exibe('Grande')}
+        <div class="nome">GRANDE</div>
+        <div class="det">8 pedaços · até 2 sabores</div>
+        <div class="preco">a partir de ${brl(precoMin('Grande'))}</div>
+      </div>
+      <div class="tam" onclick="escolherTamanho('Pequena')">
+        ${exibe('Pequena')}
+        <div class="nome">PEQUENA</div>
+        <div class="det">4 pedaços · 1 sabor</div>
+        <div class="preco">a partir de ${brl(precoMin('Pequena'))}</div>
+      </div>
+    </div>
+    ${carrinho.length? `<button class="btn btn-claro" onclick="irPara('carrinho')">🛒 Ver meu pedido (${carrinho.length})</button>`:""}
+    <div class="aviso">✅ Preços do cardápio oficial. (As bebidas ainda são de exemplo — me manda a lista delas depois.)</div>`;
+};
+function escolherTamanho(t){
+  pz.tamanho=t;
+  pz.sabores = t==="Pequena" ? [null] : [null,null];
+  irPara('sabores');
+}
+
+/* ---- 2. SABORES ---- */
+TELAS.sabores = function(){
+  const grande = pz.tamanho==="Grande";
+  const px=280;
+  let halves;
+  const lblVazio = grande ? "＋ escolha o sabor desta metade" : "＋ escolher sabor";
+  if(grande){
+    halves = `
+      <button class="meia esq" onclick="abrirSabores('esq')">
+        ${pz.sabores[0]? `<span class="lbl">${pz.sabores[0]}</span>` : `<span class="add">${lblVazio}</span>`}
+      </button>
+      <button class="meia dir" onclick="abrirSabores('dir')">
+        ${pz.sabores[1]? `<span class="lbl">${pz.sabores[1]}</span>` : `<span class="add">${lblVazio}</span>`}
+      </button>`;
+  } else {
+    halves = `<button class="meia unico" onclick="abrirSabores('unico')">
+        ${pz.sabores[0]? `<span class="lbl">${pz.sabores[0]}</span>` : `<span class="add">${lblVazio}</span>`}
+      </button>`;
+  }
+  const completo = grande ? (pz.sabores[0]&&pz.sabores[1]) : !!pz.sabores[0];
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('tamanho')">‹ voltar</button>
+    <h2>${grande?"Toque em cada metade e escolha o sabor":"Escolha o sabor"}</h2>
+    <div class="pizza-wrap" style="width:${px}px;height:${px}px;">
+      ${pizzaSVG(pz,px)}
+      ${halves}
+    </div>
+    <p class="dica">${grande?"Pizza GRANDE: meio a meio (2 sabores) ou 1 sabor inteiro.":"Pizza PEQUENA: 1 sabor."}</p>
+    <label class="campo">Alguma observação na sua pizza? <span class="opt">(opcional — ex: tirar cebola, azeitona...)</span></label>
+    <textarea id="obs-txt" rows="2" placeholder="Escreva aqui o que quiser tirar ou pedir...">${pz.obs||""}</textarea>
+    <button class="btn btn-laranja" ${completo?"":"disabled"} onclick="salvarObsEir()">Escolher a borda ›</button>`;
+};
+function salvarObsEir(){ const t=$("obs-txt"); if(t) pz.obs=t.value.trim(); irPara('borda'); }
+function abrirSabores(lado){ const t=$("obs-txt"); if(t) pz.obs=t.value.trim(); ladoEditando=lado; tabSabor='salgada'; abrirSheet(); }
+
+/* ---- SHEET de sabores ---- */
+function abrirSheet(){ renderSheet(); $("sheet-bg").classList.add("show"); }
+function fecharSheet(){ $("sheet-bg").classList.remove("show"); }
+function setTabSabor(t){ tabSabor=t; document.querySelectorAll("#sheet-tabs button").forEach((b,i)=>b.classList.toggle("on",(i===0)===(t==='salgada'))); renderSheet(); }
+function renderSheet(){
+  $("sheet-titulo").textContent = ladoEditando==='esq'?"Sabor do lado esquerdo" : ladoEditando==='dir'?"Sabor do lado direito" : "Escolha o sabor";
+  const fonte = tabSabor==='salgada'?SALGADOS:DOCES;
+  const tam = pz.tamanho==="Pequena"?"Pequena":"Grande";
+  $("sheet-lista").innerHTML = Object.keys(fonte).map(nome=>`
+    <div class="item-sabor" onclick="escolherSabor('${nome.replace(/'/g,"\\'")}')">
+      <div class="info">
+        <div class="s-nome">${nome}</div>
+        <div class="s-ing">${ingTxt(nome)}</div>
+      </div>
+      <div class="s-preco">${brl(precoSabor(nome,tam))}</div>
+    </div>`).join("");
+}
+function escolherSabor(nome){
+  if(ladoEditando==='dir') pz.sabores[1]=nome;
+  else pz.sabores[0]=nome;
+  fecharSheet();
+  irPara('sabores');
+}
+
+/* ---- 3. BORDA (tipo) — preview com foto, seleciona e avança ---- */
+TELAS.borda = function(){
+  const opc = BORDA_OPCOES.map(b=>`
+    <div class="opc" onmouseenter="previewBorda('${b.id}')" onclick="escolherBordaTipo('${b.id}')">
+      <div class="borda-thumb">${bordaVisual(b,52)}</div>
+      <div class="txt"><div class="t-nome">${b.nome}</div><div class="t-det">${b.det}</div></div>
+      <div>${b.id==='sem'?'<span class="t-det">grátis</span>':'<span class="seta">›</span>'}</div>
+    </div>`).join("");
+  const def = BORDA_OPCOES[1]; // Vulcão como preview inicial
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('sabores')">‹ voltar</button>
+    <h2>Escolha sua borda</h2>
+    <div class="borda-preview" id="borda-preview">
+      ${bordaVisual(def,150)}
+      <div class="bp-txt"><div class="bp-nome">${def.nome}</div><div class="bp-det">${def.det}</div></div>
+    </div>
+    ${opc}
+    <div class="aviso">📸 Passe o mouse (ou toque) numa borda pra ver. As <b>fotos reais</b> aparecem aqui assim que você colocá-las na pasta <b>fotos-bordas</b>.</div>`;
+};
+function previewBorda(id){
+  const b=BORDA_OPCOES.find(x=>x.id===id); const el=$("borda-preview");
+  if(b&&el) el.innerHTML = `${bordaVisual(b,150)}<div class="bp-txt"><div class="bp-nome">${b.nome}</div><div class="bp-det">${b.det}</div></div>`;
+}
+function escolherBordaTipo(id){
+  pz.bordaId=id;
+  if(id==='sem'){ pz.bordaSabEsq="Sem recheio"; pz.bordaSabDir="Sem recheio"; adicionarPizza(); return; }
+  pz.bordaSabEsq=null; pz.bordaSabDir=null; pz._meio='esq';
+  irPara('bordaRecheio');
+}
+
+/* ---- 3b. RECHEIO DA BORDA (meio a meio, com valores) ---- */
+TELAS.bordaRecheio = function(){
+  const tipo = BORDA_OPCOES.find(b=>b.id===pz.bordaId).tipo;
+  const lista = Object.keys(BORDA_SABORES[tipo]||{});
+  const etapa = pz._meio||'esq';
+  const titulo = etapa==='esq' ? "Recheio da borda — 1ª metade" : "Recheio da borda — 2ª metade";
+  const cards = lista.map(s=>`
+    <div class="opc" onclick="setBordaMetade('${s.replace(/'/g,"\\'")}')">
+      <div class="ico">${bordaSaborDoce(s)?'🍫':'🧀'}</div>
+      <div class="txt"><div class="t-nome">${s}</div></div>
+      <div class="t-preco">${brl(precoBordaSabor(tipo,s))}</div>
+    </div>`).join("");
+  const mesma = etapa==='dir' ? `<button class="btn btn-claro" onclick="setBordaMetade(pz.bordaSabEsq)">↺ Mesmo recheio nos dois lados (borda inteira)</button>` : "";
+  $("main").innerHTML = `
+    <button class="voltar" onclick="${etapa==='dir'?"pz._meio='esq';irPara('bordaRecheio')":"irPara('borda')"}">‹ ${etapa==='dir'?'trocar 1ª metade':'trocar tipo de borda'}</button>
+    <h2>${titulo}</h2>
+    <p class="sub">${etapa==='esq'?'Pode ser meio a meio! Escolha o recheio de uma metade.':'Agora a outra metade — ou repita o mesmo.'}${pz.bordaSabEsq&&etapa==='dir'?'<br>1ª metade: <b>'+pz.bordaSabEsq+'</b>':''}</p>
+    ${mesma}
+    ${cards}
+    <div class="aviso">💡 Meio a meio só dentro da mesma categoria. Na borda meio a meio, cobramos o <b>sabor mais caro</b>.</div>`;
+};
+function setBordaMetade(sab){
+  const etapa = pz._meio||'esq';
+  if(etapa==='esq'){ pz.bordaSabEsq=sab; pz.bordaSabDir=sab; pz._meio='dir'; irPara('bordaRecheio'); }
+  else { pz.bordaSabDir=sab; adicionarPizza(); }
+}
+
+/* ---- adicionar pizza ao carrinho (a observação já foi escrita na tela de sabores) ---- */
+function adicionarPizza(){
+  pz.tipo="pizza"; pz.qtd=1;
+  delete pz._meio;
+  carrinho.push(JSON.parse(JSON.stringify(pz)));
+  salvarCarrinho();
+  toast("Pizza adicionada! 🍕");
+  irPara('adicionar');
+}
+
+/* ---- 5. PIZZA ADICIONADA → VOCÊ GOSTARIA DE UMA BEBIDA? ---- */
+TELAS.adicionar = function(){
+  const mini = carrinho.map(it=> it.tipo==='pizza'
+      ? `<div class="mini-l"><span>🍕 Pizza ${it.tamanho}${it.qtd>1?' ('+it.qtd+'x)':''}</span><span>${brl(precoPizza(it)*it.qtd)}</span></div>`
+      : `<div class="mini-l"><span>${it.ico} ${it.nome}${it.qtd>1?' ('+it.qtd+'x)':''}</span><span>${brl(it.preco*it.qtd)}</span></div>`
+    ).join("");
+  const sug = BEBIDAS.slice(0,4).map((b,i)=>`<button class="bebida-quick" onclick="addBebida(${i})">${b.ico}<span>${b.nome.split(' ').slice(0,2).join(' ')}</span><b>${brl(b.preco)}</b></button>`).join("");
+  $("main").innerHTML = `
+    <div class="center"><div class="sucesso-ico">✓</div><h2 style="margin-bottom:2px">Pizza adicionada!</h2></div>
+    <h2 style="text-align:center; margin-top:14px">🥤 Você gostaria de uma bebida?</h2>
+    <div class="bebida-grid">${sug}</div>
+    <button class="btn btn-claro" onclick="irPara('bebidas')">Ver todas as bebidas</button>
+    <div class="mini-cart">
+      <div class="mini-tit">🛒 Seu pedido até agora</div>
+      ${mini}
+      <div class="mini-l tot"><span>Total</span><span>${brl(totalCarrinho())}</span></div>
+    </div>
+    <button class="btn btn-claro" onclick="irPara('tamanho')">🍕 Adicionar outra pizza</button>
+    <button class="btn btn-laranja" onclick="irPara('carrinho')">Finalizar pedido ›</button>`;
+};
+
+/* ---- 6. BEBIDAS ---- */
+TELAS.bebidas = function(){
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('adicionar')">‹ voltar</button>
+    <h2>Escolha sua bebida 🥤</h2>
+    ${BEBIDAS.map((b,i)=>`
+      <div class="opc" onclick="addBebida(${i})">
+        <div class="ico">${b.ico}</div>
+        <div class="txt"><div class="t-nome">${b.nome}</div></div>
+        <div class="t-preco">${brl(b.preco)}</div>
+        <div class="check" style="background:var(--laranja);border-color:var(--laranja)">＋</div>
+      </div>`).join("")}
+    <div class="aviso">💡 Bebidas e valores de exemplo. Me manda a lista real depois.</div>`;
+};
+function addBebida(i){
+  const b=BEBIDAS[i];
+  const existe = carrinho.find(x=>x.tipo==='bebida'&&x.nome===b.nome);
+  if(existe) existe.qtd++; else carrinho.push({tipo:'bebida', nome:b.nome, ico:b.ico, preco:b.preco, qtd:1});
+  salvarCarrinho();
+  toast(b.nome+" adicionada!");
+  irPara('adicionar');
+}
+
+/* ---- 7. CARRINHO ---- */
+TELAS.carrinho = function(){
+  if(carrinho.length===0){
+    $("main").innerHTML=`<div class="center" style="padding-top:40px">
+      <div style="font-size:60px">🛒</div><h2>Seu pedido está vazio</h2>
+      <p class="sub">Que tal montar uma pizza?</p>
+      <button class="btn btn-laranja" onclick="irPara('tamanho')">Montar minha pizza</button></div>`;
+    $("passos").innerHTML=""; return;
+  }
+  const itens = carrinho.map((it,idx)=>{
+    if(it.tipo==='pizza'){
+      const sab = it.tamanho==="Pequena"? it.sabores[0] : (it.sabores[0]===it.sabores[1]||!it.sabores[1]? it.sabores[0] : `${it.sabores[0]} <span class="badge-meio">meio a meio</span> ${it.sabores[1]}`);
+      const bordaNome = BORDA_OPCOES.find(b=>b.id===it.bordaId);
+      const bordaTxt = it.bordaId==='sem'?"Sem borda recheada":`${bordaNome.nome}${it.bordaSabEsq?" ("+(it.bordaSabEsq===it.bordaSabDir||!it.bordaSabDir?it.bordaSabEsq:it.bordaSabEsq+" / "+it.bordaSabDir)+")":""}`;
+      return `<div class="cart-item">
+        <div class="mini">${pizzaSVG(it,64)}</div>
+        <div class="ci-info">
+          <div class="ci-nome">Pizza ${it.tamanho}</div>
+          <div class="ci-det">${sab}</div>
+          <div class="ci-det">🔸 ${bordaTxt}</div>
+          ${it.obs?`<div class="ci-obs">📝 ${it.obs}</div>`:""}
+          <div class="ci-bot">
+            <div class="qtd-ctrl"><button onclick="mudarQtd(${idx},-1)">−</button><b>${it.qtd}</b><button onclick="mudarQtd(${idx},1)">+</button></div>
+            <span class="ci-preco">${brl(precoPizza(it)*it.qtd)}</span>
+          </div>
+        </div>
+        <button class="lixo" onclick="removerItem(${idx})">🗑️</button>
+      </div>`;
+    } else {
+      return `<div class="cart-item">
+        <div class="mini" style="font-size:40px;width:64px;text-align:center">${it.ico}</div>
+        <div class="ci-info">
+          <div class="ci-nome">${it.nome}</div>
+          <div class="ci-bot">
+            <div class="qtd-ctrl"><button onclick="mudarQtd(${idx},-1)">−</button><b>${it.qtd}</b><button onclick="mudarQtd(${idx},1)">+</button></div>
+            <span class="ci-preco">${brl(it.preco*it.qtd)}</span>
+          </div>
+        </div>
+        <button class="lixo" onclick="removerItem(${idx})">🗑️</button>
+      </div>`;
+    }
+  }).join("");
+  const subtotal=totalCarrinho();
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('tamanho')">‹ continuar comprando</button>
+    <h2>Seu pedido</h2>
+    ${itens}
+    <button class="btn btn-claro" onclick="irPara('tamanho')">🍕 + Pizza</button>
+    <button class="btn btn-claro" onclick="irPara('bebidas')">🥤 + Bebida</button>
+    <div class="resumo">
+      <div class="lin"><span>Subtotal</span><span>${brl(subtotal)}</span></div>
+      <div class="lin"><span>Taxa de entrega</span><span>${brl(TAXA_ENTREGA)}</span></div>
+      <div class="total"><span>Total</span><span>${brl(subtotal+TAXA_ENTREGA)}</span></div>
+    </div>
+    <button class="btn btn-laranja" onclick="irPara('cadastro')">Continuar para entrega ›</button>`;
+};
+function mudarQtd(i,d){ carrinho[i].qtd=(carrinho[i].qtd||1)+d; if(carrinho[i].qtd<1) carrinho.splice(i,1); salvarCarrinho(); irPara('carrinho'); }
+function removerItem(i){ carrinho.splice(i,1); salvarCarrinho(); irPara('carrinho'); }
+
+/* ---- 8. CADASTRO / LOGIN ---- */
+TELAS.cadastro = function(){
+  if(modoConta==='login') return telaLogin();
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('carrinho')">‹ voltar</button>
+    <h2>Você já tem conta?</h2>
+    <button class="btn btn-escuro" onclick="modoConta='login';irPara('cadastro')">🔑 Fazer login</button>
+    <div class="ou">Não tem conta ainda? Cadastre abaixo</div>
+    <p class="sub">É rapidinho — só isso. 🔥</p>
+    <div class="social">
+      <button onclick="loginSocial('google')"><span style="color:#ea4335;font-weight:900">G</span> Google</button>
+      <button onclick="loginSocial('facebook')"><span style="color:#1877f2;font-weight:900">f</span> Facebook</button>
+    </div>
+    <label class="campo">Nome</label>
+    <input id="c-nome" placeholder="Seu nome" value="${cliente.nome||""}">
+    <label class="campo">Telefone / WhatsApp</label>
+    <input id="c-tel" inputmode="tel" placeholder="(17) 99999-9999" value="${cliente.tel||""}">
+    <label class="campo">E-mail</label>
+    <input id="c-email" inputmode="email" placeholder="voce@email.com" value="${cliente.email||""}">
+    <label class="campo">Senha</label>
+    <input id="c-senha" type="password" placeholder="Crie uma senha">
+    <button class="btn btn-laranja" onclick="salvarCadastro()">Continuar ›</button>`;
+};
+function telaLogin(){
+  $("main").innerHTML = `
+    <button class="voltar" onclick="modoConta='cadastro';irPara('cadastro')">‹ voltar</button>
+    <h2>Fazer login</h2>
+    <p class="sub">Entre com a conta que você já criou.</p>
+    <div class="social">
+      <button onclick="loginSocial('google')"><span style="color:#ea4335;font-weight:900">G</span> Google</button>
+      <button onclick="loginSocial('facebook')"><span style="color:#1877f2;font-weight:900">f</span> Facebook</button>
+    </div>
+    <label class="campo">E-mail</label>
+    <input id="l-email" inputmode="email" placeholder="voce@email.com" value="${cliente.email||""}">
+    <label class="campo">Senha</label>
+    <input id="l-senha" type="password" placeholder="Sua senha">
+    <button class="btn btn-laranja" onclick="fazerLogin()">Entrar ›</button>
+    <div class="aviso">💡 No protótipo o login ainda é simulado (a conta de verdade entra na fase da nuvem). Por enquanto, só te leva pra entrega.</div>`;
+}
+function loginSocial(rede){
+  cliente.nome = cliente.nome || (rede==='google'?"Cliente Google":"Cliente Facebook");
+  cliente.email = cliente.email || (rede==='google'?"cliente@gmail.com":"cliente@facebook.com");
+  localStorage.setItem('cli_premium', JSON.stringify(cliente));
+  toast("Conectado com "+rede+" ✓ (simulado)");
+  irPara('entrega');
+}
+function validaTelefone(t){ const d=(t||"").replace(/\D/g,""); return d.length>=10 && d.length<=11; }
+function validaEmail(e){ return /.+@.+\..+/.test(e||""); }
+function salvarCadastro(){
+  const nome=$("c-nome").value.trim(), tel=$("c-tel").value.trim(), email=$("c-email").value.trim(), senha=$("c-senha").value;
+  if(!nome){ toast("Escreva seu nome 🙂"); return; }
+  if(!validaTelefone(tel)){ toast("Telefone inválido — use DDD + número (10 ou 11 dígitos) 📱"); return; }
+  if(!validaEmail(email)){ toast("Coloque um e-mail válido ✉️"); return; }
+  if(!senha||senha.length<4){ toast("Crie uma senha (mín. 4 caracteres) 🔒"); return; }
+  cliente={nome, tel, email, temSenha:true};
+  localStorage.setItem('cli_premium', JSON.stringify(cliente));
+  irPara('entrega');
+}
+function fazerLogin(){
+  const email=$("l-email").value.trim();
+  if(!validaEmail(email)){ toast("Coloque um e-mail válido ✉️"); return; }
+  if(!$("l-senha").value){ toast("Digite sua senha 🔒"); return; }
+  cliente.email=email; cliente.nome=cliente.nome||email.split('@')[0];
+  localStorage.setItem('cli_premium', JSON.stringify(cliente));
+  toast("Login feito (simulado) ✓");
+  irPara('entrega');
+}
+
+/* ---- 9. ENTREGA ---- */
+TELAS.entrega = function(){
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('cadastro')">‹ voltar</button>
+    <h2>Onde entregamos? 🛵</h2>
+    <p class="sub">Pode digitar à vontade — não precisa de CEP.</p>
+    <button class="btn btn-claro" onclick="usarLocalizacao()">📍 Usar minha localização (preencher sozinho)</button>
+    <label class="campo">Endereço (rua e número)</label>
+    <input id="e-rua" placeholder="Rua Exemplo, 123" value="${entrega.rua||""}">
+    <label class="campo">Bairro</label>
+    <input id="e-bairro" placeholder="Centro" value="${entrega.bairro||""}">
+    <label class="campo">Complemento / referência <span class="opt">(opcional)</span></label>
+    <input id="e-comp" placeholder="Apto 12 / perto da praça" value="${entrega.comp||""}">
+    <label class="campo">Cidade</label>
+    <input id="e-cidade" placeholder="Sua cidade" value="${entrega.cidade||""}">
+    <label class="campo">CEP <span style="font-weight:800;color:var(--laranja)">(OPCIONAL)</span></label>
+    <input id="e-cep" inputmode="numeric" placeholder="00000-000" value="${entrega.cep||""}">
+    <button class="btn btn-laranja" onclick="salvarEntrega()">Ir para pagamento ›</button>`;
+};
+function usarLocalizacao(){
+  if(!navigator.geolocation){ toast("Seu aparelho não permite localização"); return; }
+  toast("Buscando sua localização...");
+  navigator.geolocation.getCurrentPosition(()=>{
+    toast("Localização capturada! Confira e ajuste o que precisar 📍");
+    // No protótipo não puxamos o endereço completo (precisa de mapa na fase nuvem).
+  }, ()=> toast("Não consegui pegar a localização — digite manualmente 🙂"));
+}
+function salvarEntrega(){
+  const rua=$("e-rua").value.trim();
+  if(!rua){ toast("Escreva o endereço 🏠"); return; }
+  entrega={ rua, bairro:$("e-bairro").value.trim(), comp:$("e-comp").value.trim(), cidade:$("e-cidade").value.trim(), cep:$("e-cep").value.trim() };
+  irPara('pagamento');
+};
+
+/* ---- 10. PAGAMENTO ---- */
+const FORMAS_PG = [
+  {id:"credito", ico:"💳", nome:"Cartão de crédito", det:"Na entrega, na maquininha"},
+  {id:"debito",  ico:"💳", nome:"Cartão de débito", det:"Na entrega, na maquininha"},
+  {id:"dinheiro",ico:"💵", nome:"Dinheiro", det:"Avisa se precisa de troco"},
+  {id:"pix",     ico:"📱", nome:"Pix na entrega", det:"Mostra a chave/QR ao entregar"}
+];
+TELAS.pagamento = function(){
+  $("main").innerHTML = `
+    <button class="voltar" onclick="irPara('entrega')">‹ voltar</button>
+    <h2>Como vai pagar?</h2>
+    <p class="sub">O pagamento é na hora da entrega.</p>
+    ${FORMAS_PG.map(f=>`
+      <div class="opc ${pagamento.forma===f.id?'sel':''}" onclick="escolherPg('${f.id}')">
+        <div class="ico">${f.ico}</div>
+        <div class="txt"><div class="t-nome">${f.nome}</div><div class="t-det">${f.det}</div></div>
+        <div class="check">✓</div>
+      </div>`).join("")}
+    ${pagamento.forma==='dinheiro'?`
+      <label class="campo">Precisa de troco para quanto? <span class="opt">(opcional)</span></label>
+      <input id="pg-troco" inputmode="numeric" placeholder="Ex: 100,00" value="${pagamento.troco||""}">`:""}
+    <div class="aviso">💡 No futuro dá pra ativar <b>Pix online</b> (pagar na hora pelo site). As plataformas que fazem isso cobram uma taxa por transação — a gente avalia o custo quando chegar nessa fase.</div>
+    <button class="btn btn-laranja" ${pagamento.forma?"":"disabled"} onclick="finalizarPedido()">Finalizar pedido ›</button>`;
+};
+function escolherPg(id){ pagamento.forma=id; if(id!=='dinheiro') pagamento.troco=""; else if($("pg-troco")) pagamento.troco=$("pg-troco").value; irPara('pagamento'); }
+
+/* ---- 11. CONFIRMAÇÃO + WHATSAPP ---- */
+function finalizarPedido(){
+  if(pagamento.forma==='dinheiro'&&$("pg-troco")) pagamento.troco=$("pg-troco").value.trim();
+  const num="#"+Math.floor(1000+Math.random()*9000);
+  const total=totalCarrinho()+TAXA_ENTREGA;
+  const txt = montarTextoWhats(num,total);
+  const linkWa = STORE_WHATSAPP
+    ? `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(txt)}`
+    : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+  $("passos").innerHTML="";
+  $("main").innerHTML = `
+    <div class="center"><div class="sucesso-ico">✓</div>
+    <h2>Pedido confirmado! 🎉</h2>
+    <p class="sub"><b>Já recebemos seu pedido — não precisa fazer mais nada.</b><br>Pedido <b>${num}</b> · Total <b>${brl(total)}</b> · Pagamento: <b>${(FORMAS_PG.find(f=>f.id===pagamento.forma)||{}).nome}</b></p></div>
+    <div class="aviso" id="nuvem-status" style="background:#e9f7ef;border-color:#bfe6cf;color:#1a7a44">☁️ enviando pro sistema da pizzaria...</div>
+    <div class="resumo" style="background:#fff;color:var(--texto);border:2px solid var(--linha)">
+      <div style="font-weight:800;margin-bottom:6px">📍 Entrega</div>
+      <div style="color:var(--suave);font-size:13.5px;line-height:1.5">${cliente.nome} · ${cliente.tel}<br>${entrega.rua}${entrega.bairro?", "+entrega.bairro:""}${entrega.comp?" — "+entrega.comp:""}${entrega.cidade?"<br>"+entrega.cidade:""}</div>
+    </div>
+    <a href="${linkWa}" target="_blank" class="btn btn-claro" style="text-decoration:none;text-align:center">💬 Fale conosco pelo WhatsApp (a qualquer momento)</a>
+    <div class="aviso">📲 <b>Como funciona na versão final:</b> o pedido cai direto no sistema da pizzaria, você recebe no WhatsApp quando for <b>aceito</b>, a cada <b>atualização</b>, e quando sair pra entrega chega a <b>localização do entregador ao vivo</b> (pelo nosso sistema de entregas).</div>
+    <button class="btn btn-escuro" onclick="novoPedidoZerar()">Fazer outro pedido</button>`;
+  enviarPedidoNuvem(total);
+}
+async function enviarPedidoNuvem(total){
+  try{
+    const u=await PZCLOUD.unidade();
+    const end=[entrega.rua,entrega.bairro,entrega.comp,entrega.cidade].filter(Boolean).join(", ");
+    const ped=(await PZCLOUD.post("pedidos",[{unidade_id:u.id,canal:'site',tipo:'delivery',status:'recebido',
+      cliente_nome:cliente.nome||'Cliente',cliente_tel:cliente.tel||'',endereco_txt:end,total,taxa_entrega:TAXA_ENTREGA,obs:''}]))[0];
+    const itens=carrinho.map(it=>{
+      const isP=it.tipo==='pizza';
+      const bt=(isP&&it.bordaId&&it.bordaId!=='sem')?(BORDA_OPCOES.find(b=>b.id===it.bordaId)||{}).tipo:null;
+      return {pedido_id:ped.id,tipo:it.tipo,
+        tamanho:isP?it.tamanho:null,
+        sabores:isP?(it.tamanho==='Pequena'?[it.sabores[0]]:it.sabores.filter(Boolean)):null,
+        borda_tipo:bt,borda_sabor_esq:bt?it.bordaSabEsq:null,borda_sabor_dir:bt?it.bordaSabDir:null,
+        produto_nome:isP?null:it.nome,
+        obs:isP?(it.obs||null):null,
+        qtd:it.qtd||1,preco:isP?precoPizza(it):it.preco}; });
+    await PZCLOUD.post("pedido_itens",itens,"return=minimal");
+    await PZCLOUD.post("pedido_pagamentos",[{pedido_id:ped.id,forma:(pagamento.forma==='pix'?'pixchave':pagamento.forma)||'dinheiro',valor:total,troco_para:pagamento.troco?parseFloat((''+pagamento.troco).replace(',','.'))||null:null}],"return=minimal");
+    const el=document.getElementById('nuvem-status'); if(el) el.innerHTML='☁️ <b>Pedido recebido pela pizzaria!</b> (nº interno '+ped.numero+') — já aparece no painel da equipe.';
+  }catch(e){ const el=document.getElementById('nuvem-status'); if(el){ el.style.background='#fff3e6'; el.style.borderColor='#ffd9b3'; el.style.color='#9a5a12'; el.innerHTML='⚠️ Não consegui enviar pro sistema agora — mas você pode confirmar pelo WhatsApp abaixo.'; } console.warn('nuvem',e.message); }
+}
+function montarTextoWhats(num,total){
+  let t=`*PEDIDO ${num} — Premium Pizzas*\n\n`;
+  carrinho.forEach(it=>{
+    if(it.tipo==='pizza'){
+      const sab = it.tamanho==="Pequena"? it.sabores[0] : (it.sabores[0]===it.sabores[1]||!it.sabores[1]? it.sabores[0] : `${it.sabores[0]} / ${it.sabores[1]} (meio a meio)`);
+      const bordaNome=BORDA_OPCOES.find(b=>b.id===it.bordaId);
+      const bordaTxt = it.bordaId==='sem'?"Sem borda recheada":`${bordaNome.nome}${it.bordaSabEsq?" ("+(it.bordaSabEsq===it.bordaSabDir||!it.bordaSabDir?it.bordaSabEsq:it.bordaSabEsq+" / "+it.bordaSabDir)+")":""}`;
+      t+=`🍕 ${it.qtd}x Pizza ${it.tamanho} — ${sab}\n   Borda: ${bordaTxt}\n`;
+      if(it.obs) t+=`   Obs: ${it.obs}\n`;
+    } else t+=`🥤 ${it.qtd}x ${it.nome}\n`;
+  });
+  t+=`\nSubtotal: ${brl(totalCarrinho())}\nTaxa entrega: ${brl(TAXA_ENTREGA)}\n*Total: ${brl(total)}*\n\n`;
+  t+=`*Cliente:* ${cliente.nome}\n*Tel:* ${cliente.tel}\n`;
+  t+=`*Endereço:* ${entrega.rua}${entrega.bairro?", "+entrega.bairro:""}${entrega.comp?" — "+entrega.comp:""}${entrega.cidade?", "+entrega.cidade:""}\n`;
+  const fp=(FORMAS_PG.find(f=>f.id===pagamento.forma)||{}).nome;
+  t+=`*Pagamento:* ${fp}${pagamento.troco?" (troco p/ "+pagamento.troco+")":""}\n`;
+  return t;
+}
+function novoPedidoZerar(){ carrinho=[]; salvarCarrinho(); pagamento={}; entrega={}; irPara('tamanho'); }
+
+/* ---------- START ---------- */
+irPara('tamanho');
+</script>
+</body>
+</html>

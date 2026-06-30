@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premium Pizzas — Sistema completo</title>
+<style>
+  :root{ --laranja:#ff6000; --escuro:#1a1a1a; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0f0f0f; color:#fff; min-height:100vh; }
+  header{ background:var(--escuro); padding:28px 20px; text-align:center; border-bottom:3px solid var(--laranja); }
+  header img{ height:54px; }
+  header h1{ font-size:20px; margin-top:10px; font-weight:700; }
+  header p{ color:#aaa; font-size:13px; margin-top:4px; }
+  .wrap{ max-width:1000px; margin:0 auto; padding:28px 16px 60px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  a.card{ display:block; text-decoration:none; color:#fff; background:#1c1c1c; border:1px solid #2c2c2c;
+    border-radius:14px; padding:20px; transition:.15s; }
+  a.card:hover{ transform:translateY(-3px); border-color:var(--laranja); background:#222; }
+  .ico{ font-size:34px; }
+  .card h2{ font-size:17px; margin:10px 0 6px; }
+  .card p{ color:#aaa; font-size:13px; line-height:1.5; }
+  .tag{ display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; margin-top:10px; }
+  .nuvem{ background:#0d3b66; color:#7ec8ff; }
+  .proto{ background:#3b2d0d; color:#ffce7e; }
+  .nota{ margin-top:28px; background:#1c1c1c; border:1px solid #2c2c2c; border-left:4px solid var(--laranja);
+    border-radius:10px; padding:16px 18px; font-size:13px; color:#cfcfcf; line-height:1.6; }
+  .nota b{ color:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <img src="saas/logo.png" alt="Premium Pizzas">
+  <h1>Premium Pizzas — Sistema de Operações</h1>
+  <p>Painel central · todos os módulos em um só lugar</p>
+</header>
+<div class="wrap">
+  <div class="grid">
+
+    <a class="card" href="saas/app.html">
+      <div class="ico">☁️</div>
+      <h2>Sistema integrado (nuvem)</h2>
+      <p>Login por perfil, novo pedido, operação ao vivo, KDS e caixa — tudo ligado pelo Supabase em tempo real.</p>
+      <span class="tag nuvem">LIGADO NA NUVEM · comece por aqui</span>
+    </a>
+
+    <a class="card" href="site/index.html">
+      <div class="ico">📱</div>
+      <h2>Site de pedidos (cliente)</h2>
+      <p>O cliente monta a pizza (clique-e-escolha, meio a meio, borda com foto) e o pedido cai na nuvem.</p>
+      <span class="tag nuvem">LIGADO NA NUVEM</span>
+    </a>
+
+    <a class="card" href="pdv/index.html">
+      <div class="ico">🧾</div>
+      <h2>PDV — Painel interno</h2>
+      <p>Delivery/retirada, salão (mesas e comandas), administrativo. O painel mais completo da equipe.</p>
+      <span class="tag nuvem">LIGADO NA NUVEM</span>
+    </a>
+
+    <a class="card" href="cozinha/index.html">
+      <div class="ico">👨‍🍳</div>
+      <h2>Cozinha / KDS</h2>
+      <p>Estações Abertura → Borda → Montagem → Forno → Finalização → Despacho, com ficha técnica e forno automático.</p>
+      <span class="tag nuvem">LIGADO NA NUVEM</span>
+    </a>
+
+    <a class="card" href="delivery/index.html">
+      <div class="ico">🛵</div>
+      <h2>Delivery</h2>
+      <p>Entregadores, fila de prontos por região, dar saída/retorno, métricas de tempo de rota.</p>
+      <span class="tag nuvem">LIGADO NA NUVEM</span>
+    </a>
+
+    <a class="card" href="financeiro/index.html">
+      <div class="ico">💰</div>
+      <h2>Financeiro</h2>
+      <p>Calendário de contas, entrada do dia por forma, DRE, planejamento da semana, pró-labore.</p>
+      <span class="tag proto">PROTÓTIPO · leitura leve da nuvem</span>
+    </a>
+
+  </div>
+
+  <div class="nota">
+    <b>Protótipo publicado para avaliação:</b> os módulos abaixo estão isolados em /prototipo para análise visual e funcional.
+    Documentos internos, schema, seeds e scripts de apoio não foram expostos nesta rota pública.
+    <b>Atenção de segurança:</b> o RLS do Supabase está <b>DESLIGADO</b> — ligar antes de qualquer uso público real.
+  </div>
+</div>
+</body>
+</html>

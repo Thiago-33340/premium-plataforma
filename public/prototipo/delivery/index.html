@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premium Pizzas — Delivery</title>
+<style>
+  :root{
+    --laranja:#ff6000; --escuro:#161310; --escuro2:#211c17; --cartao:#fffaf5; --texto:#2a241e;
+    --suave:#8a7f73; --verde:#1faa59; --vermelho:#e23b3b; --azul:#2b7de9; --amarelo:#e2a800; --cinza:#9a8f82;
+    --linha:#e7dccf; --bg:#efe7dd; --sombra:0 6px 20px rgba(120,60,0,.10);
+  }
+  *{box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif;}
+  html,body{margin:0; background:var(--bg); color:var(--texto); min-height:100%;}
+  header{background:linear-gradient(160deg,var(--escuro),var(--escuro2)); color:#fff; padding:9px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:30;}
+  header img{height:30px;} header .tag{background:var(--laranja); color:#fff; font-weight:800; font-size:11px; padding:3px 9px; border-radius:20px;}
+  header .nav{display:flex; gap:6px; margin-left:8px;}
+  header .nav button{background:rgba(255,255,255,.10); border:none; color:#fff; padding:8px 16px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer;}
+  header .nav button.on{background:var(--laranja);}
+  header .rel{margin-left:auto; font-weight:700; font-size:14px; opacity:.9;}
+  .wrap{padding:14px;}
+  .btn{border:none; border-radius:10px; padding:9px 13px; font-weight:800; cursor:pointer; font-size:13px; transition:.12s;}
+  .btn:active{transform:scale(.97);} .btn:disabled{background:#e3d8ca; color:#aa9f92; cursor:not-allowed;}
+  .btn-laranja{background:var(--laranja); color:#fff;} .btn-verde{background:var(--verde); color:#fff;}
+  .btn-azul{background:var(--azul); color:#fff;} .btn-escuro{background:var(--escuro); color:#fff;}
+  .btn-claro{background:#fff; color:var(--texto); border:1.5px solid var(--linha);}
+  .btn-sm{padding:6px 10px; font-size:12px;} .btn-bloco{display:block; width:100%; padding:12px; border-radius:11px;}
+  select,input{border:1.5px solid var(--linha); border-radius:9px; padding:8px 10px; font-size:13.5px; background:#fff; font-family:inherit;}
+
+  .grade{display:grid; grid-template-columns:300px 1fr 320px; gap:12px; align-items:start;}
+  @media(max-width:1150px){ .grade{grid-template-columns:1fr;} }
+  .col{background:#fff; border-radius:13px; box-shadow:var(--sombra); overflow:hidden;}
+  .col-tit{padding:11px 14px; font-weight:800; font-size:14px; border-bottom:1px solid var(--linha); display:flex; align-items:center; gap:7px;}
+  .col-tit .n{margin-left:auto; background:var(--linha); color:#6b6055; font-size:12px; padding:1px 8px; border-radius:10px;}
+  .col-body{padding:11px;}
+
+  /* entregadores */
+  .moto{border:1px solid var(--linha); border-radius:11px; padding:10px 12px; margin-bottom:9px;}
+  .moto .topo{display:flex; align-items:center; gap:8px;}
+  .moto .av{width:34px; height:34px; border-radius:50%; background:var(--escuro); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px;}
+  .moto .nome{font-weight:800; font-size:14.5px;}
+  .moto .st{margin-left:auto; font-size:11px; font-weight:800; padding:2px 9px; border-radius:20px; color:#fff;}
+  .st-disponivel{background:var(--verde);} .st-rota{background:var(--azul);} .st-retornando{background:var(--amarelo);} .st-offline{background:var(--cinza);}
+  .moto .info{font-size:12px; color:var(--suave); margin-top:6px; line-height:1.4;}
+  .moto .acoes{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+
+  /* pedidos prontos por região */
+  .regiao-bloco{border:1px solid var(--linha); border-radius:11px; margin-bottom:11px; overflow:hidden;}
+  .regiao-head{background:var(--cartao); padding:9px 12px; display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; border-bottom:1px solid var(--linha);}
+  .regiao-head .qt{margin-left:auto; color:var(--suave); font-weight:700; font-size:12px;}
+  .ped{display:flex; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px dashed var(--linha);}
+  .ped:last-child{border-bottom:none;}
+  .ped input[type=checkbox]{width:18px; height:18px; accent-color:var(--laranja);}
+  .ped .pi{flex:1;}
+  .ped .pnum{font-weight:800; font-size:13px;}
+  .ped .pdet{color:var(--suave); font-size:11.5px; line-height:1.3;}
+  .ped .ptempo{font-size:11px; font-weight:700;}
+  .ped .pval{font-weight:800; color:var(--laranja); font-size:13px;}
+  .regiao-foot{padding:9px 12px; display:flex; align-items:center; gap:8px; background:#fff;}
+  .regiao-foot select{flex:1;}
+
+  /* rotas ativas */
+  .rota{border:1px solid var(--linha); border-left:4px solid var(--azul); border-radius:11px; padding:10px 12px; margin-bottom:10px; background:var(--cartao);}
+  .rota .topo{display:flex; align-items:center; gap:8px; margin-bottom:5px;}
+  .rota .rnome{font-weight:800; font-size:14px;} .rota .rtempo{margin-left:auto; font-weight:800; font-size:13px;}
+  .rota .rped{font-size:12px; color:#564d42; padding:2px 0; line-height:1.35;}
+  .rota .rmeta{font-size:11.5px; color:var(--suave); margin-top:4px;}
+
+  .vazio{color:var(--suave); text-align:center; padding:18px 8px; font-size:12.5px;}
+  .topbar{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .topbar h2{margin:0; font-size:19px;}
+
+  /* métricas */
+  .cards-metrica{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:14px;}
+  .metrica{background:#fff; border-radius:13px; box-shadow:var(--sombra); padding:15px 16px;}
+  .metrica .ml{color:var(--suave); font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.3px;}
+  .metrica .mv{font-size:27px; font-weight:800; margin-top:5px;}
+  .metrica .ms{font-size:12px; color:var(--suave); margin-top:2px;}
+  .painel{background:#fff; border-radius:13px; box-shadow:var(--sombra); padding:15px 16px; margin-bottom:14px;}
+  .painel h3{margin:0 0 12px; font-size:16px;}
+  .barra-row{display:flex; align-items:center; gap:10px; margin-bottom:9px; font-size:13px;}
+  .barra-row .bl{width:130px; font-weight:700;}
+  .barra-row .bcont{flex:1; background:var(--linha); border-radius:8px; height:22px; overflow:hidden;}
+  .barra-row .bfill{height:100%; background:var(--laranja); border-radius:8px;}
+  .barra-row .bv{width:80px; text-align:right; font-weight:800; font-size:12.5px;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--linha);}
+  th{color:var(--suave); font-size:11.5px; text-transform:uppercase;}
+  .toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--escuro); color:#fff; padding:12px 22px; border-radius:30px; font-weight:700; z-index:200; opacity:0; transition:.3s; box-shadow:0 8px 24px rgba(0,0,0,.3);}
+  .toast.show{opacity:1; bottom:30px;}
+  .aviso{background:#fff3e6; border:1px solid #ffd9b3; color:#9a5a12; border-radius:11px; padding:10px 13px; font-size:12.5px; margin-bottom:12px; line-height:1.4;}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="Premium"><span class="tag">DELIVERY</span>
+  <div class="nav">
+    <button id="nav-op" class="on" onclick="switchView('op')">🛵 Operação</button>
+    <button id="nav-met" onclick="switchView('met')">📊 Métricas</button>
+  </div>
+  <span class="rel" id="relogio"></span>
+</header>
+<div class="wrap" id="wrap"></div>
+<div class="toast" id="toast"></div>
+
+<script src="cloud.js"></script>
+<script>
+/* =========================================================================
+   PREMIUM PIZZAS — DELIVERY (protótipo)
+   Painel de entregadores, fila por região, dar saída/retorno, métricas.
+   Dados simulados. Na fase nuvem puxa os pedidos "prontos" do PDV/cozinha.
+   ========================================================================= */
+const REGIOES=["Centro","Zona Sul","Zona Norte","Jardim","Bairro Alto"];
+const NOMES=["Ana","Bruno","Carla","Diego","Elaine","Fábio","João","Lia","Marcos","Paula","Rafa","Sara"];
+const STATUS_LBL={disponivel:"Disponível",rota:"Em rota",retornando:"Retornando",offline:"Offline"};
+const TAXA_PADRAO={"Centro":5,"Zona Sul":8,"Zona Norte":8,"Jardim":10,"Bairro Alto":12,"Entrega":0};
+const KM_APROX={"Centro":2,"Zona Sul":5,"Zona Norte":6,"Jardim":8,"Bairro Alto":10,"Entrega":5};
+let ENTREG_CLOUD=[], _unidD=null;
+
+let view='op';
+let entregadores=[{nome:"Carlos",status:"disponivel"},{nome:"Pedro",status:"disponivel"},{nome:"João",status:"disponivel"},{nome:"Lucas",status:"offline"}];
+let fila=[];        // pedidos prontos aguardando sair
+let rotas=[];       // rotas em andamento {id,entregador,pedidos,saida,regioes,taxa,km}
+let historico=[];   // rotas concluídas {entregador,regioes,pedidos,saida,retorno,minutos,km}
+let seq=2000, rseq=1;
+
+function $(id){return document.getElementById(id);}
+function brl(v){return "R$ "+(v||0).toFixed(2).replace(".",",");}
+function escolha(a){return a[Math.floor(Math.random()*a.length)];}
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2200);}
+function minDe(ms){return Math.max(0,Math.round(ms/60000));}
+setInterval(()=>{ $("relogio").textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); },1000);
+setInterval(()=>{ if(view==='op')render(); },30000); // atualiza os "minutos" a cada 30s (sem piscar)
+
+/* pedido pronto fake (na vida real vem da cozinha) */
+async function unidD(){ if(!_unidD)_unidD=await PZCLOUD.unidade(); return _unidD; }
+function cloudParaFila(c){ const itens=(c.pedido_itens||[]).map(i=>i.tipo==='pizza'?`${i.qtd>1?i.qtd+'x ':''}Pizza ${i.tamanho} ${(i.sabores||[]).join('/')}`:`${i.produto_nome}`).join(' + ');
+  return {id:c.numero, cloudId:c.id, cliente:c.cliente_nome||'—', regiao:'Entrega', endereco:c.endereco_txt||'—', itens:itens||'—', valor:+c.total||0, taxa:+c.taxa_entrega||0, prontoEm:c.pronto_em?new Date(c.pronto_em).getTime():Date.now()}; }
+async function puxarFila(){ try{ const u=await unidD();
+   const cs=await PZCLOUD.get(`pedidos?unidade_id=eq.${u.id}&status=eq.pronto&tipo=eq.delivery&select=*,pedido_itens(*)&order=pronto_em.asc`);
+   const emRota={}; rotas.forEach(r=>r.pedidos.forEach(p=>emRota[p.cloudId]=1));
+   fila=cs.filter(c=>!emRota[c.id]).map(cloudParaFila);
+   if(view==='op') renderOp();
+  }catch(e){ console.warn('fila',e.message); } }
+async function simularPronto(){ try{ const u=await unidD(); const tot=+(60+Math.random()*120).toFixed(2);
+   const p=(await PZCLOUD.post('pedidos',[{unidade_id:u.id,canal:'site',tipo:'delivery',status:'pronto',cliente_nome:escolha(NOMES)+' '+escolha(['S.','M.','R.']),endereco_txt:'Rua '+escolha(['das Flores','Brasil','XV'])+', '+Math.floor(10+Math.random()*900),total:tot,taxa_entrega:8,pronto_em:new Date().toISOString()}]))[0];
+   await PZCLOUD.post('pedido_itens',[{pedido_id:p.id,tipo:'pizza',tamanho:'Grande',sabores:['Calabresa'],borda_tipo:null,borda_sabor_esq:null,borda_sabor_dir:null,produto_nome:null,obs:null,qtd:1,preco:tot}],'return=minimal');
+   puxarFila(); toast("Pedido pronto criado na nuvem 🔔"); }catch(e){ toast('⚠ '+e.message.slice(0,40)); } }
+
+/* =========================================================================
+   NAV
+   ========================================================================= */
+function switchView(v){ view=v; $("nav-op").classList.toggle('on',v==='op'); $("nav-met").classList.toggle('on',v==='met'); render(); }
+function render(){ if(view==='op')renderOp(); else renderMet(); }
+
+/* =========================================================================
+   OPERAÇÃO
+   ========================================================================= */
+function renderOp(){
+  /* coluna entregadores */
+  const ents=entregadores.map((e,i)=>{
+    const emRota=rotas.find(r=>r.entregador===e.nome);
+    return `<div class="moto">
+      <div class="topo"><div class="av">${e.nome[0]}</div><div class="nome">${e.nome}</div><div class="st st-${e.status}">${STATUS_LBL[e.status]}</div></div>
+      ${emRota?`<div class="info">🛵 Levando ${emRota.pedidos.length} pedido(s) · ${emRota.regioes.join(", ")}<br>saiu ${minDe(Date.now()-emRota.saida)} min atrás</div>`:""}
+      <div class="acoes">
+        ${e.status==='offline'?`<button class="btn btn-verde btn-sm" onclick="setStatus(${i},'disponivel')">Ativar</button>`:""}
+        ${e.status==='disponivel'?`<button class="btn btn-claro btn-sm" onclick="setStatus(${i},'offline')">Folga/Offline</button>`:""}
+        ${e.status==='retornando'?`<button class="btn btn-verde btn-sm" onclick="setStatus(${i},'disponivel')">✓ Chegou (livre)</button>`:""}
+        ${e.status==='rota'?`<span class="info" style="margin:0">em rota — finalize em “rotas”</span>`:""}
+      </div></div>`;
+  }).join("");
+
+  /* coluna fila por região */
+  const porReg={}; fila.forEach(p=>{(porReg[p.regiao]=porReg[p.regiao]||[]).push(p);});
+  const disp=entregadores.filter(e=>e.status==='disponivel');
+  const blocos=Object.keys(porReg).length? Object.keys(porReg).map(reg=>{
+    const lista=porReg[reg];
+    return `<div class="regiao-bloco">
+      <div class="regiao-head">📍 ${reg} <span class="qt">${lista.length} pedido(s) · ~${KM_APROX[reg]}km</span></div>
+      ${lista.map(p=>`<div class="ped">
+        <input type="checkbox" id="chk-${p.id}" checked>
+        <div class="pi"><div class="pnum">#${p.id} · ${p.cliente}</div><div class="pdet">${p.itens} · ${p.endereco}</div></div>
+        <div style="text-align:right"><div class="pval">${brl(p.valor)}</div><div class="ptempo" style="color:${minDe(Date.now()-p.prontoEm)>10?'var(--vermelho)':'var(--suave)'}">pronto ${minDe(Date.now()-p.prontoEm)} min</div></div>
+      </div>`).join("")}
+      <div class="regiao-foot">
+        <select id="sel-${reg.replace(/\s/g,'')}">${disp.length?disp.map(e=>`<option>${e.nome}</option>`).join(""):'<option value="">— sem entregador livre —</option>'}</select>
+        <button class="btn btn-azul btn-sm" ${disp.length?'':'disabled'} onclick="darSaida('${reg.replace(/'/g,"\\'")}')">🛵 Dar saída</button>
+      </div></div>`;
+  }).join("") : '<div class="vazio">Nenhum pedido pronto na fila.<br>Clique em “Simular pedido pronto”.</div>';
+
+  /* coluna rotas ativas */
+  const rotasHtml=rotas.length? rotas.map(r=>`<div class="rota">
+    <div class="topo"><div class="rnome">🛵 ${r.entregador}</div><div class="rtempo" style="color:${minDe(Date.now()-r.saida)>40?'var(--vermelho)':'var(--azul)'}">${minDe(Date.now()-r.saida)} min</div></div>
+    ${r.pedidos.map(p=>`<div class="rped">#${p.id} · ${p.cliente} — ${p.regiao}</div>`).join("")}
+    <div class="rmeta">${r.regioes.join(", ")} · ~${r.km}km · taxa ${brl(r.taxa)}</div>
+    <button class="btn btn-verde btn-sm btn-bloco" style="margin-top:8px" onclick="retornou(${r.id})">✓ Entregou tudo / Retornou</button>
+  </div>`).join("") : '<div class="vazio">Nenhuma rota em andamento.</div>';
+
+  $("wrap").innerHTML=`
+    <div class="topbar"><h2>🛵 Operação de entregas</h2>
+      <button class="btn btn-claro" onclick="simularPronto()">＋ Simular pedido pronto</button>
+      <div style="margin-left:auto;color:var(--suave);font-size:13px">${disp.length} entregador(es) livre(s) · ${fila.length} na fila · ${rotas.length} em rota</div>
+    </div>
+    <div class="aviso">🗺️ A <b>roteirização</b> aqui agrupa os pedidos por <b>região</b> e sugere mandar juntos. A rota otimizada no mapa (Google Maps) e o rastreamento ao vivo entram na fase nuvem (API paga).</div>
+    <div class="grade">
+      <div class="col"><div class="col-tit">👷 Entregadores <span class="n">${entregadores.length}</span></div><div class="col-body">${ents}</div></div>
+      <div class="col"><div class="col-tit">📦 Pedidos prontos — por região <span class="n">${fila.length}</span></div><div class="col-body">${blocos}</div></div>
+      <div class="col"><div class="col-tit">🛣️ Em rota <span class="n">${rotas.length}</span></div><div class="col-body">${rotasHtml}</div></div>
+    </div>`;
+}
+function setStatus(i,s){ entregadores[i].status=s; render(); }
+async function darSaida(reg){
+  const sel=$("sel-"+reg.replace(/\s/g,'')); const nome=sel?sel.value:"";
+  if(!nome){ toast("Sem entregador livre"); return; }
+  const lista=fila.filter(p=>p.regiao===reg && ($("chk-"+p.id)?$("chk-"+p.id).checked:true));
+  if(!lista.length){ toast("Selecione ao menos 1 pedido"); return; }
+  const km=KM_APROX[reg]||5; const taxa=lista.reduce((s,p)=>s+(p.taxa||0),0);
+  const e=entregadores.find(x=>x.nome===nome);
+  for(const p of lista){ if(p.cloudId){ try{ await PZCLOUD.patch('pedidos','id=eq.'+p.cloudId,{status:'entrega',entregador_id:(e&&e.cloudId)?e.cloudId:null,saiu_em:new Date().toISOString()}); }catch(err){ console.warn(err.message); } } }
+  rotas.push({id:rseq++, entregador:nome, pedidos:lista, saida:Date.now(), regioes:[reg], taxa, km});
+  fila=fila.filter(p=>!lista.includes(p));
+  if(e)e.status='rota';
+  render(); toast(nome+" saiu com "+lista.length+" pedido(s) 🛵");
+}
+async function retornou(id){
+  const i=rotas.findIndex(r=>r.id===id); if(i<0)return; const r=rotas.splice(i,1)[0];
+  const minutos=minDe(Date.now()-r.saida);
+  for(const p of r.pedidos){ if(p.cloudId){ try{ await PZCLOUD.patch('pedidos','id=eq.'+p.cloudId,{status:'concluido',concluido_em:new Date().toISOString()}); await lancarFinanceiroDelivery(p.cloudId); }catch(err){ console.warn(err.message); } } }
+  historico.push({entregador:r.entregador, regioes:r.regioes, pedidos:r.pedidos.length, saida:r.saida, retorno:Date.now(), minutos, km:r.km, regiao:r.regioes[0]});
+  const e=entregadores.find(x=>x.nome===r.entregador); if(e)e.status='retornando';
+  render(); toast(r.entregador+" retornou · rota de "+minutos+" min ✓");
+}
+async function lancarFinanceiroDelivery(cloudId){ try{ const u=await unidD();
+   const ja=await PZCLOUD.get('lancamentos_financeiros?pedido_id=eq.'+cloudId+'&select=id'); if(ja.length)return;
+   const ped=(await PZCLOUD.get('pedidos?id=eq.'+cloudId+'&select=total,pedido_pagamentos(forma,valor)'))[0];
+   const pgs=(ped.pedido_pagamentos&&ped.pedido_pagamentos.length)?ped.pedido_pagamentos:[{forma:'dinheiro',valor:ped.total}];
+   await PZCLOUD.post('lancamentos_financeiros',pgs.map(g=>({unidade_id:u.id,tipo:'entrada',origem:'pedido',pedido_id:cloudId,forma:g.forma,valor:g.valor,pago:true,categoria:'Venda',grupo_dre:'Faturamento'})),'return=minimal');
+  }catch(e){ console.warn('finD',e.message); } }
+
+/* =========================================================================
+   MÉTRICAS
+   ========================================================================= */
+function renderMet(){
+  const totalEntregas=historico.reduce((s,h)=>s+h.pedidos,0);
+  const totalRotas=historico.length;
+  const tempoMedio=totalRotas? Math.round(historico.reduce((s,h)=>s+h.minutos,0)/totalRotas):0;
+  // por entregador
+  const porEnt={}; historico.forEach(h=>{ const e=porEnt[h.entregador]=porEnt[h.entregador]||{rotas:0,pedidos:0,min:0}; e.rotas++; e.pedidos+=h.pedidos; e.min+=h.minutos; });
+  const ranking=Object.keys(porEnt).map(n=>({nome:n,...porEnt[n],media:Math.round(porEnt[n].min/porEnt[n].rotas)})).sort((a,b)=>a.media-b.media);
+  const melhor=ranking[0];
+  // por região
+  const porReg={}; historico.forEach(h=>{ const r=porReg[h.regiao]=porReg[h.regiao]||{rotas:0,min:0}; r.rotas++; r.min+=h.minutos; });
+  const regioes=Object.keys(porReg).map(r=>({reg:r,media:Math.round(porReg[r].min/porReg[r].rotas),rotas:porReg[r].rotas})).sort((a,b)=>b.media-a.media);
+  const maxMediaReg=Math.max(1,...regioes.map(r=>r.media));
+  const META=40; // meta de tempo de entrega (min)
+
+  if(!totalRotas){
+    $("wrap").innerHTML=`<div class="topbar"><h2>📊 Métricas de entrega</h2></div>
+      <div class="aviso">Ainda não há entregas concluídas. Vá em <b>Operação</b>, dê saída numa rota e clique em “Retornou” pra gerar as métricas.</div>`;
+    return;
+  }
+  $("wrap").innerHTML=`
+    <div class="topbar"><h2>📊 Métricas de entrega</h2><div style="margin-left:auto;color:var(--suave);font-size:13px">meta de entrega: ${META} min</div></div>
+    <div class="cards-metrica">
+      <div class="metrica"><div class="ml">Tempo médio de rota</div><div class="mv" style="color:${tempoMedio>META?'var(--vermelho)':'var(--verde)'}">${tempoMedio} min</div><div class="ms">${tempoMedio>META?'acima da meta ⚠':'dentro da meta 👍'}</div></div>
+      <div class="metrica"><div class="ml">Entregas concluídas</div><div class="mv">${totalEntregas}</div><div class="ms">${totalRotas} rota(s)</div></div>
+      <div class="metrica"><div class="ml">Entregador + eficiente</div><div class="mv" style="font-size:22px;color:var(--verde)">${melhor?melhor.nome:'—'}</div><div class="ms">${melhor?'média '+melhor.media+' min/rota':''}</div></div>
+      <div class="metrica"><div class="ml">Pedidos / rota</div><div class="mv">${totalRotas?(totalEntregas/totalRotas).toFixed(1):0}</div><div class="ms">média por saída</div></div>
+    </div>
+    <div class="painel"><h3>🏆 Ranking de entregadores (menor tempo médio)</h3>
+      <table><thead><tr><th>#</th><th>Entregador</th><th>Rotas</th><th>Pedidos</th><th>Tempo médio</th></tr></thead><tbody>
+      ${ranking.map((e,i)=>`<tr><td>${i+1}º</td><td><b>${e.nome}</b></td><td>${e.rotas}</td><td>${e.pedidos}</td><td style="color:${e.media>META?'var(--vermelho)':'var(--verde)'};font-weight:800">${e.media} min</td></tr>`).join("")}
+      </tbody></table>
+    </div>
+    <div class="painel"><h3>📍 Tempo médio por região <span style="font-weight:500;color:var(--suave);font-size:13px">(atrasos em vermelho)</span></h3>
+      ${regioes.map(r=>`<div class="barra-row"><div class="bl">${r.reg}</div><div class="bcont"><div class="bfill" style="width:${Math.round(r.media/maxMediaReg*100)}%;background:${r.media>META?'var(--vermelho)':'var(--laranja)'}"></div></div><div class="bv">${r.media} min</div></div>`).join("")}
+    </div>`;
+}
+
+/* ---- START ---- */
+render();
+(async()=>{ try{ const u=await unidD(); const es=await PZCLOUD.get('entregadores?select=id,nome'); if(es.length) entregadores=es.map(e=>({nome:e.nome,status:'disponivel',cloudId:e.id})); }catch(e){ console.warn(e.message); }
+  puxarFila(); setInterval(puxarFila,5000); })();
+</script>
+</body>
+</html>

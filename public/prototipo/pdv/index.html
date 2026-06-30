@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premium Pizzas — PDV / Operação</title>
+<style>
+  :root{
+    --laranja:#ff6000; --laranja2:#ff8534; --escuro:#161310; --escuro2:#211c17;
+    --cartao:#fffaf5; --texto:#2a241e; --suave:#8a7f73; --verde:#1faa59; --vermelho:#e23b3b; --azul:#2b7de9; --roxo:#7a5cff; --amarelo:#e2a800;
+    --linha:#e7dccf; --bg:#efe7dd; --sombra:0 6px 20px rgba(120,60,0,.10);
+  }
+  *{box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif;}
+  html,body{margin:0; background:var(--bg); color:var(--texto); height:100%;}
+  header{background:linear-gradient(160deg,var(--escuro),var(--escuro2)); color:#fff; padding:9px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:30;}
+  header img{height:30px;}
+  header .tag{background:var(--laranja); color:#fff; font-weight:800; font-size:11px; padding:3px 9px; border-radius:20px;}
+  header .nav{display:flex; gap:6px; margin-left:8px;}
+  header .nav button{background:rgba(255,255,255,.10); border:none; color:#fff; padding:8px 16px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer;}
+  header .nav button.on{background:var(--laranja);}
+  header .rel{margin-left:auto; font-weight:700; font-size:14px; opacity:.9;}
+  .wrap{padding:14px;}
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer; font-size:13.5px; transition:.12s;}
+  .btn:active{transform:scale(.97);}
+  .btn-laranja{background:var(--laranja); color:#fff;} .btn-verde{background:var(--verde); color:#fff;}
+  .btn-escuro{background:var(--escuro); color:#fff;} .btn-azul{background:var(--azul); color:#fff;}
+  .btn-claro{background:#fff; color:var(--texto); border:1.5px solid var(--linha);}
+  .btn:disabled{background:#e3d8ca; color:#aa9f92; cursor:not-allowed;}
+  .btn-sm{padding:7px 11px; font-size:12.5px;} .btn-bloco{display:block; width:100%; padding:13px; font-size:15px; border-radius:11px;}
+  input,select,textarea{border:1.5px solid var(--linha); border-radius:10px; padding:10px 12px; font-size:14px; background:#fff; color:var(--texto); font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--laranja);}
+
+  /* ===== DELIVERY: barra + quadro ===== */
+  .topbar{display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+  .topbar .btn-novo{font-size:16px; padding:13px 22px; border-radius:12px;}
+  .entrando-strip{background:#fff; border:1px solid var(--linha); border-radius:12px; padding:10px; margin-bottom:12px; box-shadow:var(--sombra);}
+  .entrando-strip .es-tit{font-weight:800; font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .es-cards{display:flex; gap:10px; overflow-x:auto;}
+  .es-card{min-width:230px; border:1px solid var(--linha); border-left:4px solid var(--laranja); border-radius:10px; padding:9px 11px; background:var(--cartao);}
+  .es-card .canal{font-weight:800; font-size:10.5px; color:#fff; padding:1px 7px; border-radius:8px;}
+  .es-card .cli{font-weight:800; font-size:13.5px; margin:4px 0 2px;}
+  .es-card .it{color:var(--suave); font-size:11.5px; line-height:1.3;}
+
+  .board{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  @media(max-width:1000px){ .board{grid-template-columns:1fr 1fr;} }
+  @media(max-width:620px){ .board{grid-template-columns:1fr;} }
+  .coluna{background:#fff; border-radius:13px; box-shadow:var(--sombra); display:flex; flex-direction:column; min-height:120px;}
+  .col-head{padding:11px 13px; font-weight:800; font-size:13.5px; border-bottom:1px solid var(--linha); display:flex; align-items:center; gap:7px; border-radius:13px 13px 0 0;}
+  .col-head .pt{width:10px; height:10px; border-radius:50%;}
+  .col-head .n{margin-left:auto; background:var(--linha); color:#6b6055; font-size:12px; padding:1px 8px; border-radius:10px;}
+  .col-body{padding:10px; display:flex; flex-direction:column; gap:9px;}
+  .card{border:1px solid var(--linha); border-radius:11px; padding:10px 11px; background:var(--cartao);}
+  .card .topo{display:flex; align-items:center; gap:6px; font-size:11.5px; margin-bottom:4px;}
+  .card .num{font-weight:800;} .card .canal{font-weight:800; font-size:10px; color:#fff; padding:1px 6px; border-radius:7px;}
+  .card .tempo{margin-left:auto; color:var(--suave);}
+  .card .cli{font-weight:800; font-size:14px;}
+  .card .det{color:var(--suave); font-size:12px; line-height:1.35; margin:2px 0;}
+  .card .obs{color:var(--vermelho); font-size:11.5px; font-weight:700;}
+  .card .pg{display:inline-block; font-size:10.5px; font-weight:700; color:#6b6055; background:#f1e9de; padding:1px 7px; border-radius:7px; margin-top:3px;}
+  .card .moto{font-size:11.5px; font-weight:700; color:var(--azul); margin-top:3px;}
+  .card .val{font-weight:800; color:var(--laranja);}
+  .card .acoes{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+  .card .link{background:none; border:none; color:var(--suave); font-size:11.5px; cursor:pointer; padding:2px 4px; text-decoration:underline;}
+  .vazio{color:var(--suave); text-align:center; padding:18px 8px; font-size:12.5px;}
+
+  /* ===== SALÃO ===== */
+  .mesas{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px;}
+  .mesa{background:#fff; border:2px solid var(--linha); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; box-shadow:var(--sombra); transition:.12s;}
+  .mesa:active{transform:scale(.97);}
+  .mesa.ocupada{border-color:var(--laranja); background:#fff6ee;}
+  .mesa .m-num{font-size:30px; font-weight:800; line-height:1;}
+  .mesa .m-lbl{font-size:12px; color:var(--suave); margin-top:4px; font-weight:700;}
+  .mesa.ocupada .m-lbl{color:var(--laranja);}
+  .mesa .m-tot{font-weight:800; color:var(--laranja); margin-top:4px; font-size:14px;}
+
+  /* ===== ADMIN ===== */
+  .admin-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:820px){ .admin-grid{grid-template-columns:1fr;} }
+  .painel{background:#fff; border-radius:13px; box-shadow:var(--sombra); padding:15px 16px;}
+  .painel h3{margin:0 0 12px; font-size:16px; display:flex; align-items:center; gap:8px;}
+  .linha-cfg{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .linha-cfg label{flex:1; font-weight:700; font-size:13.5px;}
+  .linha-cfg input{width:90px;}
+  .lista-row{display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--linha); border-radius:10px; margin-bottom:8px;}
+  .lista-row .nome{flex:1; font-weight:700; font-size:13.5px;}
+  .lista-row .del{background:none; border:none; color:var(--vermelho); cursor:pointer; font-size:16px;}
+  .add-row{display:flex; gap:8px; margin-top:6px;}
+  .add-row input{flex:1;}
+  .toggle{position:relative; width:46px; height:26px; border-radius:20px; background:#cdbfae; cursor:pointer; transition:.15s; flex-shrink:0;}
+  .toggle.on{background:var(--verde);}
+  .toggle::after{content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.15s;}
+  .toggle.on::after{left:23px;}
+  .itens-pausa{max-height:320px; overflow-y:auto;}
+  .pausa-row{display:flex; align-items:center; gap:10px; padding:7px 4px; border-bottom:1px solid var(--linha);}
+  .pausa-row .nome{flex:1; font-size:13.5px; font-weight:600;}
+  .pausa-row .nome.off{color:var(--vermelho); text-decoration:line-through;}
+  .badge-pausado{font-size:10px; font-weight:800; color:var(--vermelho); background:#ffe3e3; padding:1px 7px; border-radius:7px;}
+
+  /* ===== MODAIS ===== */
+  .fundo{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:none; align-items:center; justify-content:center; padding:14px;}
+  .fundo.show{display:flex;}
+  .modal{background:var(--bg); border-radius:16px; width:100%; max-width:720px; max-height:94vh; display:flex; flex-direction:column; overflow:hidden;}
+  .modal.estreito{max-width:430px;}
+  .m-top{background:#fff; padding:13px 18px; display:flex; align-items:center; border-bottom:1px solid var(--linha);}
+  .m-top h3{margin:0; font-size:17px;}
+  .m-top .fechar{margin-left:auto; background:none; border:none; font-size:24px; color:var(--suave); cursor:pointer;}
+  .m-body{padding:16px 18px; overflow-y:auto;}
+  .m-foot{background:#fff; padding:12px 18px; border-top:1px solid var(--linha); display:flex; align-items:center; gap:10px;}
+  .m-foot .preco{font-size:21px; font-weight:800; color:var(--laranja); margin-right:auto;}
+  .secao-tit{font-weight:800; font-size:13px; color:#564d42; margin:14px 0 7px;}
+  .busca{display:flex; gap:8px;} .busca input{flex:1;}
+  .cli-box{background:var(--cartao); border:1px solid var(--linha); border-radius:11px; padding:11px 13px;}
+  .cli-box .nome{font-weight:800; font-size:15px;} .cli-box .meta{color:var(--suave); font-size:12.5px; margin-top:2px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .chips{display:flex; flex-wrap:wrap; gap:7px;}
+  .chip{border:1.5px solid var(--linha); background:#fff; border-radius:18px; padding:8px 13px; font-size:13px; font-weight:700; cursor:pointer; color:#6b6055;}
+  .chip.on{background:var(--escuro); color:#fff; border-color:var(--escuro);}
+  .chip.lar.on{background:var(--laranja); border-color:var(--laranja);}
+  .chip.rem{text-decoration:line-through; opacity:.6;}
+  .chip.add-on{background:var(--verde); color:#fff; border-color:var(--verde);}
+  .chip:disabled,.chip.pausado{opacity:.45; cursor:not-allowed; text-decoration:line-through;}
+  .item{display:flex; gap:10px; padding:9px; border:1px solid var(--linha); border-radius:10px; margin-bottom:7px; align-items:center; background:#fff;}
+  .item .mini{flex-shrink:0;} .item .info{flex:1; min-width:0;}
+  .item .i-nome{font-weight:800; font-size:13.5px;} .item .i-det{color:var(--suave); font-size:12px; line-height:1.3;}
+  .item .i-obs{color:var(--vermelho); font-size:11.5px; font-weight:700;}
+  .item .i-preco{font-weight:800; color:var(--laranja); white-space:nowrap;}
+  .item .x{background:none; border:none; color:var(--suave); cursor:pointer; font-size:16px;}
+  .add-linha{display:flex; gap:8px;} .add-linha .btn{flex:1;}
+  .totais{background:var(--escuro); color:#fff; border-radius:11px; padding:12px 14px; margin-top:6px;}
+  .totais .l{display:flex; justify-content:space-between; font-size:13px; color:#d9cfc4; padding:2px 0;}
+  .totais .t{display:flex; justify-content:space-between; font-size:19px; font-weight:800; border-top:1px solid rgba(255,255,255,.15); margin-top:5px; padding-top:7px;}
+  .seg{display:flex; gap:8px; flex-wrap:wrap;}
+  .seg button{flex:1; min-width:120px; border:1.5px solid var(--linha); background:#fff; border-radius:10px; padding:11px; font-weight:800; cursor:pointer; color:#6b6055;}
+  .seg button.on{background:var(--laranja); color:#fff; border-color:var(--laranja);}
+  .campo{display:block; font-weight:800; font-size:12.5px; margin:14px 0 6px; color:#564d42;}
+  .pz-preview{display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--linha); border-radius:12px; padding:12px; margin-bottom:6px;}
+  .pz-preview .desc{font-size:13px; color:var(--suave); line-height:1.4;} .pz-preview .desc b{color:var(--texto);}
+  .moto-pick{display:flex; flex-direction:column; gap:8px;}
+  .mc-cab{display:flex; align-items:center; justify-content:space-between; background:var(--cartao); border:1px solid var(--linha); border-radius:10px; padding:8px 11px; margin-bottom:8px; font-size:13px; font-weight:700;}
+  .qx{width:26px; height:26px; border-radius:50%; border:1.5px solid var(--linha); background:#fff; font-weight:800; cursor:pointer; color:var(--laranja);}
+  .servico-row{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; font-weight:700; color:#564d42;}
+  .rodada-tag{display:inline-block; font-size:10px; font-weight:800; color:#fff; background:var(--azul); padding:1px 7px; border-radius:7px; margin-left:6px;}
+  .pg-linha{display:flex; gap:8px; align-items:center; margin-bottom:7px;}
+  .pg-linha select{flex:1;}
+  .pg-resumo{font-size:13px; color:#564d42; margin-top:8px; font-weight:600;}
+  .grupo-tit{font-weight:800; font-size:12.5px; color:var(--laranja); margin:12px 0 4px; position:sticky; top:0; background:#fff; padding:3px 0;}
+  .salao-box{background:#fff; border:1px solid var(--linha); border-left:5px solid var(--roxo); border-radius:13px; box-shadow:var(--sombra); padding:12px 14px; margin-top:14px;}
+  .salao-box .sb-tit{font-weight:800; font-size:14px; color:var(--roxo); margin-bottom:9px;}
+  .sb-cards{display:flex; gap:10px; flex-wrap:wrap;}
+  .sb-card{min-width:170px; border:1px solid var(--linha); border-radius:10px; padding:9px 11px; background:var(--cartao); cursor:pointer;}
+  .sb-card .sb-mesa{font-weight:800; color:var(--roxo);}
+  .sb-card .sb-itens{color:var(--suave); font-size:12px; line-height:1.4; margin-top:3px;}
+  .toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--escuro); color:#fff; padding:12px 22px; border-radius:30px; font-weight:700; z-index:200; opacity:0; transition:.3s; box-shadow:0 8px 24px rgba(0,0,0,.3);}
+  .toast.show{opacity:1; bottom:30px;}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="Premium">
+  <span class="tag">PDV</span>
+  <div class="nav">
+    <button id="nav-delivery" class="on" onclick="switchView('delivery')">🛵 Delivery / Retirada</button>
+    <button id="nav-salao" onclick="switchView('salao')">🍽️ Salão</button>
+    <button id="nav-admin" onclick="switchView('admin')">⚙️ Administrativo</button>
+  </div>
+  <span class="rel" id="relogio"></span>
+</header>
+
+<div class="wrap" id="wrap"></div>
+
+<!-- MODAL: novo pedido / editar -->
+<div class="fundo" id="modal-pedido" onclick="if(event.target===this)fecharPedido()">
+  <div class="modal">
+    <div class="m-top"><h3 id="mp-titulo">Novo pedido</h3><button class="fechar" onclick="fecharPedido()">×</button></div>
+    <div class="m-body" id="mp-body"></div>
+    <div class="m-foot"><span class="preco" id="mp-total">R$ 0,00</span>
+      <button class="btn btn-claro" onclick="fecharPedido()">Cancelar</button>
+      <button class="btn btn-verde" id="mp-confirma" onclick="lancarPedido()">Lançar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: comanda de mesa -->
+<div class="fundo" id="modal-comanda" onclick="if(event.target===this)fecharComanda()">
+  <div class="modal estreito">
+    <div class="m-top"><h3 id="mc-titulo">Mesa</h3><button class="fechar" onclick="fecharComanda()">×</button></div>
+    <div class="m-body" id="mc-body"></div>
+    <div class="m-foot"><span class="preco" id="mc-total">R$ 0,00</span>
+      <button class="btn btn-verde" id="mc-fechar" onclick="abrirFecharConta()">Fechar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: montar pizza -->
+<div class="fundo" id="modal-pizza" onclick="if(event.target===this)fecharModalPizza()">
+  <div class="modal">
+    <div class="m-top"><h3>Montar pizza</h3><button class="fechar" onclick="fecharModalPizza()">×</button></div>
+    <div class="m-body" id="mpz-body"></div>
+    <div class="m-foot"><span class="preco" id="mpz-preco">R$ 0,00</span>
+      <button class="btn btn-claro" onclick="fecharModalPizza()">Cancelar</button>
+      <button class="btn btn-laranja" id="mpz-add" onclick="confirmarPizza()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: bebida -->
+<div class="fundo" id="modal-bebida" onclick="if(event.target===this)fecharModalBebida()">
+  <div class="modal estreito">
+    <div class="m-top"><h3>Bebidas</h3><button class="fechar" onclick="fecharModalBebida()">×</button></div>
+    <div class="m-body" id="mb-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: escolher motoboy -->
+<div class="fundo" id="modal-moto" onclick="if(event.target===this)fecharMoto()">
+  <div class="modal estreito">
+    <div class="m-top"><h3>🛵 Qual motoboy vai levar?</h3><button class="fechar" onclick="fecharMoto()">×</button></div>
+    <div class="m-body" id="mmoto-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: fechar conta (pagamento) -->
+<div class="fundo" id="modal-pg" onclick="if(event.target===this)fecharPg()">
+  <div class="modal estreito">
+    <div class="m-top"><h3>Forma de pagamento</h3><button class="fechar" onclick="fecharPg()">×</button></div>
+    <div class="m-body" id="mpg-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="cloud.js"></script>
+<script>
+/* =========================================================================
+   PREMIUM PIZZAS — PDV / OPERAÇÃO (protótipo)
+   3 painéis: Delivery/Retirada (quadro 4 etapas) · Salão (14 mesas) · Admin.
+   Valores DE EXEMPLO. Reaproveita dados do site/KDS.
+   ========================================================================= */
+
+/* ---- CARDÁPIO REAL (PDF oficial) — preço P (Pequena) / G (Grande) + ingredientes ---- */
+const SALGADOS = {
+ "Calabresa":{P:49.90,G:94.90,ings:["Calabresa","Mussarela","Cebola roxa"]},
+ "Calabacon":{P:49.90,G:94.90,ings:["Calabresa","Bacon","Mussarela","Cebola roxa"]},
+ "Frango c/ Bacon":{P:49.90,G:89.90,ings:["Frango","Mussarela","Bacon","Milho","Azeitona preta"]},
+ "Frango c/ Catupiry":{P:49.90,G:94.90,ings:["Frango","Mussarela","Catupiry","Milho","Azeitona preta"]},
+ "Margherita":{P:49.90,G:94.90,ings:["Mussarela","Tomate","Manjericão"]},
+ "Bacon c/ Batata":{P:49.90,G:94.90,ings:["Mussarela","Bacon","Batata palha"]},
+ "Brasileira":{P:49.90,G:94.90,ings:["Calabresa","Presunto","Mussarela","Cebola roxa"]},
+ "Mussarela":{P:49.90,G:94.90,ings:["Mussarela","Tomate"]},
+ "Rúcula Premium":{P:49.90,G:94.90,ings:["Mussarela","Rúcula","Palmito","Milho","Tomate cereja"]},
+ "Quatro Queijos":{P:49.90,G:94.90,ings:["Mussarela","Parmesão","Provolone","Catupiry"]},
+ "Mussarela c/ Bacon":{P:49.90,G:94.90,ings:["Mussarela","Tomate","Milho","Bacon"]},
+ "Portuguesa":{P:49.90,G:94.90,ings:["Mussarela","Calabresa","Presunto","Ovo","Cebola roxa"]},
+ "Palmito Cremoso":{P:49.90,G:94.90,ings:["Mussarela","Palmito","Milho","Catupiry"]},
+ "Sexta Santa":{P:49.90,G:94.90,ings:["Mussarela","Tomate em cubos","Milho","Palmito","Catupiry"]},
+ "Vegetariana":{P:49.90,G:94.90,ings:["Mussarela","Milho","Ovo","Catupiry"]},
+ "Cinco Queijos":{P:59.90,G:119.90,ings:["Mussarela","Parmesão","Provolone","Catupiry","Cheddar"]},
+ "Pepperoni":{P:59.90,G:119.90,ings:["Pepperoni","Mussarela","Tomate cereja"]},
+ "Frango Cremoso":{P:59.90,G:119.90,ings:["Frango","Mussarela","Milho","Tomate","Bacon em cubos"]},
+ "Premium":{P:59.90,G:119.90,ings:["Frango","Mussarela","Calabresa","Bacon","Milho","Cebola roxa","Azeitona"]},
+ "Mr. Pig":{P:64.90,G:119.90,ings:["Mussarela","Calabresa","Catupiry","Milho","Tomate","Bacon em cubos"]},
+ "Do Cheff":{P:64.90,G:119.90,ings:["Mussarela","Calabresa","Bacon","Milho","Palmito"]},
+ "Lombo":{P:64.90,G:129.90,ings:["Mussarela","Lombo canadense","Milho","Catupiry","Alho poró","Bacon"]},
+ "Suprema":{P:64.90,G:129.90,ings:["Mussarela","Presunto","Calabresa","Bacon","Milho","Catupiry"]},
+ "Mignon":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Tomate cereja","Parmesão"]},
+ "Mignon Cremosa":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Tomate cereja","Catupiry"]},
+ "Mignon c/ Fritas":{P:74.90,G:149.90,ings:["Filé mignon","Mussarela","Batata frita"]},
+ "Camarão Rosa":{P:84.90,G:179.90,ings:["Camarão rosa","Mussarela","Catupiry","Pimentão vermelho","Pimentão amarelo","Tomate cereja","Alho poró"]}
+};
+const DOCES = {
+ "Sonho de Valsa":{P:49.90,G:89.90,ings:["Chocolate ao leite","Sonho de Valsa"]},
+ "Ouro Branco":{P:49.90,G:89.90,ings:["Chocolate branco","Ouro Branco"]},
+ "Diamante Negro":{P:49.90,G:89.90,ings:["Chocolate ao leite","Diamante Negro"]},
+ "Prestígio":{P:49.90,G:89.90,ings:["Chocolate ao leite","Coco","Prestígio"]},
+ "Sensação":{P:49.90,G:89.90,ings:["Chocolate ao leite","Morangos"]},
+ "Branco Supremo":{P:49.90,G:89.90,ings:["Chocolate branco","Morangos"]},
+ "Nutella c/ Morangos":{P:59.90,G:119.90,ings:["Nutella","Morangos"]},
+ "Ninho c/ Nutella":{P:59.90,G:119.90,ings:["Nutella","Brigadeiro de Ninho","Uva verde","Morangos","Ninho polvilhado"]},
+ "Ferrero Premium":{P:69.90,G:129.90,ings:["Nutella","Ferrero Rocher","Grãos de avelã"]},
+ "Rafaello":{P:69.90,G:129.90,ings:["Chocolate branco","Coco","Morangos","Rafaello"]}
+};
+const ADICIONAIS = ["Bacon","Catupiry","Cheddar","Mussarela extra","Milho","Calabresa","Frango","Camarão","Filé mignon","Palmito","Azeitona","Cebola","Tomate","Ovo","Pepperoni","Parmesão"];
+function dadosSabor(n){ return SALGADOS[n]||DOCES[n]||{ings:[]}; }
+function ingTxt(n){ return dadosSabor(n).ings.join(", "); }
+
+const BORDA_OPCOES = [
+  {id:"sem",tipo:"Tradicional",nome:"Sem borda recheada",ico:"⚪"},{id:"vulcao",tipo:"Vulcão",nome:"Borda Vulcão",ico:"🌋"},
+  {id:"pao",tipo:"Pãozinho",nome:"Borda Pãozinho",ico:"🥖"},{id:"caracol",tipo:"Caracol",nome:"Borda Caracol",ico:"🐌"},{id:"trad",tipo:"Tradicional",nome:"Tradicional c/ recheio",ico:"🍕"}
+];
+/* BORDAS — preço por sabor (PDF). Meio a meio só dentro da MESMA categoria. */
+const BORDA_SABORES = {
+  "Vulcão":{"Catupiry":24.90,"Cheddar":24.90,"Mussarela":24.90,"Presunto e Mussarela":24.90,"Mussarela c/ Orégano":24.90,"Chocolate ao Leite c/ Morango":24.90,"Chocolate Branco c/ Morango":24.90,"Doce de Leite c/ Coco":24.90,"Ouro Branco":29.90,"Sonho de Valsa":29.90,"Nutella":39.90,"Nutella c/ Morango":39.90,"Ninho c/ Morango":39.90,"Ninho c/ Uva":39.90,"Ferrero Premium":49.90,"Rafaello":49.90},
+  "Pãozinho":{"Presunto e Mussarela":29.90,"Presunto c/ Catupiry":29.90,"Presunto c/ Cheddar":29.90,"Frango c/ Catupiry":29.90,"Frango c/ Cheddar":29.90,"Frango c/ Mussarela":29.90,"Calabresa c/ Mussarela":29.90,"Calabresa c/ Catupiry":29.90,"Calabresa c/ Cheddar":29.90},
+  "Caracol":{"Cheddar":24.90,"Catupiry":24.90},
+  "Tradicional":{"Cheddar":24.90,"Catupiry":24.90,"Chocolate ao Leite":24.90,"Chocolate Branco":24.90,"Presunto e Mussarela":24.90,"Mussarela":24.90}
+};
+const BEBIDAS = [
+  {nome:"Coca-Cola lata",ico:"🥤",preco:6.90},{nome:"Coca-Cola Zero lata",ico:"🥤",preco:6.90},{nome:"Guaraná lata",ico:"🥤",preco:6.90},
+  {nome:"Guaraná Zero lata",ico:"🥤",preco:6.90},{nome:"Sprite Zero lata",ico:"🥤",preco:6.90},
+  {nome:"Coca-Cola 1L",ico:"🥤",preco:12.90},{nome:"Coca-Cola 1,5L",ico:"🥤",preco:15.90},{nome:"Coca-Cola 2L",ico:"🥤",preco:17.90},
+  {nome:"Água sem gás",ico:"💧",preco:5.90},{nome:"Água com gás",ico:"💧",preco:5.90},
+  {nome:"Suco natural Laranja (copo)",ico:"🧃",preco:9.90},{nome:"Suco natural Uva (copo)",ico:"🧃",preco:9.90},
+  {nome:"Heineken Long Neck",ico:"🍺",preco:9.90}
+];
+const PRECO_ADICIONAL=9.90;   // adicional por ingrediente (PDF)
+const CANAL_COR={delivery:"#ff6000",retirada:"#2b7de9",salao:"#7a5cff",site:"#e2a800",ifood:"#ea1d2c"};
+const CANAL_NOME={delivery:"Delivery",retirada:"Retirada",salao:"Salão",site:"Site",ifood:"iFood"};
+const FORMAS_PG=[{id:"dinheiro",nome:"Dinheiro",ico:"💵"},{id:"credito",nome:"Crédito",ico:"💳"},{id:"debito",nome:"Débito",ico:"💳"},{id:"pixmaq",nome:"Pix maquininha",ico:"📱"},{id:"pixchave",nome:"Pix chave",ico:"🔑"}];
+const CUPONS={"PREMIUM10":{tipo:"pct",v:10,desc:"10% off"},"FRETEGRATIS":{tipo:"frete",v:0,desc:"Frete grátis"},"15OFF":{tipo:"valor",v:15,desc:"R$15 off"}};
+const STATUS=[{id:"preparo",nome:"Em preparo",cor:"#e2a800"},{id:"pronto",nome:"Pronto",cor:"#1faa59"},{id:"entrega",nome:"Em entrega",cor:"#2b7de9"},{id:"concluido",nome:"Concluído",cor:"#8a7f73"}];
+
+/* ---- Estado (persistido) ---- */
+let view='delivery';
+let pedidos = JSON.parse(localStorage.getItem('pdv_pedidos')||'[]');
+let entrando = [];
+let mesas = JSON.parse(localStorage.getItem('pdv_mesas')||'null') || Array.from({length:14},(_,i)=>({n:i+1,comanda:null}));
+let clientes = JSON.parse(localStorage.getItem('pdv_clientes')||'{}');
+let config = JSON.parse(localStorage.getItem('pdv_config')||'null') || {prazoEntrega:45, prazoRetirada:20};
+let raios = JSON.parse(localStorage.getItem('pdv_raios')||'null') || [{nome:"Até 3 km",taxa:5},{nome:"3 a 6 km",taxa:8},{nome:"6 a 10 km",taxa:12}];
+let motoboys = JSON.parse(localStorage.getItem('pdv_motoboys')||'null') || [{nome:"Carlos"},{nome:"Pedro"},{nome:"João"}];
+let pausados = new Set(JSON.parse(localStorage.getItem('pdv_pausados')||'[]'));
+let seq = JSON.parse(localStorage.getItem('pdv_seq')||'100');
+
+let pedidoEdit=null, editandoId=null, pzEdit=null, itensAlvo=null, reRenderItens=null, mesaAtual=null, contaAlvo=null;
+
+/* ---- Helpers ---- */
+function $(id){ return document.getElementById(id); }
+function brl(v){ return "R$ "+(v||0).toFixed(2).replace(".",","); }
+function uid(){ return Math.random().toString(36).slice(2,7); }
+function escolha(a){ return a[Math.floor(Math.random()*a.length)]; }
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function salvar(){ localStorage.setItem('pdv_pedidos',JSON.stringify(pedidos)); localStorage.setItem('pdv_mesas',JSON.stringify(mesas)); localStorage.setItem('pdv_clientes',JSON.stringify(clientes)); localStorage.setItem('pdv_config',JSON.stringify(config)); localStorage.setItem('pdv_raios',JSON.stringify(raios)); localStorage.setItem('pdv_motoboys',JSON.stringify(motoboys)); localStorage.setItem('pdv_pausados',JSON.stringify([...pausados])); localStorage.setItem('pdv_seq',JSON.stringify(seq)); }
+function pausado(tipo,n){ return pausados.has(tipo+':'+n); }
+const BORDA_TODOS_SABORES=[...new Set([].concat(...Object.values(BORDA_SABORES).map(o=>Object.keys(o))))];
+setInterval(()=>{ $("relogio").textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); },1000);
+
+/* ---- Desenho SVG ---- */
+let _svgId=0;
+function normaliza(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
+function bordaSaborDoce(s){ return /nutella|chocolate|ninho|doce|morango|uva|coco|ferrero|rafael|sonho|ouro/.test(normaliza(s||"")); }
+function corSabor(s){ s=normaliza(s||"");
+  if(/nutella|ferrero/.test(s))return"#4a2c1a"; if(/chocolate ao leite|sonho|diamante|prestigio/.test(s))return"#6b4226";
+  if(/chocolate branco|ouro|rafael|coco/.test(s))return"#efe3c8"; if(/ninho|doce de leite/.test(s))return"#e7cf9a";
+  if(/cheddar/.test(s))return"#e8a13a"; if(/catupiry/.test(s))return"#f3ead0"; if(/mussarela/.test(s))return"#f1e09a";
+  if(/presunto/.test(s))return"#e6a6a0"; if(/frango/.test(s))return"#d9b86a"; if(/calabresa/.test(s))return"#b5482e";
+  if(/morango|uva/.test(s))return"#cf3b48"; return"#d8b43a"; }
+function corBase(t){ if(!t)return"#f3e6cf"; return /chocolate|nutella|ninho|doce|morango/.test(normaliza(t))?"#cda472":"#f0d385"; }
+function rimSVG(tipo,sbE,sbD){ const cE=corSabor(sbE),cD=corSabor(sbD);
+  if(tipo==="Vulcão"){let s="";const n=8,r=42,off=Math.PI/n; for(let i=0;i<n;i++){const a=(i/n)*2*Math.PI+off,x=50+r*Math.cos(a),y=50+r*Math.sin(a),col=x<50?cE:cD; s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.6" fill="#ecca97" stroke="#a9742f" stroke-width="1.3"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.7" fill="${col}"/>`;} return s;}
+  if(tipo==="Pãozinho"){let s="";const n=24,r=42,off=Math.PI/n; for(let i=0;i<n;i++){const a=(i/n)*2*Math.PI+off,x=50+r*Math.cos(a),y=50+r*Math.sin(a),deg=(a*180/Math.PI)+90; s+=`<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${deg.toFixed(0)})"><rect x="-2.7" y="-5" width="5.4" height="10" rx="2.7" fill="#e6bd7e" stroke="#a9742f" stroke-width=".9"/></g>`;} return s;}
+  return `<circle cx="50" cy="50" r="42" fill="none" stroke="#e9bf80" stroke-width="11"/>`; }
+function pizzaSVG(p,px){ const id="pz"+(++_svgId); const topE=p.sabores[0]||"",topD=(p.tamanho==="Pequena")?topE:(p.sabores[1]||topE);
+  const bTipo=p.bordaId?(BORDA_OPCOES.find(b=>b.id===p.bordaId)||{}).tipo:"Tradicional";
+  const linha=(p.tamanho!=="Pequena")?`<line x1="50" y1="8" x2="50" y2="92" stroke="rgba(60,30,10,.35)" stroke-width="1.4"/>`:"";
+  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}"><defs><clipPath id="${id}"><circle cx="50" cy="50" r="38"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="#c98a44"/><g clip-path="url(#${id})"><rect x="0" y="0" width="50" height="100" fill="${corBase(topE)}"/><rect x="50" y="0" width="50" height="100" fill="${corBase(topD)}"/></g>${rimSVG(bTipo,p.bordaSabEsq,p.bordaSabDir)}${linha}</svg>`; }
+
+/* ---- Preços ---- */
+function precoSabor(n,t){ const d=dadosSabor(n); return d[t==='Pequena'?'P':'G']||0; }
+function tipoBorda(p){ const b=BORDA_OPCOES.find(x=>x.id===p.bordaId); return b?b.tipo:"Tradicional"; }
+function precoBordaSabor(tipo,s){ if(!s||s==="Sem recheio")return 0; return (BORDA_SABORES[tipo]&&BORDA_SABORES[tipo][s])||0; }
+function precoBordaPizza(p){ if(!p.bordaId||p.bordaId==='sem')return 0; const t=tipoBorda(p); return Math.max(precoBordaSabor(t,p.bordaSabEsq),precoBordaSabor(t,p.bordaSabDir||p.bordaSabEsq)); }
+function precoPizza(p){ let base; if(p.tamanho==="Pequena") base=p.sabores[0]?precoSabor(p.sabores[0],"Pequena"):0;
+  else{ const a=p.sabores[0]?precoSabor(p.sabores[0],"Grande"):0; const b=p.sabores[1]?precoSabor(p.sabores[1],"Grande"):a; base=(a+b)/2; }
+  base+=precoBordaPizza(p); base+=(p.adicionais?p.adicionais.length:0)*PRECO_ADICIONAL; return base; }
+function precoItem(it){ return it.tipo==='pizza'?precoPizza(it):it.preco; }
+function pgPago(pags){ return (pags||[]).reduce((s,x)=>s+(+x.valor||0),0); }
+function resumoPagamento(p){ let pags=p.pagamentos; if((!pags||!pags.length)&&p.pagamento)pags=[{forma:p.pagamento,valor:totalDe(p)}]; if(!pags||!pags.length)return 'pgto?'; return pags.map(x=>{const f=FORMAS_PG.find(y=>y.id===x.forma)||{}; return (f.ico?f.ico+' ':'')+(f.nome||x.forma)+(x.valor!=null?' '+brl(x.valor):'');}).join(' + '); }
+function subtotalItens(itens){ return (itens||[]).reduce((s,i)=>s+precoItem(i)*(i.qtd||1),0); }
+function freteDe(p){ if(!p||p.canal!=='delivery')return 0; const r=raios.find(x=>x.nome===p.raio)||raios[0]||{taxa:0}; return r.taxa; }
+function descontoDe(p,sub){ if(!p||!p.cupom||!CUPONS[p.cupom])return{desc:0,frete:false}; const c=CUPONS[p.cupom];
+  if(c.tipo==='pct')return{desc:sub*c.v/100,frete:false}; if(c.tipo==='valor')return{desc:c.v,frete:false}; if(c.tipo==='frete')return{desc:0,frete:true}; return{desc:0,frete:false}; }
+function totalDe(p){ const sub=subtotalItens(p.itens); const d=descontoDe(p,sub); const frete=d.frete?0:freteDe(p); const serv=p.servicoSalao?sub*0.1:0; return Math.max(0,sub-d.desc)+frete+serv; }
+
+/* =========================================================================
+   NAVEGAÇÃO
+   ========================================================================= */
+function switchView(v){ view=v; ['delivery','salao','admin'].forEach(x=>$("nav-"+x).classList.toggle('on',x===v)); render(); }
+function render(){ if(view==='delivery')renderDelivery(); else if(view==='salao')renderSalao(); else renderAdmin(); }
+
+/* =========================================================================
+   PAINEL DELIVERY — barra + quadro 4 etapas
+   ========================================================================= */
+function renderDelivery(){
+  const ent = entrando.length? `<div class="entrando-strip">
+    <div class="es-tit">🔔 Pedidos entrando (site / iFood) — <b>${entrando.length}</b></div>
+    <div class="es-cards">${entrando.map(p=>`<div class="es-card">
+      <span class="canal" style="background:${CANAL_COR[p.canal]}">${CANAL_NOME[p.canal]}</span>
+      <div class="cli">${p.cliente}</div>
+      <div class="it">${p.itens.map(i=>i.tipo==='pizza'?'🍕 '+i.tamanho+' '+i.sabores.join('/'):'🥤 '+i.nome).join(' · ')}</div>
+      <div class="it">📍 ${p.regiao||'-'} · <b style="color:var(--laranja)">${brl(totalDe(p))}</b></div>
+      <div class="acoes" style="margin-top:7px"><button class="btn btn-verde btn-sm" style="flex:1" onclick="aceitarEntrando('${p.idu}')">✓ Aceitar</button><button class="btn btn-claro btn-sm" onclick="recusarEntrando('${p.idu}')">Recusar</button></div>
+    </div>`).join("")}</div></div>` : "";
+  const cols = STATUS.map(st=>{
+    const lista = pedidos.filter(p=>p.status===st.id && p.canal!=='salao');
+    const cards = lista.length? lista.map(cardPedido).join("") : '<div class="vazio">—</div>';
+    return `<div class="coluna"><div class="col-head"><span class="pt" style="background:${st.cor}"></span>${st.nome}<span class="n">${lista.length}</span></div><div class="col-body">${cards}</div></div>`;
+  }).join("");
+  const mesasAbertas = mesas.filter(m=>m.comanda&&m.comanda.aberta&&m.comanda.itens.some(i=>i.lancado));
+  const salaoBox = mesasAbertas.length? `<div class="salao-box">
+    <div class="sb-tit">🍽️ SALÃO — pizzas lançadas das mesas (pra cozinha fazer)</div>
+    <div class="sb-cards">${mesasAbertas.map(m=>{
+      const pzs=m.comanda.itens.filter(i=>i.tipo==='pizza'&&i.lancado);
+      return `<div class="sb-card" onclick="switchView('salao')">
+        <div class="sb-mesa">Mesa ${m.n}</div>
+        <div class="sb-itens">${pzs.length?pzs.map(i=>`🍕 ${i.tamanho} ${i.sabores.join('/')}`).join('<br>'):'(só bebidas)'}</div>
+      </div>`; }).join("")}</div></div>` : "";
+  $("wrap").innerHTML = `
+    <div class="topbar">
+      <button class="btn btn-laranja btn-novo" onclick="novoPedido()">＋ Novo pedido</button>
+      <button class="btn btn-claro" onclick="simularEntrando()">🔔 Simular pedido do site/iFood</button>
+      <div style="margin-left:auto; color:var(--suave); font-size:13px">Prazo entrega: <b>${config.prazoEntrega}min</b> · retirada: <b>${config.prazoRetirada}min</b></div>
+    </div>
+    ${ent}
+    <div class="board">${cols}</div>
+    ${salaoBox}`;
+}
+function cardPedido(p){
+  const itTxt=p.itens.map(i=>i.tipo==='pizza'?`🍕 ${i.qtd>1?i.qtd+'x ':''}${i.tamanho} ${i.sabores.join('/')}`:`🥤 ${i.qtd>1?i.qtd+'x ':''}${i.nome}`).join(' · ');
+  const obs=p.itens.filter(i=>i.obs).map(i=>i.obs).concat(p.obs?[p.obs]:[]);
+  const ehDelivery=(p.tipo||p.canal)==='delivery';
+  let acao="";
+  if(p.status==='preparo') acao=`<button class="btn btn-verde btn-sm" onclick="avancar('${p.idu}')">✓ Pronto</button>`;
+  else if(p.status==='pronto') acao = ehDelivery
+      ? `<button class="btn btn-azul btn-sm" onclick="pedirMotoboy('${p.idu}')">🛵 Saiu p/ entrega</button>`
+      : `<button class="btn btn-verde btn-sm" onclick="concluir('${p.idu}')">✓ Cliente retirou</button>`;
+  else if(p.status==='entrega') acao=`<button class="btn btn-verde btn-sm" onclick="concluir('${p.idu}')">✓ Entregue</button>`;
+  return `<div class="card">
+    <div class="topo"><span class="num">#${p.id}</span><span class="canal" style="background:${CANAL_COR[p.canal]||'#888'}">${CANAL_NOME[p.canal]||p.canal}</span><span class="tempo">${ehDelivery?config.prazoEntrega+'min':config.prazoRetirada+'min'}</span></div>
+    <div class="cli">${p.cliente||'Balcão'}</div>
+    <div class="det">${itTxt}</div>
+    ${ehDelivery&&p.end?`<div class="det">📍 ${p.end}</div>`:""}
+    ${obs.length?`<div class="obs">📝 ${obs.join(' · ')}</div>`:""}
+    ${p.motoboy?`<div class="moto">🛵 ${p.motoboy}</div>`:""}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+      <span class="pg">${resumoPagamento(p)}</span><span class="val">${brl(totalDe(p))}</span></div>
+    <div class="acoes">${acao}
+      <button class="link" onclick="editarPedido('${p.idu}')">editar</button>
+      ${p.status!=='concluido'?`<button class="link" onclick="cancelarPedido('${p.idu}')">cancelar</button>`:""}
+    </div></div>`;
+}
+function avancar(idu){ const p=pedidos.find(x=>x.idu===idu); if(!p)return; const i=STATUS.findIndex(s=>s.id===p.status); if(i<STATUS.length-1){p.status=STATUS[i+1].id; const camp={status:p.status}; if(p.status==='pronto')camp.pronto_em=new Date().toISOString(); mirrorStatus(p,camp); salvar(); render(); toast("Pedido #"+p.id+" → "+STATUS[i+1].nome);} }
+function concluir(idu){ const p=pedidos.find(x=>x.idu===idu); if(p){p.status='concluido'; mirrorStatus(p,{status:'concluido',concluido_em:new Date().toISOString()}); lancarFinanceiroCloud(p); salvar(); render(); toast("Pedido #"+p.id+" concluído ✓");} }
+function cancelarPedido(idu){ const p=pedidos.find(x=>x.idu===idu); if(p&&confirm('Cancelar o pedido #'+p.id+'?')){ mirrorStatus(p,{status:'cancelado'}); pedidos=pedidos.filter(x=>x.idu!==idu); salvar(); render(); toast("Pedido cancelado"); } }
+let motoAlvo=null;
+function pedirMotoboy(idu){ motoAlvo=idu; $("mmoto-body").innerHTML=`<div class="moto-pick">${motoboys.length?motoboys.map(m=>`<button class="btn btn-claro btn-bloco" onclick="setMotoboy('${m.nome.replace(/'/g,"\\'")}')">🛵 ${m.nome}</button>`).join(""):'<div class="vazio">Cadastre motoboys no painel Administrativo.</div>'}</div>`; $("modal-moto").classList.add("show"); }
+function fecharMoto(){ $("modal-moto").classList.remove("show"); }
+function setMotoboy(nome){ const p=pedidos.find(x=>x.idu===motoAlvo); if(p){p.motoboy=nome; p.status='entrega'; const e=ENTREG_CLOUD.find(x=>x.nome===nome); mirrorStatus(p,{status:'entrega',entregador_id:e?e.id:null,saiu_em:new Date().toISOString()}); salvar(); fecharMoto(); render(); toast("Saiu p/ entrega com "+nome+" 🛵");} }
+
+/* ---- pedidos entrando (site/iFood) ---- */
+function pedidoFake(canal){
+  const tam=Math.random()<0.65?"Grande":"Pequena"; const ks=Object.keys(SALGADOS).filter(n=>!pausado('pizza',n));
+  const s1=escolha(ks); const meio=tam==="Grande"&&Math.random()<0.45; const sabores=meio?[s1,escolha(ks)]:[s1];
+  const bId=escolha(["sem","sem","vulcao","pao","trad"]); const tipo=BORDA_OPCOES.find(b=>b.id===bId).tipo; const bSab=bId==='sem'?null:escolha(BORDA_SABORES[tipo]);
+  const pizza={tipo:'pizza',tamanho:tam,sabores,bordaId:bId,bordaSabEsq:bSab,bordaSabDir:bSab,massa:"Tradicional",adicionais:[],remover:[],obs:Math.random()<0.25?escolha(["Bem assada","Sem cebola"]):"",qtd:1};
+  const itens=[pizza]; if(Math.random()<0.5)itens.push({tipo:'bebida',...escolha(BEBIDAS),qtd:1});
+  const nomes=["Ana","Bruno","Carla","Diego","Elaine","João","Lia","Marcos","Paula"];
+  return {id:++seq,idu:uid(),canal,cliente:escolha(nomes)+" "+escolha(["S.","M.","R.","L."]),tel:"(17) 9"+Math.floor(1000+Math.random()*8999)+"-"+Math.floor(1000+Math.random()*8999),
+    end:"Rua "+escolha(["das Flores","Brasil","XV","São João"])+", "+Math.floor(10+Math.random()*900),regiao:escolha(["Centro","Zona Sul","Jardim"]),
+    itens,raio:escolha(raios).nome,pagamento:escolha(["dinheiro","credito","pixchave"]),obs:""};
+}
+async function simularEntrando(){ try{ const u=await unidCloud(); const f=pedidoFake(Math.random()<0.5?"site":"ifood");
+   const novo=(await PZCLOUD.post('pedidos',[{unidade_id:u.id,canal:f.canal,tipo:'delivery',status:'recebido',cliente_nome:f.cliente,cliente_tel:f.tel,endereco_txt:f.end,total:totalDe(f),obs:f.obs||''}]))[0];
+   const its=pedidoParaCloudItens(f).map(i=>({...i,pedido_id:novo.id})); if(its.length) await PZCLOUD.post('pedido_itens',its,'return=minimal');
+   await PZCLOUD.post('pedido_pagamentos',[{pedido_id:novo.id,forma:f.pagamento,valor:totalDe(f)}],'return=minimal');
+   puxarEntrando(); toast("Pedido de teste criado na nuvem 🔔"); }catch(e){ toast('⚠ '+e.message.slice(0,45)); } }
+function aceitarEntrando(idu){ const i=entrando.findIndex(p=>p.idu===idu); if(i<0)return; const p=entrando.splice(i,1)[0]; p.status='preparo'; mirrorStatus(p,{status:'preparo',etapa:'abertura',aceito_em:new Date().toISOString()}); pedidos.unshift(p); gravarCliente(p); salvar(); render(); toast("Pedido do "+CANAL_NOME[p.canal]+" aceito → Em preparo"); }
+function recusarEntrando(idu){ const p=entrando.find(x=>x.idu===idu); if(p) mirrorStatus(p,{status:'cancelado'}); entrando=entrando.filter(p=>p.idu!==idu); renderDelivery(); toast("Pedido recusado"); }
+function gravarCliente(p){ if(!p.tel)return; if(!clientes[p.tel])clientes[p.tel]={nome:p.cliente,tel:p.tel,end:p.end||"",pedidos:[]}; clientes[p.tel].pedidos.unshift({data:Date.now(),itens:p.itens,total:totalDe(p)}); }
+
+/* ===== PONTE COM A NUVEM (Premium Pizzas) ===== */
+let ENTREG_CLOUD=[], _unidCloud=null;
+async function unidCloud(){ if(!_unidCloud)_unidCloud=await PZCLOUD.unidade(); return _unidCloud; }
+function bordaIdDeTipo(tipo,sab){ if(!tipo)return 'sem'; if(tipo==='Vulcão')return 'vulcao'; if(tipo==='Pãozinho')return 'pao'; if(tipo==='Caracol')return 'caracol'; if(tipo==='Tradicional')return (sab&&sab!=='Sem recheio')?'trad':'sem'; return 'sem'; }
+function cloudParaPedido(c){ return { id:c.numero, idu:c.id, cloudId:c.id, canal:c.canal, tipo:c.tipo||'delivery', status:c.status,
+    cliente:c.cliente_nome, tel:c.cliente_tel||'', end:c.endereco_txt||'', regiao:'—', raio:(raios[0]||{}).nome,
+    itens:(c.pedido_itens||[]).map(i=> i.tipo==='pizza'
+      ? {tipo:'pizza',tamanho:i.tamanho,sabores:i.sabores||[],bordaId:bordaIdDeTipo(i.borda_tipo,i.borda_sabor_esq),bordaSabEsq:i.borda_sabor_esq,bordaSabDir:i.borda_sabor_dir,adicionais:[],remover:[],obs:i.obs||'',qtd:i.qtd||1}
+      : {tipo:'bebida',nome:i.produto_nome,ico:'🥤',preco:+i.preco,qtd:i.qtd||1}),
+    pagamentos:(c.pedido_pagamentos||[]).map(g=>({forma:g.forma,valor:+g.valor})), cupom:'', obs:c.obs||'', motoboy:null }; }
+function pedidoParaCloudItens(p){ return (p.itens||[]).map(it=>({ tipo:it.tipo,
+    tamanho: it.tipo==='pizza'?it.tamanho:null,
+    sabores: it.tipo==='pizza'?(it.tamanho==='Pequena'?[it.sabores[0]]:(it.sabores||[]).filter(Boolean)):null,
+    borda_tipo: (it.tipo==='pizza'&&it.bordaId&&it.bordaId!=='sem')?(BORDA_OPCOES.find(b=>b.id===it.bordaId)||{}).tipo:null,
+    borda_sabor_esq: (it.tipo==='pizza'&&it.bordaId&&it.bordaId!=='sem')?it.bordaSabEsq:null,
+    borda_sabor_dir: (it.tipo==='pizza'&&it.bordaId&&it.bordaId!=='sem')?it.bordaSabDir:null,
+    produto_nome: it.tipo==='bebida'?it.nome:null,
+    obs: it.tipo==='pizza'?(it.obs||null):null,
+    qtd: it.qtd||1, preco: precoItem(it) })); }
+async function enviarPedidoCloud(p){ try{ const u=await unidCloud();
+    const cCanal=(p.canal==='salao')?'salao':((['site','app','ifood','pdv'].includes(p.canal))?p.canal:'pdv');
+    const cTipo=(p.canal==='salao')?'salao':((p.canal==='delivery'||p.canal==='retirada')?p.canal:(p.tipo||'delivery'));
+    const novo=(await PZCLOUD.post('pedidos',[{unidade_id:u.id,canal:cCanal,tipo:cTipo,status:p.status||'preparo',etapa:(p.status==='preparo'?'abertura':null),cliente_nome:p.cliente||'Balcão',cliente_tel:p.tel||'',endereco_txt:p.end||'',total:totalDe(p),obs:p.obs||''}]))[0];
+    p.cloudId=novo.id; p.id=novo.numero;
+    const its=pedidoParaCloudItens(p).map(i=>({...i,pedido_id:novo.id})); if(its.length) await PZCLOUD.post('pedido_itens',its,'return=minimal');
+    const pgs=(p.pagamentos&&p.pagamentos.length?p.pagamentos:[{forma:p.pagamento||'dinheiro',valor:totalDe(p)}]).map(g=>({pedido_id:novo.id,forma:g.forma,valor:g.valor})); if(pgs.length) await PZCLOUD.post('pedido_pagamentos',pgs,'return=minimal');
+    return novo.id; }catch(e){ console.warn('enviarPedidoCloud',e.message); toast('⚠ nuvem: '+e.message.slice(0,45)); } }
+async function mirrorStatus(p,campos){ if(!p||!p.cloudId)return; try{ await PZCLOUD.patch('pedidos','id=eq.'+p.cloudId,campos); }catch(e){ console.warn('mirror',e.message); } }
+async function lancarFinanceiroCloud(p){ if(!p||!p.cloudId)return; try{ const u=await unidCloud();
+   const ja=await PZCLOUD.get('lancamentos_financeiros?pedido_id=eq.'+p.cloudId+'&select=id'); if(ja.length)return;
+   const pgs=(p.pagamentos&&p.pagamentos.length?p.pagamentos:[{forma:p.pagamento||'dinheiro',valor:totalDe(p)}]);
+   await PZCLOUD.post('lancamentos_financeiros',pgs.map(g=>({unidade_id:u.id,tipo:'entrada',origem:'pedido',pedido_id:p.cloudId,forma:g.forma,valor:g.valor,pago:true,categoria:'Venda',grupo_dre:'Faturamento'})),'return=minimal'); }catch(e){ console.warn('fin',e.message); } }
+async function puxarEntrando(){ try{ const u=await unidCloud();
+   const cs=await PZCLOUD.get(`pedidos?unidade_id=eq.${u.id}&status=eq.recebido&canal=in.(site,app,ifood)&select=*,pedido_itens(*),pedido_pagamentos(*)&order=criado_em.asc`);
+   entrando=cs.map(cloudParaPedido);
+   if(view==='delivery' && !document.querySelector('.fundo.show')) renderDelivery();
+  }catch(e){ console.warn('entrando',e.message); } }
+
+/* =========================================================================
+   MODAL NOVO PEDIDO / EDITAR
+   ========================================================================= */
+function novoPedido(){ pedidoEdit={id:++seq,idu:uid(),canal:"delivery",cliente:"",tel:"",end:"",raio:(raios[0]||{}).nome,itens:[],cupom:"",pagamentos:[],obs:"",status:"preparo"}; editandoId=null; $("mp-titulo").textContent="Novo pedido"; $("mp-confirma").textContent="Lançar pedido"; itensAlvo=pedidoEdit.itens; reRenderItens=renderPedidoModal; $("modal-pedido").classList.add("show"); renderPedidoModal(); }
+function editarPedido(idu){ const p=pedidos.find(x=>x.idu===idu); if(!p)return; pedidoEdit=JSON.parse(JSON.stringify(p)); editandoId=idu; $("mp-titulo").textContent="Editar pedido #"+p.id; $("mp-confirma").textContent="Salvar alterações"; itensAlvo=pedidoEdit.itens; reRenderItens=renderPedidoModal; $("modal-pedido").classList.add("show"); renderPedidoModal(); }
+function fecharPedido(){ $("modal-pedido").classList.remove("show"); }
+function renderPedidoModal(){
+  const p=pedidoEdit; const sub=subtotalItens(p.itens); const d=descontoDe(p,sub); const frete=d.frete?0:freteDe(p);
+  const cli=p.tel&&clientes[p.tel];
+  if(!p.pagamentos) p.pagamentos=[];
+  if(p.pagamentos.length<=1) p.pagamentos=[{forma:(p.pagamentos[0]&&p.pagamentos[0].forma)||'dinheiro', valor:+totalDe(p).toFixed(2)}];
+  $("mp-body").innerHTML = `
+    <div class="busca"><input id="busca-tel" placeholder="🔎 Telefone do cliente" value="${p.tel||""}" onkeydown="if(event.key==='Enter')buscarCliente()"><button class="btn btn-escuro" onclick="buscarCliente()">Buscar</button></div>
+    ${p.cliente? `<div class="cli-box" style="margin-top:10px"><div class="nome">${p.cliente} ${cli&&cli.pedidos.length?`<span style="font-size:11px;color:var(--verde)">• recorrente (${cli.pedidos.length})</span>`:`<span style="font-size:11px;color:var(--azul)">• novo</span>`}</div><div class="meta">${p.tel||"sem telefone"} · ${p.end||"sem endereço"}</div>${cli&&cli.pedidos.length?`<button class="btn btn-claro btn-sm" style="margin-top:7px" onclick="repetirUltimo()">🔁 Repetir último</button>`:""}</div>`
+      : `<div class="cli-box" style="margin-top:10px"><div class="grid2"><input id="rc-nome" placeholder="Nome"><input id="rc-tel" placeholder="Telefone"></div><input id="rc-end" placeholder="Endereço (entrega)" style="margin-top:8px;width:100%"><button class="btn btn-claro btn-sm" style="margin-top:8px" onclick="cadastrarRapido()">+ Cadastrar cliente</button></div>`}
+
+    <div class="secao-tit">Tipo de pedido</div>
+    <div class="seg"><button class="${p.canal==='delivery'?'on':''}" onclick="setCanalPedido('delivery')">🛵 Delivery</button><button class="${p.canal==='retirada'?'on':''}" onclick="setCanalPedido('retirada')">🏃 Retirada (balcão)</button></div>
+    ${p.canal==='delivery'?`<div class="secao-tit">Raio de entrega (taxa)</div>
+      <select id="sel-raio" onchange="pedidoEdit.raio=this.value;renderPedidoModal()" style="width:100%">${raios.map(r=>`<option ${p.raio===r.nome?'selected':''}>${r.nome}</option>`).join("")}</select>`:""}
+    ${editandoId && p.canal==='delivery' && (p.status==='entrega'||p.motoboy)?`<div class="secao-tit">🛵 Entregador (em rota) — trocar se lançou errado</div>
+      <select onchange="pedidoEdit.motoboy=this.value" style="width:100%"><option value="">— nenhum —</option>${motoboys.map(m=>`<option ${p.motoboy===m.nome?'selected':''}>${m.nome}</option>`).join("")}</select>`:""}
+
+    <div class="secao-tit">Itens</div>
+    <div>${p.itens.length?p.itens.map((it,i)=>itemHTML(it,i)).join(""):'<div class="vazio">Nenhum item.</div>'}</div>
+    <div class="add-linha"><button class="btn btn-laranja" onclick="abrirModalPizza()">🍕 + Pizza</button><button class="btn btn-claro" onclick="abrirModalBebida()">🥤 + Bebida</button></div>
+
+    <div class="grid2"><div><div class="secao-tit">Cupom</div><div class="busca"><input id="in-cupom" placeholder="Código" value="${p.cupom||""}"><button class="btn btn-claro" onclick="aplicarCupom()">OK</button></div>${p.cupom&&CUPONS[p.cupom]?`<div style="font-size:11.5px;color:var(--verde);margin-top:4px">✓ ${CUPONS[p.cupom].desc}</div>`:""}</div>
+      <div><div class="secao-tit">Obs. do pedido</div><input id="in-obs" placeholder="Ex: troco, portão..." value="${p.obs||""}" oninput="pedidoEdit.obs=this.value"></div></div>
+
+    <div class="secao-tit">Pagamento <span style="font-weight:600;color:var(--suave)">(pode dividir em formas/valores)</span></div>
+    <div class="chips" style="margin-bottom:8px">${FORMAS_PG.map(f=>`<div class="chip lar ${(p.pagamentos.length===1&&p.pagamentos[0].forma===f.id)?'on':''}" onclick="pgQuick('${f.id}')">${f.ico} ${f.nome}</div>`).join("")}</div>
+    ${p.pagamentos.map((pg,i)=>`<div class="pg-linha"><select onchange="pgForma(${i},this.value)">${FORMAS_PG.map(f=>`<option value="${f.id}" ${pg.forma===f.id?'selected':''}>${f.ico} ${f.nome}</option>`).join("")}</select><input type="number" step="0.01" value="${pg.valor}" onchange="pgValor(${i},this.value)" style="width:110px">${p.pagamentos.length>1?`<button class="x" onclick="pgDel(${i})">✕</button>`:""}</div>`).join("")}
+    <button class="btn btn-claro btn-sm" onclick="pgAdd()" style="margin-top:4px">+ Dividir / adicionar forma</button>
+    <div class="pg-resumo">Pago: <b>${brl(pgPago(p.pagamentos))}</b> de ${brl(totalDe(p))} ${pgRestante(p)>0.01?`· falta <b style="color:var(--vermelho)">${brl(pgRestante(p))}</b>`:(pgRestante(p)<-0.01?`· troco <b style="color:var(--verde)">${brl(-pgRestante(p))}</b>`:'· ✓ certo')}</div>
+
+    <div class="totais"><div class="l"><span>Subtotal</span><span>${brl(sub)}</span></div>
+      ${d.desc>0?`<div class="l"><span>Desconto</span><span>− ${brl(d.desc)}</span></div>`:""}
+      <div class="l"><span>Entrega ${p.canal!=='delivery'?'(retirada)':''}</span><span>${frete>0?brl(frete):(d.frete?'grátis':'—')}</span></div>
+      <div class="t"><span>Total</span><span>${brl(totalDe(p))}</span></div></div>`;
+  $("mp-total").textContent=brl(totalDe(p));
+  $("mp-confirma").disabled = !p.itens.length;
+}
+function itemHTML(it,i){
+  if(it.tipo==='pizza'){
+    const sab=it.tamanho==="Pequena"?it.sabores[0]:(!it.sabores[1]||it.sabores[0]===it.sabores[1]?it.sabores[0]:`${it.sabores[0]} / ${it.sabores[1]}`);
+    const bN=BORDA_OPCOES.find(b=>b.id===it.bordaId)||{}; const bTxt=it.bordaId==='sem'?"sem borda":`${bN.nome}${it.bordaSabEsq?" ("+(it.bordaSabEsq===it.bordaSabDir||!it.bordaSabDir?it.bordaSabEsq:it.bordaSabEsq+"/"+it.bordaSabDir)+")":""}`;
+    const ex=[]; if(it.adicionais&&it.adicionais.length)ex.push("+ "+it.adicionais.join(", ")); if(it.remover&&it.remover.length)ex.push("sem "+it.remover.join(", "));
+    return `<div class="item"><div class="mini">${pizzaSVG(it,42)}</div><div class="info"><div class="i-nome">${it.qtd>1?it.qtd+"x ":""}Pizza ${it.tamanho}</div><div class="i-det">${sab} · ${bTxt}</div>${ex.length?`<div class="i-det">${ex.join(" · ")}</div>`:""}${it.obs?`<div class="i-obs">📝 ${it.obs}</div>`:""}</div><div class="i-preco">${brl(precoItem(it)*(it.qtd||1))}</div><button class="x" onclick="removerItemAlvo(${i})">✕</button></div>`;
+  }
+  return `<div class="item"><div class="mini" style="font-size:24px;width:42px;text-align:center">${it.ico}</div><div class="info"><div class="i-nome">${it.qtd>1?it.qtd+"x ":""}${it.nome}</div></div><div class="i-preco">${brl(it.preco*(it.qtd||1))}</div><button class="x" onclick="removerItemAlvo(${i})">✕</button></div>`;
+}
+function removerItemAlvo(i){ itensAlvo.splice(i,1); reRenderItens(); }
+function setCanalPedido(c){ pedidoEdit.canal=c; renderPedidoModal(); }
+function pgRestante(p){ return +(totalDe(p)-pgPago(p.pagamentos)).toFixed(2); }
+function pgQuick(f){ pedidoEdit.pagamentos=[{forma:f,valor:+totalDe(pedidoEdit).toFixed(2)}]; renderPedidoModal(); }
+function pgAdd(){ const r=pgRestante(pedidoEdit); pedidoEdit.pagamentos.push({forma:'dinheiro',valor:r>0?r:0}); renderPedidoModal(); }
+function pgForma(i,v){ pedidoEdit.pagamentos[i].forma=v; renderPedidoModal(); }
+function pgValor(i,v){ pedidoEdit.pagamentos[i].valor=parseFloat((v||'').toString().replace(',','.'))||0; renderPedidoModal(); }
+function pgDel(i){ pedidoEdit.pagamentos.splice(i,1); renderPedidoModal(); }
+function buscarCliente(){ const tel=$("busca-tel").value.trim(); if(!tel){toast("Digite um telefone");return;} pedidoEdit.tel=tel; const c=clientes[tel]; if(c){pedidoEdit.cliente=c.nome;pedidoEdit.end=c.end;toast("Cliente encontrado ✓");}else{pedidoEdit.cliente="";toast("Cliente novo — cadastre");} renderPedidoModal(); }
+function cadastrarRapido(){ const nome=$("rc-nome").value.trim(),tel=$("rc-tel").value.trim(),end=$("rc-end").value.trim(); if(!nome||!tel){toast("Nome e telefone obrigatórios");return;} clientes[tel]={nome,tel,end,pedidos:clientes[tel]?clientes[tel].pedidos:[]}; pedidoEdit.cliente=nome;pedidoEdit.tel=tel;pedidoEdit.end=end; salvar(); renderPedidoModal(); toast("Cliente cadastrado ✓"); }
+function repetirUltimo(){ const c=clientes[pedidoEdit.tel]; if(!c||!c.pedidos.length)return; pedidoEdit.itens=JSON.parse(JSON.stringify(c.pedidos[0].itens)); renderPedidoModal(); toast("Último pedido carregado 🔁"); }
+function aplicarCupom(){ const cod=$("in-cupom").value.trim().toUpperCase(); if(!cod){pedidoEdit.cupom="";renderPedidoModal();return;} if(CUPONS[cod]){pedidoEdit.cupom=cod;toast("Cupom: "+CUPONS[cod].desc);}else{pedidoEdit.cupom="";toast("Cupom inválido");} renderPedidoModal(); }
+function lancarPedido(){
+  if(!pedidoEdit.itens.length)return;
+  if($("in-obs"))pedidoEdit.obs=$("in-obs").value;
+  if(editandoId){ const i=pedidos.findIndex(x=>x.idu===editandoId); if(i>=0){pedidoEdit.cliente=pedidoEdit.cliente||"Balcão"; pedidos[i]=pedidoEdit;} const e=ENTREG_CLOUD.find(x=>x.nome===pedidoEdit.motoboy); mirrorStatus(pedidoEdit,{status:pedidoEdit.status,tipo:pedidoEdit.tipo,cliente_nome:pedidoEdit.cliente,cliente_tel:pedidoEdit.tel||'',endereco_txt:pedidoEdit.end||'',total:totalDe(pedidoEdit),entregador_id:e?e.id:null}); toast("Pedido #"+pedidoEdit.id+" atualizado ✓"); }
+  else { pedidoEdit.cliente=pedidoEdit.cliente||"Balcão"; pedidoEdit.status="preparo"; pedidos.unshift(pedidoEdit); gravarCliente(pedidoEdit); enviarPedidoCloud(pedidoEdit); toast("Pedido lançado → Em preparo"); }
+  salvar(); fecharPedido(); render();
+}
+
+/* =========================================================================
+   MODAL MONTAR PIZZA
+   ========================================================================= */
+function abrirModalPizza(){ pzEdit={tipo:'pizza',tamanho:"Grande",sabores:[null,null],bordaId:"sem",bordaSabEsq:"Sem recheio",bordaSabDir:"Sem recheio",massa:"Tradicional",adicionais:[],remover:[],obs:"",qtd:1}; $("modal-pizza").classList.add("show"); renderModalPizza(); }
+function fecharModalPizza(){ $("modal-pizza").classList.remove("show"); }
+function renderModalPizza(){
+  const p=pzEdit, grande=p.tamanho==="Grande";
+  const opt=(sel)=>`<option value="">— escolher —</option><optgroup label="Salgadas">`+Object.keys(SALGADOS).map(n=>`<option ${sel===n?'selected':''} ${pausado('pizza',n)?'disabled':''}>${n}${pausado('pizza',n)?' (pausado)':''}</option>`).join("")+`</optgroup><optgroup label="Doces">`+Object.keys(DOCES).map(n=>`<option ${sel===n?'selected':''} ${pausado('pizza',n)?'disabled':''}>${n}${pausado('pizza',n)?' (pausado)':''}</option>`).join("")+`</optgroup>`;
+  const ings=[...new Set([].concat(...(p.sabores.filter(Boolean).map(s=>(SALGADOS[s]||DOCES[s]||{ings:[]}).ings))))];
+  const bTipo=BORDA_OPCOES.find(b=>b.id===p.bordaId).tipo; const bSabs=p.bordaId!=='sem'?Object.keys(BORDA_SABORES[bTipo]||{}):[];
+  $("mpz-body").innerHTML=`
+    <div class="pz-preview">${pizzaSVG(p,90)}<div class="desc"><b>Pizza ${p.tamanho}</b><br>${p.sabores.filter(Boolean).length?p.sabores.filter(Boolean).join(" / "):"escolha os sabores"}<br>${p.bordaId==='sem'?"sem borda":(BORDA_OPCOES.find(b=>b.id===p.bordaId).nome+(p.bordaSabEsq&&p.bordaSabEsq!=='Sem recheio'?" ("+p.bordaSabEsq+(p.bordaSabDir&&p.bordaSabDir!==p.bordaSabEsq?"/"+p.bordaSabDir:"")+")":""))}</div></div>
+    <label class="campo">Tamanho</label><div class="seg"><button class="${grande?'on':''}" onclick="setTam('Grande')">Grande (até 2 sabores)</button><button class="${!grande?'on':''}" onclick="setTam('Pequena')">Pequena (1 sabor)</button></div>
+    <label class="campo">Sabor${grande?' 1':''}</label><select onchange="setSab(0,this.value)" style="width:100%">${opt(p.sabores[0])}</select>
+    ${grande?`<label class="campo">Sabor 2 <span style="font-weight:600;color:var(--suave)">(opcional — meio a meio, preço médio)</span></label><select onchange="setSab(1,this.value)" style="width:100%">${opt(p.sabores[1])}</select>`:""}
+    <label class="campo">Borda</label><div class="chips">${BORDA_OPCOES.map(b=>`<div class="chip ${p.bordaId===b.id?'on':''}" onclick="setBorda('${b.id}')">${b.ico} ${b.nome}</div>`).join("")}</div>
+    ${bSabs.length?`<label class="campo">Recheio da borda <span style="font-weight:600;color:var(--suave)">(toque 1, ou 2 da mesma categoria p/ meio a meio · cobra o mais caro)</span></label><div class="chips">${bSabs.map(s=>pausado('borda',s)?`<div class="chip pausado">${s} (pausado)</div>`:`<div class="chip ${p.bordaSabEsq===s||p.bordaSabDir===s?'on':''}" onclick="setBordaSab('${s.replace(/'/g,"\\'")}')">${s} · ${brl(precoBordaSabor(bTipo,s))}</div>`).join("")}</div>`:""}
+    ${ings.length?`<label class="campo">Remover ingrediente</label><div class="chips">${ings.map(ing=>`<div class="chip ${p.remover.includes(ing)?'rem':''}" onclick="toggleRemover('${ing.replace(/'/g,"\\'")}')">${ing}</div>`).join("")}</div>`:""}
+    <label class="campo">Adicionar ingrediente <span style="font-weight:600;color:var(--suave)">(+${brl(PRECO_ADICIONAL)} cada)</span></label><div class="chips">${ADICIONAIS.map(a=>`<div class="chip ${p.adicionais.includes(a)?'add-on':''}" onclick="toggleAdicional('${a.replace(/'/g,"\\'")}')">${p.adicionais.includes(a)?'✓ ':'+ '}${a}</div>`).join("")}</div>
+    <label class="campo">Observação</label><input id="mpz-obs" placeholder="Ex: bem assada" value="${p.obs||""}" oninput="pzEdit.obs=this.value" style="width:100%">`;
+  $("mpz-preco").textContent=brl(precoPizza(p)); $("mpz-add").disabled=!p.sabores[0];
+}
+function setTam(t){ pzEdit.tamanho=t; if(t==="Pequena")pzEdit.sabores=[pzEdit.sabores[0]]; else if(pzEdit.sabores.length<2)pzEdit.sabores=[pzEdit.sabores[0],null]; renderModalPizza(); }
+function setSab(i,v){ pzEdit.sabores[i]=v||null; pzEdit.remover=[]; renderModalPizza(); }
+function setBorda(id){ pzEdit.bordaId=id; if(id==='sem'){pzEdit.bordaSabEsq="Sem recheio";pzEdit.bordaSabDir="Sem recheio";}else{pzEdit.bordaSabEsq=null;pzEdit.bordaSabDir=null;} renderModalPizza(); }
+function setBordaSab(s){ const p=pzEdit; if(!p.bordaSabEsq||p.bordaSabEsq==='Sem recheio'){p.bordaSabEsq=s;p.bordaSabDir=s;}else if(p.bordaSabDir===p.bordaSabEsq&&p.bordaSabEsq!==s){p.bordaSabDir=s;}else{p.bordaSabEsq=s;p.bordaSabDir=s;} renderModalPizza(); }
+function toggleRemover(ing){ const a=pzEdit.remover,i=a.indexOf(ing); if(i<0)a.push(ing);else a.splice(i,1); renderModalPizza(); }
+function toggleAdicional(ad){ const a=pzEdit.adicionais,i=a.indexOf(ad); if(i<0)a.push(ad);else a.splice(i,1); renderModalPizza(); }
+function confirmarPizza(){ if(!pzEdit.sabores[0]){toast("Escolha 1 sabor");return;} if(pzEdit.tamanho==="Pequena")pzEdit.sabores=[pzEdit.sabores[0]]; itensAlvo.push(JSON.parse(JSON.stringify(pzEdit))); fecharModalPizza(); reRenderItens(); toast("Pizza adicionada 🍕"); }
+
+/* MODAL bebida */
+function abrirModalBebida(){ $("mb-body").innerHTML=BEBIDAS.map((b,i)=>{ const off=pausado('bebida',b.nome); return `<div class="item" style="${off?'opacity:.5':'cursor:pointer'}" ${off?'':`onclick="addBebida(${i})"`}><div class="mini" style="font-size:22px;width:38px;text-align:center">${b.ico}</div><div class="info"><div class="i-nome">${b.nome}${off?' <span class="badge-pausado">PAUSADO</span>':''}</div></div><div class="i-preco">${brl(b.preco)}</div></div>`; }).join(""); $("modal-bebida").classList.add("show"); }
+function fecharModalBebida(){ $("modal-bebida").classList.remove("show"); }
+function addBebida(i){ const b=BEBIDAS[i]; const ex=itensAlvo.find(x=>x.tipo==='bebida'&&x.nome===b.nome); if(ex)ex.qtd++; else itensAlvo.push({tipo:'bebida',nome:b.nome,ico:b.ico,preco:b.preco,qtd:1}); fecharModalBebida(); reRenderItens(); toast(b.nome+" adicionada"); }
+
+/* =========================================================================
+   PAINEL SALÃO — 14 mesas / comandas
+   ========================================================================= */
+function renderSalao(){
+  const cards=mesas.map(m=>{
+    const oc=m.comanda&&m.comanda.itens.length>=0&&m.comanda.aberta;
+    const tot=oc?subtotalItens(m.comanda.itens):0;
+    return `<div class="mesa ${oc?'ocupada':''}" onclick="abrirMesa(${m.n})"><div class="m-num">${m.n}</div><div class="m-lbl">${oc?(m.comanda.itens.length+' item(ns)'):'Livre'}</div>${oc?`<div class="m-tot">${brl(tot)}</div>`:'<div class="m-lbl">🍽️ toque p/ abrir</div>'}</div>`;
+  }).join("");
+  $("wrap").innerHTML=`<div class="topbar"><h2 style="margin:0;font-size:19px">🍽️ Salão — comandas das mesas</h2><div style="margin-left:auto;color:var(--suave);font-size:13px">${mesas.filter(m=>m.comanda&&m.comanda.aberta).length} mesa(s) ocupada(s) de 14</div></div><div class="mesas">${cards}</div>`;
+}
+function abrirMesa(n){ mesaAtual=n; const m=mesas.find(x=>x.n===n); if(!m.comanda||!m.comanda.aberta){ m.comanda={aberta:true,itens:[],abertaEm:Date.now(),pessoas:2,rodada:1,servico:false}; salvar(); }
+  const c=m.comanda; if(c.pessoas==null)c.pessoas=2; if(c.rodada==null)c.rodada=1; if(c.servico==null)c.servico=false;
+  itensAlvo=c.itens; reRenderItens=renderComanda; $("modal-comanda").classList.add("show"); renderComanda(); }
+function fecharComanda(){ $("modal-comanda").classList.remove("show"); render(); }
+function totalMesa(c){ const s=subtotalItens(c.itens); return s+(c.servico?s*0.1:0); }
+function renderComanda(){
+  const m=mesas.find(x=>x.n===mesaAtual); const c=m.comanda;
+  const idx=(it)=>c.itens.indexOf(it);
+  const novos=c.itens.filter(i=>!i.lancado), lancados=c.itens.filter(i=>i.lancado);
+  const sub=subtotalItens(c.itens); const serv=c.servico?sub*0.1:0;
+  $("mc-titulo").textContent="Mesa "+m.n;
+  $("mc-body").innerHTML=`
+    <div class="mc-cab">
+      <div>👥 Pessoas: <button class="qx" onclick="setPessoas(-1)">−</button> <b>${c.pessoas}</b> <button class="qx" onclick="setPessoas(1)">+</button></div>
+      <div style="color:var(--suave);font-weight:600">aberta há ${Math.max(0,Math.round((Date.now()-c.abertaEm)/60000))} min</div>
+    </div>
+    <div class="add-linha" style="margin-bottom:8px"><button class="btn btn-laranja" onclick="abrirModalPizza()">🍕 + Pizza</button><button class="btn btn-claro" onclick="abrirModalBebida()">🥤 + Bebida</button></div>
+    <div class="secao-tit">🆕 A lançar${novos.length?' ('+novos.length+')':''}</div>
+    <div>${novos.length?novos.map(it=>itemHTML(it,idx(it))).join(""):'<div class="vazio">Adicione itens e clique em “Lançar pedido”.</div>'}</div>
+    ${novos.length?`<button class="btn btn-azul btn-bloco" onclick="lancarRodada()">🍳 Lançar pedido (manda pra cozinha)</button>`:""}
+    ${lancados.length?`<div class="secao-tit">✅ Já na cozinha</div><div>${lancados.map(it=>`<div style="position:relative">${itemHTML(it,idx(it))}<span class="rodada-tag" style="position:absolute;top:9px;right:34px">rodada ${it.rodada||1}</span></div>`).join("")}</div>`:""}
+    <div class="servico-row"><div class="toggle ${c.servico?'on':''}" onclick="toggleServico()"></div> Incluir taxa de serviço 10%</div>
+    <div class="totais"><div class="l"><span>Subtotal</span><span>${brl(sub)}</span></div>${c.servico?`<div class="l"><span>Serviço 10%</span><span>${brl(serv)}</span></div>`:""}<div class="t"><span>Total</span><span>${brl(sub+serv)}</span></div>${c.pessoas>1?`<div class="l"><span>Por pessoa (${c.pessoas})</span><span>${brl((sub+serv)/c.pessoas)}</span></div>`:""}</div>
+    <div class="add-linha" style="margin-top:10px"><button class="btn btn-claro" onclick="imprimirComanda()">🖨️ Comanda cozinha</button><button class="btn btn-claro" onclick="imprimirConta()">🧾 Pré-conta</button></div>`;
+  $("mc-total").textContent=brl(sub+serv);
+  $("mc-fechar").disabled=!c.itens.length;
+}
+function setPessoas(d){ const c=mesas.find(x=>x.n===mesaAtual).comanda; c.pessoas=Math.max(1,(c.pessoas||1)+d); salvar(); renderComanda(); }
+function toggleServico(){ const c=mesas.find(x=>x.n===mesaAtual).comanda; c.servico=!c.servico; salvar(); renderComanda(); }
+function lancarRodada(){
+  const c=mesas.find(x=>x.n===mesaAtual).comanda; const novos=c.itens.filter(i=>!i.lancado); if(!novos.length)return;
+  novos.forEach(i=>{ i.lancado=true; i.rodada=c.rodada; }); c.rodada=(c.rodada||1)+1; salvar(); renderComanda();
+  toast("Rodada lançada pra cozinha 🍳 (Mesa "+mesaAtual+")");
+}
+/* ---- IMPRESSÃO (comanda cozinha + pré-conta) ---- */
+function imprimirDoc(corpo){
+  const w=window.open('','_print','width=380,height=640');
+  if(!w){ toast("Permita pop-ups pra imprimir 🖨️"); return; }
+  w.document.write(`<html><head><title>Premium Pizzas</title><style>*{font-family:'Courier New',monospace;color:#000} body{width:280px;margin:0 auto;padding:8px;font-size:13px} h2{font-size:16px;text-align:center;margin:4px 0} .c{text-align:center} .b{font-weight:bold} hr{border:none;border-top:1px dashed #000;margin:6px 0} .row{display:flex;justify-content:space-between} .it{margin:4px 0} .obs{font-size:12px;font-style:italic}</style></head><body>${corpo}<scr`+`ipt>window.onload=function(){window.print();}<\/scr`+`ipt></body></html>`);
+  w.document.close();
+}
+function linhaPizzaTxt(it){
+  const sab=it.tamanho==='Pequena'?it.sabores[0]:(!it.sabores[1]||it.sabores[0]===it.sabores[1]?it.sabores[0]:it.sabores[0]+' / '+it.sabores[1]);
+  const bN=BORDA_OPCOES.find(b=>b.id===it.bordaId)||{}; const bTxt=it.bordaId==='sem'?'sem borda':bN.nome+(it.bordaSabEsq&&it.bordaSabEsq!=='Sem recheio'?' ('+it.bordaSabEsq+(it.bordaSabDir&&it.bordaSabDir!==it.bordaSabEsq?'/'+it.bordaSabDir:'')+')':'');
+  const ex=[]; if(it.adicionais&&it.adicionais.length)ex.push('+ '+it.adicionais.join(', ')); if(it.remover&&it.remover.length)ex.push('SEM '+it.remover.join(', '));
+  return `<div class="it">${it.qtd>1?it.qtd+'x ':''}PIZZA ${it.tamanho.toUpperCase()} — ${sab}<br>Borda: ${bTxt}${ex.length?'<br><span class="obs">'+ex.join(' | ')+'</span>':''}${it.obs?'<br><span class="obs">OBS: '+it.obs+'</span>':''}</div>`;
+}
+function imprimirComanda(){
+  const m=mesas.find(x=>x.n===mesaAtual); const c=m.comanda;
+  const linhas=c.itens.map(it=>it.tipo==='pizza'?linhaPizzaTxt(it):`<div class="it">${it.qtd>1?it.qtd+'x ':''}${it.nome}</div>`).join("");
+  imprimirDoc(`<h2>COMANDA COZINHA</h2><div class="c b">MESA ${m.n}</div><div class="c">${new Date().toLocaleString('pt-BR')}</div><hr>${linhas||'<div class="c">vazia</div>'}<hr><div class="c">** ${c.itens.length} item(ns) **</div>`);
+}
+function imprimirConta(){
+  const m=mesas.find(x=>x.n===mesaAtual); const c=m.comanda; const sub=subtotalItens(c.itens); const serv=c.servico?sub*0.1:0; const tot=sub+serv;
+  const linhas=c.itens.map(it=>`<div class="row it"><span>${it.qtd>1?it.qtd+'x ':''}${it.tipo==='pizza'?'Pizza '+it.tamanho:it.nome}</span><span>${brl(precoItem(it)*(it.qtd||1))}</span></div>`).join("");
+  imprimirDoc(`<h2>Premium Pizzas</h2><div class="c">PRE-CONTA (nao e cupom fiscal)</div><div class="c b">MESA ${m.n} · ${c.pessoas} pessoa(s)</div><div class="c">${new Date().toLocaleString('pt-BR')}</div><hr>${linhas}<hr><div class="row"><span>Subtotal</span><span>${brl(sub)}</span></div>${c.servico?`<div class="row"><span>Servico 10%</span><span>${brl(serv)}</span></div>`:''}<div class="row b" style="font-size:15px"><span>TOTAL</span><span>${brl(tot)}</span></div>${c.pessoas>1?`<div class="row"><span>Por pessoa</span><span>${brl(tot/c.pessoas)}</span></div>`:''}<hr><div class="c obs">Obrigado pela preferencia!</div>`);
+}
+
+/* MODAL fechar conta da mesa — com pagamento dividido */
+let contaPagamentos=[];
+function abrirFecharConta(){ const m=mesas.find(x=>x.n===mesaAtual); contaAlvo={n:m.n}; contaPagamentos=[{forma:'dinheiro',valor:+totalMesa(m.comanda).toFixed(2)}]; abrirPg(); }
+function abrirPg(){ renderPg(); $("modal-pg").classList.add("show"); }
+function fecharPg(){ $("modal-pg").classList.remove("show"); }
+function renderPg(){
+  const m=mesas.find(x=>x.n===contaAlvo.n); const c=m.comanda; const sub=subtotalItens(c.itens); const total=totalMesa(c); const pago=pgPago(contaPagamentos); const rest=+(total-pago).toFixed(2);
+  $("mpg-body").innerHTML=`
+    <div style="font-weight:800;font-size:17px;margin-bottom:2px">Mesa ${m.n} · Total ${brl(total)}</div>
+    ${c.servico?`<div style="font-size:12px;color:var(--suave);margin-bottom:4px">(subtotal ${brl(sub)} + serviço 10% ${brl(sub*0.1)})</div>`:""}
+    <p style="margin:0 0 10px;color:var(--suave);font-size:12.5px">Pode dividir em formas e valores diferentes.</p>
+    <div class="chips" style="margin-bottom:8px">${FORMAS_PG.map(f=>`<div class="chip lar" onclick="cpgQuick('${f.id}')">${f.ico} ${f.nome}</div>`).join("")}</div>
+    ${contaPagamentos.map((pg,i)=>`<div class="pg-linha"><select onchange="cpgForma(${i},this.value)">${FORMAS_PG.map(f=>`<option value="${f.id}" ${pg.forma===f.id?'selected':''}>${f.ico} ${f.nome}</option>`).join("")}</select><input type="number" step="0.01" value="${pg.valor}" onchange="cpgValor(${i},this.value)" style="width:110px">${contaPagamentos.length>1?`<button class="x" onclick="cpgDel(${i})">✕</button>`:""}</div>`).join("")}
+    <button class="btn btn-claro btn-sm" onclick="cpgAdd()" style="margin-top:4px">+ Dividir / adicionar forma</button>
+    <div class="pg-resumo">Pago: <b>${brl(pago)}</b> de ${brl(total)} ${rest>0.01?`· falta <b style="color:var(--vermelho)">${brl(rest)}</b>`:(rest<-0.01?`· troco <b style="color:var(--verde)">${brl(-rest)}</b>`:'· ✓ certo')}</div>
+    <button class="btn btn-verde btn-bloco" style="margin-top:12px" ${pago<total-0.01?'disabled':''} onclick="confirmarConta()">✓ Fechar conta da Mesa ${m.n}</button>`;
+}
+function cpgQuick(f){ const m=mesas.find(x=>x.n===contaAlvo.n); contaPagamentos=[{forma:f,valor:+totalMesa(m.comanda).toFixed(2)}]; renderPg(); }
+function cpgAdd(){ const m=mesas.find(x=>x.n===contaAlvo.n); const rest=+(totalMesa(m.comanda)-pgPago(contaPagamentos)).toFixed(2); contaPagamentos.push({forma:'dinheiro',valor:rest>0?rest:0}); renderPg(); }
+function cpgForma(i,v){ contaPagamentos[i].forma=v; renderPg(); }
+function cpgValor(i,v){ contaPagamentos[i].valor=parseFloat((v||'').toString().replace(',','.'))||0; renderPg(); }
+function cpgDel(i){ contaPagamentos.splice(i,1); renderPg(); }
+function confirmarConta(){
+  const m=mesas.find(x=>x.n===contaAlvo.n); const c=m.comanda;
+  const ped={id:++seq,idu:uid(),canal:"salao",tipo:"salao",cliente:"Mesa "+m.n,tel:"",end:"",itens:c.itens,cupom:"",pagamentos:JSON.parse(JSON.stringify(contaPagamentos)),obs:"",status:"concluido",mesa:m.n,servicoSalao:c.servico,pessoas:c.pessoas};
+  pedidos.unshift(ped); m.comanda=null; salvar(); fecharPg(); fecharComanda();
+  (async()=>{ const id=await enviarPedidoCloud(ped); if(id) lancarFinanceiroCloud(ped); })();
+  toast("Conta da Mesa "+ped.mesa+" fechada ("+brl(totalDe(ped))+") ✓");
+}
+
+/* =========================================================================
+   PAINEL ADMIN
+   ========================================================================= */
+function renderAdmin(){
+  const pizzas=[...Object.keys(SALGADOS),...Object.keys(DOCES)];
+  const pausaRow=(tipo,n)=>`<div class="pausa-row"><span class="nome ${pausado(tipo,n)?'off':''}">${n}</span>${pausado(tipo,n)?'<span class="badge-pausado">PAUSADO</span>':''}<div class="toggle ${pausado(tipo,n)?'':'on'}" onclick="togglePausa('${tipo}','${n.replace(/'/g,"\\'")}')"></div></div>`;
+  $("wrap").innerHTML=`<div class="admin-grid">
+    <div class="painel"><h3>⏱️ Prazos</h3>
+      <div class="linha-cfg"><label>Prazo de entrega (min)</label><input type="number" id="cfg-entrega" value="${config.prazoEntrega}"></div>
+      <div class="linha-cfg"><label>Prazo de retirada (min)</label><input type="number" id="cfg-retirada" value="${config.prazoRetirada}"></div>
+      <button class="btn btn-laranja" onclick="salvarPrazos()">Salvar prazos</button>
+    </div>
+    <div class="painel"><h3>🛵 Motoboys</h3>
+      ${motoboys.map((m,i)=>`<div class="lista-row"><span class="nome">${m.nome}</span><button class="del" onclick="delMotoboy(${i})">🗑️</button></div>`).join("")||'<div class="vazio">Nenhum motoboy.</div>'}
+      <div class="add-row"><input id="novo-moto" placeholder="Nome do motoboy" onkeydown="if(event.key==='Enter')addMotoboy()"><button class="btn btn-verde" onclick="addMotoboy()">+ Adicionar</button></div>
+    </div>
+    <div class="painel"><h3>📍 Raios de entrega e taxas</h3>
+      ${raios.map((r,i)=>`<div class="lista-row"><span class="nome">${r.nome}</span><span style="font-weight:800;color:var(--laranja)">${brl(r.taxa)}</span><button class="del" onclick="delRaio(${i})">🗑️</button></div>`).join("")||'<div class="vazio">Nenhum raio.</div>'}
+      <div class="add-row"><input id="novo-raio-nome" placeholder="Ex: Até 3 km"><input id="novo-raio-taxa" type="number" placeholder="Taxa" style="width:90px"><button class="btn btn-verde" onclick="addRaio()">+</button></div>
+    </div>
+    <div class="painel"><h3>⏸️ Pausar itens do cardápio</h3>
+      <p style="margin:0 0 8px;color:var(--suave);font-size:12.5px">Itens pausados não podem ser pedidos (acabou o insumo, etc.). Inclui pizzas, bordas e bebidas.</p>
+      <div class="itens-pausa">
+        <div class="grupo-tit">🍕 Pizzas</div>${pizzas.map(n=>pausaRow('pizza',n)).join("")}
+        <div class="grupo-tit">🌋 Bordas (recheios)</div>${BORDA_TODOS_SABORES.map(n=>pausaRow('borda',n)).join("")}
+        <div class="grupo-tit">🥤 Bebidas</div>${BEBIDAS.map(b=>pausaRow('bebida',b.nome)).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+function salvarPrazos(){ config.prazoEntrega=+$("cfg-entrega").value||45; config.prazoRetirada=+$("cfg-retirada").value||20; salvar(); toast("Prazos salvos ✓"); }
+function addMotoboy(){ const n=$("novo-moto").value.trim(); if(!n)return; motoboys.push({nome:n}); salvar(); renderAdmin(); toast("Motoboy adicionado"); }
+function delMotoboy(i){ motoboys.splice(i,1); salvar(); renderAdmin(); }
+function addRaio(){ const n=$("novo-raio-nome").value.trim(), t=+$("novo-raio-taxa").value; if(!n||isNaN(t))return; raios.push({nome:n,taxa:t}); salvar(); renderAdmin(); toast("Raio adicionado"); }
+function delRaio(i){ raios.splice(i,1); salvar(); renderAdmin(); }
+function togglePausa(tipo,n){ const k=tipo+':'+n; if(pausados.has(k))pausados.delete(k); else pausados.add(k); salvar(); renderAdmin(); }
+
+/* ---- START ---- */
+render();
+(async()=>{ try{ ENTREG_CLOUD=await PZCLOUD.get('entregadores?select=id,nome'); }catch(e){ console.warn(e.message); }
+  puxarEntrando(); setInterval(puxarEntrando,5000); })();
+</script>
+</body>
+</html>

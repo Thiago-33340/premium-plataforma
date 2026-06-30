@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premium Pizzas — Sistema (nuvem)</title>
+<script src="config.js"></script>
+<style>
+  :root{--laranja:#ff6000;--escuro:#161310;--escuro2:#211c17;--cartao:#fffaf5;--texto:#2a241e;--suave:#8a7f73;
+    --verde:#1faa59;--vermelho:#e23b3b;--azul:#2b7de9;--amarelo:#e2a800;--roxo:#7a5cff;--linha:#e7dccf;--bg:#efe7dd;--sombra:0 6px 20px rgba(120,60,0,.10);}
+  *{box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif;}
+  html,body{margin:0;background:var(--bg);color:var(--texto);min-height:100%;}
+  header{background:linear-gradient(160deg,var(--escuro),var(--escuro2));color:#fff;padding:9px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30;}
+  header img{height:28px;} header .tag{background:var(--laranja);color:#fff;font-weight:800;font-size:10px;padding:3px 8px;border-radius:20px;}
+  header .nuvem{font-size:11px;color:#7fd6a0;font-weight:700;}
+  header .nav{display:flex;gap:6px;margin-left:6px;flex-wrap:wrap;}
+  header .nav button{background:rgba(255,255,255,.10);border:none;color:#fff;padding:7px 13px;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;}
+  header .nav button.on{background:var(--laranja);}
+  header .dir{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;}
+  header .sair{background:rgba(255,255,255,.12);border:none;color:#fff;padding:6px 11px;border-radius:8px;cursor:pointer;font-size:12px;}
+  .wrap{padding:14px;max-width:1300px;margin:0 auto;}
+  .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;font-size:13.5px;transition:.12s;}
+  .btn:active{transform:scale(.97);} .btn:disabled{background:#e3d8ca;color:#aa9f92;cursor:not-allowed;}
+  .btn-laranja{background:var(--laranja);color:#fff;}.btn-verde{background:var(--verde);color:#fff;}.btn-azul{background:var(--azul);color:#fff;}
+  .btn-escuro{background:var(--escuro);color:#fff;}.btn-claro{background:#fff;color:var(--texto);border:1.5px solid var(--linha);}
+  .btn-sm{padding:6px 10px;font-size:12px;}.btn-bloco{display:block;width:100%;padding:13px;border-radius:11px;}
+  select,input,textarea{border:1.5px solid var(--linha);border-radius:10px;padding:10px 12px;font-size:14px;background:#fff;font-family:inherit;width:100%;}
+  label{font-weight:800;font-size:12.5px;color:#564d42;display:block;margin:12px 0 5px;}
+  /* login */
+  .login{max-width:420px;margin:8vh auto;background:#fff;border-radius:18px;box-shadow:var(--sombra);padding:26px;text-align:center;}
+  .login img{height:46px;margin-bottom:6px;}
+  .login h2{margin:6px 0 2px;} .login p{color:var(--suave);margin:0 0 18px;font-size:14px;}
+  .papeis{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .papel{border:2px solid var(--linha);border-radius:14px;padding:16px 10px;cursor:pointer;font-weight:800;background:var(--cartao);}
+  .papel:active{transform:scale(.97);border-color:var(--laranja);}
+  .papel .ic{font-size:26px;display:block;margin-bottom:5px;}
+  /* board */
+  .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+  @media(max-width:1050px){.board{grid-template-columns:1fr 1fr;}}
+  @media(max-width:620px){.board{grid-template-columns:1fr;}}
+  .coluna{background:#fff;border-radius:13px;box-shadow:var(--sombra);overflow:hidden;}
+  .col-head{padding:10px 12px;font-weight:800;font-size:13px;border-bottom:1px solid var(--linha);display:flex;align-items:center;gap:6px;}
+  .col-head .pt{width:9px;height:9px;border-radius:50%;} .col-head .n{margin-left:auto;background:var(--linha);color:#6b6055;font-size:11px;padding:1px 7px;border-radius:9px;}
+  .col-body{padding:9px;display:flex;flex-direction:column;gap:8px;min-height:50px;}
+  .card{border:1px solid var(--linha);border-radius:11px;padding:9px 11px;background:var(--cartao);}
+  .card .topo{display:flex;gap:6px;font-size:11px;margin-bottom:3px;align-items:center;}
+  .card .num{font-weight:800;} .card .canal{font-weight:800;font-size:9.5px;color:#fff;padding:1px 6px;border-radius:6px;}
+  .card .tempo{margin-left:auto;color:var(--suave);}
+  .card .cli{font-weight:800;font-size:13.5px;} .card .det{color:var(--suave);font-size:11.5px;line-height:1.35;margin:2px 0;}
+  .card .obs{color:var(--vermelho);font-size:11px;font-weight:700;}
+  .card .moto{color:var(--azul);font-size:11.5px;font-weight:700;margin-top:2px;}
+  .card .pg{font-size:10px;font-weight:700;color:#6b6055;background:#f1e9de;padding:1px 6px;border-radius:6px;}
+  .card .val{font-weight:800;color:var(--laranja);}
+  .card .acoes{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+  .vazio{color:var(--suave);text-align:center;padding:14px 6px;font-size:12px;}
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;} .topbar h2{margin:0;font-size:19px;}
+  /* novo pedido */
+  .np-grid{display:grid;grid-template-columns:1fr 360px;gap:14px;align-items:start;}
+  @media(max-width:900px){.np-grid{grid-template-columns:1fr;}}
+  .painel{background:#fff;border-radius:13px;box-shadow:var(--sombra);padding:15px 16px;}
+  .seg{display:flex;gap:8px;} .seg button{flex:1;border:1.5px solid var(--linha);background:#fff;border-radius:10px;padding:10px;font-weight:800;cursor:pointer;color:#6b6055;}
+  .seg button.on{background:var(--laranja);color:#fff;border-color:var(--laranja);}
+  .item{display:flex;gap:9px;padding:8px;border:1px solid var(--linha);border-radius:10px;margin-bottom:6px;align-items:center;background:var(--cartao);}
+  .item .info{flex:1;min-width:0;} .item .i-nome{font-weight:800;font-size:13px;} .item .i-det{color:var(--suave);font-size:11.5px;}
+  .item .i-preco{font-weight:800;color:var(--laranja);} .item .x{background:none;border:none;color:var(--suave);cursor:pointer;font-size:15px;}
+  .resumo{background:var(--escuro);color:#fff;border-radius:12px;padding:13px;margin-top:8px;}
+  .resumo .l{display:flex;justify-content:space-between;font-size:13px;color:#d9cfc4;padding:2px 0;}
+  .resumo .t{display:flex;justify-content:space-between;font-size:19px;font-weight:800;border-top:1px solid rgba(255,255,255,.15);margin-top:5px;padding-top:7px;}
+  .cards-metrica{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;}
+  .metrica{background:#fff;border-radius:13px;box-shadow:var(--sombra);padding:15px 16px;}
+  .metrica .ml{color:var(--suave);font-size:12px;font-weight:700;text-transform:uppercase;} .metrica .mv{font-size:26px;font-weight:800;margin-top:4px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;} th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--linha);} th{color:var(--suave);font-size:11.5px;text-transform:uppercase;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--escuro);color:#fff;padding:12px 22px;border-radius:30px;font-weight:700;z-index:200;opacity:0;transition:.3s;box-shadow:0 8px 24px rgba(0,0,0,.3);} .toast.show{opacity:1;bottom:30px;}
+  .aviso{background:#fff3e6;border:1px solid #ffd9b3;color:#9a5a12;border-radius:11px;padding:10px 13px;font-size:12.5px;margin-bottom:12px;line-height:1.4;}
+  .pill{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;background:#e9f7ef;color:var(--verde);}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:none;align-items:center;justify-content:center;padding:14px;} .modal-bg.show{display:flex;}
+  .modal{background:var(--bg);border-radius:14px;max-width:420px;width:100%;padding:16px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modal-moto"><div class="modal"><h3 style="margin:0 0 10px">🛵 Qual entregador vai levar?</h3><div id="moto-lista"></div><button class="btn btn-claro btn-bloco" style="margin-top:8px" onclick="fecharMoto()">Cancelar</button></div></div>
+
+<script>
+/* =====================================================================
+   PREMIUM PIZZAS — App integrado na NUVEM (Supabase)
+   Liga site→PDV→cozinha→delivery→caixa pelo cérebro. Polling 3s (tempo real simples).
+   ===================================================================== */
+const CFG = window.PREMIUM;
+const REST = CFG.SUPABASE_URL + "/rest/v1/";
+const H = {"apikey":CFG.SUPABASE_ANON,"Authorization":"Bearer "+CFG.SUPABASE_ANON,"Content-Type":"application/json"};
+async function cGet(path){ const r=await fetch(REST+path,{headers:H}); if(!r.ok) throw new Error("GET "+path+" "+r.status+" "+(await r.text())); return r.json(); }
+async function cPost(table,body,prefer="return=representation"){ const r=await fetch(REST+table,{method:"POST",headers:{...H,"Prefer":prefer},body:JSON.stringify(body)}); if(!r.ok) throw new Error("POST "+table+" "+r.status+" "+(await r.text())); return prefer.includes("representation")?r.json():null; }
+async function cPatch(table,query,body){ const r=await fetch(REST+table+"?"+query,{method:"PATCH",headers:{...H,"Prefer":"return=representation"},body:JSON.stringify(body)}); if(!r.ok) throw new Error("PATCH "+r.status+" "+(await r.text())); return r.json(); }
+
+let UNIDADE=null, CARDAPIO=[], BORDAS=[], ENTREGADORES=[], papel=null, aba=null, pollTimer=null;
+let pedidoNovo=null;
+
+const $=id=>document.getElementById(id);
+const brl=v=>"R$ "+(+v||0).toFixed(2).replace(".",",");
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2400);}
+function minDe(iso){ if(!iso)return 0; return Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/60000)); }
+
+/* desenho pizza */
+let _sid=0;
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+function corBase(t){ if(!t)return"#f3e6cf"; return /chocolate|nutella|ninho|doce|morango|ouro|sonho|ferrero|rafael|prestigio|diamante|sensa|branco supremo/.test(norm(t))?"#cda472":"#f0d385"; }
+function pizzaSVG(sabores,px){ const id="z"+(++_sid); const e=sabores[0]||"", d=sabores[1]||e;
+  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}"><defs><clipPath id="${id}"><circle cx="50" cy="50" r="40"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="#c98a44"/><g clip-path="url(#${id})"><rect x="0" y="0" width="50" height="100" fill="${corBase(e)}"/><rect x="50" y="0" width="50" height="100" fill="${corBase(d)}"/></g><circle cx="50" cy="50" r="42" fill="none" stroke="#e9bf80" stroke-width="11"/>${sabores[1]?'<line x1="50" y1="9" x2="50" y2="91" stroke="rgba(60,30,10,.35)" stroke-width="1.4"/>':''}</svg>`; }
+
+const CANAL_COR={site:"#e2a800",app:"#1faa59",pdv:"#ff6000",salao:"#7a5cff",ifood:"#ea1d2c",telefone:"#2b7de9"};
+const FORMAS=[{id:"dinheiro",n:"Dinheiro"},{id:"credito",n:"Crédito"},{id:"debito",n:"Débito"},{id:"pixmaq",n:"Pix maquininha"},{id:"pixchave",n:"Pix chave"}];
+const STATUS=[{id:"recebido",n:"Recebido",c:"#e2a800"},{id:"preparo",n:"Em preparo",c:"#ff6000"},{id:"pronto",n:"Pronto",c:"#1faa59"},{id:"entrega",n:"Em entrega",c:"#2b7de9"},{id:"concluido",n:"Concluído",c:"#8a7f73"}];
+
+/* =================== INIT =================== */
+async function init(){
+  try{
+    const u=await cGet("unidades?select=id,nome&limit=1"); UNIDADE=u[0];
+    CARDAPIO=await cGet(`produtos?unidade_id=eq.${UNIDADE.id}&pausado=eq.false&select=*&order=grupo,preco_g`);
+    BORDAS=await cGet(`bordas?unidade_id=eq.${UNIDADE.id}&pausado=eq.false&select=*`);
+    ENTREGADORES=await cGet(`entregadores?unidade_id=eq.${UNIDADE.id}&select=*`);
+    telaLogin();
+  }catch(e){ $("app").innerHTML=`<div class="wrap"><div class="aviso">❌ Não consegui conectar ao banco na nuvem.<br>${e.message}</div></div>`; }
+}
+function telaLogin(){
+  pararPoll();
+  $("app").innerHTML=`<div class="login">
+    <img src="logo.png"><h2>Premium Pizzas</h2>
+    <p>${UNIDADE.nome} · sistema na nuvem ☁️</p>
+    <label style="text-align:left">Entrar como:</label>
+    <div class="papeis">
+      <div class="papel" onclick="entrar('atendente')"><span class="ic">🧾</span>Atendente</div>
+      <div class="papel" onclick="entrar('cozinha')"><span class="ic">🍳</span>Cozinha</div>
+      <div class="papel" onclick="entrar('entregador')"><span class="ic">🛵</span>Entregador</div>
+      <div class="papel" onclick="entrar('gerente')"><span class="ic">📊</span>Gerente</div>
+    </div>
+    <div class="aviso" style="margin-top:16px">🔒 Por enquanto é só escolher o perfil (login com senha de verdade entra na próxima etapa).</div>
+  </div>`;
+}
+function entrar(p){ papel=p; const abas={atendente:'novo',cozinha:'cozinha',entregador:'operacao',gerente:'caixa'}; montarShell(); tab(abas[p]||'operacao'); }
+function montarShell(){
+  const tabs=[];
+  if(papel==='atendente'||papel==='gerente') tabs.push(['novo','🧾 Novo pedido']);
+  if(papel==='cozinha'||papel==='gerente') tabs.push(['cozinha','🍳 Cozinha (KDS)']);
+  tabs.push(['operacao','📋 Operação']);
+  if(papel==='gerente') tabs.push(['caixa','💰 Caixa']);
+  $("app").innerHTML=`<header>
+    <img src="logo.png"><span class="tag">NUVEM</span><span class="nuvem">● online</span>
+    <div class="nav" id="nav">${tabs.map(t=>`<button data-t="${t[0]}" onclick="tab('${t[0]}')">${t[1]}</button>`).join("")}</div>
+    <div class="dir"><span>${({atendente:'🧾 Atendente',cozinha:'🍳 Cozinha',entregador:'🛵 Entregador',gerente:'📊 Gerente'})[papel]}</span><button class="sair" onclick="telaLogin()">Sair</button></div>
+  </header><div class="wrap" id="wrap"></div>`;
+}
+function tab(name){ aba=name; pararPoll(); document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
+  if(name==='novo') renderNovo();
+  else if(name==='cozinha'){ renderKDS(); pollTimer=setInterval(renderKDS,3000); }
+  else if(name==='operacao'){ renderOperacao(); pollTimer=setInterval(renderOperacao,3000); }
+  else if(name==='caixa') renderCaixa();
+}
+function pararPoll(){ if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
+
+/* =================== NOVO PEDIDO =================== */
+function novoPedidoVazio(){ return {tipo:"delivery",cliente:"",tel:"",endereco:"",itens:[],pagamento:"dinheiro",obs:""}; }
+function precoSabor(nome,tam){ const p=CARDAPIO.find(x=>x.nome===nome); if(!p)return 0; return tam==="Pequena"?(p.preco_p||p.preco_g):p.preco_g; }
+function precoPizza(it){ let base; if(it.tamanho==="Pequena") base=precoSabor(it.sabores[0],"Pequena");
+  else{ const a=precoSabor(it.sabores[0],"Grande"); const b=it.sabores[1]?precoSabor(it.sabores[1],"Grande"):a; base=(a+b)/2; }
+  if(it.borda_sabor_esq){ const bs=BORDAS.filter(x=>x.tipo===it.borda_tipo); const pe=(bs.find(x=>x.sabor===it.borda_sabor_esq)||{}).preco||0; const pd=(bs.find(x=>x.sabor===it.borda_sabor_dir)||{}).preco||pe; base+=Math.max(pe,pd); }
+  return base; }
+function precoItem(it){ return it.tipo==='pizza'?precoPizza(it):it.preco; }
+function totalNovo(){ return pedidoNovo.itens.reduce((s,i)=>s+precoItem(i)*(i.qtd||1),0); }
+
+function renderNovo(){
+  if(!pedidoNovo) pedidoNovo=novoPedidoVazio();
+  const p=pedidoNovo;
+  const itensHtml=p.itens.length?p.itens.map((it,i)=>{
+    const nome=it.tipo==='pizza'?`Pizza ${it.tamanho} — ${it.sabores.filter(Boolean).join(" / ")}`:it.produto_nome;
+    const det=it.tipo==='pizza'?((it.borda_sabor_esq?`borda ${it.borda_tipo} (${it.borda_sabor_esq}${it.borda_sabor_dir&&it.borda_sabor_dir!==it.borda_sabor_esq?'/'+it.borda_sabor_dir:''})`:'sem borda')):'';
+    return `<div class="item">${it.tipo==='pizza'?pizzaSVG(it.sabores,40):'<div style="font-size:26px;width:40px;text-align:center">🥤</div>'}<div class="info"><div class="i-nome">${it.qtd>1?it.qtd+'x ':''}${nome}</div><div class="i-det">${det}</div></div><div class="i-preco">${brl(precoItem(it)*(it.qtd||1))}</div><button class="x" onclick="remItem(${i})">✕</button></div>`;
+  }).join(""):'<div class="vazio">Nenhum item ainda.</div>';
+  $("wrap").innerHTML=`<div class="topbar"><h2>🧾 Novo pedido</h2><span class="pill">salva direto na nuvem ☁️</span></div>
+  <div class="np-grid">
+    <div class="painel">
+      <label>Tipo</label><div class="seg"><button class="${p.tipo==='delivery'?'on':''}" onclick="setTipoNovo('delivery')">🛵 Delivery</button><button class="${p.tipo==='retirada'?'on':''}" onclick="setTipoNovo('retirada')">🏃 Retirada</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>Cliente</label><input id="n-cli" value="${p.cliente}" oninput="pedidoNovo.cliente=this.value"></div><div><label>Telefone</label><input id="n-tel" value="${p.tel}" oninput="pedidoNovo.tel=this.value"></div></div>
+      ${p.tipo==='delivery'?`<label>Endereço</label><input id="n-end" value="${p.endereco}" oninput="pedidoNovo.endereco=this.value" placeholder="Rua, número, bairro">`:''}
+      <label>Itens</label>${itensHtml}
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-laranja" style="flex:1" onclick="abrirAddPizza()">🍕 + Pizza</button><button class="btn btn-claro" style="flex:1" onclick="abrirAddBebida()">🥤 + Bebida</button></div>
+      <div id="add-area"></div>
+    </div>
+    <div class="painel">
+      <label>Forma de pagamento</label>
+      <select onchange="pedidoNovo.pagamento=this.value">${FORMAS.map(f=>`<option value="${f.id}" ${p.pagamento===f.id?'selected':''}>${f.n}</option>`).join("")}</select>
+      <label>Observação do pedido</label><input id="n-obs" value="${p.obs}" oninput="pedidoNovo.obs=this.value" placeholder="Ex: troco, sem cebola...">
+      <div class="resumo"><div class="t"><span>Total</span><span>${brl(totalNovo())}</span></div></div>
+      <button class="btn btn-verde btn-bloco" style="margin-top:10px" ${p.itens.length?'':'disabled'} onclick="enviarPedido()">📤 Enviar pedido (pra nuvem)</button>
+    </div>
+  </div>`;
+}
+function setTipoNovo(t){ pedidoNovo.tipo=t; renderNovo(); }
+function remItem(i){ pedidoNovo.itens.splice(i,1); renderNovo(); }
+let addPz=null;
+function abrirAddPizza(){ addPz={tamanho:"Grande",sabores:[null,null],borda_tipo:"",borda_sabor_esq:"",borda_sabor_dir:""}; renderAdd(); }
+function renderAdd(){
+  const salg=CARDAPIO.filter(p=>p.grupo==='salgada'), doc=CARDAPIO.filter(p=>p.grupo==='doce');
+  const optSab=(sel)=>`<option value="">— sabor —</option><optgroup label="Salgadas">${salg.map(p=>`<option ${sel===p.nome?'selected':''}>${p.nome}</option>`).join("")}</optgroup><optgroup label="Doces">${doc.map(p=>`<option ${sel===p.nome?'selected':''}>${p.nome}</option>`).join("")}</optgroup>`;
+  const tipos=[...new Set(BORDAS.map(b=>b.tipo))];
+  const sabBorda=addPz.borda_tipo?BORDAS.filter(b=>b.tipo===addPz.borda_tipo):[];
+  $("add-area").innerHTML=`<div class="painel" style="margin-top:10px;background:var(--cartao)">
+    <label>Tamanho</label><div class="seg"><button class="${addPz.tamanho==='Grande'?'on':''}" onclick="addPz.tamanho='Grande';renderAdd()">Grande</button><button class="${addPz.tamanho==='Pequena'?'on':''}" onclick="addPz.tamanho='Pequena';renderAdd()">Pequena</button></div>
+    <label>Sabor 1</label><select onchange="addPz.sabores[0]=this.value;renderAdd()">${optSab(addPz.sabores[0])}</select>
+    ${addPz.tamanho==='Grande'?`<label>Sabor 2 (meio a meio, opcional)</label><select onchange="addPz.sabores[1]=this.value;renderAdd()">${optSab(addPz.sabores[1])}</select>`:''}
+    <label>Borda</label><select onchange="addPz.borda_tipo=this.value;addPz.borda_sabor_esq='';addPz.borda_sabor_dir='';renderAdd()"><option value="">Sem borda recheada</option>${tipos.map(t=>`<option ${addPz.borda_tipo===t?'selected':''}>${t}</option>`).join("")}</select>
+    ${sabBorda.length?`<label>Recheio da borda</label><select onchange="addPz.borda_sabor_esq=this.value;addPz.borda_sabor_dir=this.value;renderAdd()"><option value="">—</option>${sabBorda.map(b=>`<option value="${b.sabor}" ${addPz.borda_sabor_esq===b.sabor?'selected':''}>${b.sabor} · ${brl(b.preco)}</option>`).join("")}</select>`:''}
+    <button class="btn btn-laranja btn-bloco" style="margin-top:10px" ${addPz.sabores[0]?'':'disabled'} onclick="confirmaPizza()">Adicionar pizza — ${addPz.sabores[0]?brl(precoPizza({tamanho:addPz.tamanho,sabores:addPz.sabores,borda_tipo:addPz.borda_tipo,borda_sabor_esq:addPz.borda_sabor_esq,borda_sabor_dir:addPz.borda_sabor_dir})):'R$ 0,00'}</button>
+  </div>`;
+}
+function confirmaPizza(){ const a=addPz; if(!a.sabores[0])return;
+  pedidoNovo.itens.push({tipo:'pizza',tamanho:a.tamanho,sabores:a.tamanho==='Pequena'?[a.sabores[0]]:a.sabores.filter(Boolean),borda_tipo:a.borda_tipo||null,borda_sabor_esq:a.borda_sabor_esq||null,borda_sabor_dir:a.borda_sabor_dir||null,qtd:1});
+  addPz=null; renderNovo(); toast("Pizza adicionada 🍕"); }
+function abrirAddBebida(){ const beb=CARDAPIO.filter(p=>p.grupo==='bebida');
+  $("add-area").innerHTML=`<div class="painel" style="margin-top:10px;background:var(--cartao)"><label>Bebida</label><select id="sel-beb">${beb.map(b=>`<option value="${b.nome}" data-p="${b.preco_g}">${b.nome} · ${brl(b.preco_g)}</option>`).join("")}</select><button class="btn btn-claro btn-bloco" style="margin-top:8px" onclick="confirmaBebida()">Adicionar bebida</button></div>`; }
+function confirmaBebida(){ const s=$("sel-beb"); const nome=s.value, preco=+s.selectedOptions[0].dataset.p;
+  const ex=pedidoNovo.itens.find(i=>i.tipo==='bebida'&&i.produto_nome===nome); if(ex)ex.qtd++; else pedidoNovo.itens.push({tipo:'bebida',produto_nome:nome,preco,qtd:1});
+  renderNovo(); toast(nome+" adicionada"); }
+
+async function enviarPedido(){
+  const p=pedidoNovo; if(!p.itens.length)return;
+  try{
+    const total=totalNovo();
+    const ped=(await cPost("pedidos",[{unidade_id:UNIDADE.id,canal:papel==='atendente'?'pdv':'site',tipo:p.tipo,status:'recebido',
+      cliente_nome:p.cliente||'Balcão',cliente_tel:p.tel,endereco_txt:p.endereco,total,obs:p.obs}]))[0];
+    const itens=p.itens.map(it=>({pedido_id:ped.id,tipo:it.tipo,tamanho:it.tamanho||null,sabores:it.sabores||null,
+      borda_tipo:it.borda_tipo||null,borda_sabor_esq:it.borda_sabor_esq||null,borda_sabor_dir:it.borda_sabor_dir||null,
+      produto_nome:it.produto_nome||null,qtd:it.qtd||1,preco:precoItem(it)}));
+    await cPost("pedido_itens",itens,"return=minimal");
+    await cPost("pedido_pagamentos",[{pedido_id:ped.id,forma:p.pagamento,valor:total}],"return=minimal");
+    pedidoNovo=novoPedidoVazio(); renderNovo();
+    toast("✅ Pedido #"+ped.numero+" enviado pra nuvem!");
+  }catch(e){ toast("Erro ao enviar: "+e.message); }
+}
+
+/* =================== OPERAÇÃO (quadro ao vivo) =================== */
+async function renderOperacao(){
+  let pedidos;
+  try{ pedidos=await cGet(`pedidos?unidade_id=eq.${UNIDADE.id}&status=neq.cancelado&select=*,pedido_itens(*),pedido_pagamentos(*)&order=criado_em.asc`); }
+  catch(e){ $("wrap").innerHTML=`<div class="aviso">Erro ao carregar: ${e.message}</div>`; return; }
+  // hoje + concluídos só do dia
+  const hoje=new Date().toISOString().slice(0,10);
+  pedidos=pedidos.filter(p=>p.status!=='concluido' || (p.concluido_em||p.criado_em||'').slice(0,10)===hoje);
+  const cols=STATUS.map(st=>{
+    const lista=pedidos.filter(p=>p.status===st.id);
+    return `<div class="coluna"><div class="col-head"><span class="pt" style="background:${st.c}"></span>${st.n}<span class="n">${lista.length}</span></div><div class="col-body">${lista.length?lista.map(cardOp).join(""):'<div class="vazio">—</div>'}</div></div>`;
+  }).join("");
+  $("wrap").innerHTML=`<div class="topbar"><h2>📋 Operação — ao vivo</h2><span class="pill">atualiza sozinho a cada 3s ☁️</span>
+    <div style="margin-left:auto;color:var(--suave);font-size:13px">${pedidos.length} pedido(s) ativos</div></div>
+    <div class="aviso">Faça um pedido na aba "Novo pedido" (ou abra o site noutra aba) e veja ele aparecer aqui sozinho. O mesmo quadro funciona na cozinha, no caixa e no celular do entregador.</div>
+    <div class="board">${cols}</div>`;
+}
+function cardOp(p){
+  const itTxt=(p.pedido_itens||[]).map(i=>i.tipo==='pizza'?`🍕 ${i.qtd>1?i.qtd+'x ':''}${i.tamanho||''} ${(i.sabores||[]).join('/')}`:`🥤 ${i.qtd>1?i.qtd+'x ':''}${i.produto_nome}`).join(' · ');
+  const pg=(p.pedido_pagamentos||[]).map(x=>(FORMAS.find(f=>f.id===x.forma)||{}).n).join('+')||'—';
+  let acao="";
+  if(p.status==='recebido') acao=`<button class="btn btn-laranja btn-sm" onclick="mudar('${p.id}','preparo')">✓ Aceitar</button>`;
+  else if(p.status==='preparo') acao=`<button class="btn btn-verde btn-sm" onclick="mudar('${p.id}','pronto')">✓ Pronto</button>`;
+  else if(p.status==='pronto') acao = p.tipo==='delivery'?`<button class="btn btn-azul btn-sm" onclick="pedirMoto('${p.id}')">🛵 Saiu</button>`:`<button class="btn btn-verde btn-sm" onclick="mudar('${p.id}','concluido')">✓ Retirou</button>`;
+  else if(p.status==='entrega') acao=`<button class="btn btn-verde btn-sm" onclick="mudar('${p.id}','concluido')">✓ Entregue</button>`;
+  return `<div class="card"><div class="topo"><span class="num">#${p.numero}</span><span class="canal" style="background:${CANAL_COR[p.canal]||'#888'}">${p.canal}</span><span class="tempo">${minDe(p.criado_em)}min</span></div>
+    <div class="cli">${p.cliente_nome||'—'} ${p.tipo==='delivery'?'🛵':p.tipo==='retirada'?'🏃':'🍽️'}</div>
+    <div class="det">${itTxt}</div>
+    ${p.tipo==='delivery'&&p.endereco_txt?`<div class="det">📍 ${p.endereco_txt}</div>`:''}
+    ${p.obs?`<div class="obs">📝 ${p.obs}</div>`:''}
+    ${p.entregador_id?`<div class="moto">🛵 ${(ENTREGADORES.find(e=>e.id===p.entregador_id)||{}).nome||''}</div>`:''}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px"><span class="pg">${pg}</span><span class="val">${brl(p.total)}</span></div>
+    <div class="acoes">${acao}${p.status!=='concluido'?`<button class="btn btn-claro btn-sm" onclick="cancelar('${p.id}')">✕</button>`:''}</div></div>`;
+}
+async function mudar(id,novo,extra){
+  const campos={status:novo,...(extra||{})};
+  if(novo==='preparo'){ campos.aceito_em=new Date().toISOString(); campos.etapa='abertura'; }
+  if(novo==='pronto')campos.pronto_em=new Date().toISOString();
+  if(novo==='entrega')campos.saiu_em=new Date().toISOString();
+  if(novo==='concluido')campos.concluido_em=new Date().toISOString();
+  try{ await cPatch("pedidos","id=eq."+id,campos); renderOperacao();
+    if(novo==='concluido'){ const ped=(await cGet(`pedidos?id=eq.${id}&select=*,pedido_pagamentos(*)`))[0]; await lancarFinanceiro(ped); }
+  }catch(e){ toast("Erro: "+e.message); }
+}
+async function cancelar(id){ if(!confirm("Cancelar este pedido?"))return; try{ await cPatch("pedidos","id=eq."+id,{status:'cancelado'}); renderOperacao(); }catch(e){toast(e.message);} }
+let motoAlvo=null;
+function pedirMoto(id){ motoAlvo=id; $("moto-lista").innerHTML=ENTREGADORES.map(e=>`<button class="btn btn-claro btn-bloco" style="margin-bottom:7px" onclick="setMoto('${e.id}','${e.nome.replace(/'/g,"\\'")}')">🛵 ${e.nome}</button>`).join(""); $("modal-moto").classList.add("show"); }
+function fecharMoto(){ $("modal-moto").classList.remove("show"); }
+async function setMoto(id,nome){ $("modal-moto").classList.remove("show"); await mudar(motoAlvo,'entrega',{entregador_id:id}); toast("Saiu com "+nome+" 🛵"); }
+
+async function lancarFinanceiro(ped){
+  if(!ped) return;
+  try{ // evita duplicar
+    const ja=await cGet(`lancamentos_financeiros?pedido_id=eq.${ped.id}&select=id`); if(ja.length) return;
+    const pags=ped.pedido_pagamentos||[{forma:'?',valor:ped.total}];
+    const rows=pags.map(pg=>({unidade_id:UNIDADE.id,tipo:'entrada',origem:'pedido',pedido_id:ped.id,forma:pg.forma,valor:pg.valor,pago:true,categoria:'Venda',grupo_dre:'Faturamento'}));
+    await cPost("lancamentos_financeiros",rows,"return=minimal");
+  }catch(e){ console.warn("financeiro",e.message); }
+}
+
+/* =================== COZINHA (KDS) — estações ao vivo =================== */
+const ETAPAS_COZ=[{id:'abertura',n:'🟡 Abertura',c:'#e2a800'},{id:'borda',n:'🟠 Borda',c:'#ff8534'},{id:'montagem',n:'🟢 Montagem',c:'#1faa59'},{id:'forno',n:'🔥 Forno',c:'#e23b3b'},{id:'finalizacao',n:'✅ Finalização',c:'#2b7de9'},{id:'despacho',n:'🛵 Despacho',c:'#7a5cff'}];
+async function renderKDS(){
+  let peds;
+  try{ peds=await cGet(`pedidos?unidade_id=eq.${UNIDADE.id}&status=eq.preparo&select=*,pedido_itens(*)&order=criado_em.asc`); }
+  catch(e){ $("wrap").innerHTML=`<div class="aviso">Erro ao carregar a cozinha: ${e.message}</div>`; return; }
+  const cols=ETAPAS_COZ.map(et=>{
+    const lista=peds.filter(p=>(p.etapa||'abertura')===et.id);
+    return `<div class="coluna"><div class="col-head"><span class="pt" style="background:${et.c}"></span>${et.n}<span class="n">${lista.length}</span></div><div class="col-body">${lista.length?lista.map(p=>cardKDS(p,et.id)).join(""):'<div class="vazio">—</div>'}</div></div>`;
+  }).join("");
+  $("wrap").innerHTML=`<div class="topbar"><h2>🍳 Cozinha (KDS) — ao vivo</h2><span class="pill">só pedidos aceitos · atualiza sozinho ☁️</span>
+     <div style="margin-left:auto;color:var(--suave);font-size:13px">${peds.length} na cozinha</div></div>
+   <div class="aviso">Quando o atendente <b>aceita</b> um pedido, ele entra aqui na <b>Abertura de massa</b> e passa pelas estações. No <b>Despacho</b>, ao avançar vira <b>"Pronto"</b> e sai pra entrega/retirada.</div>
+   <div class="board" style="grid-template-columns:repeat(6,1fr)">${cols}</div>`;
+}
+function cardKDS(p,etapa){
+  const pizzas=(p.pedido_itens||[]).filter(i=>i.tipo==='pizza');
+  const linhas=pizzas.map(i=>`<div style="display:flex;gap:8px;align-items:center;margin:5px 0">${pizzaSVG(i.sabores||[],40)}<div style="font-size:12px;line-height:1.3"><b>${(i.tamanho||'').toUpperCase()}</b> ${(i.sabores||[]).join(' / ')}<br><span style="color:var(--suave)">${i.borda_sabor_esq?'🍞 '+i.borda_tipo+' ('+i.borda_sabor_esq+(i.borda_sabor_dir&&i.borda_sabor_dir!==i.borda_sabor_esq?'/'+i.borda_sabor_dir:'')+')':'sem borda'}</span></div></div>`).join("");
+  const beb=(p.pedido_itens||[]).filter(i=>i.tipo==='bebida').map(i=>`🥤 ${i.qtd>1?i.qtd+'x ':''}${i.produto_nome}`).join(' · ');
+  const idx=ETAPAS_COZ.findIndex(e=>e.id===etapa); const ultima=idx===ETAPAS_COZ.length-1;
+  return `<div class="card"><div class="topo"><span class="num">#${p.numero}</span><span class="tempo">${minDe(p.criado_em)}min</span></div>
+    <div class="cli">${p.cliente_nome||'—'} ${p.tipo==='delivery'?'🛵':p.tipo==='retirada'?'🏃':'🍽️'}</div>
+    ${linhas||'<div class="det">—</div>'}${beb?`<div class="det">${beb}</div>`:''}
+    ${p.obs?`<div class="obs">📝 ${p.obs}</div>`:''}
+    <div class="acoes"><button class="btn ${ultima?'btn-verde':'btn-laranja'} btn-sm" style="width:100%" onclick="avancarEtapa('${p.id}','${etapa}')">${ultima?'✓ Pronto (sair da cozinha)':'Avançar →'}</button></div></div>`;
+}
+async function avancarEtapa(id,etapa){
+  const idx=ETAPAS_COZ.findIndex(e=>e.id===etapa);
+  try{
+    if(idx>=ETAPAS_COZ.length-1) await cPatch("pedidos","id=eq."+id,{status:'pronto',etapa:null,pronto_em:new Date().toISOString()});
+    else await cPatch("pedidos","id=eq."+id,{etapa:ETAPAS_COZ[idx+1].id});
+    renderKDS();
+  }catch(e){ toast("Erro: "+e.message); }
+}
+
+/* =================== CAIXA =================== */
+async function renderCaixa(){
+  const hoje=new Date().toISOString().slice(0,10);
+  let lanc=[],pedHoje=[];
+  try{
+    lanc=await cGet(`lancamentos_financeiros?unidade_id=eq.${UNIDADE.id}&data=eq.${hoje}&select=*`);
+    pedHoje=await cGet(`pedidos?unidade_id=eq.${UNIDADE.id}&status=eq.concluido&select=numero,total,concluido_em,canal&order=concluido_em.desc`);
+  }catch(e){ $("wrap").innerHTML=`<div class="aviso">Erro: ${e.message}</div>`; return; }
+  pedHoje=pedHoje.filter(p=>(p.concluido_em||'').slice(0,10)===hoje);
+  const totalDia=lanc.reduce((s,l)=>s+(+l.valor),0);
+  const porForma={}; lanc.forEach(l=>porForma[l.forma]=(porForma[l.forma]||0)+(+l.valor));
+  const ticket=pedHoje.length?totalDia/pedHoje.length:0;
+  $("wrap").innerHTML=`<div class="topbar"><h2>💰 Caixa de hoje</h2><span class="pill">do banco na nuvem ☁️</span></div>
+    <div class="cards-metrica">
+      <div class="metrica"><div class="ml">Faturamento de hoje</div><div class="mv" style="color:var(--verde)">${brl(totalDia)}</div></div>
+      <div class="metrica"><div class="ml">Pedidos concluídos</div><div class="mv">${pedHoje.length}</div></div>
+      <div class="metrica"><div class="ml">Ticket médio</div><div class="mv">${brl(ticket)}</div></div>
+    </div>
+    <div class="painel" style="margin-bottom:14px"><h3 style="margin:0 0 10px">Por forma de pagamento</h3>
+      ${Object.keys(porForma).length?Object.keys(porForma).map(f=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--linha)"><span>${(FORMAS.find(x=>x.id===f)||{}).n||f}</span><b>${brl(porForma[f])}</b></div>`).join(""):'<div class="vazio">Nenhuma venda concluída hoje ainda.</div>'}
+    </div>
+    <div class="painel"><h3 style="margin:0 0 10px">Pedidos concluídos hoje</h3>
+      <table><thead><tr><th>#</th><th>Canal</th><th>Total</th><th>Hora</th></tr></thead><tbody>
+      ${pedHoje.map(p=>`<tr><td>#${p.numero}</td><td>${p.canal}</td><td><b>${brl(p.total)}</b></td><td>${(p.concluido_em||'').slice(11,16)}</td></tr>`).join("")||'<tr><td colspan=4 class="vazio">—</td></tr>'}
+      </tbody></table>
+    </div>`;
+}
+
+/* start */
+init();
+</script>
+</body>
+</html>

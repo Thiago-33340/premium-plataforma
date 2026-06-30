@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cozinha · Premium Pizzas</title>
+<style>
+  :root{
+    --bg:#211a16; --paper:#2e2520; --paper2:#372c25; --ink:#f3e9dd; --muted:#b7a695;
+    --line:#473a31; --brand:#ff6000; --brand-dark:#e05500;
+    --azul:#3b82c4; --verde:#27a35a; --vermelho:#e0533f; --amarelo:#e0a81e;
+    --shadow:0 8px 22px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:13px;}
+
+  header.topo{background:linear-gradient(135deg,#1a1410,#3b2417);padding:9px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:var(--shadow);position:sticky;top:0;z-index:30;}
+  header.topo img.logo{height:30px;display:block;}
+  header.topo .chip{font-size:10px;font-weight:800;letter-spacing:1.3px;background:var(--brand);color:#fff;border-radius:5px;padding:3px 8px;text-transform:uppercase;}
+  .topo-acoes{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .relogio{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:9px;padding:8px 13px;font-size:13px;font-weight:700;transition:.12s;}
+  button:active{transform:translateY(1px);}
+  .btn-principal{background:var(--brand);color:#fff;}
+  .btn-principal:hover{background:var(--brand-dark);}
+  .btn-claro{background:rgba(255,255,255,.12);color:#fff;}
+  .btn-claro:hover{background:rgba(255,255,255,.22);}
+  .btn-sec{background:var(--paper2);color:var(--ink);border:1px solid var(--line);}
+  .btn-grande{padding:14px 24px;font-size:16px;border-radius:11px;}
+
+  /* Cozinha (preparos) */
+  .cozinha-strip{margin:10px 12px 0;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:10px 13px;}
+  .cozinha-strip h3{margin:0 0 9px;font-size:14px;display:flex;align-items:center;gap:7px;}
+  .cz-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;}
+  .cz-sub-tit{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
+  .cz-alaminute{display:flex;gap:8px;flex-wrap:wrap;}
+  .cz-pedido{background:var(--paper2);border:1px solid var(--line);border-left:4px solid var(--vermelho);border-radius:9px;padding:8px 10px;font-size:12px;min-width:155px;}
+  .cz-pedido b{font-size:13px;}
+  .cz-pedido .cz-sab{color:var(--amarelo);font-weight:700;margin-top:2px;}
+  .cz-pedido button{margin-top:7px;width:100%;background:var(--verde);color:#fff;padding:5px;border-radius:7px;font-size:11px;}
+  .cz-batch{display:flex;flex-direction:column;gap:7px;}
+  .cz-item{display:flex;align-items:center;gap:9px;background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;}
+  .cz-item .ci-info{flex:1;min-width:0;}
+  .cz-item .ci-info b{font-size:13px;}
+  .cz-item .ci-info small{color:var(--muted);display:block;}
+  .badge-ok{background:var(--verde);color:#fff;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;white-space:nowrap;}
+  .badge-low{background:var(--vermelho);color:#fff;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;white-space:nowrap;}
+  .cz-item button{background:var(--brand);color:#fff;padding:6px 10px;border-radius:7px;font-size:11px;}
+  .cz-vazio{color:var(--muted);font-size:12px;padding:6px 2px;}
+
+  .board{display:flex;gap:10px;padding:12px;overflow-x:auto;align-items:flex-start;}
+  .coluna{background:var(--paper);border:1px solid var(--line);border-radius:13px;min-width:218px;width:218px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 250px);}
+  .col-head{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--paper);border-radius:13px 13px 0 0;}
+  .col-head .nome{font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;}
+  .col-head .qtd{background:var(--paper2);color:var(--muted);border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;}
+  .col-rota{font-size:10px;color:var(--brand);font-weight:700;padding:0 12px 6px;}
+  .col-body{padding:9px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;min-height:60px;}
+  .col-body::-webkit-scrollbar{width:7px;} .col-body::-webkit-scrollbar-thumb{background:#5a4a3d;border-radius:6px;}
+
+  .card{background:var(--paper2);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:9px;cursor:pointer;transition:.1s;}
+  .card:hover{border-color:var(--brand);}
+  .card.tem-obs{border-left-color:var(--vermelho);}
+  .card .topo-card{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
+  .card .pid{font-weight:800;font-size:14px;}
+  .card .reg{font-size:10px;background:var(--azul);color:#fff;border-radius:20px;padding:1px 8px;font-weight:700;white-space:nowrap;}
+  .card .corpo{display:flex;gap:8px;align-items:center;}
+  .card .info{flex:1;min-width:0;}
+  .card .cli{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .card .det{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35;}
+  .card .tam{display:inline-block;background:var(--line);border-radius:5px;padding:0 6px;font-weight:700;color:var(--ink);font-size:10px;}
+  .card .doce-tag{background:#7a4a2a;color:#fff;border-radius:5px;padding:0 6px;font-size:10px;font-weight:700;}
+  .card .obs-flag{background:var(--vermelho);color:#fff;font-weight:800;font-size:10px;border-radius:5px;padding:2px 6px;margin-top:6px;display:inblock;}
+  .card .rodape{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:6px;}
+  .card .cron{font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap;}
+  .card .cron.lento{color:var(--amarelo);}
+  .card .avancar{background:var(--verde);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;flex:1;}
+  .card .avancar:hover{filter:brightness(1.08);}
+  .card .forno-box{background:#3a1d10;border:1px solid #6b3a1a;color:#ffb37a;font-weight:800;border-radius:8px;padding:6px;text-align:center;font-size:12px;margin-top:8px;}
+  .card.pronto{border-left-color:var(--verde);}
+
+  /* Pizza / borda visual */
+  .pizza{border-radius:50%;border:3px solid #6b4a2a;box-shadow:0 3px 8px rgba(0,0,0,.4);flex-shrink:0;position:relative;overflow:hidden;}
+  .pizza-miolo{position:absolute;border-radius:50%;background:radial-gradient(#d9b16b,#c89a52);display:flex;align-items:center;justify-content:center;z-index:3;}
+  .pizza::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(0,0,0,.28);transform:translateX(-1px);z-index:2;}
+  .pizza-svg{flex-shrink:0;border-radius:50%;display:block;filter:drop-shadow(0 3px 7px rgba(0,0,0,.45));}
+
+  /* Modal */
+  .fundo{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-start;justify-content:center;padding:22px 14px;overflow:auto;z-index:50;}
+  .fundo.aberto{display:flex;}
+  .modal{background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);width:100%;max-width:760px;padding:20px;}
+  .modal .mtopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:10px;}
+  .modal h2{margin:0;font-size:21px;}
+  .etapa-selo{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:var(--brand);color:#fff;padding:5px 11px;border-radius:20px;white-space:nowrap;}
+  .modal .cliente{color:var(--muted);font-size:13px;margin:2px 0 12px;}
+  .obs-alerta{background:var(--vermelho);color:#fff;border-radius:12px;padding:15px;text-align:center;font-weight:900;font-size:21px;margin-bottom:14px;letter-spacing:.5px;box-shadow:0 0 0 4px rgba(224,83,63,.25);}
+  .obs-sabor{background:var(--vermelho);color:#fff;border-radius:9px;padding:8px 11px;margin-bottom:9px;font-weight:800;font-size:15px;text-align:center;letter-spacing:.3px;box-shadow:0 0 0 3px rgba(224,83,63,.22);}
+  .estacao-box{background:var(--paper2);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:14px;}
+  .estacao-titulo{font-size:12px;color:var(--brand);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;text-align:center;}
+  .grande{font-size:40px;font-weight:900;text-align:center;letter-spacing:1px;}
+  .borda-linha{display:flex;align-items:center;gap:20px;justify-content:center;flex-wrap:wrap;}
+  .borda-legenda{font-size:15px;}
+  .borda-legenda b{font-size:18px;}
+  .meio-tag{display:inline-block;background:var(--amarelo);color:#3a2a00;font-weight:800;font-size:12px;border-radius:20px;padding:3px 11px;margin-bottom:10px;}
+  .sabor{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px;}
+  .sabor-nome{font-size:18px;font-weight:800;border-bottom:2px solid var(--brand);padding-bottom:6px;margin-bottom:9px;}
+  .ing{display:flex;gap:12px;align-items:baseline;padding:6px 0;font-size:15px;border-bottom:1px dashed var(--line);}
+  .ing:last-child{border-bottom:none;}
+  .ing .q{font-weight:900;color:var(--brand);min-width:64px;text-align:right;}
+  .ing .n{flex:1;}
+  .ing.riscar{background:rgba(224,83,63,.12);border-radius:7px;}
+  .ing.riscar .n{text-decoration:line-through;color:var(--vermelho);font-weight:800;}
+  .ing.riscar .q{color:var(--vermelho);text-decoration:line-through;}
+  .ing .nao{margin-left:auto;color:var(--vermelho);font-weight:900;font-size:12px;}
+  .ficha-nota{font-size:12.5px;color:var(--amarelo);margin-top:8px;font-style:italic;}
+  .passos{margin:0;padding-left:22px;font-size:15px;line-height:1.95;}
+  .passos li{margin-bottom:4px;}
+  .passos b{color:var(--brand);}
+  .foto-ph{background:var(--paper);border:1px dashed var(--line);border-radius:10px;padding:13px;text-align:center;color:var(--muted);font-size:12px;margin-bottom:11px;}
+  .montagem-3col{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start;}
+  .montagem-2col{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;}
+  .lado{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:12px 14px;min-width:0;}
+  .lado-tit{font-size:11px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;text-align:center;}
+  .montagem-pizza{display:flex;flex-direction:column;align-items:center;gap:9px;padding-top:18px;position:sticky;top:0;}
+  .montagem-pizza .mp-borda{text-align:center;font-size:13px;color:var(--muted);line-height:1.5;}
+  .montagem-pizza .mp-borda b{color:var(--ink);}
+  .mont-borda-top{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:10px;}
+  .mont-borda-top b{color:var(--ink);}
+  @media(max-width:640px){ .montagem-3col,.montagem-2col{grid-template-columns:1fr;} .montagem-pizza{order:-1;position:static;} }
+  .check{display:flex;align-items:center;gap:11px;padding:10px 0;font-size:15px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .check:last-child{border-bottom:none;}
+  .check input{width:22px;height:22px;accent-color:var(--verde);}
+  .modal-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;}
+  .rota-aviso{background:rgba(255,96,0,.12);border:1px solid var(--brand);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;}
+
+  #toasts{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:7px;align-items:center;}
+  .toast{background:var(--verde);color:#fff;padding:10px 16px;border-radius:11px;box-shadow:var(--shadow);font-size:13.5px;font-weight:700;animation:su .2s ease;}
+  @keyframes su{from{opacity:0;transform:translateY(-8px);}to{opacity:1;}}
+
+  @media(max-width:760px){ .cz-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<header class="topo">
+  <img src="logo.png" alt="Premium Pizzas" class="logo">
+  <span class="chip">Cozinha (KDS)</span>
+  <span style="color:#b9ada0;font-size:12px;font-weight:600">recebe os pedidos lançados (site · PDV · salão)</span>
+  <div class="topo-acoes">
+    <span class="relogio" id="relogio">--:--</span>
+    <button class="btn-claro" onclick="simularPedido()">🍕 Simular pedido lançado</button>
+    <button class="btn-principal" onclick="resetar()">↻ Reiniciar demo</button>
+  </div>
+</header>
+
+<div class="cozinha-strip" id="cozinha-strip"></div>
+<div class="board" id="board"></div>
+
+<div class="fundo" id="modal"><div class="modal" id="modal-corpo"></div></div>
+
+<script src="cloud.js"></script>
+<script>
+const ETAPAS = ["Abertura de massa","Borda","Montagem","Forno","Finalização","Despacho"];
+const ICONE_ETAPA = ["🟡","🟠","🟢","🔥","✅","🛵"];
+const FORNO_SEG = 30; // tempo do forno (demo). Na versão real, configurável pelo seu forno.
+// Tipo da borda é ÚNICO na pizza. O SABOR (recheio) pode ser meio a meio.
+const BORDA_TIPOS = {
+  "Tradicional":{emoji:"🍕"},
+  "Vulcão":{emoji:"🌋"},
+  "Pãozinho":{emoji:"🥖"},
+  "Caracol":{emoji:"🐌"}
+};
+// Cardápio real de sabores de borda por tipo
+const BORDA_SABORES = {
+  "Vulcão":["Catupiry","Cheddar","Mussarela","Presunto e Mussarela","Mussarela c/ Orégano","Chocolate ao Leite c/ Morango","Chocolate Branco c/ Morango","Doce de Leite c/ Coco","Ouro Branco","Sonho de Valsa","Nutella","Nutella c/ Morango","Ninho c/ Morango","Ninho c/ Uva","Ferrero Premium","Rafaello"],
+  "Pãozinho":["Presunto e Mussarela","Presunto c/ Catupiry","Presunto c/ Cheddar","Frango c/ Catupiry","Frango c/ Cheddar","Frango c/ Mussarela","Calabresa c/ Mussarela","Calabresa c/ Catupiry","Calabresa c/ Cheddar"],
+  "Caracol":["Cheddar","Catupiry"],
+  "Tradicional":["Sem recheio","Cheddar","Catupiry","Chocolate ao Leite","Chocolate Branco","Presunto e Mussarela","Mussarela"]
+};
+function corSabor(s){ s=normaliza(s||"");
+  if(/nutella|ferrero/.test(s)) return "#4a2c1a";
+  if(/chocolate ao leite|sonho|diamante|prestigio/.test(s)) return "#6b4226";
+  if(/chocolate branco|ouro|rafael|coco/.test(s)) return "#efe3c8";
+  if(/ninho|doce de leite/.test(s)) return "#e7cf9a";
+  if(/cheddar/.test(s)) return "#e8a13a";
+  if(/catupiry/.test(s)) return "#f3ead0";
+  if(/mussarela/.test(s)) return "#f1e09a";
+  if(/presunto/.test(s)) return "#e6a6a0";
+  if(/frango/.test(s)) return "#d9b86a";
+  if(/calabresa/.test(s)) return "#b5482e";
+  if(/morango|uva/.test(s)) return "#cf3b48";
+  if(/sem recheio/.test(s)) return "#cdbf9e";
+  return "#d8b43a";
+}
+function bordaSaborDoce(s){ return /nutella|chocolate|ninho|doce|morango|uva|coco|ferrero|rafael|sonho|ouro/.test(normaliza(s||"")); }
+// FICHA TÉCNICA REAL — Manual de Montagem Premium Pizzas. {q,n} na ordem do manual. final = itens da FINALIZAÇÃO.
+const SALGADOS = {
+ "Bacon c/ Batata":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"65g",n:"Milho"},{q:"5 fatias",n:"Tomate"},{q:"90g",n:"Bacon fatiado"}],final:[{q:"60g",n:"Batata palha"},{n:"Orégano salpicado"}]},
+ "Calabacon":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"175g",n:"Calabresa"},{q:"90g",n:"Bacon fatiado"},{q:"30g",n:"Cebola"}],final:[]},
+ "Calabresa":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"150g",n:"Mussarela"},{q:"200g",n:"Calabresa"},{q:"30g",n:"Cebola"}],final:[]},
+ "Brasileira":{montagem:[{q:"01 concha",n:"Molho Premium"},{n:"Mussarela"},{n:"Calabresa"},{n:"Presunto"},{n:"Cebola roxa"},{n:"⚠ gramatura a confirmar"}],final:[]},
+ "Camarão Rosa":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"10g",n:"Pimentão vermelho"},{q:"10g",n:"Pimentão amarelo"},{q:"15g",n:"Alho poró"},{n:"Catupiry (cruzado)"},{q:"200g",n:"Camarão"},{q:"30g",n:"Tomate cereja"}],final:[]},
+ "Cinco Queijos":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"45g",n:"Provolone"},{n:"Catupiry (cruzado)"},{n:"Cheddar (cruzado)"},{q:"45g",n:"Parmesão"}],final:[]},
+ "Do Cheff":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"80g",n:"Palmito"},{q:"65g",n:"Milho"},{q:"175g",n:"Calabresa"},{q:"90g",n:"Bacon fatiado"}],final:[]},
+ "Frango c/ Bacon":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"200g",n:"Frango"},{q:"80g",n:"Mussarela"},{q:"65g",n:"Milho"},{q:"90g",n:"Bacon fatiado"}],final:[{q:"6 rodelas",n:"Azeitona"}]},
+ "Frango c/ Catupiry":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"200g",n:"Frango"},{q:"80g",n:"Mussarela"},{q:"65g",n:"Milho"},{n:"Catupiry (cruzado)"}],final:[{q:"6 rodelas",n:"Azeitona"}]},
+ "Frango Cremoso":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"150g",n:"Frango"},{q:"5 fatias",n:"Tomate"},{q:"80g",n:"Mussarela"},{q:"65g",n:"Milho"},{n:"Catupiry (zig zag)"},{q:"110g",n:"Bacon em cubos"}],final:[]},
+ "Lombo":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"150g",n:"Lombo fatiado"},{q:"65g",n:"Milho"},{q:"15g",n:"Alho poró"},{n:"Catupiry (aspiral)"},{q:"90g",n:"Bacon fatiado"}],final:[]},
+ "Margherita":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"120g",n:"Tomate"}],final:[{n:"Manjericão fresco"}]},
+ "Vegetariana":{montagem:[{q:"01 concha",n:"Molho Premium"},{n:"Mussarela"},{n:"Milho"},{n:"Ovo"},{n:"Catupiry"},{n:"⚠ gramatura a confirmar"}],final:[]},
+ "Mignon":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"240g",n:"Filé mignon"},{q:"150g",n:"Mussarela"},{q:"30g",n:"Tomate cereja"},{q:"45g",n:"Parmesão"}],final:[]},
+ "Mignon c/ Fritas":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"240g",n:"Filé mignon"},{q:"150g",n:"Mussarela"},{q:"110g",n:"Bacon em cubos"}],final:[{q:"200g",n:"Batata frita"},{n:"Orégano salpicado"}]},
+ "Mignon Cremosa":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"240g",n:"Filé mignon"},{q:"150g",n:"Mussarela"},{n:"Catupiry (cruzado)"},{q:"30g",n:"Tomate cereja"}],final:[]},
+ "Mr. Pig":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"5 fatias",n:"Tomate"},{q:"65g",n:"Milho"},{q:"175g",n:"Calabresa"},{n:"Catupiry (zig zag)"},{q:"110g",n:"Bacon em cubos"}],final:[]},
+ "Mussarela":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"120g",n:"Tomate"}],final:[]},
+ "Mussarela c/ Bacon":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"65g",n:"Milho"},{q:"120g",n:"Tomate"},{q:"90g",n:"Bacon fatiado"}],final:[]},
+ "Palmito Cremoso":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"175g",n:"Palmito"},{q:"75g",n:"Milho"},{n:"Catupiry (cruzado)"}],final:[]},
+ "Pepperoni":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"50g",n:"Pepperoni"},{q:"30g",n:"Tomate cereja"},{q:"80g",n:"Mussarela (por cima)"}],final:[]},
+ "Portuguesa":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"80g",n:"Mussarela"},{q:"100g",n:"Presunto picado"},{q:"175g",n:"Calabresa"},{q:"2 fatiados",n:"Ovo"},{q:"30g",n:"Cebola"}],final:[{q:"6 rodelas",n:"Azeitona"}]},
+ "Premium":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"100g",n:"Frango"},{q:"150g",n:"Mussarela"},{q:"65g",n:"Milho"},{q:"100g",n:"Calabresa"},{q:"90g",n:"Bacon fatiado"}],final:[{q:"6 rodelas",n:"Azeitona"}]},
+ "Quatro Queijos":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela"},{q:"45g",n:"Provolone"},{n:"Catupiry (cruzado)"},{q:"45g",n:"Parmesão"}],final:[]},
+ "Rúcula Premium":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"175g",n:"Mussarela (separar em vasilha)"},{q:"100g",n:"Palmito"},{q:"65g",n:"Milho"},{q:"30g",n:"Tomate cereja"}],final:[{q:"60g",n:"Rúcula picada"},{q:"6 rodelas",n:"Azeitona"},{n:"Orégano salpicado"},{n:"Azeite (fio)"}]},
+ "Sexta Santa":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"150g",n:"Mussarela"},{q:"100g",n:"Palmito"},{q:"120g",n:"Tomate"},{q:"65g",n:"Milho"},{n:"Catupiry (cruzado)"}],final:[]},
+ "Suprema":{montagem:[{q:"01 concha",n:"Molho Premium"},{q:"150g",n:"Mussarela"},{q:"100g",n:"Presunto picado"},{q:"65g",n:"Milho"},{n:"Catupiry (aspiral)"},{q:"175g",n:"Calabresa"},{q:"90g",n:"Bacon fatiado"}],final:[]}
+};
+// Doces: na MONTAGEM vai só o creme de leite (pra não queimar); o recheio entra na FINALIZAÇÃO (Guia de Montagem - Pizzas Doces).
+const DOCES = {
+ "Sonho de Valsa":{montagem:[{n:"Creme de leite (camada fina, pra não queimar)"}],finalizacao:[{q:"200g",n:"Chocolate ao leite"},{q:"8 metades",n:"Sonho de Valsa"},{q:"30g",n:"Chips ao leite"}]},
+ "Ouro Branco":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate branco"},{q:"8 metades",n:"Ouro Branco"},{q:"30g",n:"Chips branco"}]},
+ "Diamante Negro":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate ao leite"},{q:"10 un",n:"Diamante Negro (quadradinho)"},{q:"30g",n:"Chips ao leite"}]},
+ "Sensação":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate ao leite"},{q:"8 metades",n:"Morango"},{q:"40g",n:"Morango em cubos"},{q:"30g",n:"Chips ao leite"}]},
+ "Nutella c/ Morangos":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Nutella"},{q:"8 metades",n:"Morango"},{q:"40g",n:"Morango em cubos"}]},
+ "Rafaello":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate branco"},{q:"30g",n:"Coco chips"},{q:"8 metades",n:"Raffaello"},{q:"8 metades",n:"Morango"}]},
+ "Branco Supremo":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate branco"},{q:"8 metades",n:"Morango"},{q:"40g",n:"Morango em cubos"},{q:"30g",n:"Chips branco"}]},
+ "Ferrero Premium":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Nutella"},{q:"30g",n:"Avelã triturado"},{q:"8 metades",n:"Ferrero Rocher"}]},
+ "Ninho c/ Nutella":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Ninho (4 passadas em arco)"},{q:"100g",n:"Nutella (3 passadas em arco)"},{n:"Leite Ninho polvilhado por cima"},{q:"8 metades",n:"Uva"},{q:"8 metades",n:"Morango"}]},
+ "Prestígio":{montagem:[{n:"Creme de leite (camada fina)"}],finalizacao:[{q:"200g",n:"Chocolate ao leite"},{q:"10 un",n:"Prestígio (quadradinho)"},{q:"30g",n:"Coco chips"}]}
+};
+const OBS_POOL = ["SEM CEBOLA","SEM AZEITONA","BEM ASSADA","CORTAR EM 8","CAPRICHAR NO CATUPIRY","SEM ORÉGANO"];
+const REGIOES = ["Centro","Zona Sul","Zona Norte","Bairro Alto","Jardim"];
+const NOMES = ["Ana","Bruno","Carla","Diego","Elaine","Fábio","Gisele","Hugo","Ivana","João","Lia","Marcos","Nara","Otávio","Paula","Rafa"];
+
+let pedidos = [];
+let PREPAROS = [];
+let seq = 10;
+let _svgId = 0;
+
+function uid(){ return Math.random().toString(36).slice(2,8); }
+function escolha(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function chaves(o){ return Object.keys(o); }
+
+function novoPedido(etapa){
+  const tamanho = Math.random()<0.65 ? "Grande" : "Pequena";
+  const bordaTipo = escolha(chaves(BORDA_TIPOS));
+  const sabOpc = BORDA_SABORES[bordaTipo];
+  const meioBorda = sabOpc.length>1 && Math.random()<0.4;
+  const bordaSabEsq = escolha(sabOpc);
+  const bordaSabDir = meioBorda ? escolha(sabOpc) : bordaSabEsq;
+  const doce = Math.random()<0.22;
+  const qtd = doce?1:(Math.random()<0.5?2:1);
+  const fonte = doce?DOCES:SALGADOS, opc=chaves(fonte);
+  const sabores=[]; while(sabores.length<qtd){ const s=escolha(opc); if(!sabores.includes(s)) sabores.push(s); }
+  return { id:++seq, idu:uid(), cliente:escolha(NOMES)+" "+escolha(["S.","M.","R.","L.","A."]),
+    regiao:escolha(REGIOES), tamanho, bordaTipo, bordaSabEsq, bordaSabDir, doce, sabores,
+    obs: Math.random()<0.25?[escolha(OBS_POOL)]:[], preparoFeito:false,
+    etapa: etapa==null?0:etapa, tempoEtapa:Date.now(), fornoAte:null };
+}
+function fichaMontagem(s){ if(SALGADOS[s]) return SALGADOS[s].montagem; if(DOCES[s]) return DOCES[s].montagem; return []; }
+
+/* ===== PONTE NUVEM — a cozinha lê os pedidos ACEITOS (status=preparo) ===== */
+const COZ_ETAPAS=['abertura','borda','montagem','forno','finalizacao','despacho'];
+let _unidC=null;
+async function unidC(){ if(!_unidC)_unidC=await PZCLOUD.unidade(); return _unidC; }
+function cloudParaCozinha(c){
+  const etapaIdx=Math.max(0,COZ_ETAPAS.indexOf(c.etapa||'abertura'));
+  const pizzas=(c.pedido_itens||[]).filter(i=>i.tipo==='pizza');
+  const obsGerais=c.obs?[(''+c.obs).toUpperCase()]:[];
+  return pizzas.map((i,idx)=>{ const sabs=(i.sabores&&i.sabores.length)?i.sabores:['Mussarela']; const doce=sabs.some(s=>!!DOCES[s]);
+    return { id:c.numero, idu:c.id+'_'+idx, cloudId:c.id, cliente:c.cliente_nome||'—', regiao:CANAL_LABEL(c.canal),
+      tamanho:i.tamanho||'Grande', bordaTipo:i.borda_tipo||'Tradicional',
+      bordaSabEsq:i.borda_sabor_esq||'Sem recheio', bordaSabDir:i.borda_sabor_dir||i.borda_sabor_esq||'Sem recheio',
+      doce, sabores:sabs, obs:(i.obs?[(''+i.obs).toUpperCase()]:[]).concat(obsGerais), preparoFeito:false,
+      etapa:etapaIdx, tempoEtapa:Date.now(), fornoAte:null }; }); }
+function CANAL_LABEL(c){ return ({site:'Site',ifood:'iFood',pdv:'Balcão',salao:'Salão',app:'App',telefone:'Tel'})[c]||c||'—'; }
+async function sincronizarCozinha(){ try{ const u=await unidC();
+   const cs=await PZCLOUD.get(`pedidos?unidade_id=eq.${u.id}&status=eq.preparo&select=*,pedido_itens(*)&order=criado_em.asc`);
+   const novos=[].concat(...cs.map(cloudParaCozinha));
+   const antigos={}; pedidos.forEach(p=>antigos[p.idu]=p);
+   pedidos = novos.map(n=>{ const a=antigos[n.idu]; if(a){ n.tempoEtapa=a.tempoEtapa; n.preparoFeito=a.preparoFeito; n.fornoAte=(n.etapa===3)?(a.fornoAte||Date.now()+FORNO_SEG*1000):null; } else if(n.etapa===3){ n.fornoAte=Date.now()+FORNO_SEG*1000; } return n; });
+   if(!document.getElementById("modal").classList.contains("aberto")) render();
+  }catch(e){ console.warn('sincCozinha',e.message); } }
+async function cloudPatchPedido(cloudId,campos){ if(!cloudId)return; try{ await PZCLOUD.patch('pedidos','id=eq.'+cloudId,campos); }catch(e){ console.warn('patchCoz',e.message); } }
+function fichaFinalizacao(s){ return DOCES[s]?DOCES[s].finalizacao:[]; }
+function finalSalgada(s){ return SALGADOS[s]?SALGADOS[s].final:[]; }
+function precisaCozinha(s){ return /mignon|camar/.test(normaliza(s)); }
+function ingHTML(arr, obsSabor){
+  const sem=(obsSabor||[]).map(normaliza).filter(o=>o.startsWith("sem "));
+  return arr.map(it=>{
+    const palavras=normaliza(it.n).split(/\s+/).filter(w=>w.length>3);
+    const risca=sem.some(o=>palavras.some(w=>o.includes(w)));
+    return `<div class="ing${risca?' riscar':''}">${it.q?`<span class="q">${it.q}</span>`:'<span class="q">—</span>'}<span class="n">${it.n}</span>${risca?'<span class="nao">🚫 TIRAR</span>':''}</div>`;
+  }).join("");
+}
+function normaliza(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
+function obsCasaSabor(obs, sabor){
+  const obsN=normaliza(obs);
+  const palavras=fichaMontagem(sabor).flatMap(it=>normaliza(it.n).split(/\s+/)).filter(w=>w.length>3);
+  return palavras.some(w=>obsN.includes(w));
+}
+function passosHTML(arr){ return `<ol class="passos">`+arr.map(it=>`<li>${it.q?`<b>${it.q}</b> `:''}${it.n}</li>`).join("")+`</ol>`; }
+function bordaEhDoce(p){ return bordaSaborDoce(p.bordaSabEsq)||bordaSaborDoce(p.bordaSabDir); }
+function resumoBorda(p){ const sab=p.bordaSabEsq===p.bordaSabDir?p.bordaSabEsq:`${p.bordaSabEsq} / ${p.bordaSabDir}`; return `${p.bordaTipo} (${sab})`; }
+function saboresPreparo(p){ return p.sabores.filter(precisaCozinha); }
+
+function corBase(top){ return /chocolate|nutella|ninho|brigadeiro|doce|morango/.test(normaliza(top||""))?"#cda472":"#f0d385"; }
+function toppingBits(top,lado){
+  if(!top) return "";
+  const pts = lado==='E' ? [[22,34],[33,48],[24,62],[37,42]] : [[78,34],[67,48],[76,62],[63,42]];
+  const cor=corSabor(top);
+  return pts.map(pt=>`<circle cx="${pt[0]}" cy="${pt[1]}" r="3.8" fill="${cor}" opacity=".9"/>`).join("");
+}
+function rimSVG(tipo,sbE,sbD){
+  const cE=corSabor(sbE), cD=corSabor(sbD);
+  const morE=/morango/.test(normaliza(sbE||"")), morD=/morango/.test(normaliza(sbD||""));
+  if(tipo==="Vulcão"){ let s=""; const n=8,r=42,off=Math.PI/n; // 8 casquinhas: 4 de cada lado
+    for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI+off, x=50+r*Math.cos(a), y=50+r*Math.sin(a), left=x<50, col=left?cE:cD, mor=left?morE:morD;
+      s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.6" fill="#ecca97" stroke="#a9742f" stroke-width="1.3"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.7" fill="${col}"/>`;
+      if(mor) s+=`<ellipse cx="${x.toFixed(1)}" cy="${(y+0.4).toFixed(1)}" rx="2.4" ry="3" fill="#d8323e"/><circle cx="${x.toFixed(1)}" cy="${(y-2.4).toFixed(1)}" r="1.2" fill="#4a8f3a"/>`;
+    }
+    return s; }
+  if(tipo==="Pãozinho"){ let s=""; const n=24,r=42,off=Math.PI/n; // 24 rolinhos: 12 de cada lado
+    for(let i=0;i<n;i++){ const a=(i/n)*2*Math.PI+off, x=50+r*Math.cos(a), y=50+r*Math.sin(a), deg=(a*180/Math.PI)+90;
+      s+=`<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${deg.toFixed(0)})"><rect x="-2.7" y="-5" width="5.4" height="10" rx="2.7" fill="#e6bd7e" stroke="#a9742f" stroke-width=".9"/></g>`; }
+    return s; }
+  if(tipo==="Caracol") return `<circle cx="50" cy="50" r="42" fill="none" stroke="#e6bd7e" stroke-width="11"/><circle cx="50" cy="50" r="42" fill="none" stroke="#b9802f" stroke-width="11" stroke-dasharray="3.5 7"/>`;
+  return `<circle cx="50" cy="50" r="42" fill="none" stroke="#e9bf80" stroke-width="11"/>`; // Tradicional lisa
+}
+function pizzaSVG(p,px){
+  const id="pz"+(++_svgId);
+  const topE=p.sabores[0]||"", topD=p.sabores[1]||topE;
+  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}" class="pizza-svg">
+    <defs><clipPath id="${id}"><circle cx="50" cy="50" r="38"/></clipPath></defs>
+    <circle cx="50" cy="50" r="48" fill="#c98a44"/>
+    <g clip-path="url(#${id})">
+      <rect x="0" y="0" width="50" height="100" fill="${corBase(topE)}"/>
+      <rect x="50" y="0" width="50" height="100" fill="${corBase(topD)}"/>
+    </g>
+    ${rimSVG(p.bordaTipo,p.bordaSabEsq,p.bordaSabDir)}
+    <line x1="50" y1="7" x2="50" y2="93" stroke="rgba(60,30,10,.4)" stroke-width="1.5"/>
+  </svg>`;
+}
+function fmtSeg(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function cronTxt(p){
+  const m=Math.floor((Date.now()-p.tempoEtapa)/60000);
+  return m<1?"⏱ agora":("⏱ "+m+" min");
+}
+
+/* ====== Cozinha (preparos) ====== */
+function renderCozinha(){
+  const fila=pedidos.filter(p=>p.etapa<=2 && !p.preparoFeito && saboresPreparo(p).length>0)
+                    .sort((a,b)=>a.id-b.id);
+  const alaHtml = fila.length ? fila.map(p=>`<div class="cz-pedido">
+      <b>#${p.id}</b> · ${p.tamanho}
+      <div class="cz-sab">🍳 ${saboresPreparo(p).join(", ")}</div>
+      <button onclick="marcarPreparo('${p.idu}')">✓ Preparado</button>
+    </div>`).join("") : '<div class="cz-vazio">Nada na hora agora.</div>';
+  const batchHtml = PREPAROS.map((it,i)=>{
+    const low = it.feito<=it.min;
+    return `<div class="cz-item"><div class="ci-info"><b>${it.nome}</b><small>${it.feito} ${it.un} preparadas hoje</small></div>
+      <span class="${low?'badge-low':'badge-ok'}">${low?'⚠ acabando':'ok'}</span>
+      <button onclick="produzir(${i})">+ Produzir</button></div>`;
+  }).join("");
+  document.getElementById("cozinha-strip").innerHTML=`
+    <h3>🍳 Cozinha — preparos (em paralelo à linha)</h3>
+    <div class="cz-grid">
+      <div><div class="cz-sub-tit">Na hora (mignon, camarão...)</div><div class="cz-alaminute">${alaHtml}</div></div>
+      <div><div class="cz-sub-tit">Preparos do dia</div><div class="cz-batch">${batchHtml}</div></div>
+    </div>`;
+}
+function marcarPreparo(idu){ const p=pedidos.find(x=>x.idu===idu); if(p){ p.preparoFeito=true; renderCozinha(); toast("Preparo da cozinha pronto 🍳"); } }
+function produzir(i){ PREPAROS[i].feito+=PREPAROS[i].passo; renderCozinha(); toast(`Mais ${PREPAROS[i].passo} ${PREPAROS[i].un} de ${PREPAROS[i].nome}`); }
+
+/* ====== Quadro ====== */
+function render(){
+  const board=document.getElementById("board");
+  const sx=board.scrollLeft;
+  board.innerHTML="";
+  ETAPAS.forEach((etapa,ei)=>{
+    let lista=pedidos.filter(p=>p.etapa===ei);
+    const porRota=(ei===2||ei===5);
+    if(porRota) lista.sort((a,b)=> a.regiao.localeCompare(b.regiao)||a.id-b.id);
+    else lista.sort((a,b)=>a.id-b.id);
+    const col=document.createElement("div"); col.className="coluna";
+    col.innerHTML=`<div class="col-head"><span class="nome">${ICONE_ETAPA[ei]} ${etapa}</span><span class="qtd">${lista.length}</span></div>${porRota?'<div class="col-rota">⤳ ordem pela rota</div>':''}`;
+    const body=document.createElement("div"); body.className="col-body";
+    if(lista.length===0) body.innerHTML='<div class="cz-vazio" style="text-align:center">—</div>';
+    lista.forEach(p=>body.appendChild(cardHTML(p,ei)));
+    col.appendChild(body); board.appendChild(col);
+  });
+  board.scrollLeft=sx;
+  renderCozinha();
+}
+
+function cardHTML(p,ei){
+  const div=document.createElement("div");
+  div.className="card"+(ei===5?" pronto":"")+(p.obs.length?" tem-obs":"");
+  div.onclick=()=>abrirDetalhe(p.idu);
+  const sab=p.sabores.join(" + ");
+  let rodape;
+  if(ei===3){ // forno: countdown, sem botão
+    const rest=Math.max(0,Math.round(((p.fornoAte||Date.now())-Date.now())/1000));
+    rodape=`<div class="forno-box">🔥 no forno · sai em <span class="forno-count" data-idu="${p.idu}">${fmtSeg(rest)}</span></div>`;
+  } else {
+    const txt = ei===5?"✓ Entregue":"Avançar →";
+    const m=Math.floor((Date.now()-p.tempoEtapa)/60000);
+    rodape=`<div class="rodape"><span class="cron${m>=5?' lento':''}">${cronTxt(p)}</span><button class="avancar">${txt}</button></div>`;
+  }
+  div.innerHTML=`
+    <div class="topo-card"><span class="pid">#${p.id}</span><span class="reg">${p.regiao}</span></div>
+    <div class="corpo">${pizzaSVG(p,46)}
+      <div class="info"><div class="cli">${p.cliente}</div>
+        <div class="det"><span class="tam">${p.tamanho.toUpperCase()}</span> ${p.doce?'<span class="doce-tag">DOCE</span>':''}<br>${sab}</div></div></div>
+    ${p.obs.length?`<div class="obs-flag">⚠ ${p.obs.join(" · ")}</div>`:''}
+    ${rodape}`;
+  const btn=div.querySelector(".avancar");
+  if(btn) btn.onclick=(e)=>{ e.stopPropagation(); avancar(p.idu); };
+  return div;
+}
+
+/* ====== Detalhe / estação ====== */
+function abrirDetalhe(idu){
+  const p=pedidos.find(x=>x.idu===idu); if(!p) return;
+  const ei=p.etapa, etapa=ETAPAS[ei];
+  const obsGeral=[]; const obsPorSabor={}; p.sabores.forEach(s=>obsPorSabor[s]=[]);
+  p.obs.forEach(o=>{ const cas=p.sabores.filter(s=>obsCasaSabor(o,s)); if(cas.length) cas.forEach(s=>obsPorSabor[s].push(o)); else obsGeral.push(o); });
+  let box="";
+  if(ei===0){
+    box=`<div class="estacao-titulo">Abertura de massa</div><div class="grande">${p.tamanho.toUpperCase()}</div>`;
+  } else if(ei===1){
+    const mm=p.bordaSabEsq!==p.bordaSabDir;
+    const semRecheio = normaliza(p.bordaSabEsq)==="sem recheio" && normaliza(p.bordaSabDir)==="sem recheio";
+    const recheadaTrad = p.bordaTipo==="Tradicional" && !semRecheio;
+    const tags = `${mm?'<span class="meio-tag">SABOR MEIO A MEIO</span> ':''}${recheadaTrad?'<span class="meio-tag" style="background:#c0392b;color:#fff">↪ RECHEIO POR DENTRO (parece lisa, mas vai recheio)</span>':''}${semRecheio?'<span class="meio-tag" style="background:#7a7268;color:#fff">SEM RECHEIO · massa normal</span>':''}`;
+    box=`<div class="estacao-titulo">Faça a borda: ${p.bordaTipo} ${BORDA_TIPOS[p.bordaTipo].emoji}</div>
+      ${tags.trim()?`<div style="text-align:center;line-height:2">${tags}</div>`:''}
+      <div style="text-align:center"><img src="fotos-bordas/${encodeURIComponent(p.bordaTipo)}.jpg" alt="" style="max-width:220px;border-radius:12px;margin:8px 0" onerror="this.style.display='none'"></div>
+      <div class="borda-linha">${pizzaSVG(p,240)}
+        <div class="borda-legenda">Tipo: <b>${p.bordaTipo}</b><br>${mm
+          ? `<div style="margin-top:8px">◀ Esquerda: <b>${p.bordaSabEsq}</b></div><div>Direita: <b>${p.bordaSabDir}</b> ▶</div>`
+          : `Sabor: <b>${p.bordaSabEsq}</b>`}</div></div>`;
+  } else if(ei===2){
+    const ladoHTML=(s)=>{
+      if(!s) return "";
+      const fin=finalSalgada(s);
+      const nota=(p.doce&&DOCES[s])?'<div class="ficha-nota">⚠ Só o creme de leite agora — o recheio vai na finalização.</div>'
+        :(fin.length?`<div class="ficha-nota" style="color:var(--azul)">Na finalização: ${fin.map(x=>(x.q?x.q+" ":"")+x.n).join(", ")}</div>`:'');
+      const aSab=obsPorSabor[s].map(o=>`<div class="obs-sabor">⚠️ ${o}</div>`).join("");
+      return `<div class="sabor-nome">${s}</div>${aSab}${ingHTML(fichaMontagem(s),obsPorSabor[s])}${nota}`;
+    };
+    const s0=p.sabores[0], s1=p.sabores[1];
+    const pizzaCol=`<div class="montagem-pizza">${pizzaSVG(p,150)}</div>`;
+    const grid = s1
+      ? `<div class="montagem-3col"><div class="lado"><div class="lado-tit">◀ Lado esquerdo</div>${ladoHTML(s0)}</div>${pizzaCol}<div class="lado"><div class="lado-tit">Lado direito ▶</div>${ladoHTML(s1)}</div></div>`
+      : `<div class="montagem-2col">${pizzaCol}<div class="lado">${ladoHTML(s0)}</div></div>`;
+    box=`<div class="estacao-titulo">Montagem · ${p.tamanho} · ${s1?'meio a meio':'1 sabor'}</div>
+      <div class="mont-borda-top">🍞 Borda: <b>${resumoBorda(p)}</b></div>
+      <div class="foto-ph">📷 Foto da montagem (você vai me enviar)</div>${grid}`;
+  } else if(ei===3){
+    const rest=Math.max(0,Math.round(((p.fornoAte||Date.now())-Date.now())/1000));
+    box=`<div class="estacao-titulo">Forno (automático)</div><div class="grande">🔥 ${fmtSeg(rest)}</div>
+      <div style="text-align:center;color:var(--muted);margin-top:8px">Sai sozinho quando o tempo acabar · ${p.tamanho} · ${resumoBorda(p)}</div>`;
+  } else if(ei===4){
+    let sec=""; let n=0;
+    if(bordaEhDoce(p)){
+      n++; const le=p.bordaSabEsq, ld=p.bordaSabDir, mm=le!==ld;
+      sec+=`<div class="estacao-titulo">${n}) Rechear a borda ${p.bordaTipo} (recheio doce — NÃO vai ao forno)</div>
+        <div class="foto-ph">📷 Foto da borda recheada (coloque em fotos-bordas/)</div>
+        <div class="borda-linha">${pizzaSVG(p,170)}
+          <div class="borda-legenda">${mm?`<div>Esquerda: <b>${le}</b></div><div style="margin-top:10px">Direita: <b>${ld}</b></div>`:`Sabor: <b>${le}</b>`}</div></div>`;
+    }
+    if(p.doce){
+      p.sabores.filter(s=>DOCES[s]).forEach(s=>{
+        n++; sec+=`<div class="estacao-titulo">${n}) Montar a pizza doce: ${s} (toda montada aqui)</div>
+          <div class="foto-ph">📷 Foto do modo de preparo (você vai me enviar)</div>${passosHTML(fichaFinalizacao(s))}`;
+      });
+    }
+    const finItens=(!p.doce)?p.sabores.flatMap(s=>finalSalgada(s)):[];
+    if(finItens.length){ n++; sec+=`<div class="estacao-titulo">${n}) Itens da finalização</div>`+ingHTML(finItens); }
+    n++; sec+=`<div class="estacao-titulo">${n}) Conferência final</div>`;
+    sec+=["Cortar a pizza","Fechar a caixa",`Etiqueta com o nome: <b>${p.cliente}</b> 🏷️`].map(i=>`<label class="check"><input type="checkbox"><span>${i}</span></label>`).join("");
+    box=sec;
+  } else {
+    box=`<div class="estacao-titulo">Despacho · entrega</div>
+      <div class="rota-aviso">🛵 <b>Roteirização:</b> agrupa os pedidos da mesma região e manda pro próximo motoboy livre com a rota pronta. <i>(otimização por mapa entra na versão com nuvem.)</i></div>
+      <div style="font-size:15px;line-height:1.9"><div><b>Cliente:</b> ${p.cliente}</div><div><b>Região:</b> ${p.regiao}</div>
+        <div><b>Pizza:</b> ${p.tamanho} · ${resumoBorda(p)} · ${p.sabores.join(" + ")}</div></div>`;
+  }
+  const ultima=ei===5;
+  let alerta="";
+  if(ei===4 && p.obs.length) alerta=`<div class="obs-alerta">⚠️ ATENÇÃO: ${p.obs.join(" · ")}</div>`;
+  else if(ei===2 && obsGeral.length) alerta=`<div class="obs-alerta">⚠️ ATENÇÃO: ${obsGeral.join(" · ")}</div>`;
+  const labelBtn = ei===3?"⏭ Tirar do forno agora" : ultima?"✓ Entregue (sair)" : "Concluir etapa → "+ETAPAS[ei+1];
+  document.getElementById("modal-corpo").innerHTML=`
+    <div class="mtopo"><h2>Pedido #${p.id}</h2><span class="etapa-selo">${ICONE_ETAPA[ei]} ${etapa}</span></div>
+    <div class="cliente">${p.cliente} · ${p.regiao}</div>
+    ${alerta}
+    <div class="estacao-box">${box}</div>
+    <div class="modal-acoes">
+      <button class="btn-sec" onclick="fechar()">Fechar</button>
+      <button class="btn-principal btn-grande" onclick="avancar('${p.idu}',true)">${labelBtn}</button>
+    </div>`;
+  document.getElementById("modal").classList.add("aberto");
+}
+
+function avancar(idu, fecharModal){
+  const p=pedidos.find(x=>x.idu===idu); if(!p) return;
+  if(p.etapa>=5){ if(p.cloudId) cloudPatchPedido(p.cloudId,{status:'pronto',etapa:null,pronto_em:new Date().toISOString()}); pedidos=pedidos.filter(x=>x.idu!==idu); toast(`Pedido #${p.id} pronto! → sai pra entrega 🛵`); }
+  else { p.etapa++; p.tempoEtapa=Date.now(); if(p.etapa===3) p.fornoAte=Date.now()+FORNO_SEG*1000; if(p.cloudId) cloudPatchPedido(p.cloudId,{etapa:COZ_ETAPAS[p.etapa]}); toast(`#${p.id} → ${ETAPAS[p.etapa]}`); }
+  if(fecharModal) fechar();
+  render();
+}
+function fechar(){ document.getElementById("modal").classList.remove("aberto"); }
+document.getElementById("modal").addEventListener("click",e=>{ if(e.target.id==="modal") fechar(); });
+
+async function simularPedido(){ try{ const u=await unidC(); const f=novoPedido(0);
+   const bt=(f.bordaTipo==='Tradicional'&&f.bordaSabEsq==='Sem recheio')?null:f.bordaTipo;
+   const novo=(await PZCLOUD.post('pedidos',[{unidade_id:u.id,canal:'pdv',tipo:'delivery',status:'preparo',etapa:'abertura',cliente_nome:f.cliente,total:99.9}]))[0];
+   await PZCLOUD.post('pedido_itens',[{pedido_id:novo.id,tipo:'pizza',tamanho:f.tamanho,sabores:f.sabores,borda_tipo:bt,borda_sabor_esq:bt?f.bordaSabEsq:null,borda_sabor_dir:bt?f.bordaSabDir:null,produto_nome:null,obs:(f.obs[0]||null),qtd:1,preco:99.9}],'return=minimal');
+   sincronizarCozinha(); toast("Pedido de teste criado na nuvem 🟡"); }catch(e){ toast('⚠ '+e.message.slice(0,40)); } }
+function resetar(){ sincronizarCozinha(); fechar(); }
+
+function toast(msg){
+  const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.getElementById("toasts").appendChild(t);
+  setTimeout(()=>{ t.style.transition="opacity .3s"; t.style.opacity="0"; setTimeout(()=>t.remove(),300); },2000);
+}
+
+function semear(){
+  seq=10; pedidos=[];
+  PREPAROS=[
+    {nome:"Frango desfiado",feito:40,min:12,passo:20,un:"porções"},
+    {nome:"Molho Premium",feito:30,min:10,passo:20,un:"conchas"},
+    {nome:"Creme de Ninho",feito:8,min:10,passo:5,un:"receitas"}
+  ];
+  const a=novoPedido(0);
+  const b=novoPedido(0);
+  const c=novoPedido(1); c.bordaTipo="Vulcão"; c.bordaSabEsq="Nutella"; c.bordaSabDir="Cheddar";
+  const d=novoPedido(2); d.doce=false; d.sabores=["Calabresa","Mussarela"]; d.obs=["SEM CEBOLA"]; d.bordaTipo="Pãozinho"; d.bordaSabEsq=d.bordaSabDir="Calabresa c/ Catupiry";
+  const e=novoPedido(1); e.doce=false; e.sabores=["Mignon"]; e.preparoFeito=false; e.bordaTipo="Tradicional"; e.bordaSabEsq=e.bordaSabDir="Catupiry";
+  const f=novoPedido(3); f.fornoAte=Date.now()+FORNO_SEG*1000;
+  const g=novoPedido(4); g.obs=["BEM ASSADA","CORTAR EM 8"]; g.bordaTipo="Vulcão"; g.bordaSabEsq="Nutella c/ Morango"; g.bordaSabDir="Ninho c/ Morango"; g.doce=true; g.sabores=["Ninho c/ Nutella"];
+  pedidos.push(a,b,c,d,e,f,g);
+}
+
+function tickForno(){
+  const agora=Date.now(); let mudou=false;
+  pedidos.filter(p=>p.etapa===3 && p.fornoAte).forEach(p=>{ if(agora>=p.fornoAte){ p.etapa=4; p.tempoEtapa=agora; p.fornoAte=null; if(p.cloudId) cloudPatchPedido(p.cloudId,{etapa:'finalizacao'}); mudou=true; toast(`#${p.id} saiu do forno → Finalização`); } });
+  if(mudou){ render(); return; }
+  document.querySelectorAll(".forno-count").forEach(el=>{
+    const p=pedidos.find(x=>x.idu===el.dataset.idu);
+    if(p&&p.fornoAte) el.textContent=fmtSeg(Math.max(0,Math.round((p.fornoAte-agora)/1000)));
+  });
+}
+function tickRelogio(){ const d=new Date(); document.getElementById("relogio").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+PREPAROS=[{nome:"Frango desfiado",feito:40,min:12,passo:20,un:"porções"},{nome:"Molho Premium",feito:30,min:10,passo:20,un:"conchas"},{nome:"Creme de Ninho",feito:8,min:10,passo:5,un:"receitas"}];
+render(); tickRelogio(); sincronizarCozinha(); setInterval(sincronizarCozinha,4000);
+setInterval(tickForno,1000);
+setInterval(()=>{ render(); tickRelogio(); },30000);
+</script>
+</body>
+</html>
