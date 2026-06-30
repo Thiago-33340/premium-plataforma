@@ -246,13 +246,15 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
 .dash-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:18px 20px 14px; border-bottom:1px solid var(--line); }
 .dash-head h3{ margin:0; font-size:21px; letter-spacing:-.3px; }
 .dash-head p{ margin:4px 0 0; color:var(--mut); font-size:12px; line-height:1.4; }
-.dash-tabs{ display:flex; align-items:flex-end; gap:0; padding:9px 18px 0; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#101012,#0d0d0f); overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.dash-tabs{ --dash-panel-bg:#111113; --dash-tab-bg:#15140f; --dash-tab-bg-hover:#1c1a16; --dash-tab-text:#ededea; --dash-tab-text-muted:#9a978f; --dash-tab-radius:12px; --dash-tab-h:42px; --dash-tab-h-inactive:37px; position:relative; z-index:1; display:flex; align-items:flex-end; gap:8px; margin:0; padding:0 var(--dash-tab-radius); list-style:none; border:0; overflow:visible; background:transparent; }
 .dash-tabs::-webkit-scrollbar{ display:none; width:0; height:0; }
-.dash-tab{ position:relative; min-height:42px; margin:0 -5px 0 0; border:1px solid rgba(255,255,255,.08); border-bottom:0; background:#18181c; color:#aaaab4; border-radius:17px 17px 0 0; padding:0 22px 1px; font-size:13px; font-weight:700; letter-spacing:-.1px; white-space:nowrap; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); transition:background .16s,color .16s,transform .16s,border-color .16s; }
-.dash-tab:hover{ color:#fff; background:#202026; border-color:rgba(255,255,255,.13); }
-.dash-tab.on{ z-index:2; color:#fff; background:#111113; border-color:rgba(255,255,255,.16); transform:translateY(1px); box-shadow:inset 0 3px 0 var(--lar),0 -8px 18px rgba(0,0,0,.2); }
-.dash-tab.on:after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:1px; background:#111113; }
-.dash-tab:not(.on){ transform:translateY(5px); }
+.dash-tab{ position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center; height:var(--dash-tab-h-inactive); padding:0 18px; margin:0; border:0; outline:0; background:var(--dash-tab-bg); color:var(--dash-tab-text-muted); font:inherit; font-size:14px; font-weight:500; line-height:1; letter-spacing:.1px; white-space:nowrap; cursor:pointer; appearance:none; -webkit-appearance:none; border-radius:var(--dash-tab-radius) var(--dash-tab-radius) 0 0; transition:background .18s ease,color .18s ease,height .18s ease; }
+.dash-tab:hover:not(.on){ background:var(--dash-tab-bg-hover); color:var(--dash-tab-text); }
+.dash-tab:focus-visible{ box-shadow:inset 0 0 0 2px rgba(237,237,234,.55); }
+.dash-tab.on{ z-index:3; height:var(--dash-tab-h); background:var(--dash-panel-bg); color:var(--dash-tab-text); font-weight:600; margin-bottom:-1px; }
+.dash-tab.on:before,.dash-tab.on:after{ content:''; position:absolute; bottom:0; width:var(--dash-tab-radius); height:var(--dash-tab-radius); pointer-events:none; }
+.dash-tab.on:before{ left:calc(var(--dash-tab-radius) * -1); background:radial-gradient(circle at top right,transparent var(--dash-tab-radius),var(--dash-panel-bg) calc(var(--dash-tab-radius) + .5px)); }
+.dash-tab.on:after{ right:calc(var(--dash-tab-radius) * -1); background:radial-gradient(circle at top left,transparent var(--dash-tab-radius),var(--dash-panel-bg) calc(var(--dash-tab-radius) + .5px)); }
 .dash-body{ padding:16px 18px 18px; overflow:auto; max-height:calc(var(--vvh) - 128px); }
 .dash-body::-webkit-scrollbar{ width:8px; height:8px; }
 .dash-body::-webkit-scrollbar-track{ background:transparent; }
@@ -274,8 +276,8 @@ h2.tit{ font-size:28px; letter-spacing:-.7px; }
   .dash-modal{ padding:0; align-items:flex-end; }
   .dash-modal .box{ width:100%; max-height:calc(var(--vvh) - 8px); border-radius:18px 18px 0 0; }
   .dash-head{ padding:16px 16px 12px; }
-  .dash-tabs{ padding:8px 14px 0; }
-  .dash-tab{ min-height:39px; padding:0 16px 1px; font-size:12px; border-radius:15px 15px 0 0; }
+  .dash-tabs{ --dash-tab-radius:10px; --dash-tab-h:40px; --dash-tab-h-inactive:35px; gap:6px; }
+  .dash-tab{ flex:1 1 0; padding:0 10px; font-size:13px; }
   .dash-body{ padding:14px; max-height:calc(var(--vvh) - 114px); }
   .dash-toolbar{ flex-direction:column; align-items:stretch; }
   .dash-toolbar .field{ max-width:none; }
