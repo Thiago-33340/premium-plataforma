@@ -160,6 +160,161 @@
   .inv-empty{ color:var(--amar); font-size:12px; padding:10px 0; }
   .inv-mass{ display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap; color:var(--mut); font-size:11px; margin-bottom:10px; }
 
+  /* ===== OPERAÇÃO — áreas, setores e linha de produção ===== */
+  .op-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:16px;flex-wrap:wrap}
+  .op-head .eyebrow{color:var(--laranja);font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:7px}
+  .op-head h2{font-size:26px;letter-spacing:-.6px;margin:0}
+  .op-head p{color:var(--mut);font-size:13px;max-width:760px;line-height:1.5;margin:7px 0 0}
+  .op-filters{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:12px 0 12px}
+  .op-filters label{min-width:190px}.op-filters .field{margin-top:5px}
+  .op-viewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+  .op-mode{display:flex;gap:6px;border:1px solid var(--linha);background:#111113;border-radius:14px;padding:4px}
+  .op-mode button{border:0;background:transparent;color:var(--mut);border-radius:10px;padding:8px 11px;font-size:12px;font-weight:800}
+  .op-mode button.on{background:var(--laranja);color:#160a02}
+  .op-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 15px}
+  .op-kpi{border:1px solid var(--linha);background:linear-gradient(145deg,#17171a,#101012);border-radius:14px;padding:13px 14px}
+  .op-kpi b{display:block;font-size:22px}.op-kpi span{font-size:11px;color:var(--mut)}
+  .op-brief{border:1px solid #2b261f;background:linear-gradient(145deg,#17130f,#101012);border-radius:18px;padding:13px 14px;margin:0 0 15px}
+  .op-brief-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .op-brief-head b{font-size:14px}.op-brief-head span{font-size:11px;color:var(--mut);font-weight:700}
+  .op-brief-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+  .op-brief-card{border:1px solid #2a2a30;background:#131316;border-radius:13px;padding:10px}
+  .op-brief-card b{display:block;font-size:12px;margin-bottom:4px}.op-brief-card small{display:block;color:var(--mut);font-size:11px;line-height:1.45}
+  .op-flow{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.op-flow span{border:1px solid #34343b;background:#1a1a1e;border-radius:999px;padding:4px 8px;font-size:10px;color:#d8d8df;font-weight:800}
+  .op-layout{display:grid;gap:12px;min-height:520px}
+  .op-layout.left{grid-template-columns:320px minmax(0,1fr);align-items:start}
+  .op-layout.top{display:flex;flex-direction:column}
+  .op-list{border:1px solid var(--linha);background:#0f0f11;border-radius:18px;padding:10px;scrollbar-width:thin;scrollbar-color:#555 #121214}
+  .op-layout.left .op-list{max-height:calc(100vh - 310px);overflow:auto;display:flex;flex-direction:column;gap:9px}
+  .op-layout.top .op-list{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding-bottom:12px;min-height:184px}
+  .op-list::-webkit-scrollbar,.op-detail-pane::-webkit-scrollbar{width:10px;height:10px}.op-list::-webkit-scrollbar-thumb,.op-detail-pane::-webkit-scrollbar-thumb{background:#4b4b51;border-radius:999px;border:2px solid #121214}.op-list::-webkit-scrollbar-track,.op-detail-pane::-webkit-scrollbar-track{background:#121214;border-radius:999px}
+  .op-detail-pane{border:1px solid var(--linha);background:linear-gradient(145deg,#151518,#101012);border-radius:18px;overflow:auto;min-height:420px;padding:14px}
+  .op-layout.left .op-detail-pane{max-height:calc(100vh - 310px)}
+  .op-layout.top .op-detail-pane{min-height:430px}
+  .op-area-card{border:1px solid var(--linha);background:linear-gradient(145deg,#17171a,#101012);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 42px;min-height:148px;box-shadow:0 12px 24px #0002}
+  .op-layout.top .op-area-card{grid-template-columns:1fr;grid-template-rows:minmax(128px,1fr) 38px;flex:0 0 292px;min-width:292px}
+  .op-area-card.open{border-color:#9a540d;background:linear-gradient(145deg,#201711,#101012)}
+  .op-card-main{padding:13px 14px;display:flex;flex-direction:column;gap:9px;min-width:0}
+  .op-area-name b{font-size:17px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.op-area-name small{display:block;color:var(--mut);margin-top:3px}
+  .op-status{display:flex;gap:6px;flex-wrap:wrap}
+  .op-pill{border:1px solid var(--linha2);border-radius:999px;padding:4px 9px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.4px}
+  .op-pill.ativa,.op-pill.normal{background:#0f2a18;border-color:#245b35;color:#87e3a4}.op-pill.rascunho,.op-pill.atencao{background:#2a2410;border-color:#5b4b1e;color:#f6d36d}.op-pill.inativa,.op-pill.perigo{background:#2a1414;border-color:#5a2323;color:#ff9a9a}
+  .op-expand{border:0;border-left:1px solid #3b2a18;background:#231807;color:var(--laranja);font-size:25px;line-height:1;display:grid;place-items:center;transition:.16s;width:100%;height:100%;font-weight:400}
+  .op-expand:hover{background:#2d1d0b}.op-layout.top .op-expand{border-left:0;border-top:1px solid #3b2a18}
+  .op-layout.left .op-area-card.open .op-expand{background:var(--laranja);color:#160a02}.op-layout.top .op-area-card.open .op-expand{background:var(--laranja);color:#160a02}
+  .op-card-mini{display:grid;grid-template-columns:1fr 1fr;gap:7px}.op-card-mini span{border:1px solid #27272e;background:#131316;border-radius:10px;padding:7px 8px;color:var(--mut);font-size:10px}.op-card-mini b{display:block;color:#fff;font-size:12px;margin-top:2px}
+  .op-chart{display:grid;place-items:center;gap:7px}
+  .op-pie{--pie:conic-gradient(#F97316 0 100%);width:170px;height:170px;border-radius:50%;background:var(--pie);position:relative;box-shadow:inset 0 0 0 18px #0d0d0f,0 0 0 1px #2b2b31}
+  .op-pie:after{content:attr(data-total);position:absolute;inset:45px;border-radius:50%;background:#101012;display:grid;place-items:center;text-align:center;font-weight:900;font-size:14px;color:#fff;white-space:pre-line}
+  .op-detail-top{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:center;margin-bottom:12px}
+  .op-legend{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}.op-legend span{font-size:10px;color:#bdbdc5;background:#202024;border:1px solid #2b2b32;border-radius:999px;padding:3px 7px}
+  .op-area-brief{border:1px solid #292930;background:#121216;border-radius:14px;padding:11px 12px;margin:10px 0 12px;color:var(--mut);font-size:12px;line-height:1.5}
+  .op-area-brief b{color:#fff}.op-area-brief ul{margin:7px 0 0 18px;padding:0}.op-area-brief li{margin:3px 0}
+  .op-route{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .op-sector-line{border:1px solid #27272e;border-radius:14px;background:#131316;overflow:hidden}
+  .op-sector-main{display:grid;grid-template-columns:minmax(160px,1fr) repeat(5,minmax(84px,auto)) 118px;gap:8px;align-items:center;padding:11px 12px}
+  .op-sector-main b{display:block}.op-sector-main small{color:var(--mut);font-size:11px}
+  .op-metric{font-size:11px;color:var(--mut)}.op-metric strong{display:block;color:#fff;font-size:12px}
+  .op-light{width:11px;height:11px;border-radius:50%;display:inline-block;background:var(--verde);box-shadow:0 0 0 4px #102a19}.op-light.atencao{background:var(--amar);box-shadow:0 0 0 4px #2a2410}.op-light.perigo{background:var(--verm);box-shadow:0 0 0 4px #2a1414}
+  .op-sector-actions{display:flex;gap:5px;justify-content:flex-end}.op-ico{width:32px;height:32px;border:1px solid var(--linha2);background:#1a1a1e;color:#ddd;border-radius:9px;font-size:14px}
+  .op-sector-detail{display:none;border-top:1px solid #232329;padding:11px 12px;color:var(--mut);font-size:12px;line-height:1.45}.op-sector-line.open .op-sector-detail{display:block}
+  .op-form{max-width:1120px!important;padding:0!important;max-height:94vh;overflow:hidden;border-radius:20px!important}
+  .op-form-head{padding:18px 20px;border-bottom:1px solid var(--linha);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+  .op-form-head h3{font-size:21px;margin:0}.op-form-head p{margin:4px 0 0;color:var(--mut);max-width:760px;line-height:1.45}
+  .op-form-body{padding:18px 20px 22px;overflow:auto;max-height:calc(94vh - 84px)}
+  .op-form-grid{display:grid;grid-template-columns:2fr 1fr 130px;gap:10px;margin-bottom:14px}.op-form-grid label,.op-label{font-size:11px;color:var(--mut);font-weight:700;display:flex;flex-direction:column;gap:6px}
+  .op-builder{display:grid;grid-template-columns:330px minmax(0,1fr);gap:14px;align-items:start}
+  .op-sector-list{border:1px solid var(--linha);border-radius:16px;background:#111113;padding:12px;position:sticky;top:0}
+  .op-sector-card{border:1px solid #28282f;background:#17171b;border-radius:12px;padding:10px;margin-bottom:8px;cursor:pointer}.op-sector-card.on{border-color:#9a540d;background:#21170e}
+  .op-sector-card b{display:block}.op-sector-card small{color:var(--mut);font-size:11px}
+  .op-sector-editor{border:1px solid var(--linha);border-radius:16px;background:#111113;padding:14px;min-height:420px}
+  .op-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.op-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .op-switch-card{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #2a2a30;background:#17171b;border-radius:13px;padding:11px 12px;margin:10px 0}
+  .op-switch-card b{display:block;font-size:13px}.op-switch-card small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+  .op-switch{position:relative;width:58px;height:30px;border:0;background:transparent;padding:0;flex:0 0 58px}.op-switch:before{content:'';position:absolute;inset:3px;border-radius:999px;background:#4b4b51}.op-switch:after{content:'';position:absolute;width:26px;height:26px;border-radius:50%;left:0;top:2px;background:#f2f2f3;box-shadow:0 5px 15px #0008;transition:.18s}.op-switch.on:before{background:#78d2c7}.op-switch.on:after{left:30px;background:#0fa99b}
+  .op-table-card{border:1px solid #28282f;border-radius:13px;overflow:hidden;margin:10px 0;background:#151518}.op-table-head,.op-prep-line{display:grid;grid-template-columns:minmax(160px,1fr) 135px 96px 42px;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #24242a}.op-table-head{background:#1a1a1f;color:var(--mut2);font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.55px}.op-prep-line:last-child{border-bottom:0}.op-prep-line .field{margin:0;padding:9px 10px;font-size:12px}
+  .op-process-card{border:1px solid #28282f;border-radius:14px;background:#151518;padding:12px;margin:10px 0}.op-process-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:12px}.op-upload{border:1px dashed #3a3a42;border-radius:13px;min-height:130px;padding:12px;display:flex;flex-direction:column;gap:8px;justify-content:center}.op-step-line{display:grid;grid-template-columns:minmax(160px,1fr) 190px 38px;gap:8px;margin-bottom:8px}.op-step-line .field{margin:0;padding:9px 10px;font-size:12px}
+  .op-foot{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--linha)}.op-foot-right{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ===== OPERAÇÃO — tema claro/bege inspirado no protótipo operacional ===== */
+  body[data-admin-section="operacao"] .main{ background:#f5efe6; }
+  body[data-admin-section="operacao"] #s_operacao{ --op-bg:#f5efe6; --op-paper:#fffaf3; --op-paper2:#fff5ea; --op-paper3:#f2e4d4; --op-line:#e3cdb8; --op-line2:#d8bfa7; --op-text:#201713; --op-muted:#7c6758; --op-orange:#ff7418; --op-amber:#ffb000; color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-head .eyebrow{ color:#c85c00; }
+  body[data-admin-section="operacao"] #s_operacao .op-head h2,
+  body[data-admin-section="operacao"] #s_operacao .op-area-name b,
+  body[data-admin-section="operacao"] #s_operacao .op-brief-head b,
+  body[data-admin-section="operacao"] #s_operacao .op-kpi b,
+  body[data-admin-section="operacao"] #s_operacao .op-brief-card b{ color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-head p,
+  body[data-admin-section="operacao"] #s_operacao .mut,
+  body[data-admin-section="operacao"] #s_operacao .op-area-name small,
+  body[data-admin-section="operacao"] #s_operacao .op-brief-head span,
+  body[data-admin-section="operacao"] #s_operacao .op-brief-card small,
+  body[data-admin-section="operacao"] #s_operacao .op-kpi span,
+  body[data-admin-section="operacao"] #s_operacao .op-metric,
+  body[data-admin-section="operacao"] #s_operacao .op-sector-main small,
+  body[data-admin-section="operacao"] #s_operacao .empty{ color:var(--op-muted); }
+  body[data-admin-section="operacao"] #s_operacao .field{ background:var(--op-paper); border-color:var(--op-line2); color:var(--op-text); box-shadow:0 1px 0 rgba(255,255,255,.55) inset; }
+  body[data-admin-section="operacao"] #s_operacao select.field{ background-color:var(--op-paper); }
+  body[data-admin-section="operacao"] #s_operacao select.field option{ background:var(--op-paper); color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .btn.ghost{ background:var(--op-paper); border-color:var(--op-line2); color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-mode{ background:#ede0d1; border-color:var(--op-line2); }
+  body[data-admin-section="operacao"] #s_operacao .op-mode button{ color:var(--op-muted); }
+  body[data-admin-section="operacao"] #s_operacao .op-mode button.on{ background:var(--op-orange); color:#170800; }
+  body[data-admin-section="operacao"] #s_operacao .op-brief{ background:linear-gradient(180deg,#fffaf3,#fff1e5); border-color:var(--op-line); box-shadow:0 18px 40px rgba(94,53,18,.10); }
+  body[data-admin-section="operacao"] #s_operacao .op-brief-card,
+  body[data-admin-section="operacao"] #s_operacao .op-kpi,
+  body[data-admin-section="operacao"] #s_operacao .op-list,
+  body[data-admin-section="operacao"] #s_operacao .op-detail-pane,
+  body[data-admin-section="operacao"] #s_operacao .op-sector-line{ background:var(--op-paper); border-color:var(--op-line); box-shadow:0 14px 34px rgba(62,38,18,.08); }
+  body[data-admin-section="operacao"] #s_operacao .op-list{ scrollbar-color:#c8ac90 #f2e4d4; }
+  body[data-admin-section="operacao"] #s_operacao .op-list::-webkit-scrollbar-thumb,
+  body[data-admin-section="operacao"] #s_operacao .op-detail-pane::-webkit-scrollbar-thumb{ background:#c8ac90; border-color:#f2e4d4; }
+  body[data-admin-section="operacao"] #s_operacao .op-list::-webkit-scrollbar-track,
+  body[data-admin-section="operacao"] #s_operacao .op-detail-pane::-webkit-scrollbar-track{ background:#f2e4d4; }
+  body[data-admin-section="operacao"] #s_operacao .op-area-card{ background:linear-gradient(180deg,#fffaf3,#fff4ea); border-color:var(--op-line); box-shadow:0 15px 38px rgba(62,38,18,.11); }
+  body[data-admin-section="operacao"] #s_operacao .op-area-card.open{ background:linear-gradient(180deg,#fff4e8,#ffe8cf); border-color:#f4a261; }
+  body[data-admin-section="operacao"] #s_operacao .op-card-mini span{ background:var(--op-paper2); border-color:var(--op-line); color:var(--op-muted); }
+  body[data-admin-section="operacao"] #s_operacao .op-card-mini b,
+  body[data-admin-section="operacao"] #s_operacao .op-metric strong{ color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-expand{ background:#f5dfc9; border-color:#e6c4a1; color:#c65a00; }
+  body[data-admin-section="operacao"] #s_operacao .op-expand:hover{ background:#efd0af; }
+  body[data-admin-section="operacao"] #s_operacao .op-area-card.open .op-expand{ background:var(--op-orange); color:#170800; }
+  body[data-admin-section="operacao"] #s_operacao .op-flow span,
+  body[data-admin-section="operacao"] #s_operacao .op-legend span{ background:#f2e4d4; border-color:#e0c8ae; color:#3a281d; }
+  body[data-admin-section="operacao"] #s_operacao .op-pie{ box-shadow:inset 0 0 0 18px #fffaf3,0 0 0 1px var(--op-line); }
+  body[data-admin-section="operacao"] #s_operacao .op-pie:after{ background:#fffaf3; color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-area-brief{ background:#fff4e8; border-color:var(--op-line); color:var(--op-muted); }
+  body[data-admin-section="operacao"] #s_operacao .op-area-brief b,
+  body[data-admin-section="operacao"] #s_operacao .op-sector-main b{ color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-sector-detail{ background:#fff7ee; border-color:var(--op-line); color:var(--op-muted); }
+  body[data-admin-section="operacao"] #s_operacao .op-ico{ background:#fff5ea; border-color:var(--op-line2); color:var(--op-text); }
+  body[data-admin-section="operacao"] #s_operacao .op-pill.ativa,
+  body[data-admin-section="operacao"] #s_operacao .op-pill.normal{ background:#e9f8ed; border-color:#b9e8c6; color:#137238; }
+  body[data-admin-section="operacao"] #s_operacao .op-pill.rascunho,
+  body[data-admin-section="operacao"] #s_operacao .op-pill.atencao{ background:#fff2c6; border-color:#f2d27a; color:#8a5a00; }
+  body[data-admin-section="operacao"] #s_operacao .op-pill.inativa,
+  body[data-admin-section="operacao"] #s_operacao .op-pill.perigo{ background:#ffe2df; border-color:#f3b0a9; color:#a32016; }
+  body[data-admin-section="operacao"] .op-form{ background:#fffaf3!important; color:#201713; border-color:#e3cdb8!important; }
+  body[data-admin-section="operacao"] .op-form-head,
+  body[data-admin-section="operacao"] .op-foot{ border-color:#e3cdb8; }
+  body[data-admin-section="operacao"] .op-form-head p,
+  body[data-admin-section="operacao"] .op-label,
+  body[data-admin-section="operacao"] .op-form-grid label{ color:#7c6758; }
+  body[data-admin-section="operacao"] .op-sector-list,
+  body[data-admin-section="operacao"] .op-sector-editor,
+  body[data-admin-section="operacao"] .op-switch-card,
+  body[data-admin-section="operacao"] .op-table-card,
+  body[data-admin-section="operacao"] .op-process-card,
+  body[data-admin-section="operacao"] .op-sector-card{ background:#fff5ea; border-color:#e3cdb8; color:#201713; }
+  body[data-admin-section="operacao"] .op-sector-card.on{ background:#ffe7cc; border-color:#ffb366; }
+
+  @media(max-width:1100px){
+    body[data-admin-section="operacao"] #s_operacao .op-viewbar{ justify-content:flex-start; }
+    body[data-admin-section="operacao"] #s_operacao .op-viewbar .op-mode{ display:none; }
+    body[data-admin-section="operacao"] #s_operacao .op-viewbar .mut::after{ content:" Cards no topo ativo automaticamente nesta largura."; display:inline; color:#9a5b1e; font-weight:800; }
+  }
+
   .modal{ position:fixed; inset:0; z-index:80; background:#000b; display:none; align-items:center; justify-content:center; padding:18px; }
   .modal.on{ display:flex; } .modal .box{ background:var(--panel); border:1px solid var(--linha); border-radius:18px; width:100%; max-width:400px; padding:24px; box-shadow:0 20px 60px #000a; }
   .modal h3{ margin:0 0 4px; font-size:17px; } .modal p{ margin:0 0 16px; color:var(--mut); font-size:13px; }
@@ -177,11 +332,31 @@
     .content{ padding:16px 14px; }
     .inv-questions{ grid-template-columns:1fr; }.inv-toolbar{ grid-template-columns:1fr 1fr; }.inv-toolbar .field:first-child{ grid-column:1/-1; }.inv-toolbar .btn{ width:100%; }
     .inv-head{ grid-template-columns:1fr; }.inv-actions{ justify-content:flex-start; }.inv-body{ grid-template-columns:1fr; }.inv-bridge{ border-left:0; border-top:1px solid #292930; padding-left:0; padding-top:12px; }.inv-line{ grid-template-columns:1fr; gap:3px; }
+    .op-head{align-items:flex-start}.op-head h2{font-size:22px}.op-head .btn{width:100%}
+    .op-filters{display:grid;grid-template-columns:1fr 1fr}.op-filters label{min-width:0}.op-filters .btn{grid-column:1/-1}
+    .op-viewbar{align-items:flex-start}.op-mode{width:100%;display:grid;grid-template-columns:1fr 1fr}
+    .op-layout.left{grid-template-columns:1fr}.op-layout.left .op-list{max-height:230px;overflow:auto}.op-layout.left .op-detail-pane{max-height:none}.op-layout.top .op-list{min-height:170px}
+    .op-detail-top{grid-template-columns:1fr}.op-chart{justify-items:start}.op-pie{width:142px;height:142px}.op-pie:after{inset:37px}
+    .op-sector-main{grid-template-columns:1fr 1fr}.op-sector-actions{justify-content:flex-start}.op-builder{grid-template-columns:1fr}.op-sector-list{position:static}.op-form-grid,.op-row2,.op-row3,.op-process-layout{grid-template-columns:1fr}.op-table-head{display:none}.op-prep-line{grid-template-columns:1fr}.op-step-line{grid-template-columns:1fr}.op-foot{align-items:stretch;flex-direction:column}.op-foot-right{display:grid;grid-template-columns:1fr 1fr}.op-foot-right .primary{grid-column:1/-1}
     .prod-hero{align-items:flex-start}.prod-hero h2{font-size:23px}.prod-hero .btn{white-space:nowrap}.prod-summary{grid-template-columns:1fr 1fr}.prod-grid{grid-template-columns:1fr}
     .fp-modal{padding:0;align-items:flex-end}.modal.fp-modal .box{width:100%;max-height:98vh;border-radius:18px 18px 0 0}.fp-body{padding:16px;max-height:calc(98vh - 76px)}.fp-general{grid-template-columns:1fr}.fp-portion-head{grid-template-columns:1fr 1fr}.fp-portion-head .fp-cost{grid-column:1/-1;text-align:left}.fp-foot{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;flex-wrap:wrap}.fp-foot .status{flex-basis:100%}
     .fp-table{min-width:0}.fp-table thead{display:none}.fp-table,.fp-table tbody,.fp-table tr{display:block}.fp-table tr{padding:10px 12px;border-bottom:1px solid #28282e}.fp-table td{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:8px;padding:5px 0;border:0}.fp-table td:before{color:var(--mut2);font-size:9px;text-transform:uppercase;letter-spacing:.5px}.fp-table td:nth-child(1):before{content:'Ingrediente'}.fp-table td:nth-child(2):before{content:'Un. estoque'}.fp-table td:nth-child(3):before{content:'Custo médio'}.fp-table td:nth-child(4):before{content:'Quantidade'}.fp-table td:nth-child(5):before{content:'Un. consumo'}.fp-table td:nth-child(6):before{content:'Custo'}.fp-table td:nth-child(7){display:flex;justify-content:flex-end}.fp-table td:nth-child(7):before{display:none}
   }
   @media(min-width:821px){ .tabsm{ display:none; } }
+  /* Operação: painéis devem acompanhar conteúdo, não criar caixas vazias com altura fixa */
+  body[data-admin-section="operacao"] .content{ max-width:none; width:100%; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout{ min-height:0; align-items:start; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.left{ grid-template-columns:minmax(280px,320px) minmax(0,1fr); }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.left .op-list{ max-height:none; height:max-content; overflow:visible; align-self:start; }
+  body[data-admin-section="operacao"] #s_operacao .op-detail-pane{ min-height:0; height:auto; overflow:visible; align-self:start; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.left .op-detail-pane{ max-height:none; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.top{ width:100%; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.top .op-list{ width:100%; max-width:100%; min-height:0; height:auto; overflow-x:auto; overflow-y:visible; }
+  body[data-admin-section="operacao"] #s_operacao .op-layout.top .op-detail-pane{ width:100%; min-height:0; max-height:none; }
+  @media(max-width:1100px){
+    body[data-admin-section="operacao"] #s_operacao .op-layout.left{ grid-template-columns:1fr; }
+    body[data-admin-section="operacao"] #s_operacao .op-layout.left .op-list{ max-height:none; overflow:visible; }
+  }
 </style>
 </head>
 <body>
@@ -216,6 +391,7 @@
       <nav id="navd">
         <a class="on" data-s="inicio" onclick="go('inicio')"><span class="ic">▾</span> Início</a>
         <a data-s="pedidos" onclick="go('pedidos')"><span class="ic">🧾</span> Pedidos</a>
+        <a data-s="operacao" onclick="go('operacao')"><span class="ic">📊</span> Operação</a>
         <a data-s="cardapio" onclick="go('cardapio')"><span class="ic">🍕</span> Cardápio</a>
         <a data-s="aparencia" onclick="go('aparencia')"><span class="ic">🎨</span> Aparência</a>
         <a data-s="receitas" onclick="go('receitas')"><span class="ic">📖</span> Receitas</a>
@@ -239,6 +415,7 @@
       <div class="tabsm" id="tabsm">
         <button class="on" onclick="go('inicio',this)">Início</button>
         <button onclick="go('pedidos',this)">Pedidos</button>
+        <button onclick="go('operacao',this)">Operação</button>
         <button onclick="go('cardapio',this)">Cardápio</button>
         <button onclick="go('aparencia',this)">Aparência</button>
         <button onclick="go('receitas',this)">Receitas</button>
@@ -269,6 +446,52 @@
           <div class="pagehead"><h2>Pedidos de hoje</h2><span class="per" id="pedAgora"></span><a class="btn primary" href="/gestor" target="_blank" style="margin-left:auto">Abrir operação completa ↗</a></div>
           <div class="kpis" id="pedResumo" style="margin-bottom:6px"></div>
           <div id="pedFila"><div class="empty">Carregando…</div></div>
+        </section>
+
+        <!-- OPERAÇÃO -->
+        <section class="scr2" id="s_operacao">
+          <div class="op-head">
+            <div>
+              <div class="eyebrow">Command operacional</div>
+              <h2>Operação do gestor: áreas, KDS e gargalos</h2>
+              <p>Configure a rota real da empresa, separe visão do operador/cozinha/gestor e acompanhe gargalos por setor. A telemetria fica pronta para receber eventos da área do colaborador.</p>
+            </div>
+            <button class="btn primary" onclick="abrirAreaOperacao()">+ Nova área</button>
+          </div>
+          <div class="op-filters">
+            <label class="xs mut">Status
+              <select class="field" id="opFiltroStatus" onchange="renderOperacao()">
+                <option value="todas">Todas</option>
+                <option value="ativas">Ativas</option>
+                <option value="rascunho">Rascunhos</option>
+                <option value="inativas">Inativas</option>
+              </select>
+            </label>
+            <label class="xs mut">Atividade
+              <select class="field" id="opFiltroAtividade" onchange="renderOperacao()">
+                <option value="pior">Pior/gargalo primeiro</option>
+                <option value="melhor">Melhor desempenho primeiro</option>
+                <option value="normal">Somente Normal</option>
+                <option value="atencao">Somente Atenção</option>
+                <option value="perigo">Somente Perigo</option>
+                <option value="az">A-Z por área</option>
+              </select>
+            </label>
+            <button class="btn ghost" onclick="loadOperacao()">Atualizar</button>
+          </div>
+          <div class="op-viewbar">
+            <div class="mut sm">Escolha como deseja visualizar as áreas operacionais.</div>
+            <div class="op-mode" role="group" aria-label="Modo de visualização da Operação">
+              <button id="opModeLeft" class="on" onclick="opSetViewMode('left')">Cards à esquerda</button>
+              <button id="opModeTop" onclick="opSetViewMode('top')">Cards no topo</button>
+            </div>
+          </div>
+          <div class="op-brief" id="opDecisionBrief"></div>
+          <div class="op-kpis" id="opKpis"></div>
+          <div class="op-layout left" id="opLayout">
+            <div class="op-list" id="opAreas"><div class="empty">Carregando áreas operacionais…</div></div>
+            <div class="op-detail-pane" id="opAreaDetailPane"><div class="empty">Selecione uma área para ver o detalhamento operacional.</div></div>
+          </div>
         </section>
 
         <style>
@@ -464,6 +687,13 @@ const BRL=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,
 const PERFIS=['GESTOR','CHEFE_COZINHA','OPERADOR_ATENDIMENTO','GARCOM','ENTREGADOR','COLABORADOR'];
 const PERFIL_NOME={GESTOR:'Gestor',CHEFE_COZINHA:'Chefe de Cozinha',OPERADOR_ATENDIMENTO:'Operador',GARCOM:'Garçom',ENTREGADOR:'Entregador',COLABORADOR:'Colaborador'};
 let user=null, SETORES=[], _pinCtx=null;
+let _opData=null, _opDraft=null, _opSetorIdx=0, _opOpenArea='', _opOpenSetor='', _opViewMode=localStorage.getItem('op_view_mode')||'left';
+const DEV_OP_PREVIEW = ['127.0.0.1','localhost'].includes(location.hostname) && new URLSearchParams(location.search).get('preview') === 'operacao';
+const OP_COMPACT_MQ = window.matchMedia ? window.matchMedia('(max-width: 1100px)') : {matches:false};
+function opEffectiveViewMode(){ return OP_COMPACT_MQ.matches ? 'top' : (_opViewMode==='top'?'top':'left'); }
+function opHandleViewportModeChange(){ if(document.body.dataset.adminSection==='operacao' && _opData) renderOperacao(); }
+if(OP_COMPACT_MQ.addEventListener) OP_COMPACT_MQ.addEventListener('change', opHandleViewportModeChange);
+else if(OP_COMPACT_MQ.addListener) OP_COMPACT_MQ.addListener(opHandleViewportModeChange);
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2600); }
 
 /* ===== LOGIN ===== */
@@ -497,11 +727,11 @@ function abrirApp(u){ user=u; $('whoName').innerHTML=u.nome+'<small>Gestor</smal
   $('loginScreen').style.display='none'; $('app').style.display='block'; initApp(); }
 
 /* ===== NAV ===== */
-function go(s, el){ document.querySelectorAll('.scr2').forEach(x=>x.classList.remove('on')); $('s_'+s).classList.add('on');
+function go(s, el){ document.body.dataset.adminSection=s; document.querySelectorAll('.scr2').forEach(x=>x.classList.remove('on')); $('s_'+s).classList.add('on');
   document.querySelectorAll('#navd a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
   if(el){ document.querySelectorAll('.tabsm button').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
   if(s!=='pedidos'&&_pedTimer){ clearInterval(_pedTimer); _pedTimer=null; }
-  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='producao')loadProducao(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
+  if(s==='inicio')loadInicio(); if(s==='pedidos')loadPedidos(); if(s==='operacao')loadOperacao(); if(s==='cardapio')loadCardapio(); if(s==='aparencia')loadAparencia(); if(s==='receitas')loadReceitas(); if(s==='producao')loadProducao(); if(s==='estoque')loadEstoque(); if(s==='equipe')loadEquipe(); if(s==='config')loadConfig(); }
 async function initApp(){ const ag=user.id; loadInicio(); }
 async function sair(){ try{ await fetch(API+'/api/staff/logout',{method:'POST'}); }catch(e){} location.reload(); }
 
@@ -572,6 +802,331 @@ async function renderPedidos(){
 }
 function varTxt(d,base){ if(base==null) return 'vs ontem'; if(d>0) return `<b class="up">▲ ${d}</b> vs ontem (${base})`; if(d<0) return `<b class="down">▼ ${Math.abs(d)}</b> vs ontem (${base})`; return `igual a ontem (${base})`; }
 function fmtData(s){ try{ return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+
+/* ===== OPERAÇÃO (áreas, setores, rotas e alertas) ===== */
+const OP_CORES=['#F97316','#22c55e','#3b82f6','#eab308','#8b5cf6','#ef4444','#14b8a6','#f43f5e'];
+const OP_DECISOES_GESTOR={
+  cozinhaKds:{
+    titulo:'KDS por visão, sem despacho na cozinha',
+    resumo:'A Operação deve separar a leitura do Operador, da Cozinha e do Gestor. Na Cozinha o fluxo termina em Pronto/Aguardando entrega; “Despacho” não pertence ao KDS da cozinha.',
+    fluxos:{
+      operador:['Recebido','Em preparo','Pronto','Em entrega','Concluído'],
+      cozinha:['Abertura','Borda','Montagem','Forno','Finalização','Pronto/Aguardando entrega'],
+      gestor:['Atendimento','Cozinha','Entrega','Pós-venda']
+    }
+  },
+  caixa:{
+    titulo:'Caixa simples na leitura, completo na análise',
+    resumo:'A interface financeira deve ser objetiva no dia a dia, mas manter dados suficientes para análise detalhada pelo gestor.'
+  },
+  kanban:{
+    titulo:'Kanban de pedido separado do dashboard de área',
+    resumo:'A aba Operação mostra áreas, setores e gargalos. O painel do operador recebe o kanban direto de pedidos com status acionável.'
+  },
+  cores:{
+    titulo:'Cores por estado e ícones por setor',
+    resumo:'Cores indicam estado operacional do pedido/área; setores fixos do KDS podem ganhar ícones próprios para leitura rápida.'
+  },
+  estoque:{
+    titulo:'Estoque permanece como base do Titan',
+    resumo:'O protótipo visual inspira fluxo e navegação, mas estoque, ficha técnica, receitas e compras seguem a base operacional do Titan.'
+  }
+};
+function opId(prefix){ return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7); }
+function opTempoLabel(seg){ const n=Math.max(0,Math.round(Number(seg)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60; return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':'); }
+function opTempoSeg(v){ if(v==null||v==='')return 0; const s=String(v).trim(); if(s.includes(':')){ const p=s.split(':').map(x=>parseInt(x,10)||0); return p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1]; } const n=Number(s.replace(',','.')); return Number.isFinite(n)?Math.round(n):0; }
+function opStatusClass(v){ return String(v||'').toLowerCase().replace('ç','c').replace('ã','a'); }
+function opBool(on){ return on?'on':''; }
+async function loadOperacao(){
+  const box=$('opAreas'); if(box)box.innerHTML='<div class="empty">Carregando áreas operacionais…</div>';
+  if(DEV_OP_PREVIEW){ _opData=opPreviewData(); renderOperacao(); return; }
+  try{
+    const r=await fetch(API+'/api/admin/operacao?admin_id='+encodeURIComponent(user.id));
+    const d=await r.json(); if(!r.ok)throw new Error(d.erro||'Erro ao carregar operação');
+    _opData=d; renderOperacao();
+  }catch(e){ if(box)box.innerHTML='<div class="empty">Não foi possível carregar Operação: '+esc(e.message||'erro')+'</div>'; }
+}
+function opPreviewData(){
+  const atendimento={id:'area_preview_atendimento',nome:'Atendimento',funcao:'Atendimento',status:'ativa',descricao:'Entrada e validação inicial do pedido. Esta área alimenta a cozinha e mantém a visão do operador no fluxo Recebido → Em preparo.',relatorios_alertas:{tipo_grafico:'Kanban de gargalos',tipo_alerta:'Painel do gestor',regras_avancadas:'Alertar se pedidos recebidos ficarem sem aceite por mais de 3 minutos.'},setores:[
+    opPreviewSetor({id:'setor_preview_recebido',nome:'Recebido',tipo:'atendimento',base:120,atual:90,recebe:['ROTA_INICIAL'],colaboradores:['Sophia'],precisaPreparacao:false,processo:'Conferir cliente, canal, pagamento e observações antes de enviar para produção.'}),
+    opPreviewSetor({id:'setor_preview_em_preparo',nome:'Em preparo',tipo:'ponte operacional',base:60,atual:75,recebe:['setor_preview_recebido'],colaboradores:['Sophia'],precisaPreparacao:false,processo:'Pedido aceito e roteado para a área produtiva correta.'})
+  ]};
+  const cozinha={id:'area_preview_cozinha',nome:'Cozinha',funcao:'Produção',status:'ativa',descricao:'KDS produtivo configurável. Fluxo decidido: Abertura → Borda → Montagem → Forno → Finalização → Pronto/Aguardando entrega. A informação de “Despacho” não pertence à cozinha.',relatorios_alertas:{tipo_grafico:'Pizza por tempo',tipo_alerta:'Painel do gestor',regras_avancadas:'Avisar gestor quando dois setores entrarem em atenção ao mesmo tempo ou quando um pedido ultrapassar 50% do tempo base.'},setores:[
+    opPreviewSetor({id:'setor_preview_abertura',nome:'Abertura',tipo:'produção',base:180,atual:160,recebe:['ROTA_INICIAL'],colaboradores:['Eva'],processo:'Abrir massa, conferir tamanho e preparar base para a borda ou montagem.'}),
+    opPreviewSetor({id:'setor_preview_borda',nome:'Borda',tipo:'produção',base:480,atual:420,recebe:['setor_preview_abertura'],colaboradores:['Sophia'],prioridade:true,avancaPendente:true,processo:'Aplicar borda selecionada, respeitando opção esquerda/direita e processo visual configurado.'}),
+    opPreviewSetor({id:'setor_preview_montagem',nome:'Montagem',tipo:'produção',base:720,atual:690,recebe:['setor_preview_borda'],colaboradores:['Thiago','Tassiano'],processo:'Montar sabores/opções com ficha técnica ao lado do passo de aplicação.'}),
+    opPreviewSetor({id:'setor_preview_forno',nome:'Forno',tipo:'produção',base:420,atual:510,recebe:['setor_preview_montagem'],colaboradores:['Eva'],processo:'Controlar entrada e saída do forno, mantendo tempo e ponto do produto.'}),
+    opPreviewSetor({id:'setor_preview_finalizacao',nome:'Finalização',tipo:'produção',base:300,atual:660,recebe:['setor_preview_forno'],colaboradores:['Eva'],processo:'Finalizar item, aplicar complementos e conferir padrão visual.'}),
+    opPreviewSetor({id:'setor_preview_pronto',nome:'Pronto/Aguardando entrega',tipo:'ponte operacional',base:90,atual:60,recebe:['setor_preview_finalizacao'],colaboradores:['Sophia'],precisaPreparacao:false,processo:'Item pronto para retirada/entrega. Esta etapa substitui qualquer “despacho” dentro da cozinha.'})
+  ]};
+  const entrega={id:'area_preview_entrega',nome:'Entrega',funcao:'Entrega',status:'ativa',descricao:'Área de saída do pedido: rota, entregador e confirmação de entrega. Deve receber pedidos já prontos da operação.',relatorios_alertas:{tipo_grafico:'Barras por setor',tipo_alerta:'WhatsApp',regras_avancadas:'Alertar quando pedido pronto ficar sem saída por mais de 5 minutos.'},setores:[
+    opPreviewSetor({id:'setor_preview_rota',nome:'Roteirização',tipo:'logística',base:180,atual:220,recebe:['ROTA_INICIAL'],colaboradores:['Tassiano'],precisaPreparacao:false,processo:'Agrupar pedidos por região, entregador e prioridade.'}),
+    opPreviewSetor({id:'setor_preview_entrega',nome:'Em entrega',tipo:'logística',base:1800,atual:1500,recebe:['setor_preview_rota'],colaboradores:['Tassiano'],precisaPreparacao:false,processo:'Acompanhar saída, localização e previsão de chegada.'}),
+    opPreviewSetor({id:'setor_preview_entregue',nome:'Concluído',tipo:'logística',base:60,atual:45,recebe:['setor_preview_entrega'],colaboradores:['Tassiano'],precisaPreparacao:false,processo:'Confirmar entrega e liberar financeiro/pós-venda.'})
+  ]};
+  const posVenda={id:'area_preview_pos_venda',nome:'Pós-venda',funcao:'Pós-venda',status:'rascunho',descricao:'Camada de relacionamento após o pedido: conferência, feedback e reclamações. Fica visível para o gestor, mas pode operar em rascunho até ser ativada.',relatorios_alertas:{tipo_grafico:'Linha do tempo',tipo_alerta:'Painel do gestor',regras_avancadas:'Alertar se reclamação aberta não tiver resposta em 10 minutos.'},setores:[
+    opPreviewSetor({id:'setor_preview_conferencia',nome:'Conferência final',tipo:'pós-venda',base:120,atual:0,recebe:['ROTA_INICIAL'],colaboradores:['Thiago'],precisaPreparacao:false,processo:'Verificar pedidos concluídos, divergências e observações críticas.'}),
+    opPreviewSetor({id:'setor_preview_feedback',nome:'Feedback',tipo:'pós-venda',base:300,atual:0,recebe:['setor_preview_conferencia'],colaboradores:['Thiago'],precisaPreparacao:false,processo:'Acionar cliente quando houver avaliação, elogio ou oportunidade de recompra.'})
+  ]};
+  return {
+    config:{
+      versao:1,
+      funcoes_area:['Administração','Vendas','Estoque','Produção','Entrega','Atendimento','Pós-venda','Logística','Financeiro','Outra'],
+      tipos_grafico:['Pizza por tempo','Barras por setor','Linha do tempo','Kanban de gargalos'],
+      tipos_alerta:['WhatsApp','Notificação no app','Painel do gestor'],
+      decisoes_gestor:OP_DECISOES_GESTOR,
+      areas:[atendimento,cozinha,entrega,posVenda]
+    },
+    snapshot:{areas:[atendimento,cozinha,entrega,posVenda].map(opPreviewSnapshotArea)},
+    catalogos:{
+      setores_estoque:[{id:'1',nome:'Borda'},{id:'2',nome:'Montagem'},{id:'3',nome:'Finalização'},{id:'4',nome:'Recepção'}],
+      colaboradores:[{id:'Thiago',nome:'Thiago Ribeiro',perfil:'GESTOR'},{id:'Tassiano',nome:'Tassiano',perfil:'GESTOR'},{id:'Sophia',nome:'Sophia',perfil:'COLABORADOR'},{id:'Eva',nome:'Eva',perfil:'GESTOR'}],
+      cardapio:{
+        categorias:[{id:'cat1',nome:'Pizzas'}],
+        produtos:[{id:'prod_pg_vulcao',nome:'Pizza Grande + Borda Vulcão'},{id:'prod_pp_sem_borda',nome:'Pizza Pequena Sem Borda Recheada'},{id:'prod_combo',nome:'Combo configurável'}],
+        grupos:[{id:'grp_borda_vulcao',produto_id:'prod_pg_vulcao',nome:'Sabores de Borda Vulcão'}],
+        opcoes:[{id:'op_mucarela',grupo_id:'grp_borda_vulcao',nome:'1/2 Muçarela'},{id:'op_chocolate',grupo_id:'grp_borda_vulcao',nome:'1/2 Chocolate ao leite'}]
+      },
+      receitas:[{id:'rec_mignon',nome:'Mignon preparado',ficha_id:'f1'},{id:'rec_camarao',nome:'Camarão 200g',ficha_id:null}]
+    }
+  };
+}
+function opPreviewSetor(cfg){
+  const id=cfg.id, base=Number(cfg.base||600), atual=Number(cfg.atual||0);
+  const prep=cfg.precisaPreparacao===false?[]:[{id:id+'_prep1',preparacao:'Conferir bancada, utensílios e itens do setor antes de iniciar.',auditoria:'checkbox',obrigatorio:true}];
+  return {id,nome:cfg.nome,tipo:cfg.tipo||'produção',estoque_setor_id:null,precisa_preparacao:cfg.precisaPreparacao!==false,preparacao:prep,recebe_de:cfg.recebe||['ROTA_INICIAL'],rota_inicial:(cfg.recebe||[]).includes('ROTA_INICIAL'),prioridade_avanco:!!cfg.prioridade,avanca_com_preparo_pendente:!!cfg.avancaPendente,informacoes_pedido:{tipo:cfg.tipo==='logística'||cfg.tipo==='atendimento'?'outro':'preparo_pizza',itens_cardapio:['prod_pg_vulcao'],variacoes:['grp_borda_vulcao'],ingredientes_preparo:cfg.nome==='Preparo'?['rec_mignon','rec_camarao']:[]},processos:[{id:id+'_proc1',alvo_tipo:'item_cardapio',alvo_id:'prod_pg_vulcao',alvo_nome:'Pizza Grande + Borda Vulcão',lado_imagem:'esquerda',espelhar_imagem:true,imagem_url:'',passos:[{id:id+'_step1',texto:cfg.processo||'Executar etapa operacional conforme configuração do gestor.',ingredientes:['ficha técnica']},{id:id+'_step2',texto:'Marcar pronto para avançar a rota configurada.',ingredientes:[]}]}],tempo:{modo:'pre_definido',base_seg:base,base_label:opTempoLabel(base),media_dia_anterior_seg:Math.max(0,base-30)},alertas:{atencao_pct:100,severo_pct:150,perigo_pct:200},observacao_pedido:{ativa:true,posicao:'topo',fonte:'Inter',tamanho:'18px',cor:'#ffffff',fundo:'#3a1414'},colaboradores:cfg.colaboradores||[],metricas:{tempo_atual_seg:atual,tempo_medio_seg:base,tempo_max_seg:Math.max(base,atual),tempo_min_seg:atual?Math.min(base,atual):base}};
+}
+function opPreviewSnapshotArea(area){
+  const setores=(area.setores||[]).map(s=>{ const ratio=(s.metricas.tempo_atual_seg||0)/(s.tempo.base_seg||1); const atividade={estado:ratio>=2?'Perigo':ratio>=1?'Atenção':'Normal',peso:ratio>=2?3:ratio>=1?2:1}; return {...s,tempo_base_label:opTempoLabel(s.tempo.base_seg),tempo_atual_label:opTempoLabel(s.metricas.tempo_atual_seg),tempo_medio_label:opTempoLabel(s.metricas.tempo_medio_seg),tempo_max_label:opTempoLabel(s.metricas.tempo_max_seg),tempo_min_label:opTempoLabel(s.metricas.tempo_min_seg),grafico_valor:s.metricas.tempo_atual_seg||s.tempo.base_seg,atividade}; });
+  const pior=setores.reduce((a,s)=>!a||s.atividade.peso>a.atividade.peso?s:a,null), total=setores.reduce((n,s)=>n+(s.grafico_valor||0),0), col=setores.reduce((n,s)=>n+(s.colaboradores||[]).length,0);
+  const statusMap={ativa:'Ativa',rascunho:'Rascunho',inativa:'Inativa'};
+  return {...area,setores,indicadores:{status_area:statusMap[area.status]||area.status||'Ativa',atividade:pior?pior.atividade.estado:'Normal',atividade_peso:pior?pior.atividade.peso:1,setor_gargalo:pior?pior.nome:null,setores_total:setores.length,colaboradores_total:col,tempo_total_seg:total,tempo_total_label:opTempoLabel(total)}};
+}
+function renderOperacao(){
+  if(!_opData)return;
+  opApplyViewMode();
+  opRenderDecisionBrief();
+  const areas=(_opData.snapshot&&_opData.snapshot.areas)||[];
+  let list=areas.slice();
+  const st=($('opFiltroStatus')&&$('opFiltroStatus').value)||'todas', ord=($('opFiltroAtividade')&&$('opFiltroAtividade').value)||'pior';
+  if(st==='ativas')list=list.filter(a=>a.status==='ativa');
+  if(st==='rascunho')list=list.filter(a=>a.status==='rascunho');
+  if(st==='inativas')list=list.filter(a=>a.status==='inativa');
+  if(ord==='normal')list=list.filter(a=>(a.indicadores&&a.indicadores.atividade)==='Normal');
+  if(ord==='atencao')list=list.filter(a=>(a.indicadores&&a.indicadores.atividade)==='Atenção');
+  if(ord==='perigo')list=list.filter(a=>(a.indicadores&&a.indicadores.atividade)==='Perigo');
+  if(ord==='pior')list.sort((a,b)=>(b.indicadores?.atividade_peso||0)-(a.indicadores?.atividade_peso||0)||(b.indicadores?.tempo_total_seg||0)-(a.indicadores?.tempo_total_seg||0));
+  if(ord==='melhor')list.sort((a,b)=>(a.indicadores?.atividade_peso||0)-(b.indicadores?.atividade_peso||0)||(a.indicadores?.tempo_total_seg||0)-(b.indicadores?.tempo_total_seg||0));
+  if(ord==='az')list.sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  const ativas=areas.filter(a=>a.status==='ativa').length, perigo=areas.filter(a=>a.indicadores?.atividade==='Perigo').length, atencao=areas.filter(a=>a.indicadores?.atividade==='Atenção').length;
+  $('opKpis').innerHTML=[
+    `<div class="op-kpi"><b>${areas.length}</b><span>Áreas cadastradas</span></div>`,
+    `<div class="op-kpi"><b>${ativas}</b><span>Áreas ativas</span></div>`,
+    `<div class="op-kpi"><b>${atencao}</b><span>Precisam de atenção</span></div>`,
+    `<div class="op-kpi"><b>${perigo}</b><span>Em perigo operacional</span></div>`
+  ].join('');
+  if(_opOpenArea && !list.some(a=>a.id===_opOpenArea)) _opOpenArea='';
+  $('opAreas').innerHTML=list.length?list.map(opAreaCard).join(''):'<div class="empty">Nenhuma área para esse filtro. Clique em + Nova área para criar.</div>';
+  const selected=_opOpenArea?list.find(a=>a.id===_opOpenArea):null;
+  $('opAreaDetailPane').innerHTML=selected?opAreaDetail(selected):'<div class="empty">Selecione uma área para ver o detalhamento operacional.</div>';
+}
+function opRenderDecisionBrief(){
+  const box=$('opDecisionBrief'); if(!box)return;
+  const d=(_opData?.config?.decisoes_gestor)||OP_DECISOES_GESTOR;
+  const f=d.cozinhaKds?.fluxos||OP_DECISOES_GESTOR.cozinhaKds.fluxos;
+  box.innerHTML=`<div class="op-brief-head"><b>Decisões incorporadas nesta aba</b><span>Fonte local: comparador SaaS · foco atual: tela do gestor</span></div>
+    <div class="op-brief-grid">
+      <div class="op-brief-card"><b>${esc(d.cozinhaKds?.titulo||'KDS por visão')}</b><small>${esc(d.cozinhaKds?.resumo||'')}</small><div class="op-flow">${(f.gestor||[]).map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>
+      <div class="op-brief-card"><b>${esc(d.kanban?.titulo||'Kanban')}</b><small>${esc(d.kanban?.resumo||'')}</small><div class="op-flow">${(f.operador||[]).map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>
+      <div class="op-brief-card"><b>Cozinha/KDS</b><small>${esc('Fluxo produtivo configurável, sem “Despacho” dentro da cozinha.')}</small><div class="op-flow">${(f.cozinha||[]).map(x=>`<span>${esc(x)}</span>`).join('')}</div></div>
+      <div class="op-brief-card"><b>${esc(d.estoque?.titulo||'Estoque Titan')}</b><small>${esc(d.estoque?.resumo||'')}</small></div>
+    </div>`;
+}
+function opSetViewMode(mode){ _opViewMode=mode==='top'?'top':'left'; localStorage.setItem('op_view_mode',_opViewMode); renderOperacao(); }
+function opApplyViewMode(){
+  const mode=opEffectiveViewMode();
+  const layout=$('opLayout'); if(layout){ layout.classList.toggle('left',mode!=='top'); layout.classList.toggle('top',mode==='top'); }
+  const l=$('opModeLeft'), t=$('opModeTop'); if(l)l.classList.toggle('on',mode!=='top'); if(t)t.classList.toggle('on',mode==='top');
+}
+function opPie(area){
+  const setores=area.setores||[]; if(!setores.length)return 'conic-gradient(#2a2a30 0 100%)';
+  const total=setores.reduce((n,s)=>n+(Number(s.grafico_valor)||1),0)||1; let acc=0;
+  return 'conic-gradient('+setores.map((s,i)=>{ const v=(Number(s.grafico_valor)||1)/total*100, a=acc, b=acc+v; acc=b; return `${OP_CORES[i%OP_CORES.length]} ${a}% ${b}%`; }).join(',')+')';
+}
+function opLegend(area){ return ((area.setores||[]).slice(0,6).map((s,i)=>`<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${OP_CORES[i%OP_CORES.length]};margin-right:4px"></i>${esc(s.nome)}</span>`).join('')||'<span>sem setores</span>'); }
+function opAreaCard(a){
+  const ind=a.indicadores||{}, open=_opOpenArea===a.id, clsAt=opStatusClass(ind.atividade||'Normal');
+  const mode=opEffectiveViewMode();
+  return `<article class="op-area-card ${open?'open':''}" data-area="${esc(a.id)}">
+    <div class="op-card-main">
+      <div class="op-area-name"><b>${esc(a.nome)}</b><small>${esc(a.funcao||'Área operacional')} · ${ind.setores_total||0} setor(es) · ${ind.colaboradores_total||0} colaborador(es)</small></div>
+      <div class="op-status"><span class="op-pill ${esc(a.status)}">${esc(ind.status_area||a.status)}</span><span class="op-pill ${clsAt}">${esc(ind.atividade||'Normal')}</span></div>
+      <div class="op-card-mini">
+        <span>Tempo total<b>${esc(ind.tempo_total_label||'00:00:00')}</b></span>
+        <span>Gargalo<b>${esc(ind.setor_gargalo||'nenhum')}</b></span>
+      </div>
+    </div>
+    <button class="op-expand" onclick="opToggleArea('${esc(a.id)}')" title="Detalhar área">${mode==='top'?'⌄':'›'}</button>
+  </article>`;
+}
+function opAreaDetail(a){
+  const ind=a.indicadores||{}, clsAt=opStatusClass(ind.atividade||'Normal');
+  return `<div class="op-detail-card">
+    <div class="op-detail-top">
+      <div>
+        <div class="op-area-name"><b>${esc(a.nome)}</b><small>${esc(a.funcao||'Área operacional')} · ${ind.setores_total||0} setor(es) · ${ind.colaboradores_total||0} colaborador(es)</small></div>
+        <div class="op-status" style="margin-top:9px"><span class="op-pill ${esc(a.status)}">${esc(ind.status_area||a.status)}</span><span class="op-pill ${clsAt}">${esc(ind.atividade||'Normal')}</span></div>
+        <div class="mut sm" style="margin-top:10px">Gráfico: ${esc(a.relatorios_alertas?.tipo_grafico||'Pizza por tempo')} · Alertas: ${esc(a.relatorios_alertas?.tipo_alerta||'Painel do gestor')} · Gargalo atual: <b>${esc(ind.setor_gargalo||'nenhum')}</b></div>
+        ${a.descricao?`<div class="mut sm" style="margin-top:6px">${esc(a.descricao)}</div>`:''}
+      </div>
+      <div class="op-chart"><div class="op-pie" style="--pie:${opPie(a)}" data-total="${esc(ind.tempo_total_label||'00:00:00')}"></div><div class="op-legend">${opLegend(a)}</div></div>
+    </div>
+    ${opAreaDecisionBrief(a)}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px">
+      <button class="btn sm ghost" onclick="abrirAreaOperacao('${esc(a.id)}')">✎ Editar área</button>
+      <button class="btn sm ghost" onclick="opDuplicarArea('${esc(a.id)}')">Duplicar</button>
+      <button class="btn sm red" onclick="opInativarArea('${esc(a.id)}')">Inativar</button>
+    </div>
+    <div class="op-route">${(a.setores||[]).map(s=>opSetorLinha(a,s)).join('')||'<div class="empty">Área sem setores configurados.</div>'}</div>
+  </div>`;
+}
+function opAreaDecisionBrief(a){
+  const nome=String(a.nome||'').toLowerCase();
+  if(nome.includes('cozinha')) return `<div class="op-area-brief"><b>Papel da Cozinha no KDS:</b> transformar pedidos aceitos em itens prontos. O fluxo desta área deve terminar em <b>Pronto/Aguardando entrega</b>, não em Despacho.<ul><li>Setores produtivos são configuráveis pelo gestor.</li><li>Fichas técnicas e receitas devem vir da base Titan.</li><li>O painel do operador recebe pedidos acionáveis; esta aba mostra gargalo e configuração.</li></ul></div>`;
+  if(nome.includes('atendimento')) return `<div class="op-area-brief"><b>Papel do Atendimento:</b> receber, validar e encaminhar pedidos. Esta área alimenta o fluxo do operador <b>Recebido → Em preparo</b> e deve evitar pedido parado antes da cozinha.</div>`;
+  if(nome.includes('entrega')) return `<div class="op-area-brief"><b>Papel da Entrega:</b> assumir o pedido depois de pronto, controlar saída, rota e conclusão. A cozinha não precisa carregar o conceito de despacho.</div>`;
+  if(nome.includes('pós')||nome.includes('pos')) return `<div class="op-area-brief"><b>Papel do Pós-venda:</b> acompanhar conclusão, feedback e reclamações sem poluir o KDS produtivo.</div>`;
+  return `<div class="op-area-brief"><b>Papel operacional:</b> área configurável pelo gestor. Defina setores, rota, tempos, alertas e quais informações do pedido cada etapa deve receber.</div>`;
+}
+function opSetorLinha(a,s){
+  const at=opStatusClass(s.atividade?.estado||'Normal'), open=_opOpenSetor===s.id;
+  return `<div class="op-sector-line ${open?'open':''}" data-setor="${esc(s.id)}">
+    <div class="op-sector-main">
+      <div><b>${esc(s.nome)}</b><small>${esc(s.tipo||'produção')} · ${s.processos?.length||0} processo(s) · ${s.preparacao?.length||0} preparação(ões)</small></div>
+      <div class="op-metric"><strong>${(s.colaboradores||[]).length}</strong>colab.</div>
+      <div class="op-metric"><strong>${esc(s.tempo_medio_label||'—')}</strong>médio</div>
+      <div class="op-metric"><strong>${esc(s.tempo_atual_label||'—')}</strong>atual</div>
+      <div class="op-metric"><strong>${esc(s.tempo_max_label||'—')}</strong>máx</div>
+      <div><span class="op-light ${at}"></span></div>
+      <div class="op-sector-actions"><button class="op-ico" title="Adicionar colaborador" onclick="opAdicionarColab('${esc(a.id)}','${esc(s.id)}')">👤+</button><button class="op-ico" title="Editar setor" onclick="abrirAreaOperacao('${esc(a.id)}','${esc(s.id)}')">✎</button><button class="op-ico" title="Excluir setor" onclick="opExcluirSetor('${esc(a.id)}','${esc(s.id)}')">🗑</button><button class="op-ico" title="Detalhar" onclick="opToggleSetor('${esc(s.id)}')">›</button></div>
+    </div>
+    <div class="op-sector-detail">
+      <b>Recebe de:</b> ${(s.recebe_de||[]).map(x=>x==='ROTA_INICIAL'?'Rota inicial':opNomeSetor(a,x)).join(', ')||'—'} ·
+      <b>Tempo base:</b> ${esc(s.tempo_base_label||'—')} ·
+      <b>Observação do pedido:</b> ${s.observacao_pedido?.ativa?'ativa':'desligada'}<br>
+      <b>Colaboradores:</b> ${(s.colaboradores||[]).map(opNomeColab).join(', ')||'nenhum'}<br>
+      <b>Em produção agora:</b> ainda sem telemetria da tela do colaborador. A rota e os processos já ficam configurados aqui para a próxima etapa.
+    </div>
+  </div>`;
+}
+function opToggleArea(id){ _opOpenArea=_opOpenArea===id?'':id; renderOperacao(); }
+function opToggleSetor(id){ _opOpenSetor=_opOpenSetor===id?'':id; renderOperacao(); }
+function opNomeColab(id){ const u=(_opData?.catalogos?.colaboradores||[]).find(x=>String(x.id)===String(id)); return u?u.nome:id; }
+function opNomeSetor(area,id){ const s=(area.setores||[]).find(x=>String(x.id)===String(id)); return s?s.nome:id; }
+function opNovaAreaBase(){ return {id:opId('area'),nome:'',funcao:'Produção',status:'rascunho',descricao:'',setores:[],relatorios_alertas:{tipo_grafico:'Pizza por tempo',tipo_alerta:'Painel do gestor',regras_avancadas:''}}; }
+function opNovoSetor(nome){ return {id:opId('setor'),nome:nome||'Novo setor',tipo:'produção',estoque_setor_id:null,precisa_preparacao:false,preparacao:[],recebe_de:['ROTA_INICIAL'],rota_inicial:true,prioridade_avanco:false,avanca_com_preparo_pendente:false,informacoes_pedido:{tipo:'preparo_pizza',itens_cardapio:[],variacoes:[],ingredientes_preparo:[]},processos:[],tempo:{modo:'pre_definido',base_seg:600,base_label:'00:10:00',media_dia_anterior_seg:0},alertas:{atencao_pct:100,severo_pct:150,perigo_pct:200},observacao_pedido:{ativa:false,posicao:'topo',fonte:'Inter',tamanho:'18px',cor:'#ffffff',fundo:'#3a1414'},colaboradores:[],metricas:{}}; }
+function abrirAreaOperacao(areaId,setorId){
+  const area=areaId?((_opData?.config?.areas||[]).find(a=>a.id===areaId)||null):null;
+  _opDraft=JSON.parse(JSON.stringify(area||opNovaAreaBase()));
+  _opSetorIdx=Math.max(0,_opDraft.setores.findIndex(s=>s.id===setorId));
+  if(_opSetorIdx<0)_opSetorIdx=0;
+  renderAreaOperacaoModal();
+}
+function opCloseModal(){ const m=$('opModal'); if(m)m.remove(); _opDraft=null; }
+function opSyncDraft(){
+  const m=$('opModal'); if(!m||!_opDraft)return;
+  _opDraft.nome=$('opAreaNome').value.trim(); _opDraft.funcao=$('opAreaFuncao').value.trim()||'Outra'; _opDraft.status=$('opAreaStatus').value; _opDraft.descricao=$('opAreaDesc').value.trim();
+  _opDraft.relatorios_alertas={tipo_grafico:$('opGrafico').value,tipo_alerta:$('opAlertaTipo').value,regras_avancadas:$('opAlertasAv').value.trim()};
+  const s=_opDraft.setores[_opSetorIdx]; if(!s)return;
+  s.nome=($('opSetNome')||{}).value?.trim()||s.nome; s.tipo=($('opSetTipo')||{}).value||s.tipo; s.estoque_setor_id=($('opSetEstoque')||{}).value||null;
+  s.precisa_preparacao=$('opPrepOn')?.classList.contains('on')||false; s.rota_inicial=$('opRotaInicial')?.checked||false; s.prioridade_avanco=$('opPrioridade')?.classList.contains('on')||false; s.avanca_com_preparo_pendente=$('opAvancaPendente')?.classList.contains('on')||false;
+  s.recebe_de=[...document.querySelectorAll('[data-op-recebe]:checked')].map(x=>x.value); if(s.rota_inicial&&!s.recebe_de.includes('ROTA_INICIAL'))s.recebe_de.unshift('ROTA_INICIAL');
+  s.preparacao=[...document.querySelectorAll('[data-prep-line]')].map(row=>({id:row.dataset.id,preparacao:row.querySelector('[data-prep-txt]').value.trim(),auditoria:row.querySelector('[data-prep-aud]').value,obrigatorio:row.querySelector('[data-prep-obr]').classList.contains('on')})).filter(x=>x.preparacao);
+  s.informacoes_pedido={tipo:$('opInfoTipo').value,itens_cardapio:[...document.querySelectorAll('[data-op-item]:checked')].map(x=>x.value),variacoes:[...document.querySelectorAll('[data-op-var]:checked')].map(x=>x.value),ingredientes_preparo:[...document.querySelectorAll('[data-op-rec]:checked')].map(x=>x.value)};
+  s.tempo={modo:$('opTempoModo').value,base_seg:opTempoSeg($('opTempoBase').value),base_label:$('opTempoBase').value,media_dia_anterior_seg:opTempoSeg($('opTempoMedia').value)};
+  s.alertas={atencao_pct:Number($('opAlertaAt').value)||100,severo_pct:Number($('opAlertaSv').value)||150,perigo_pct:Number($('opAlertaPg').value)||200};
+  s.observacao_pedido={ativa:$('opObsOn').classList.contains('on'),posicao:$('opObsPos').value,fonte:$('opObsFonte').value.trim()||'Inter',tamanho:$('opObsTam').value.trim()||'18px',cor:$('opObsCor').value,fundo:$('opObsFundo').value};
+  s.colaboradores=[...document.querySelectorAll('[data-op-colab]:checked')].map(x=>x.value);
+  s.processos=[...document.querySelectorAll('[data-process-card]')].map(card=>({id:card.dataset.id,alvo_tipo:card.querySelector('[data-proc-tipo]').value,alvo_id:card.querySelector('[data-proc-alvo]').value,alvo_nome:card.querySelector('[data-proc-alvo]').selectedOptions[0]?.textContent||'',lado_imagem:card.querySelector('[data-proc-lado]:checked')?.value||'esquerda',espelhar_imagem:card.querySelector('[data-proc-esp]').classList.contains('on'),imagem_url:card.querySelector('[data-proc-img]').value,passos:[...card.querySelectorAll('[data-step-line]')].map(line=>({id:line.dataset.id,texto:line.querySelector('[data-step-txt]').value.trim(),ingredientes:line.querySelector('[data-step-ing]').value.split(',').map(x=>x.trim()).filter(Boolean)})).filter(x=>x.texto||x.ingredientes.length)})).filter(p=>p.alvo_id||p.passos.length||p.imagem_url);
+}
+function renderAreaOperacaoModal(){
+  const old=$('opModal'); if(old)old.remove();
+  const m=document.createElement('div'); m.id='opModal'; m.className='modal on';
+  m.innerHTML=`<div class="box op-form">
+    <div class="op-form-head"><div><h3>${_opDraft.nome?'Editar área operacional':'Nova área operacional'}</h3><p>Configure a área, seus setores, preparação, rota, processos de trabalho, tempos e alertas. Isso será usado depois pela tela do colaborador.</p></div><button class="fp-close" onclick="opCloseModal()">×</button></div>
+    <div class="op-form-body">
+      <div class="op-form-grid">
+        <label>Nome da área<input class="field" id="opAreaNome" value="${esc(_opDraft.nome||'')}" placeholder="Ex: Cozinha"></label>
+        <label>Função da área<input class="field" id="opAreaFuncao" list="opFuncoes" value="${esc(_opDraft.funcao||'Produção')}" placeholder="Produção, Logística..."><datalist id="opFuncoes">${((_opData?.config?.funcoes_area)||[]).map(x=>`<option value="${esc(x)}">`).join('')}</datalist></label>
+        <label>Status<select class="field" id="opAreaStatus"><option value="ativa" ${_opDraft.status==='ativa'?'selected':''}>Ativa</option><option value="rascunho" ${_opDraft.status==='rascunho'?'selected':''}>Rascunho</option><option value="inativa" ${_opDraft.status==='inativa'?'selected':''}>Inativa</option></select></label>
+      </div>
+      <label class="op-label">Descrição da área<textarea class="field" id="opAreaDesc" rows="2" placeholder="Objetivo operacional dessa área">${esc(_opDraft.descricao||'')}</textarea></label>
+      <div class="op-builder">
+        <aside class="op-sector-list">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px"><b>Setores da área</b><button class="btn sm" onclick="opAddSetor()">+ Novo setor</button></div>
+          ${(_opDraft.setores||[]).map((s,i)=>`<div class="op-sector-card ${i===_opSetorIdx?'on':''}" onclick="opSelectSetor(${i})"><b>${esc(s.nome||'Novo setor')}</b><small>${s.preparacao?.length||0} preparo(s) · ${s.processos?.length||0} processo(s) · ${opTempoLabel(s.tempo?.base_seg||0)}</small></div>`).join('')||'<div class="empty" style="padding:12px">Nenhum setor criado.</div>'}
+          <button class="btn ghost full" onclick="opAddSetor()" style="margin-top:8px">+ Novo setor</button>
+        </aside>
+        <div class="op-sector-editor">${opSetorEditorHtml()}</div>
+      </div>
+      <h3 class="sec">Tipo de relatório e alertas</h3>
+      <div class="op-row3">
+        <label class="op-label">Tipo de gráfico<select class="field" id="opGrafico">${((_opData?.config?.tipos_grafico)||['Pizza por tempo']).map(x=>`<option ${(_opDraft.relatorios_alertas?.tipo_grafico||'')===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
+        <label class="op-label">Tipo de alertas<select class="field" id="opAlertaTipo">${((_opData?.config?.tipos_alerta)||['Painel do gestor']).map(x=>`<option ${(_opDraft.relatorios_alertas?.tipo_alerta||'')===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
+        <label class="op-label">Configuração avançada<input class="field" id="opAlertasAv" value="${esc(_opDraft.relatorios_alertas?.regras_avancadas||'')}" placeholder="Ex: avisar só se 3 atrasos em 10 min"></label>
+      </div>
+      <div class="op-foot"><button class="btn ghost" onclick="opCloseModal()">Cancelar</button><div class="op-foot-right"><button class="btn ghost" onclick="opSalvarArea('rascunho')">Salvar como rascunho</button><button class="btn primary" onclick="opSalvarArea('ativa')">Salvar área</button></div></div>
+    </div></div>`;
+  document.body.appendChild(m);
+}
+function opSetorEditorHtml(){
+  const s=_opDraft.setores[_opSetorIdx]; if(!s)return '<div class="empty">Clique em + Novo setor para começar a montar a rota operacional.</div>';
+  const cats=_opData?.catalogos||{}, est=cats.setores_estoque||[], cols=cats.colaboradores||[], card=cats.cardapio||{}, rec=cats.receitas||[];
+  const outros=(_opDraft.setores||[]).filter(x=>x.id!==s.id);
+  const alvoOpts=[...(card.produtos||[]).map(p=>({id:p.id,t:'item_cardapio',nome:p.nome})),...(card.opcoes||[]).map(o=>({id:o.id,t:'opcao_cardapio',nome:o.nome})),...(rec||[]).map(r=>({id:r.id,t:'receita',nome:r.nome}))];
+  return `<div class="op-row2"><label class="op-label">Nome do setor<input class="field" id="opSetNome" value="${esc(s.nome||'')}" placeholder="Ex: Borda"></label><label class="op-label">Tipo/função do setor<input class="field" id="opSetTipo" value="${esc(s.tipo||'produção')}" placeholder="produção, preparo, conferência..."></label></div>
+    <div class="op-row2"><label class="op-label">Importar setor do estoque<select class="field" id="opSetEstoque"><option value="">Não vinculado</option>${est.map(x=>`<option value="${x.id}" ${String(s.estoque_setor_id||'')===String(x.id)?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></label><div style="display:flex;gap:8px;align-items:end"><button class="btn ghost" onclick="opImportarSetorEstoque()">Importar nome</button><button class="btn ghost" onclick="opCriarSetorIA()">Criar setor com auxílio da IA</button></div></div>
+    ${opSwitchHtml('opPrepOn','Esse setor precisa de preparação?','Quando ligado, o colaborador verá uma checklist/preparação antes de iniciar o setor.',s.precisa_preparacao)}
+    <div id="opPrepBox" style="${s.precisa_preparacao?'':'display:none'}">${opPreparacaoHtml(s)}</div>
+    <h3 class="sec">Rota do pedido</h3>
+    <label class="fcheck"><input type="checkbox" id="opRotaInicial" ${s.rota_inicial?'checked':''}> Rota inicial — pedido entrou no sistema e cai aqui automaticamente</label>
+    <div class="op-row2" style="margin-top:8px"><div class="panel" style="padding:10px"><div class="mut sm" style="margin-bottom:8px">Recebe o pedido de:</div>${outros.map(x=>`<label class="fcheck"><input type="checkbox" data-op-recebe value="${esc(x.id)}" ${(s.recebe_de||[]).includes(x.id)?'checked':''}> ${esc(x.nome)}</label>`).join('')||'<div class="mut sm">Crie outro setor para montar dependências.</div>'}</div><div>${opSwitchHtml('opPrioridade','Esse setor tem prioridade para avançar?','Use quando dois setores recebem o pedido em paralelo e um deles define o avanço.',s.prioridade_avanco)}${opSwitchHtml('opAvancaPendente','Pode avançar com preparo pendente?','Se ligado, avança avisando que um preparo ainda não foi concluído.',s.avanca_com_preparo_pendente)}</div></div>
+    <h3 class="sec">Informações que o setor recebe</h3>
+    <label class="op-label">Tipo de trabalho<select class="field" id="opInfoTipo"><option value="preparo_pizza" ${s.informacoes_pedido?.tipo==='preparo_pizza'?'selected':''}>Preparo/montagem do item vendido</option><option value="preparo_ingrediente" ${s.informacoes_pedido?.tipo==='preparo_ingrediente'?'selected':''}>Preparo de ingrediente</option><option value="outro" ${s.informacoes_pedido?.tipo==='outro'?'selected':''}>Outro processo</option></select></label>
+    <div class="op-row2"><div class="panel" style="padding:10px;max-height:180px;overflow:auto"><b class="sm">Itens do cardápio</b>${(card.produtos||[]).map(p=>`<label class="fcheck"><input type="checkbox" data-op-item value="${p.id}" ${(s.informacoes_pedido?.itens_cardapio||[]).includes(p.id)?'checked':''}> ${esc(p.nome)}</label>`).join('')||'<div class="mut sm">Sem itens.</div>'}</div><div class="panel" style="padding:10px;max-height:180px;overflow:auto"><b class="sm">Variações/opções</b>${[...(card.grupos||[]).map(g=>({id:g.id,nome:'Grupo: '+g.nome})),...(card.opcoes||[]).map(o=>({id:o.id,nome:'Opção: '+o.nome}))].map(v=>`<label class="fcheck"><input type="checkbox" data-op-var value="${v.id}" ${(s.informacoes_pedido?.variacoes||[]).includes(v.id)?'checked':''}> ${esc(v.nome)}</label>`).join('')||'<div class="mut sm">Sem variações.</div>'}</div></div>
+    <div class="panel" style="padding:10px;margin-top:10px;max-height:160px;overflow:auto"><b class="sm">Ingredientes/receitas que passam por preparo</b>${rec.map(r=>`<label class="fcheck"><input type="checkbox" data-op-rec value="${r.id}" ${(s.informacoes_pedido?.ingredientes_preparo||[]).includes(r.id)?'checked':''}> ${esc(r.nome)}${r.ficha_id?' · ficha':' · sem ficha'}</label>`).join('')||'<div class="mut sm">Sem receitas de produção cadastradas.</div>'}</div>
+    <h3 class="sec">Processos e passo a passo</h3>
+    <div id="opProcessos">${(s.processos||[]).map((p,i)=>opProcessoHtml(p,i,alvoOpts)).join('')||'<div class="mut sm">Nenhum processo específico ainda.</div>'}</div>
+    <button class="btn ghost sm" onclick="opAddProcesso()">+ Adicionar processo</button>
+    <h3 class="sec">Tempo e alertas do setor</h3>
+    <div class="op-row3"><label class="op-label">Tempo<select class="field" id="opTempoModo"><option value="pre_definido" ${s.tempo?.modo!=='media_dia_anterior'?'selected':''}>Pré-definido</option><option value="media_dia_anterior" ${s.tempo?.modo==='media_dia_anterior'?'selected':''}>Média do dia anterior</option></select></label><label class="op-label">Tempo base<input class="field" id="opTempoBase" value="${esc(s.tempo?.base_label||opTempoLabel(s.tempo?.base_seg||600))}" placeholder="00:10:00"></label><label class="op-label">Média anterior<input class="field" id="opTempoMedia" value="${esc(opTempoLabel(s.tempo?.media_dia_anterior_seg||0))}" readonly></label></div>
+    <div class="op-row3"><label class="op-label">Atenção em %<input class="field" id="opAlertaAt" type="number" value="${esc(s.alertas?.atencao_pct||100)}"></label><label class="op-label">Severo em %<input class="field" id="opAlertaSv" type="number" value="${esc(s.alertas?.severo_pct||150)}"></label><label class="op-label">Perigo em %<input class="field" id="opAlertaPg" type="number" value="${esc(s.alertas?.perigo_pct||200)}"></label></div>
+    ${opSwitchHtml('opObsOn','Receber observação do pedido?','Quando ligado, observações como “sem cebola” aparecem na tela do colaborador.',s.observacao_pedido?.ativa)}
+    <div class="op-row3"><label class="op-label">Posição<input class="field" id="opObsPos" value="${esc(s.observacao_pedido?.posicao||'topo')}"></label><label class="op-label">Fonte<input class="field" id="opObsFonte" value="${esc(s.observacao_pedido?.fonte||'Inter')}"></label><label class="op-label">Tamanho<input class="field" id="opObsTam" value="${esc(s.observacao_pedido?.tamanho||'18px')}"></label></div>
+    <div class="op-row2"><label class="op-label">Cor<input class="field" id="opObsCor" type="color" value="${esc(s.observacao_pedido?.cor||'#ffffff')}"></label><label class="op-label">Fundo<input class="field" id="opObsFundo" type="color" value="${esc(s.observacao_pedido?.fundo||'#3a1414')}"></label></div>
+    <h3 class="sec">Colaboradores do setor</h3>
+    <div class="panel" style="padding:10px;max-height:150px;overflow:auto">${cols.map(c=>`<label class="fcheck"><input type="checkbox" data-op-colab value="${c.id}" ${(s.colaboradores||[]).includes(c.id)?'checked':''}> ${esc(c.nome)} <span class="mut sm">· ${esc(c.perfil||'')}</span></label>`).join('')||'<div class="mut sm">Sem colaboradores cadastrados.</div>'}</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn ghost sm" onclick="opSaveSetorLocal()">Salvar setor nesta área</button></div>`;
+}
+function opSwitchHtml(id,titulo,sub,on){ return `<div class="op-switch-card"><div><b>${titulo}</b><small>${sub||''}</small></div><button type="button" id="${id}" class="op-switch ${opBool(on)}" onclick="this.classList.toggle('on'); if('${id}'==='opPrepOn'){ const b=document.getElementById('opPrepBox'); if(b)b.style.display=this.classList.contains('on')?'':'none'; }"></button></div>`; }
+function opPreparacaoHtml(s){ return `<div class="op-table-card"><div class="op-table-head"><span>Preparação</span><span>Auditoria</span><span>Obrigatório?</span><span></span></div><div id="opPrepLines">${(s.preparacao||[]).map(opPrepLine).join('')||opPrepLine({id:opId('prep'),preparacao:'',auditoria:'checkbox',obrigatorio:false})}</div></div><button class="btn ghost sm" onclick="opAddPrep()">+ Adicionar mais uma etapa de preparo</button>`; }
+function opPrepLine(e){ return `<div class="op-prep-line" data-prep-line data-id="${esc(e.id||opId('prep'))}"><input class="field" data-prep-txt value="${esc(e.preparacao||'')}" placeholder="Ex: conferir bancada limpa"><select class="field" data-prep-aud><option value="checkbox" ${e.auditoria!=='foto'?'selected':''}>Checkbox</option><option value="foto" ${e.auditoria==='foto'?'selected':''}>Foto</option></select><button type="button" class="op-switch ${opBool(e.obrigatorio)}" data-prep-obr onclick="this.classList.toggle('on')"></button><button class="op-ico" onclick="this.closest('[data-prep-line]').remove()">×</button></div>`; }
+function opProcessoHtml(p,i,alvoOpts){ const id=p.id||opId('proc'); return `<div class="op-process-card" data-process-card data-id="${esc(id)}"><div class="op-row2"><label class="op-label">Tipo<select class="field" data-proc-tipo><option value="item_cardapio" ${p.alvo_tipo==='item_cardapio'?'selected':''}>Item do cardápio</option><option value="opcao_cardapio" ${p.alvo_tipo==='opcao_cardapio'?'selected':''}>Opção/variação</option><option value="receita" ${p.alvo_tipo==='receita'?'selected':''}>Receita/ingrediente</option></select></label><label class="op-label">Item/opção/receita<select class="field" data-proc-alvo><option value="">— selecionar —</option>${alvoOpts.map(o=>`<option value="${esc(o.id)}" ${String(p.alvo_id||'')===String(o.id)?'selected':''}>${esc(o.nome)}</option>`).join('')}</select></label></div><div class="op-process-layout"><div class="op-upload"><input type="hidden" data-proc-img value="${esc(p.imagem_url||'')}"><button class="btn ghost sm" onclick="opUploadImagemProcesso(this)">Enviar foto/referência</button><div class="mut sm">${p.imagem_url?'Imagem carregada':'Foto do passo ou item de montagem'}</div><label class="fcheck"><input type="radio" data-proc-lado name="lado_${id}" value="esquerda" ${p.lado_imagem!=='direita'?'checked':''}> Esquerda</label><label class="fcheck"><input type="radio" data-proc-lado name="lado_${id}" value="direita" ${p.lado_imagem==='direita'?'checked':''}> Direita</label>${opSwitchHtml('procEsp_'+id,'Ativar espelhamento?','Se a opção aparecer do lado oposto, a foto será espelhada.',p.espelhar_imagem).replace('id="procEsp_'+id+'"','data-proc-esp id="procEsp_'+id+'"')}</div><div><div data-steps>${(p.passos||[]).map(opStepLine).join('')||opStepLine({id:opId('step'),texto:'',ingredientes:[]})}</div><button class="btn ghost sm" onclick="opAddStep(this)">+ Adicionar passo</button><button class="btn red sm" style="float:right" onclick="this.closest('[data-process-card]').remove()">Remover processo</button></div></div></div>`; }
+function opStepLine(p){ return `<div class="op-step-line" data-step-line data-id="${esc(p.id||opId('step'))}"><input class="field" data-step-txt value="${esc(p.texto||'')}" placeholder="Passo do colaborador"><input class="field" data-step-ing value="${esc((p.ingredientes||[]).join(', '))}" placeholder="Ingredientes ligados, separados por vírgula"><button class="op-ico" onclick="this.closest('[data-step-line]').remove()">×</button></div>`; }
+function opAddSetor(){ opSyncDraft(); _opDraft.setores.push(opNovoSetor('Novo setor')); _opSetorIdx=_opDraft.setores.length-1; renderAreaOperacaoModal(); }
+function opSelectSetor(i){ opSyncDraft(); _opSetorIdx=i; renderAreaOperacaoModal(); }
+function opSaveSetorLocal(){ opSyncDraft(); toast('Setor salvo no rascunho da área'); renderAreaOperacaoModal(); }
+function opAddPrep(){ const box=$('opPrepLines'); if(box)box.insertAdjacentHTML('beforeend',opPrepLine({id:opId('prep'),preparacao:'',auditoria:'checkbox',obrigatorio:false})); }
+function opAddProcesso(){ opSyncDraft(); const s=_opDraft.setores[_opSetorIdx]; s.processos.push({id:opId('proc'),alvo_tipo:'item_cardapio',alvo_id:'',alvo_nome:'',lado_imagem:'esquerda',espelhar_imagem:false,imagem_url:'',passos:[{id:opId('step'),texto:'',ingredientes:[]}]}); renderAreaOperacaoModal(); }
+function opAddStep(btn){ const box=btn.closest('.op-process-card').querySelector('[data-steps]'); box.insertAdjacentHTML('beforeend',opStepLine({id:opId('step'),texto:'',ingredientes:[]})); }
+function opImportarSetorEstoque(){ const sel=$('opSetEstoque'); const txt=sel&&sel.selectedOptions[0]?sel.selectedOptions[0].textContent:''; if(txt&&txt!=='Não vinculado')$('opSetNome').value=txt; }
+async function opCriarSetorIA(){ const msg=await pedirTexto('Criar setor com auxílio da IA','Explique como esse setor deve funcionar. Vou gerar um rascunho dentro dos parâmetros da Operação.',''); if(msg===null)return; const t=msg.toLowerCase(); if(t.includes('borda'))$('opSetNome').value='Borda'; else if(t.includes('final'))$('opSetNome').value='Finalização'; else if(t.includes('mont'))$('opSetNome').value='Montagem'; else if(t.includes('preparo'))$('opSetNome').value='Preparo'; const prep=$('opPrepOn'); if(t.includes('limp')||t.includes('prepar'))prep.classList.add('on'); const bx=$('opPrepBox'); if(bx)bx.style.display=''; toast('Rascunho criado; revise e salve o setor'); }
+async function opUploadImagemProcesso(btn){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f)return; if(f.size>2*1024*1024){toast('Imagem até 2MB nesta versão');return;} const fr=new FileReader(); fr.onload=()=>{ btn.closest('[data-process-card]').querySelector('[data-proc-img]').value=fr.result; toast('Imagem carregada no processo'); }; fr.readAsDataURL(f); }; inp.click(); }
+async function opSalvarArea(status){ opSyncDraft(); if(!_opDraft.nome){ toast('Informe o nome da área'); return; } if(status)_opDraft.status=status; try{ const r=await fetch(API+'/api/admin/operacao/area',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id,area:_opDraft})}); const d=await r.json(); if(!r.ok)throw new Error(d.erro||'Erro ao salvar área'); toast('Área salva'); opCloseModal(); await loadOperacao(); _opOpenArea=d.area.id; renderOperacao(); }catch(e){ toast(e.message||'Erro ao salvar área'); } }
+async function opInativarArea(id){ if(!await pedirConfirm('Inativar área','A área deixa de aparecer como ativa, mas a configuração fica preservada.','Inativar'))return; const r=await fetch(API+'/api/admin/operacao/area/'+encodeURIComponent(id),{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_id:user.id})}); const d=await r.json().catch(()=>({})); if(r.ok){toast('Área inativada');loadOperacao();}else toast(d.erro||'Erro'); }
+function opDuplicarArea(id){ const a=(_opData?.config?.areas||[]).find(x=>x.id===id); if(!a)return; _opDraft=JSON.parse(JSON.stringify(a)); _opDraft.id=opId('area'); _opDraft.nome+=' — cópia'; _opDraft.status='rascunho'; _opDraft.setores=(_opDraft.setores||[]).map(s=>Object.assign({},s,{id:opId('setor')})); _opSetorIdx=0; renderAreaOperacaoModal(); }
+function opExcluirSetor(areaId,setorId){ const a=(_opData?.config?.areas||[]).find(x=>x.id===areaId); if(!a)return; abrirAreaOperacao(areaId); _opDraft.setores=_opDraft.setores.filter(s=>s.id!==setorId); _opSetorIdx=0; renderAreaOperacaoModal(); toast('Setor removido do rascunho; clique em Salvar área para persistir'); }
+function opAdicionarColab(areaId,setorId){ abrirAreaOperacao(areaId,setorId); setTimeout(()=>{ const el=document.querySelector('[data-op-colab]'); if(el)el.scrollIntoView({block:'center'}); },80); }
 
 /* ===== APARÊNCIA (tema white-label da loja) ===== */
 let _ap={}, _apFontes=[];
@@ -774,7 +1329,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','
 function num(v){ const n=Number(v); if(!Number.isFinite(n))return '—'; return Number.isInteger(n)?String(n):String(Number(n.toFixed(3))).replace('.',','); }
 function segBtns(tp,id,status){return ['ATIVO','EM_FALTA','OCULTO'].map(s=>`<button data-tp="${tp}" data-id="${id}" data-s="${s}" class="${status===s?'on':''}">${s==='ATIVO'?'Ativo':s==='EM_FALTA'?'Falta':'Oculto'}</button>`).join('');}
 const STATUS_OPTS=[{v:'ATIVO',t:'Ativo / vendavel'},{v:'EM_FALTA',t:'Em falta / aparece sem venda'},{v:'OCULTO',t:'Oculto / nao aparece'}];
-const REGRA_OPTS=[{v:'FIXO',t:'Fixo'},{v:'SOMA',t:'Soma adicionais'},{v:'MAIOR',t:'Maior valor escolhido'}];
+const REGRA_OPTS=[{v:'FIXO',t:'Fixo'},{v:'SOMA',t:'Soma adicionais'},{v:'MAIOR',t:'Maior valor escolhido'},{v:'MEDIA',t:'Média dos sabores'},{v:'MENOR',t:'Menor valor escolhido'}];
 function optsHtml(opts,val){return opts.map(o=>`<option value="${esc(o.v)}" ${String(val||'')===String(o.v)?'selected':''}>${esc(o.t)}</option>`).join('');}
 function categoriaOpts(val){return Object.values(_cat.categoria||{}).sort((a,b)=>(Number(a.ordem)||0)-(Number(b.ordem)||0)||String(a.nome).localeCompare(String(b.nome))).map(c=>({v:c.id,t:c.nome}));}
 function condicaoTexto(c){ if(!c||!Object.keys(c).length)return ''; try{return JSON.stringify(c);}catch(e){return '';} }
@@ -1248,6 +1803,14 @@ async function salvarImpressao(){ if($('impStatus'))$('impStatus').textContent='
     obs:{ permite_pedido:segGet('segObsP','1')==='1', permite_item:segGet('segObsI','1')==='1' } };
   try{ const r=await (await fetch(API+'/api/admin/impressao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).json();
     if(r.ok){ toast('Salvo'); if($('impStatus'))$('impStatus').textContent='Salvo ✓'; } else if($('impStatus'))$('impStatus').textContent=r.erro||'Erro'; }catch(e){ if($('impStatus'))$('impStatus').textContent='Falha'; } }
+
+if(DEV_OP_PREVIEW){
+  setTimeout(()=>{
+    abrirApp({id:'thiago-preview',nome:'Thiago Ribeiro',login:'thiago',pode_admin:true});
+    go('operacao');
+    toast('Prévia local da aba Operação — dados demonstrativos, sem banco.');
+  },0);
+}
 </script>
 </body>
 </html>

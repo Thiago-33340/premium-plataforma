@@ -1060,6 +1060,231 @@ function mergeInventoryMeta(meta, patch, gestor) {
   base.mapper = mapper;
   return base;
 }
+
+const OPERACAO_FUNCOES_DEFAULT = ['Administração', 'Vendas', 'Estoque', 'Produção', 'Entrega', 'Atendimento', 'Logística', 'Financeiro', 'Outra'];
+const OPERACAO_GRAFICOS_DEFAULT = ['Pizza por tempo', 'Barras por setor', 'Linha do tempo', 'Kanban de gargalos'];
+const OPERACAO_ALERTAS_DEFAULT = ['WhatsApp', 'Notificação no app', 'Painel do gestor'];
+function opId(prefix) {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 14)}`;
+}
+function opBool(v) { return v === true; }
+function opArray(v) { return Array.isArray(v) ? v : []; }
+function opTempoSeg(v, def) {
+  if (v == null || v === '') return def || 0;
+  if (typeof v === 'number' && Number.isFinite(v)) return Math.max(0, Math.round(v));
+  const s = String(v).trim();
+  const parts = s.split(':').map(x => parseInt(x, 10));
+  if (parts.length === 3 && parts.every(Number.isFinite)) return Math.max(0, parts[0] * 3600 + parts[1] * 60 + parts[2]);
+  if (parts.length === 2 && parts.every(Number.isFinite)) return Math.max(0, parts[0] * 60 + parts[1]);
+  const n = Number(s.replace(',', '.'));
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : (def || 0);
+}
+function opTempoLabel(seg) {
+  const n = Math.max(0, Math.round(Number(seg) || 0));
+  const h = Math.floor(n / 3600), m = Math.floor((n % 3600) / 60), s = n % 60;
+  return [h, m, s].map(x => String(x).padStart(2, '0')).join(':');
+}
+function opStatus(raw) {
+  const v = String(raw || '').toLowerCase();
+  if (['rascunho', 'draft'].includes(v)) return 'rascunho';
+  if (['inativa', 'inativo', 'inactive', 'false', '0'].includes(v)) return 'inativa';
+  return 'ativa';
+}
+function opAtividadePorRatio(ratio, alertas = {}) {
+  const pct = Math.max(0, Number(ratio || 0) * 100);
+  const atencao = Math.max(1, Number(alertas.atencao_pct || 100));
+  const perigo = Math.max(atencao, Number(alertas.perigo_pct || 200));
+  if (pct >= perigo) return { estado: 'Perigo', peso: 3 };
+  if (pct >= atencao) return { estado: 'Atenção', peso: 2 };
+  return { estado: 'Normal', peso: 1 };
+}
+function opPrepEtapa(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    id: textoLimpo(r.id || opId('prep'), 32),
+    preparacao: textoLimpo(r.preparacao || r.descricao || '', 240),
+    auditoria: String(r.auditoria || '').toLowerCase() === 'foto' ? 'foto' : 'checkbox',
+    obrigatorio: opBool(r.obrigatorio)
+  };
+}
+function opPasso(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    id: textoLimpo(r.id || opId('passo'), 32),
+    texto: textoLimpo(r.texto || r.descricao || '', 320),
+    ingredientes: opArray(r.ingredientes).map(x => textoLimpo(x, 80)).filter(Boolean)
+  };
+}
+function opProcesso(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    id: textoLimpo(r.id || opId('proc'), 32),
+    alvo_tipo: textoLimpo(r.alvo_tipo || 'item_cardapio', 40),
+    alvo_id: textoLimpo(r.alvo_id || '', 80),
+    alvo_nome: textoLimpo(r.alvo_nome || '', 160),
+    lado_imagem: ['esquerda', 'direita'].includes(String(r.lado_imagem || '').toLowerCase()) ? String(r.lado_imagem).toLowerCase() : 'esquerda',
+    espelhar_imagem: opBool(r.espelhar_imagem),
+    imagem_url: textoLimpo(r.imagem_url || '', 800),
+    passos: opArray(r.passos).map(opPasso).filter(p => p.texto || p.ingredientes.length)
+  };
+}
+function opSetor(raw, idx) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const tempoBase = opTempoSeg(r.tempo_base_seg ?? r.tempo_base, 600);
+  return {
+    id: textoLimpo(r.id || opId('setor'), 32),
+    nome: textoLimpo(r.nome || `Setor ${idx + 1}`, 80),
+    tipo: textoLimpo(r.tipo || r.funcao || 'produção', 60),
+    estoque_setor_id: r.estoque_setor_id != null && r.estoque_setor_id !== '' ? String(r.estoque_setor_id) : null,
+    criado_por_ia: opBool(r.criado_por_ia),
+    prompt_ia: textoLimpo(r.prompt_ia || '', 800),
+    precisa_preparacao: opBool(r.precisa_preparacao),
+    preparacao: opArray(r.preparacao).map(opPrepEtapa).filter(e => e.preparacao),
+    recebe_de: opArray(r.recebe_de).map(x => textoLimpo(x, 64)).filter(Boolean),
+    rota_inicial: opBool(r.rota_inicial) || opArray(r.recebe_de).includes('ROTA_INICIAL'),
+    prioridade_avanco: opBool(r.prioridade_avanco),
+    avanca_com_preparo_pendente: opBool(r.avanca_com_preparo_pendente),
+    informacoes_pedido: {
+      tipo: ['preparo_ingrediente', 'preparo_pizza', 'outro'].includes(String(r.informacoes_pedido?.tipo || r.tipo_trabalho || '').toLowerCase()) ? String(r.informacoes_pedido?.tipo || r.tipo_trabalho).toLowerCase() : 'preparo_pizza',
+      itens_cardapio: opArray(r.informacoes_pedido?.itens_cardapio || r.itens_cardapio).map(x => textoLimpo(x, 80)).filter(Boolean),
+      variacoes: opArray(r.informacoes_pedido?.variacoes || r.variacoes).map(x => textoLimpo(x, 80)).filter(Boolean),
+      ingredientes_preparo: opArray(r.informacoes_pedido?.ingredientes_preparo || r.ingredientes_preparo).map(x => textoLimpo(x, 80)).filter(Boolean)
+    },
+    processos: opArray(r.processos).map(opProcesso).filter(p => p.alvo_nome || p.passos.length || p.imagem_url),
+    tempo: {
+      modo: String(r.tempo?.modo || r.modo_tempo || 'pre_definido') === 'media_dia_anterior' ? 'media_dia_anterior' : 'pre_definido',
+      base_seg: tempoBase,
+      base_label: opTempoLabel(tempoBase),
+      media_dia_anterior_seg: opTempoSeg(r.tempo?.media_dia_anterior_seg, 0)
+    },
+    alertas: {
+      atencao_pct: Math.max(1, Number(r.alertas?.atencao_pct ?? r.alerta_atencao_pct ?? 100) || 100),
+      severo_pct: Math.max(1, Number(r.alertas?.severo_pct ?? r.alerta_severo_pct ?? 150) || 150),
+      perigo_pct: Math.max(1, Number(r.alertas?.perigo_pct ?? r.alerta_perigo_pct ?? 200) || 200)
+    },
+    observacao_pedido: {
+      ativa: opBool(r.observacao_pedido?.ativa),
+      posicao: textoLimpo(r.observacao_pedido?.posicao || 'topo', 40),
+      fonte: textoLimpo(r.observacao_pedido?.fonte || 'Inter', 80),
+      tamanho: textoLimpo(r.observacao_pedido?.tamanho || '18px', 20),
+      cor: textoLimpo(r.observacao_pedido?.cor || '#ffffff', 20),
+      fundo: textoLimpo(r.observacao_pedido?.fundo || '#3a1414', 20)
+    },
+    colaboradores: opArray(r.colaboradores).map(x => textoLimpo(x, 80)).filter(Boolean),
+    metricas: {
+      tempo_atual_seg: opTempoSeg(r.metricas?.tempo_atual_seg, 0),
+      tempo_medio_seg: opTempoSeg(r.metricas?.tempo_medio_seg, tempoBase),
+      tempo_max_seg: opTempoSeg(r.metricas?.tempo_max_seg, 0),
+      tempo_min_seg: opTempoSeg(r.metricas?.tempo_min_seg, 0),
+      pedidos_em_andamento: Math.max(0, parseInt(r.metricas?.pedidos_em_andamento || 0, 10) || 0)
+    }
+  };
+}
+function opArea(raw, idx) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const setores = opArray(r.setores).map((s, i) => opSetor(s, i));
+  return {
+    id: textoLimpo(r.id || opId('area'), 32),
+    nome: textoLimpo(r.nome || `Área ${idx + 1}`, 90),
+    funcao: textoLimpo(r.funcao || 'Produção', 80),
+    status: opStatus(r.status),
+    descricao: textoLimpo(r.descricao || '', 600),
+    setores,
+    relatorios_alertas: {
+      tipo_grafico: textoLimpo(r.relatorios_alertas?.tipo_grafico || r.tipo_grafico || 'Pizza por tempo', 80),
+      tipo_alerta: textoLimpo(r.relatorios_alertas?.tipo_alerta || r.tipo_alerta || 'Painel do gestor', 80),
+      regras_avancadas: textoLimpo(r.relatorios_alertas?.regras_avancadas || '', 1200)
+    },
+    atualizado_em: r.atualizado_em || null,
+    atualizado_por: r.atualizado_por || null
+  };
+}
+function operacaoConfigSanitize(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    versao: 1,
+    funcoes_area: uniqCfgOptions(r.funcoes_area, OPERACAO_FUNCOES_DEFAULT).map(x => x.rotulo),
+    tipos_grafico: uniqCfgOptions(r.tipos_grafico, OPERACAO_GRAFICOS_DEFAULT).map(x => x.rotulo),
+    tipos_alerta: uniqCfgOptions(r.tipos_alerta, OPERACAO_ALERTAS_DEFAULT).map(x => x.rotulo),
+    areas: opArray(r.areas).map((a, i) => opArea(a, i))
+  };
+}
+function operacaoSnapshot(config) {
+  const areas = opArray(config.areas).map(area => {
+    const setores = opArray(area.setores).map(setor => {
+      const base = Number(setor.tempo?.base_seg || 0) || 1;
+      const atual = Number(setor.metricas?.tempo_atual_seg || 0);
+      const ref = atual > 0 ? atual : base;
+      const ratio = atual > 0 ? atual / base : 0;
+      const atividade = opAtividadePorRatio(ratio, setor.alertas || {});
+      return {
+        ...setor,
+        tempo_base_label: opTempoLabel(base),
+        tempo_atual_label: atual > 0 ? opTempoLabel(atual) : 'sem atividade',
+        tempo_medio_label: opTempoLabel(setor.metricas?.tempo_medio_seg || base),
+        tempo_max_label: opTempoLabel(setor.metricas?.tempo_max_seg || 0),
+        tempo_min_label: opTempoLabel(setor.metricas?.tempo_min_seg || 0),
+        grafico_valor: ref,
+        atividade
+      };
+    });
+    const pior = setores.reduce((acc, s) => !acc || s.atividade.peso > acc.atividade.peso ? s : acc, null);
+    const totalTempo = setores.reduce((n, s) => n + (Number(s.grafico_valor) || 0), 0);
+    const colaboradores = setores.reduce((n, s) => n + opArray(s.colaboradores).length, 0);
+    return {
+      ...area,
+      setores,
+      indicadores: {
+        status_area: area.status === 'ativa' ? 'Ativa' : (area.status === 'rascunho' ? 'Rascunho' : 'Inativa'),
+        atividade: pior ? pior.atividade.estado : 'Normal',
+        atividade_peso: pior ? pior.atividade.peso : 1,
+        setor_gargalo: pior ? pior.nome : null,
+        setores_total: setores.length,
+        colaboradores_total: colaboradores,
+        tempo_total_seg: totalTempo,
+        tempo_total_label: opTempoLabel(totalTempo)
+      }
+    };
+  });
+  return { areas };
+}
+async function operacaoCatalogos() {
+  const [setores, usuarios, cats, produtos, grupos, opcoes, receitas] = await Promise.all([
+    db.q('SELECT id, nome FROM est_setor WHERE tenant_id=$1 AND ativo ORDER BY ordem,nome', [TENANT]).catch(() => ({ rows: [] })),
+    db.q("SELECT id, nome, apelido_login, perfil_principal FROM rbac_contacts WHERE tenant_id=$1 AND ativo ORDER BY nome", [TENANT]).catch(() => ({ rows: [] })),
+    db.q('SELECT id, nome FROM menu_categorias WHERE tenant_id=$1 AND ativa ORDER BY ordem,nome', [TENANT]).catch(() => ({ rows: [] })),
+    db.q('SELECT id::text, categoria_id, nome, tipo_montagem, status FROM produtos WHERE tenant_id=$1 ORDER BY nome', [TENANT]).catch(() => ({ rows: [] })),
+    db.q('SELECT id::text, produto_id::text, nome FROM opcao_grupos WHERE tenant_id=$1 ORDER BY ordem,nome', [TENANT]).catch(() => ({ rows: [] })),
+    db.q('SELECT id::text, grupo_id::text, nome, status FROM opcoes WHERE tenant_id=$1 ORDER BY ordem,nome', [TENANT]).catch(() => ({ rows: [] })),
+    db.q(`SELECT p.id::text, p.nome, p.unidade, f.id AS ficha_id, COALESCE(f.instrucoes,'') AS instrucoes
+      FROM est_produto p LEFT JOIN est_ficha_producao f ON f.tenant_id=p.tenant_id AND f.produto_id=p.id AND f.ativo
+      WHERE p.tenant_id=$1 AND p.ativo AND (p.pode_produzir OR f.id IS NOT NULL)
+      ORDER BY p.nome`, [TENANT]).catch(() => ({ rows: [] }))
+  ]);
+  return {
+    setores_estoque: setores.rows.map(s => ({ id: String(s.id), nome: s.nome })),
+    colaboradores: usuarios.rows.map(u => ({ id: String(u.id), nome: u.nome, login: u.apelido_login, perfil: u.perfil_principal })),
+    cardapio: {
+      categorias: cats.rows,
+      produtos: produtos.rows,
+      grupos: grupos.rows,
+      opcoes: opcoes.rows
+    },
+    receitas: receitas.rows
+  };
+}
+async function operacaoTenantConfig() {
+  const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+  const cfg = (r.rows[0] && r.rows[0].config) || {};
+  return operacaoConfigSanitize(cfg.operacao || {});
+}
+async function salvarOperacaoConfig(op) {
+  const r = await db.q('SELECT config FROM tenants WHERE id=$1', [TENANT]);
+  const cur = (r.rows[0] && r.rows[0].config) || {};
+  cur.operacao = operacaoConfigSanitize(op);
+  await db.q('UPDATE tenants SET config=$2 WHERE id=$1', [TENANT, JSON.stringify(cur)]);
+  return cur.operacao;
+}
 async function adminEstoqueCardapioSnapshot(params) {
   const cfg = await estoqueTenantConfig();
   const [produtosR, opcoesR, fichasR] = await Promise.all([
@@ -4534,6 +4759,36 @@ Regras obrigatórias:
     const adminId = (req.method === 'GET') ? url.searchParams.get('admin_id') : body.admin_id;
     const g = await requerStaffSession(req, res, { gestor: true, ref: adminId });
     if (!g) return;
+
+    if (seg[2] === 'operacao' && !seg[3] && req.method === 'GET') {
+      const config = await operacaoTenantConfig();
+      const snapshot = operacaoSnapshot(config);
+      const catalogos = await operacaoCatalogos();
+      return json(res, 200, { config, snapshot, catalogos });
+    }
+    if (seg[2] === 'operacao' && seg[3] === 'area' && !seg[4] && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const config = await operacaoTenantConfig();
+      const area = opArea(Object.assign({}, body.area || body, {
+        atualizado_em: new Date().toISOString(),
+        atualizado_por: g.apelido_login || g.nome || g.id
+      }), config.areas.length);
+      if (!area.nome) return json(res, 400, { erro: 'Informe o nome da área.' });
+      const idx = config.areas.findIndex(a => a.id === area.id);
+      if (idx >= 0) config.areas[idx] = area;
+      else config.areas.push(area);
+      const saved = await salvarOperacaoConfig(config);
+      return json(res, 200, { ok: true, area, config: saved, snapshot: operacaoSnapshot(saved) });
+    }
+    if (seg[2] === 'operacao' && seg[3] === 'area' && seg[4] && req.method === 'DELETE') {
+      const config = await operacaoTenantConfig();
+      const idx = config.areas.findIndex(a => a.id === seg[4]);
+      if (idx < 0) return json(res, 404, { erro: 'Área não encontrada.' });
+      config.areas[idx].status = 'inativa';
+      config.areas[idx].atualizado_em = new Date().toISOString();
+      config.areas[idx].atualizado_por = g.apelido_login || g.nome || g.id;
+      const saved = await salvarOperacaoConfig(config);
+      return json(res, 200, { ok: true, area: config.areas[idx], config: saved, snapshot: operacaoSnapshot(saved) });
+    }
 
     if (seg[2] === 'usuarios' && req.method === 'GET') {
       const r = await db.q(`SELECT id, nome, apelido_login, perfil_principal, perfis_adicionais, setores_permitidos, ativo, (pin_hash IS NOT NULL) AS tem_pin FROM rbac_contacts WHERE tenant_id=$1 ORDER BY ativo DESC, nome`, [TENANT]);
