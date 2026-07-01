@@ -77,12 +77,18 @@ function corsHeaders(req) {
   } catch (_) { return {}; }
 }
 function securityHeaders(req, extra) {
+  const prototipoSupabaseConnectSrc = 'https://etprijbcdukqwsndsnez.supabase.co';
+  let isPrototipo = false;
+  try {
+    isPrototipo = !!req && new URL(req.url || '/', `http://${req.headers?.host || 'localhost'}`).pathname.startsWith('/prototipo');
+  } catch (_) {}
+  const connectSrc = isPrototipo ? `'self' ${prototipoSupabaseConnectSrc}` : "'self'";
   const h = Object.assign({
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
-    'Content-Security-Policy': "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; form-action 'self'",
+    'Content-Security-Policy': `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src ${connectSrc}; form-action 'self'`,
     'Strict-Transport-Security': 'max-age=15552000; includeSubDomains'
   }, corsHeaders(req), extra || {});
   return h;
